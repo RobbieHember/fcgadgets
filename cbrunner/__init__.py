@@ -1,0 +1,2 @@
+name="cbrunner"
+__all__=["cbrun","cbrun_annproc","cbrun_utilities","cbrun_figures"]
