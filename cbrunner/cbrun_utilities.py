@@ -14,7 +14,8 @@ QUERY RESULTS CODES FOR MANAGEMENT ACTIVITY TYPES
 def QueryResultsActivity(d):
     
     # Convert to arrays with at least 1d
-    for vr in d: d[vr]=np.array(d[vr],ndmin=1)
+    for key in d: 
+        d[key]=np.array(d[key],ndmin=1)
     
     Name=[]
     for i in range(d['SILV_BASE_CODE'].size):
@@ -62,9 +63,9 @@ def QueryResultsActivityNumeric(d,meta):
         elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['SP']):
             Name.append('Site Prep')
             ID.append(-999)
-        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PC']) & (d['SILV_OBJECTIVE_CODE_1'][i]=='DM'):
+        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PC']) & (d['SILV_OBJECTIVE_CODE_1'][i]==lut_atu['SILV_OBJECTIVE_CODE_1']['DM']):
             Name.append('Control Dwarf Mistletoe')
-            ID.append(-999)
+            ID.append(lut_dist['Control Dwarf Mistletoe'])
         else:
             Name.append('Undefined')
             ID.append(-999)

@@ -29,28 +29,6 @@ def opickle(path,data):
     fout.close()
 
 '''============================================================================
-COUNT BY CATEGORIES
-============================================================================'''
-
-def CountByCategories(z,*args):
-
-    z=z.flatten()
-    u=np.unique(z)
-    N=np.zeros(u.size)
-    for i in range(u.size):
-        ind=np.where(z==u[i])[0]
-        N[i]=ind.size
-
-    try:
-        if args[0]=='Percent':
-            N=N/np.sum(N)*100
-    except:
-        pass
-
-    N=np.round(N,2)
-    return u,N
-
-'''============================================================================
 ADD LETTERS TO FIGURE PANELS
 ============================================================================'''
 
@@ -112,6 +90,27 @@ def cm2inch(*tupl):
     else:
         return tuple(i/inch for i in tupl)
     
+'''============================================================================
+COUNT BY CATEGORIES
+============================================================================'''
+
+def CountByCategories(z,*args):
+
+    z=z.flatten()
+    u=np.unique(z)
+    N=np.zeros(u.size)
+    for i in range(u.size):
+        ind=np.where(z==u[i])[0]
+        N[i]=ind.size
+
+    try:
+        if args[0]=='Percent':
+            N=N/np.sum(N)*100
+    except:
+        pass
+
+    N=np.round(N,2)
+    return u,N
 
 '''============================================================================
 ISEMPTY

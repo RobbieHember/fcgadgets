@@ -73,6 +73,9 @@ def DefineInventoryLayersAndVariables():
      ('ACTUAL_TREATMENT_AREA',0,'float32'), \
      ('ACTUAL_TREATMENT_COST',0,'float32'), \
      ('ACTUAL_PLANTED_NUMBER',0,'float32'), \
+     ('DISTURBANCE_CODE',1,'int16'), \
+     ('SILV_SYSTEM_CODE',1,'int16'), \
+     ('SILV_SYSTEM_VARIANT_CODE',1,'int16'), \
      ('FIA_PROJECT_ID',1,'int32')]
     d['LUT']={}
     for i in d['Field List']: d['LUT'][i[0]]=[] 
@@ -312,3 +315,93 @@ def BuildForestInventoryLUTs(LayerInfo):
         # Save
         gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_' + LayerInfo[iLyr]['Layer Name'] +'.pkl',lut)
 
+    #--------------------------------------------------------------------------
+    # Standardize codes for species
+    #--------------------------------------------------------------------------
+    
+    # Import data
+    for iLyr in range(len(LayerInfo)):        
+        if LayerInfo[iLyr]['Layer Name']=='VEG_COMP_LYR_R1_POLY':
+            lut_vri=gu.ipickle(LayerInfo[iLyr]['Path'] + '\\LUTs_VEG_COMP_LYR_R1_POLY.pkl')
+        if LayerInfo[iLyr]['Layer Name']=='RSLT_FOREST_COVER_INV_SVW':
+            lut_fci=gu.ipickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_FOREST_COVER_INV_SVW.pkl')    
+        if LayerInfo[iLyr]['Layer Name']=='RSLT_FOREST_COVER_SILV_SVW':
+            lut_fcs=gu.ipickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_FOREST_COVER_SILV_SVW.pkl')        
+        if LayerInfo[iLyr]['Layer Name']=='RSLT_PLANTING_SVW':
+            lut_pl=gu.ipickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_PLANTING_SVW.pkl')  
+            
+        # Add everything to a list
+        cd=list(lut_vri['SPECIES_CD_1'].keys())
+        cd=cd+list(lut_vri['SPECIES_CD_2'].keys())
+        cd=cd+list(lut_vri['SPECIES_CD_3'].keys())
+        cd=cd+list(lut_vri['SPECIES_CD_4'].keys())
+        cd=cd+list(lut_vri['SPECIES_CD_5'].keys())
+        cd=cd+list(lut_vri['SPECIES_CD_6'].keys())
+        cd=cd+list(lut_fci['I_SPECIES_CODE_1'].keys())
+        cd=cd+list(lut_fci['I_SPECIES_CODE_2'].keys())
+        cd=cd+list(lut_fci['I_SPECIES_CODE_3'].keys())
+        cd=cd+list(lut_fci['I_SPECIES_CODE_4'].keys())
+        cd=cd+list(lut_fci['I_SPECIES_CODE_5'].keys())            
+        cd=cd+list(lut_fcs['S_SPECIES_CODE_1'].keys())
+        cd=cd+list(lut_fcs['S_SPECIES_CODE_2'].keys())
+        cd=cd+list(lut_fcs['S_SPECIES_CODE_3'].keys())
+        cd=cd+list(lut_fcs['S_SPECIES_CODE_4'].keys())
+        cd=cd+list(lut_fcs['S_SPECIES_CODE_5'].keys())            
+        cd=cd+list(lut_pl['SILV_TREE_SPECIES_CODE'].keys())
+            
+        # Get unique list
+        uCode=np.unique(cd)
+    
+    # Save new standardized list
+    for iLyr in range(len(LayerInfo)):        
+        
+        if LayerInfo[iLyr]['Layer Name']=='VEG_COMP_LYR_R1_POLY':
+            lut_vri['SPECIES_CD_1']={}
+            lut_vri['SPECIES_CD_2']={}
+            lut_vri['SPECIES_CD_3']={}
+            lut_vri['SPECIES_CD_4']={}
+            lut_vri['SPECIES_CD_5']={}
+            lut_vri['SPECIES_CD_6']={}
+            for i in range(len(uCode)):
+                lut_vri['SPECIES_CD_1'][uCode[i]]=i+1
+                lut_vri['SPECIES_CD_2'][uCode[i]]=i+1
+                lut_vri['SPECIES_CD_3'][uCode[i]]=i+1
+                lut_vri['SPECIES_CD_4'][uCode[i]]=i+1
+                lut_vri['SPECIES_CD_5'][uCode[i]]=i+1
+                lut_vri['SPECIES_CD_6'][uCode[i]]=i+1
+            gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_VEG_COMP_LYR_R1_POLY.pkl',lut_vri)
+        
+        if LayerInfo[iLyr]['Layer Name']=='RSLT_FOREST_COVER_INV_SVW':
+            lut_fci['I_SPECIES_CODE_1']={}
+            lut_fci['I_SPECIES_CODE_2']={}
+            lut_fci['I_SPECIES_CODE_3']={}
+            lut_fci['I_SPECIES_CODE_4']={}
+            lut_fci['I_SPECIES_CODE_5']={}            
+            for i in range(len(uCode)):
+                lut_fci['I_SPECIES_CODE_1'][uCode[i]]=i+1
+                lut_fci['I_SPECIES_CODE_2'][uCode[i]]=i+1
+                lut_fci['I_SPECIES_CODE_3'][uCode[i]]=i+1
+                lut_fci['I_SPECIES_CODE_4'][uCode[i]]=i+1
+                lut_fci['I_SPECIES_CODE_5'][uCode[i]]=i+1
+            gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_FOREST_COVER_INV_SVW.pkl',lut_fci)
+        
+        if LayerInfo[iLyr]['Layer Name']=='RSLT_FOREST_COVER_SILV_SVW':
+            lut_fcs['S_SPECIES_CODE_1']={}
+            lut_fcs['S_SPECIES_CODE_2']={}
+            lut_fcs['S_SPECIES_CODE_3']={}
+            lut_fcs['S_SPECIES_CODE_4']={}
+            lut_fcs['S_SPECIES_CODE_5']={}            
+            for i in range(len(uCode)):
+                lut_fcs['S_SPECIES_CODE_1'][uCode[i]]=i+1
+                lut_fcs['S_SPECIES_CODE_2'][uCode[i]]=i+1
+                lut_fcs['S_SPECIES_CODE_3'][uCode[i]]=i+1
+                lut_fcs['S_SPECIES_CODE_4'][uCode[i]]=i+1
+                lut_fcs['S_SPECIES_CODE_5'][uCode[i]]=i+1
+            gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_FOREST_COVER_SILV_SVW.pkl',lut_fcs)
+        
+        if LayerInfo[iLyr]['Layer Name']=='RSLT_PLANTING_SVW':
+            lut_pl['SILV_TREE_SPECIES_CODE']={}
+            for i in range(len(uCode)):
+                lut_pl['SILV_TREE_SPECIES_CODE'][uCode[i]]=i+1
+            gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_PLANTING_SVW.pkl',lut_pl)
+    
