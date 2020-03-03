@@ -1624,7 +1624,9 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
             
             if meta['Biomass Module']=='TIPSY':
                 
-                if ID_Type==meta['LUT Dist']['Planting']:
+                if (ID_Type==meta['LUT Dist']['Planting']) | (ID_Type==meta['LUT Dist']['Direct Seeding']):
+                    
+                    # If planting or direct seeding, force age to be 1
                     vo['A'][iT,iS]=1
                     
                 else:
@@ -1633,6 +1635,7 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                     age_mod_meth='FunctionOfSeverity'
                 
                     if age_mod_meth=='CBM':
+                        
                         # I think this is how CBM works - something like this
                         if Biomass_Affected_Pct>0.9:
                             vo['A'][iT,iS]=1
@@ -1641,7 +1644,25 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                         vo['A'][iT,iS]=vo['A'][iT,iS]*(1-Biomass_Affected_Pct)
             
             #------------------------------------------------------------------
-            # Transition to new growth curve if there is a change in stand type
+            # Update net growth (in response to lethal events)
+            #------------------------------------------------------------------
+            
+            if meta['Biomass Module']=='TIPSY':
+                
+                G_pre=vi['GCA'][:,iS,:]
+                G_post=(1-Biomass_Affected_Pct)*vi['GCA'][:,iS,:]
+                dG=G_pre-G_post
+                
+                RecoveryHalfLife=15               
+                TSD=np.tile(np.arange(0,301,1)-vo['A'][iT,iS],G_pre.shape[1])
+                fTSD=1/(1+np.exp(-0.5*(TSD-RecoveryHalfLife))) 
+                fTSD[0:vo['A'][iT,iS],:]=0
+                G_Recovery=fTSD*dG
+                
+                vi['GCA'][:,iS,:]=G_post+G_Recovery
+            
+            #------------------------------------------------------------------
+            # Transition to new growth curve
             #------------------------------------------------------------------
             
             # Only applies to TIPSY
@@ -1660,7 +1681,7 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                         vi['GCA'][:,iS,:]=vi['GC4'][:,iS,:]                        
     
             #------------------------------------------------------------------
-            # Apply growth factors
+            # Apply growth factors (in response to non-lethal events)
             #------------------------------------------------------------------
             
             # Only applies to TIPSY
@@ -1668,10 +1689,31 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                 vi['GCA'][:,iS,:]=psl.bDist_GrowthFactor[iDefPar]*vi['GCA'][:,iS,:]                
     
             #------------------------------------------------------------------
-            # Calculate operational emissions - fertilization
+            # Aerial fertilization - growth response and
             #------------------------------------------------------------------
             
             if ID_Type==meta['LUT Dist']['Fertilization Aerial']:
+                
+                #--------------------------------------------------------------
+                # Growth response
+                # Affecting biomass pools equally
+                #--------------------------------------------------------------
+                
+                if meta['Fertilization Source']=='CBRunner':
+                
+                    ResponseRatio=1.04
+                
+                    ResponsePeriod=10
+                
+                    iResponse=np.arange(vo['A'][iT,iS],vo['A'][iT,iS]+ResponsePeriod)
+                
+                    iP=meta['iEP']['BiomassTotal']
+                
+                    vi['GCA'][iResponse,iS,iP]=ResponseRatio*vi['GCA'][iResponse,iS,iP]
+                
+                #--------------------------------------------------------------
+                # Operational emissions
+                #--------------------------------------------------------------
                 
                 # Urea dose (kgUrea/ha)
                 DoseUrea=psl.bDoseUrea
