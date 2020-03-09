@@ -27,9 +27,7 @@ import fiona
 import rasterio
 from rasterio import features
 
-# Custom modules
-sys.path.append(r'C:\Users\rhember\Documents\Code_Python')
-from CustomFunctions.gis import *
+from fcgadgets.pyscripts.utilities_gis import *
 
 
 '''============================================================================

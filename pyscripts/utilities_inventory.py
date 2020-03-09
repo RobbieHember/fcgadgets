@@ -105,7 +105,10 @@ def DefineInventoryLayersAndVariables():
      ('I_CROWN_CLOSURE_PERCENT',0,'float32'), \
      ('REFERENCE_YEAR',0,'float32'), \
      ('STOCKING_STATUS_CODE',1,'int16'), \
-     ('OBSERVATION_DATE',0,'<U20')]
+     ('FOREST_COVER_WHO_CREATED',1,'int16'), \
+     ('FOREST_COVER_WHO_UPDATED',1,'int16'), \
+     ('FOREST_COVER_WHEN_CREATED',0,'<U20'), \
+     ('FOREST_COVER_WHEN_UPDATED',0,'<U20')]
     d['LUT']={}
     for field in d['Field List']: d['LUT'][field[0]]=[] 
     LayerInfo.append(d)
@@ -134,7 +137,10 @@ def DefineInventoryLayersAndVariables():
      ('S_CROWN_CLOSURE_PERCENT',0,'float32'), \
      ('REFERENCE_YEAR',0,'float32'), \
      ('STOCKING_STATUS_CODE',1,'int16'), \
-     ('OBSERVATION_DATE',0,'<U20')]
+     ('FOREST_COVER_WHO_CREATED',1,'int16'), \
+     ('FOREST_COVER_WHO_UPDATED',1,'int16'), \
+     ('FOREST_COVER_WHEN_CREATED',0,'<U20'), \
+     ('FOREST_COVER_WHEN_UPDATED',0,'<U20')]
     d['LUT']={}
     for field in d['Field List']: d['LUT'][field[0]]=[] 
     LayerInfo.append(d)
@@ -145,6 +151,7 @@ def DefineInventoryLayersAndVariables():
     d['Path']=PathInResultsFull
     d['File Name']='Results.gdb'
     d['Field List']=[('OPENING_ID',0,'float32'), \
+     ('ACTIVITY_TREATMENT_UNIT_ID',0,'float32'), \
      ('NUMBER_PLANTED',0,'float32'), \
      ('FIA_PROJECT_ID',1,'int32'), \
      ('SILV_TREE_SPECIES_CODE',1,'int16'), \

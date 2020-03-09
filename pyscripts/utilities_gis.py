@@ -3,6 +3,7 @@ import gdal
 import numpy as np
 import osr
 from matplotlib import path
+from shapely.geometry import Polygon,Point
 
 '''============================================================================
 BUNCH VARIABLES FROM DICTIONARY
@@ -163,15 +164,67 @@ def ReviseRasterExtent(fin1,fin2,fout1):
 INPOLYGON
 ============================================================================'''
 
-def InPolygon(xq, yq, xv, yv):
-    shape = xq.shape
-    xq = xq.reshape(-1)
-    yq = yq.reshape(-1)
-    xv = xv.reshape(-1)
-    yv = yv.reshape(-1)
-    q = [(xq[i], yq[i]) for i in range(xq.shape[0])]
-    p = path.Path([(xv[i], yv[i]) for i in range(xv.shape[0])])
-    return p.contains_points(q).reshape(shape)
+def InPolygon(xg,yg,xv,yv):
+    
+    l=[]
+    for i in range(xv.size):
+        l.append([xv[i],yv[i]])
+    poly=Polygon(l)
+    
+    InPol=np.zeros(xg.shape)
+    
+    if xg.ndim==1:
+        # Points in one dimension
+        for i in range(xg.size):
+            pnt=Point(xg[i],yg[i])
+            if poly.contains(pnt)==True:
+                InPol[i]=1    
+    else:        
+        # Two-dimensional grid
+        for i in range(xg.shape[0]):
+            for j in range(xg.shape[1]):
+                pnt=Point(xg[i,j],yg[i,j])
+                if poly.contains(pnt)==True:
+                    InPol[i,j]=1
+        
+    return InPol
+
+def InPolygon_Old(xg,yg,xv,yv):    
+    
+    nd=xg.ndim
+    if nd==1:    
+        xg=np.array(xg,ndmin=2)
+        yg=np.array(yg,ndmin=2)
+    
+    l=[]
+    for i in range(xv.size):
+        l.append([xv[i],yv[i]])
+    poly=Polygon(l)
+                
+    InPol=np.zeros(xg.shape)
+    for i in range(xg.shape[0]):
+        for j in range(xg.shape[1]):
+            pnt=Point(xg[i,j],yg[i,j])
+            if poly.contains(pnt)==True:
+                InPol[i,j]=1    
+    
+    if nd==1:
+        InPol=InPol.flatten()
+        
+    return InPol
+
+#def InPolygon(xg,yg,xv,yv): 
+    # This was not working in some cases:    
+    #shape = xg.shape
+    #xg = xg.reshape(-1)
+    #yg = yg.reshape(-1)
+    #xv = xv.reshape(-1)
+    #yv = yv.reshape(-1)
+    #q = [(xg[i], yg[i]) for i in range(xg.shape[0])]
+    #p = path.Path([(xv[i], yv[i]) for i in range(xv.shape[0])])
+    #return p.contains_points(q).reshape(shape)
+
+
 
 '''============================================================================
 EXTENT FROM GDAL

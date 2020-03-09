@@ -647,14 +647,14 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
              'V_StemMerch':vo['V_StemMerch'][it,:]} 
         
         # Add pool categories
-        dat['Eco_Biomass']=np.sum(vo['C_Eco_Pools'][it,:,iEP['BiomassTotal']],axis=2)
-        dat['Eco_BiomassAG']=np.sum(vo['C_Eco_Pools'][it,:,iEP['BiomassAboveground']],axis=2)
-        dat['Eco_Litter']=np.sum(vo['C_Eco_Pools'][it,:,iEP['Litter']],axis=2)        
-        dat['Eco_DeadWood']=np.sum(vo['C_Eco_Pools'][it,:,iEP['DeadWood']],axis=2)
-        dat['Eco_Soil']=np.sum(vo['C_Eco_Pools'][it,:,iEP['Soil']],axis=2)
-        dat['Eco_Total']=dat['Eco_Biomass']+dat['Eco_Litter']+dat['Eco_DeadWood']+dat['Eco_Soil']            
-        dat['Pro_InUse']=np.sum(vo['C_Pro_Pools'][it,:,0:10],axis=2)
-        dat['Pro_DumpLandfill']=np.sum(vo['C_Pro_Pools'][it,:,10:17],axis=2)
+        dat['Eco_Biomass']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassTotal']],axis=2)[it,:]
+        dat['Eco_BiomassAG']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassAboveground']],axis=2)[it,:]
+        dat['Eco_Litter']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Litter']],axis=2)[it,:]
+        dat['Eco_DeadWood']=np.sum(vo['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)[it,:]
+        dat['Eco_Soil']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)[it,:]
+        dat['Eco_Total']=dat['Eco_Biomass']+dat['Eco_Litter']+dat['Eco_DeadWood']+dat['Eco_Soil']
+        dat['Pro_InUse']=np.sum(vo['C_Pro_Pools'][:,:,0:10],axis=2)[it,:]
+        dat['Pro_DumpLandfill']=np.sum(vo['C_Pro_Pools'][:,:,10:17],axis=2)[it,:]
 
         # Combine emissions from product sector, express as tCO2e/ha/yr
         co2_to_c=meta['psl']['bRatio_CO2_to_C']
@@ -668,7 +668,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
     if meta['Biomass Module']=='Sawtooth':
         dat['N']=vo['N'][it,:]
         dat['N_M']=vo['N_M_Tot'][it,:]
-        dat['N_R']=vo['N_R'][it,:]        
+        dat['N_R']=vo['N_R'][it,:]
         dat['C_M_Sim_Reg']=vo['C_M_Sim_Reg'][it,:]
         dat['C_M_Sim_Fir']=vo['C_M_Sim_Fir'][it,:]
         dat['C_M_Sim_Har']=vo['C_M_Sim_Har'][it,:]

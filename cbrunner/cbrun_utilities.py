@@ -19,22 +19,35 @@ def QueryResultsActivity(d):
     
     Name=[]
     for i in range(d['SILV_BASE_CODE'].size):
+        
         if (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CA') & (d['SILV_METHOD_CODE'][i]=='HELI'):
             Name.append('Fertilization Aerial')
+        
         elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]=='GRANU'):
             Name.append('Fertilization Hand')
+        
         elif (d['SILV_BASE_CODE'][i]=='PL') & (d['SILV_METHOD_CODE'][i]!='LAYOT'):
+            # The planting in road rehab projects falls into this milestone type
             Name.append('Planting')            
+        
         elif (d['SILV_BASE_CODE'][i]=='DS'):
             Name.append('Direct Seeding')
+        
         elif (d['SILV_BASE_CODE'][i]=='SU'):
             Name.append('Surveys')
+        
         elif (d['SILV_BASE_CODE'][i]=='SP'):
             Name.append('Site Prep')
+        
         elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_OBJECTIVE_CODE_1'][i]=='DM'):
             Name.append('Control Dwarf Mistletoe')
+        
+        elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
+            Name.append('Road Rehab')
+            
         else:
             Name.append('Undefined')
+            
     return Name
 
 
@@ -66,6 +79,9 @@ def QueryResultsActivityNumeric(d,meta):
         elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PC']) & (d['SILV_OBJECTIVE_CODE_1'][i]==lut_atu['SILV_OBJECTIVE_CODE_1']['DM']):
             Name.append('Control Dwarf Mistletoe')
             ID.append(lut_dist['Control Dwarf Mistletoe'])
+        elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
+            Name.append('Road Rehab')
+            ID.append(-999)
         else:
             Name.append('Undefined')
             ID.append(-999)
@@ -404,27 +420,41 @@ def LoadScenarioResults(meta):
     v=[]
     for iScn in range(0,meta['N Scenario']):        
         for iEns in range(0,meta['N Ensemble']):            
-            for iBat in range(0,meta['N Batch']):        
+            for iBat in range(0,meta['N Batch']):
+                
                 # Open results 
                 fin=open(meta['Path Project'] + '\\Outputs\\Scenario' + FixFileNum(iScn) + '\\Data_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl','rb')
-                data=pickle.load(fin)
+                data_bat=pickle.load(fin)
                 fin.close()
                 
                 # Convert to float and apply scale factor
-                for k in data.keys():
+                for k in data_bat.keys():
                     if k!='ScaleFactor':                        
-                        data[k]=data[k].astype(float)
-                        data[k]=data[k]/data['ScaleFactor']
-                del data['ScaleFactor']
+                        data_bat[k]=data_bat[k].astype(float)
+                        data_bat[k]=data_bat[k]/data_bat['ScaleFactor']
+                del data_bat['ScaleFactor']
                 
-                key=list(data.keys())
+                # Accumulate data in each batch
+                key=list(data_bat.keys())
+                if iBat==0:
+                    data_all=data_bat
+                else:                    
+                    for key in data_bat.keys():
+                        if key=='Year':
+                            continue
+                        data_all[key]=np.append(data_all[key],data_bat[key],axis=1)
+            
+            # Sum across ensembles
             if iEns==0:
-                data_sum2ave=data
+                data_sum2ave=data_all
             else:                    
-                for k in range(len(key)):
-                    data_sum2ave[key[k]]=data_sum2ave[key[k]]+data[key[k]]
-        for k in range(len(key)):
-            data_sum2ave[key[k]]=data_sum2ave[key[k]]/meta['N Ensemble']        
+                for key in data_bat.keys():
+                    data_sum2ave[key]=data_sum2ave[key]+data_all[key]
+        
+        # If the simulation includes ensembles, calculate average
+        for key in data_bat.keys():
+            data_sum2ave[key]=data_sum2ave[key]/meta['N Ensemble']        
+        
         v.append(BunchDictionary(data_sum2ave))
         
     return v,meta

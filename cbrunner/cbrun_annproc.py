@@ -1645,6 +1645,9 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
             
             #------------------------------------------------------------------
             # Update net growth (in response to lethal events)
+            # Partial disturbances likely have a lasting impact on net growth 
+            # of survivors. Without ad hoc adjustment, this will not be reflected
+            # in the growth curve from TIPSY.
             #------------------------------------------------------------------
             
             if meta['Biomass Module']=='TIPSY':
@@ -1654,9 +1657,9 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                 dG=G_pre-G_post
                 
                 RecoveryHalfLife=15               
-                TSD=np.tile(np.arange(0,301,1)-vo['A'][iT,iS],G_pre.shape[1])
-                fTSD=1/(1+np.exp(-0.5*(TSD-RecoveryHalfLife))) 
-                fTSD[0:vo['A'][iT,iS],:]=0
+                TSD=np.tile(np.arange(0,301,1)-vo['A'][iT,iS],(G_pre.shape[1],1)).T
+                fTSD=1/(1+np.exp(-0.5*(TSD-RecoveryHalfLife)))
+                fTSD[0:int(vo['A'][iT,iS]),:]=0
                 G_Recovery=fTSD*dG
                 
                 vi['GCA'][:,iS,:]=G_post+G_Recovery
