@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
-from fctools import utilities_general as gu
+from fcgadgets.pyscripts import utilities_general as gu
 
 '''============================================================================
 PLOT DISTURBANCE RATE TIME SERIES
@@ -69,3 +69,4 @@ def PlotDisturbanceRates(meta,iScn,tStart):
     fig.savefig(meta['Path Project'] + '\\Outputs\\Figures\\ts_mean_Disturbance2.png',format='png',dpi=600)
 
     return
+

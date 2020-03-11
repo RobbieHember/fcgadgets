@@ -381,6 +381,9 @@ def ImportProjectConfig(meta):
     # Number of batches
     meta['N Batch']=np.ceil(meta['N Stand']/meta['Batch Interval']).astype(int)
 
+    # Projects with more than one batch change N Stand - create a full value
+    meta['N Stand Full']=meta['N Stand']
+
     # Make all the folders
     meta['Path Input Scenario']=[]
     meta['Path Output Scenario']=[]
@@ -1188,3 +1191,52 @@ def SeverityGet(DistType,m):
             y[i]=25
 
     return y
+
+'''============================================================================
+IMPORT DISTURBANCE HISTORY
+============================================================================'''
+
+def GetDisturbanceHistory(meta):
+    dh=[]
+    for iScn in range(meta['N Scenario']):
+        dhB=[]    
+        for iBat in range(meta['N Batch']):
+            iEns=0
+            dh0=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\Disturbance_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+            if iBat==0:
+                dhB=dh0
+            else:
+                for i in range(len(dh0)):
+                    dhB.append(dh0[i])
+            dh.append(dhB)
+    return dh
+
+'''============================================================================
+TIME SERIES OF AREA DISTURBED
+============================================================================'''
+
+def TimeSeriesOfAreaDisturbedOrManaged(meta,tv,dh):    
+    A={}
+    A['Wildfire']=np.zeros(tv.size)
+    A['Beetles']=np.zeros(tv.size)
+    A['Harvesting']=np.zeros(tv.size)    
+    A['Fertilization']=np.zeros(tv.size)
+    A['Planting']=np.zeros(tv.size)
+    for i in range(len(dh)):
+        dh0=dh[i]
+        for j in range(dh0['Year'].size):
+            it=np.where(tv==np.round(dh0['Year'][j]))[0]
+            if it.size==0: 
+                continue
+            dt=dh0['ID_Type'][j]
+            if dt==meta['LUT Dist']['Wildfire']:
+                A['Wildfire'][it]=A['Wildfire'][it]+1
+            elif dt==meta['LUT Dist']['Beetles']:
+                A['Beetles'][it]=A['Beetles'][it]+1    
+            elif (dt==meta['LUT Dist']['Harvest and Slashpile Burn']) | (dt==meta['LUT Dist']['Harvest Custom']):
+                A['Harvesting'][it]=A['Harvesting'][it]+1
+            elif dt==meta['LUT Dist']['Fertilization Aerial']:
+                A['Fertilization'][it]=A['Fertilization'][it]+1      
+            elif dt==meta['LUT Dist']['Planting']:
+                A['Planting'][it]=A['Planting'][it]+1    
+    return A

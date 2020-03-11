@@ -139,14 +139,24 @@ def InitializeStands(meta,iScn,iEns,iBat):
     
     # Import growth curves
     if meta['Biomass Module']=='TIPSY':        
+        
         # Import growth curve 1
         vi['GC1']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\GrowthCurve1_Bat' + FixFileNum(iBat) + '.pkl')
+        
+        # Set active growth curve to growth curve 1
         vi['GCA']=vi['GC1'].copy()
+        
+        # Initialize an indicator of the active growth curve ID
+        vi['ID_GCA']=np.ones(meta['N Stand'])
+        
         # Import growth curve 2
         vi['GC2']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\GrowthCurve2_Bat' + FixFileNum(iBat) + '.pkl')
+        
         # Import growth curve 3
         vi['GC3']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\GrowthCurve3_Bat' + FixFileNum(iBat) + '.pkl')
+        
     else:        
+        
         vi['GCA']=0
         vi['GC1']=0
         vi['GC2']=0
@@ -186,6 +196,14 @@ def InitializeStands(meta,iScn,iEns,iBat):
                         vi['DH'][iDH]['Year'][iUY][iB]=Year_h
                         vi['DH'][iDH]['Severity'][iUY][iB]=Severity_h
                         vi['DH'][iDH]['ID_GrowthCurve'][iUY][iB]=ID_GrowthCurve_h    
+
+    #--------------------------------------------------------------------------
+    # Disturbance year is stored as a float, but it needs to be an integer once
+    # in the model
+    #--------------------------------------------------------------------------
+
+    for iDH in range(len(vi['DH'])):
+        vi['DH'][iDH]['Year']=vi['DH'][iDH]['Year'].astype(int)
 
     #--------------------------------------------------------------------------
     # Update project configuration

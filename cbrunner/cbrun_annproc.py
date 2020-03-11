@@ -29,19 +29,19 @@ def BiomassFromTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
     iAge=np.minimum(vo['A'][iT,:],vi['GCA'].shape[0])-1
     iAge=iAge.astype(int)
        
-    ng=np.zeros((meta['N Stand'],6))
-    for i in range(meta['N Stand']):
-        ng[i,:]=vi['GCA'][iAge[i],i,:]
+    NetGrowth=np.zeros((meta['N Stand'],6))
+    for iS in range(meta['N Stand']):
+        NetGrowth[iS,:]=vi['GCA'][iAge[iS],iS,:]
     
-    vo['C_G_Net'][iT,:,0:5]=ng[:,0:5].astype(float)/meta['Scale Factor GC']
-    vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT-1,:]+ng[:,5].astype(float)/meta['Scale Factor GC']
+    vo['C_G_Net'][iT,:,0:5]=NetGrowth[:,0:5].astype(float)/meta['Scale Factor GC']
+    vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT-1,:]+NetGrowth[:,5].astype(float)/meta['Scale Factor GC']
     
     # Apply optional factor to net growth        
-    if meta['Scenario'][iScn]['Status Net Growth Factor']=='On':
-        net_growth_factor=meta['Scenario'][iScn]['Net Growth Factor'][iT]
-        if net_growth_factor!=0:
-            # Normal operation
-            vo['C_G_Net'][iT,:,:]=net_growth_factor*vo['C_G_Net'][iT,:,:]            
+    #if meta['Scenario'][iScn]['Status Net Growth Factor']=='On':
+    #    net_growth_factor=meta['Scenario'][iScn]['Net Growth Factor'][iT]
+    #    if net_growth_factor!=0:
+    #        # Normal operation
+    #        vo['C_G_Net'][iT,:,:]=net_growth_factor*vo['C_G_Net'][iT,:,:]            
 
     # Add net growth to stemwood biomass pools
     vo['C_Eco_Pools'][iT,:,0]=np.maximum(0,vo['C_Eco_Pools'][iT-1,:,0]+vo['C_G_Net'][iT,:,0])
@@ -120,12 +120,12 @@ def BiomassFromTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
     C_M_Reg=vo['C_M_Reg'][iT,:,:].copy()
     
     # Define a threshold level of negative growth so it isn't triggered by noise
-    NegGrowthForRealz=-0.25
+    NegGrowthThreshold=-0.25
     
     # Find stands with negative net growth    
-    iNegNetG=np.where(vo['C_G_Net'][iT,:,0]<NegGrowthForRealz)[0]
+    iNegNetG=np.where(vo['C_G_Net'][iT,:,0]<NegGrowthThreshold)[0]
     
-    if iNegNetG.size>0:        
+    if iNegNetG.size>0:
         
         # If it is the first instance of negative net growth: 91) record net growth
         # of the preceeding timestep and (2) set flag = 1.
@@ -197,12 +197,12 @@ def BiomassFromTIPSY_SpecialAdjustments_EP703(iScn,iT,vi,vo,psl,meta,iEP):
     iAge=np.minimum(vo['A'][iT,:],vi['GCA'].shape[0])-1
     iAge=iAge.astype(int)
        
-    ng=np.zeros((meta['N Stand'],6))
+    NetGrowth=np.zeros((meta['N Stand'],6))
     for i in range(meta['N Stand']):
-        ng[i,:]=vi['GCA'][iAge[i],i,:]
+        NetGrowth[i,:]=vi['GCA'][iAge[i],i,:]
     
-    vo['C_G_Net'][iT,:,0:5]=ng[:,0:5].astype(float)/meta['Scale Factor GC']
-    vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT-1,:]+ng[:,5].astype(float)/meta['Scale Factor GC']
+    vo['C_G_Net'][iT,:,0:5]=NetGrowth[:,0:5].astype(float)/meta['Scale Factor GC']
+    vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT-1,:]+NetGrowth[:,5].astype(float)/meta['Scale Factor GC']
     
     # Apply optional factor to net growth        
     if meta['Scenario'][iScn]['Status Net Growth Factor']=='On':
@@ -360,10 +360,10 @@ def BiomassFromTIPSY_SpecialAdjustments_EP703(iScn,iT,vi,vo,psl,meta,iEP):
     C_M_Reg=vo['C_M_Reg'][iT,:,:].copy()
         
     # Define a threshold level of negative growth so it isn't triggered by noise
-    NegGrowthForRealz=-0.25
+    NegGrowthThreshold=-0.25
     
     # Find stands with negative net growth    
-    iNegNetG=np.where(vo['C_G_Net'][iT,:,0]<NegGrowthForRealz)[0]
+    iNegNetG=np.where(vo['C_G_Net'][iT,:,0]<NegGrowthThreshold)[0]
     
     if iNegNetG.size>0:        
         
@@ -1618,8 +1618,6 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
             
             #------------------------------------------------------------------
             # Update stand age
-            # *** Work on making this more flexible to users without hardwiring
-            # how it is run here. ***
             #------------------------------------------------------------------
             
             if meta['Biomass Module']=='TIPSY':
@@ -1631,68 +1629,117 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                     
                 else:
                 
-                    #age_mod_meth='CBM'
-                    age_mod_meth='FunctionOfSeverity'
-                
-                    if age_mod_meth=='CBM':
+                    # Assume oldest trees were most affected, reduce age in prportion
+                    # with severity (i.e., mortality)
+                    # Not always realistic, but see how net growth is affected.
+                    vo['A'][iT,iS]=vo['A'][iT,iS]*(1-Biomass_Affected_Pct)
                         
-                        # I think this is how CBM works - something like this
-                        if Biomass_Affected_Pct>0.9:
-                            vo['A'][iT,iS]=1
-                        
-                    elif age_mod_meth=='FunctionOfSeverity':
-                        vo['A'][iT,iS]=vo['A'][iT,iS]*(1-Biomass_Affected_Pct)
-            
-            #------------------------------------------------------------------
-            # Update net growth (in response to lethal events)
-            # Partial disturbances likely have a lasting impact on net growth 
-            # of survivors. Without ad hoc adjustment, this will not be reflected
-            # in the growth curve from TIPSY.
-            #------------------------------------------------------------------
-            
-            if meta['Biomass Module']=='TIPSY':
-                
-                G_pre=vi['GCA'][:,iS,:]
-                G_post=(1-Biomass_Affected_Pct)*vi['GCA'][:,iS,:]
-                dG=G_pre-G_post
-                
-                RecoveryHalfLife=15               
-                TSD=np.tile(np.arange(0,301,1)-vo['A'][iT,iS],(G_pre.shape[1],1)).T
-                fTSD=1/(1+np.exp(-0.5*(TSD-RecoveryHalfLife)))
-                fTSD[0:int(vo['A'][iT,iS]),:]=0
-                G_Recovery=fTSD*dG
-                
-                vi['GCA'][:,iS,:]=G_post+G_Recovery
-            
             #------------------------------------------------------------------
             # Transition to new growth curve
             #------------------------------------------------------------------
+            
+            # Initialize a flag that indicates whether the growth curve changes
+            flg_gc_change=0
+            if vi['DH'][iS]['ID_GrowthCurveM'][iDist[i]]!=vi['ID_GCA'][iS]:
+                flg_gc_change=1
             
             # Only applies to TIPSY
             if meta['Biomass Module']=='TIPSY':            
                 
                 # Does not apply to fertilization
-                if (vi['DH'][iS]['ID_Type'][iDist[i]]!=meta['LUT Dist']['Fertilization Aerial']):
+                if (ID_Type!=meta['LUT Dist']['Fertilization Aerial']):
                     
                     if vi['DH'][iS]['ID_GrowthCurveM'][iDist[i]]==1:                        
-                        vi['GCA'][:,iS,:]=vi['GC1'][:,iS,:]                        
+                        vi['GCA'][:,iS,:]=vi['GC1'][:,iS,:]     
+                        vi['ID_GCA'][iS]=1
                     elif vi['DH'][iS]['ID_GrowthCurveM'][iDist[i]]==2:
-                        vi['GCA'][:,iS,:]=vi['GC2'][:,iS,:] 
+                        vi['GCA'][:,iS,:]=vi['GC2'][:,iS,:]
+                        vi['ID_GCA'][iS]=2
                     elif vi['DH'][iS]['ID_GrowthCurveM'][iDist[i]]==3:
-                        vi['GCA'][:,iS,:]=vi['GC3'][:,iS,:]                        
+                        vi['GCA'][:,iS,:]=vi['GC3'][:,iS,:]
+                        vi['ID_GCA'][iS]=3
                     elif vi['DH'][iS]['ID_GrowthCurveM'][iDist[i]]==4:
-                        vi['GCA'][:,iS,:]=vi['GC4'][:,iS,:]                        
+                        vi['GCA'][:,iS,:]=vi['GC4'][:,iS,:]
+                        vi['ID_GCA'][iS]=4
+    
+            #------------------------------------------------------------------
+            # Update net growth (in response to lethal events)
+            #
+            # Partial disturbances likely have a lasting impact on net growth 
+            # of survivors. Without ad hoc adjustment, this will not be reflected
+            # in the growth curve from TIPSY.
+            #
+            # This will apply to instances where Severity=100% only if the
+            # user does not specify a change in growth curve. 
+            # With this functionality, the user has the options of:
+            #  1) Changing the growth curve
+            #  2) Assuming a gradual recovery to the previous curve, as defined
+            #     by the default recovery half life for that disturbance type.
+            #------------------------------------------------------------------
+            
+            if meta['Biomass Module']=='TIPSY':
+                
+                # Half life
+                hl=psl.bDist_GrowthRecoveryHalfLifeFollowingMortality[iDefPar]
+                
+                # Only proceed if:
+                #   1) the disturbance has a lasting growth impact/recovery
+                #   2) the user is not specifying a change in growth curve
+                if (hl!=-999) & (flg_gc_change==0):
+                    
+                    hl=50
+                    
+                    # Extract net growth for active growth curve
+                    NetGrowth=vi['GCA'][:,iS,:].copy().astype(float)/meta['Scale Factor GC']
+                
+                    # Growth pre-event
+                    G_pre=NetGrowth.copy()
+                
+                    # Growth post-event
+                    G_post=(1-Biomass_Affected_Pct)*NetGrowth.copy()
+                
+                    # Difference in growth
+                    dG=G_pre-G_post
+                
+                    # Age vector
+                    A=np.arange(0,301,1)
+                
+                    # Time since disturbance                    
+                    TSD=np.tile(A-vo['A'][iT,iS],(G_pre.shape[1],1)).T
+                
+                    # Relative effect
+                    fTSD=1/(1+np.exp(-0.5*(TSD-hl)))
+                    #fTSD[0:int(vo['A'][iT,iS]),:]=0
+                
+                    # Growth recovery
+                    G_Recovery=fTSD*dG
+                
+                    # New estimate of net growth
+                    NetGrowthNew=G_post+G_Recovery
+                
+                    # Add back to dictionary
+                    NetGrowthNew=NetGrowthNew*meta['Scale Factor GC']
+                    NetGrowthNew=NetGrowthNew.astype(np.int16)                
+                    vi['GCA'][:,iS,:]=NetGrowthNew
     
             #------------------------------------------------------------------
             # Apply growth factors (in response to non-lethal events)
             #------------------------------------------------------------------
-            
-            # Only applies to TIPSY
+
             if meta['Biomass Module']=='TIPSY':   
-                vi['GCA'][:,iS,:]=psl.bDist_GrowthFactor[iDefPar]*vi['GCA'][:,iS,:]                
+
+                fG=psl.bDist_GrowthFactor[iDefPar]
+                
+                # Only proceed if the disturbance has a lasting growth impact/
+                # recovery
+                if fG!=-999:                
+                    NetGrowth=vi['GCA'][:,iS,:].copy().astype(float)/meta['Scale Factor GC']
+                    NetGrowth=fG*NetGrowth*meta['Scale Factor GC']
+                    NetGrowth=NetGrowth.astype(np.int16)
+                    vi['GCA'][:,iS,:]=NetGrowth
     
             #------------------------------------------------------------------
-            # Aerial fertilization - growth response and
+            # Aerial fertilization - growth response 
             #------------------------------------------------------------------
             
             if ID_Type==meta['LUT Dist']['Fertilization Aerial']:
@@ -1704,15 +1751,19 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                 
                 if meta['Fertilization Source']=='CBRunner':
                 
-                    ResponseRatio=1.04
-                
+                    ResponseRatio=1.35
+                    
                     ResponsePeriod=10
-                
-                    iResponse=np.arange(vo['A'][iT,iS],vo['A'][iT,iS]+ResponsePeriod)
-                
-                    iP=meta['iEP']['BiomassTotal']
-                
-                    vi['GCA'][iResponse,iS,iP]=ResponseRatio*vi['GCA'][iResponse,iS,iP]
+                    
+                    A=np.arange(0,301,1)                    
+                    iResponse=np.where( (A>=vo['A'][iT,iS]) & (A<=vo['A'][iT,iS]+ResponsePeriod) )[0]
+                                        
+                    for iP in range(vi['GCA'].shape[2]):
+                        GCA_SP=vi['GCA'][:,iS,iP].copy().astype(float)/meta['Scale Factor GC']
+                        GCA_SP[iResponse]=ResponseRatio*GCA_SP[iResponse]
+                        GCA_SP=GCA_SP*meta['Scale Factor GC']                        
+                        GCA_SP=GCA_SP.astype(np.int16)
+                        vi['GCA'][:,iS,iP]=GCA_SP
                 
                 #--------------------------------------------------------------
                 # Operational emissions
