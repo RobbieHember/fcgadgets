@@ -5,9 +5,6 @@ import time
 import numpy as np
 import pandas as pd
 
-# Import custom modules
-#from cbrun_init import *
-
 # Used to convert species parameter dictionaries into parameter vectors
 class Bunch(object):
     def __init__(self, adict):
@@ -17,7 +14,7 @@ class Bunch(object):
 BIOMASS DYNAMICS FROM TIPSY
 ============================================================================'''
 
-def BiomassFromTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
+def BiomassFromBatchTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
     
     # Update stand age
     vo['A'][iT,:]=vo['A'][iT-1,:]+1
@@ -185,7 +182,7 @@ BIOMASS DYNAMICS FROM TIPSY
 *** THIS IS A MODIFIED MODULE VERSION USED FOR A SPECIFIC STUDY **
 ============================================================================'''
 
-def BiomassFromTIPSY_SpecialAdjustments_EP703(iScn,iT,vi,vo,psl,meta,iEP):
+def BiomassFromBatchTIPSY_SpecialAdjustments_EP703(iScn,iT,vi,vo,psl,meta,iEP):
     
     # Update stand age
     vo['A'][iT,:]=vo['A'][iT-1,:]+1
@@ -1178,7 +1175,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
 STAND DEAD ORGANIC MATTER DYNAMICS
 ============================================================================'''    
 
-def DeadOrganicMatterDynamics(iT,vi,vo,psl,iEP):
+def DOMFromCBM08(iT,vi,vo,psl,iEP):
      
     #--------------------------------------------------------------------------
     # Flux of carbon between biomass components and dead organic matter components
@@ -1350,10 +1347,10 @@ def DeadOrganicMatterDynamics(iT,vi,vo,psl,iEP):
     return vo
 
 '''============================================================================
-STAND DISTURBANCES
+TAZ - DISTURBANCES
 ============================================================================'''
 
-def Disturbances(iT,vi,vo,psl,meta,iEP):
+def Taz(iT,vi,vo,psl,meta,iEP):
         
     for iS in range(meta['N Stand']):
         
@@ -1755,7 +1752,7 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
                     
                     ResponsePeriod=10
                     
-                    A=np.arange(0,301,1)                    
+                    A=np.arange(0,301,1)
                     iResponse=np.where( (A>=vo['A'][iT,iS]) & (A<=vo['A'][iT,iS]+ResponsePeriod) )[0]
                                         
                     for iP in range(vi['GCA'].shape[2]):
@@ -1816,7 +1813,7 @@ def Disturbances(iT,vi,vo,psl,meta,iEP):
 PRODUCT SECTOR
 ============================================================================'''
 
-def ProductSector(iT,vi,vo,psl,meta):
+def HWPFromDymond12(iT,vi,vo,psl,meta):
     
     #             0     1     2      3      4      5         6       7       8      9          10             11         12          13                       14                          15                        16                           17      18     19
     # PoolNames=['SFH','MFH','Comm','Furn','Ship','Repairs','Other','Paper','Fuel','Firewood','EffluentPulp','DumpWood','DumpPaper','LandfillWoodDegradable','LandfillWoodNonDegradable','LandfillPaperDegradable','LandfillPaperNonDegradable','E_CO2','E_CH4','Cants']

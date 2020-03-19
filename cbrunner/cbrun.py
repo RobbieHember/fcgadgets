@@ -75,24 +75,24 @@ def RunProject(meta):
                     if meta['Biomass Module']=='TIPSY':
                         
                         # FCI standard approach:
-                        vo=BiomassFromTIPSY(iScn,iT,vi,vo,psl,meta,iEP)
+                        vo=BiomassFromBatchTIPSY(iScn,iT,vi,vo,psl,meta,iEP)
                     
                     elif meta['Biomass Module']=='TIPSY_SpecialAdjustments_EP703':
                         
                         # *** Special version of module writen for EP703 study ***
-                        vo=BiomassFromTIPSY_SpecialAdjustments_EP703(iScn,iT,vi,vo,psl,meta,iEP)
+                        vo=BiomassFromBatchTIPSY_SpecialAdjustments_EP703(iScn,iT,vi,vo,psl,meta,iEP)
                     
                     # Calculate annual dead organic matter dynamics
-                    vo=DeadOrganicMatterDynamics(iT,vi,vo,psl,iEP)
+                    vo=DOMFromCBM08(iT,vi,vo,psl,iEP)
                     
                     # Calculate prescribed disturbances
-                    vo=Disturbances(iT,vi,vo,psl,meta,iEP)
+                    vo=Taz(iT,vi,vo,psl,meta,iEP)
                     
                     # Calculate products sector                    
                     if meta['Time'][iT]>=1800:
                         
                         # No need to run this before a certain date
-                        vo=ProductSector(iT,vi,vo,psl,meta)
+                        vo=HWPFromDymond12(iT,vi,vo,psl,meta)
                 
                 # Export simulation results to file
                 ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP)
@@ -266,26 +266,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     
     # Stand age (i.e. time since stand-replacing disturbance)    
     vo['A']=np.zeros((m,n))
-    
-    # Stand density
-    vo['N']=np.zeros((m,n))
-    
-    # Change in stand density (stems ha-1 yr-1)
-    vo['N_R']=np.zeros((m,n))
-    vo['N_M_Tot']=np.zeros((m,n))
-    vo['N_M_Reg']=np.zeros((m,n))
-    vo['N_M_Inv_Fir']=np.zeros((m,n))
-    vo['N_M_Inv_Ins']=np.zeros((m,n))
-    vo['N_M_Inv_Pat']=np.zeros((m,n))
-    vo['N_M_Inv_Har']=np.zeros((m,n))
-    vo['N_M_Inv_Win']=np.zeros((m,n))
-    vo['N_M_Sim_Reg']=np.zeros((m,n))
-    vo['N_M_Sim_Fir']=np.zeros((m,n))
-    vo['N_M_Sim_Ins']=np.zeros((m,n))
-    vo['N_M_Sim_Pat']=np.zeros((m,n))
-    vo['N_M_Sim_Har']=np.zeros((m,n))
-    vo['N_M_Sim_Win']=np.zeros((m,n))
-    
+        
     # Carbon density of ecosystem (Mg C ha-1)
     # -> 3-D matrix: Time x Stand x Carbon pool
     vo['C_Eco_Pools']=np.zeros((m,n,o))
@@ -314,8 +295,8 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_E_FireAsN2O']=np.zeros((m,n))
     vo['C_E_OperationsAsCO2']=np.zeros((m,n))
     vo['C_RemovedMerch']=np.zeros((m,n))
-    vo['C_RemovedNonMerch']=np.zeros((m,n))    
-    vo['C_RemovedSnagStem']=np.zeros((m,n))    
+    vo['C_RemovedNonMerch']=np.zeros((m,n))
+    vo['C_RemovedSnagStem']=np.zeros((m,n))
     
     # Carbon density of products sector (Mg C ha-1)
     # -> 3-D matrix: Time x Stand x Carbon pool
@@ -323,6 +304,25 @@ def InitializeStands(meta,iScn,iEns,iBat):
     
     # Summary of aboveground biomass
     vo['C_BiomassAG']=np.zeros((m,n))    
+    
+    # Stand density
+    vo['N']=np.zeros((m,n))
+    
+    # Change in stand density (stems ha-1 yr-1)
+    vo['N_R']=np.zeros((m,n))
+    vo['N_M_Tot']=np.zeros((m,n))
+    vo['N_M_Reg']=np.zeros((m,n))
+    vo['N_M_Inv_Fir']=np.zeros((m,n))
+    vo['N_M_Inv_Ins']=np.zeros((m,n))
+    vo['N_M_Inv_Pat']=np.zeros((m,n))
+    vo['N_M_Inv_Har']=np.zeros((m,n))
+    vo['N_M_Inv_Win']=np.zeros((m,n))
+    vo['N_M_Sim_Reg']=np.zeros((m,n))
+    vo['N_M_Sim_Fir']=np.zeros((m,n))
+    vo['N_M_Sim_Ins']=np.zeros((m,n))
+    vo['N_M_Sim_Pat']=np.zeros((m,n))
+    vo['N_M_Sim_Har']=np.zeros((m,n))
+    vo['N_M_Sim_Win']=np.zeros((m,n))
     
     # Mean of tree attributes
     vo['TreeMean_A']=np.zeros((m,n))
