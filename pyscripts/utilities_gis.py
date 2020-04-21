@@ -4,6 +4,26 @@ import numpy as np
 import osr
 from matplotlib import path
 from shapely.geometry import Polygon,Point
+import pyproj
+import rasterio
+from rasterio.warp import calculate_default_transform, reproject, Resampling
+
+'''============================================================================
+IMPORT SPATIAL REFERENCE SYSTEMS
+============================================================================'''
+
+def ImportSRSs():
+    
+    srs={}
+    
+    # NACID
+    str='+proj=lcc +lat_1=49 +lat_2=77 +lat_0=40 +lon_0=-100 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
+    srs['NACID']=pyproj.Proj(str)
+    
+    # BC1ha
+    str='+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
+    srs['BC1ha']=pyproj.Proj(str)
+    return srs
 
 '''============================================================================
 BUNCH VARIABLES FROM DICTIONARY
@@ -15,26 +35,11 @@ class Bunch(dict):
         self.__dict__ = self
 
 '''============================================================================
-COMPRESS CATEGORIES IN RASTER DATASET
-============================================================================'''
-
-def CompressCats(z0,lab0):
-    uc=np.unique(z0)
-    z1=uc[0]*np.ones(z0.shape)
-    lab1=[]
-    for i in range(uc.size):
-        ind=np.where(z0==uc[i])
-        ind2=np.ix_(ind[0],ind[1])
-        z1[ind2[0].T,ind2[1]]=i+1
-        lab1.append(lab0[uc[i]-1])
-    lab1=np.array(lab1)
-    return z1,lab1
-
-'''============================================================================
 OPEN RASTER USING GDAL
+Forerly "OpenGdal"
 ============================================================================'''
 
-def OpenGdal(pthin):
+def OpenGeoTiff(pthin):
         
     ds=gdal.Open(pthin)
     
@@ -46,20 +51,21 @@ def OpenGdal(pthin):
     prj=osr.SpatialReference(wkt=ds.GetProjection())
     proj4_str=prj.GetAttrValue('AUTHORITY',1)
     
-    m,n=data.shape
-    
-    minx=gt[0]; 
-    
-    maxy=gt[3]; 
-    
-    maxx=minx+gt[1]*n; 
-    
+    m,n=data.shape    
+    minx=gt[0]
+    maxy=gt[3]
+    maxx=minx+gt[1]*n  
     miny=maxy+gt[5]*m
-    
     extent=(minx,maxx,miny,maxy)
     
-    x=np.reshape(np.arange(gt[0],gt[0]+gt[1]*n,gt[1]),(1,n))
-    y=np.reshape(np.flip(np.arange(gt[3]-m*gt[1],gt[3],gt[1])),(m,1))
+    try:
+        x=np.reshape(np.arange(gt[0],gt[0]+gt[1]*n,gt[1]),(1,n))
+    except:
+        x=np.reshape(np.arange(gt[0],gt[0]+gt[1]*n-gt[1],gt[1]),(1,n))
+    try:
+        y=np.reshape(np.flip(np.arange(gt[3]-m*gt[1],gt[3],gt[1])),(m,1))
+    except:
+        y=np.reshape(np.flip(np.arange(gt[3]-m*gt[1]+gt[1],gt[3],gt[1])),(m,1))
     x=np.tile(x,(m,1))
     y=np.tile(y,(1,n))
     
@@ -82,13 +88,41 @@ def OpenGdal(pthin):
     return z
 
 '''============================================================================
-CLIP RASTER
+SAVE TO GEOTIFF
 ============================================================================'''
 
-def ClipRaster(z,xlim,ylim):
+def SaveGeoTiff(z,fout):
+    
+    driver=gdal.GetDriverByName("GTiff")
+    
+    # Data type
+    if z['Data'].dtype=='int8':
+        dtype=gdal.GDT_Int8
+    elif z['Data'].dtype=='int16':
+        dtype=gdal.GDT_Int16    
+    elif z['Data'].dtype=='int32':
+        dtype=gdal.GDT_Int32
+    elif z['Data'].dtype=='float32':
+        dtype=gdal.GDT_Float32
+    
+    N_band=1
+    ds_out=driver.Create(fout,z['n'],z['m'],N_band,dtype,[ 'COMPRESS=LZW' ])
+    ds_out.SetProjection(z['Projection'])
+    ds_out.SetGeoTransform(z['gt'])
+    ds_out.GetRasterBand(1).WriteArray(z['Data'])    
+    
+
+'''============================================================================
+CLIP RASTER
+The raster input structure must be from the OpenGdal function from this module.
+============================================================================'''
+
+def ClipRaster(z_in,xlim,ylim):
+    z=z_in.copy()
+    z=Bunch(z)
     ix=np.where((z.X[0,:]>=xlim[0]) & (z.X[0,:]<=xlim[1]))[0]
     iy=np.where((z.Y[:,0]>=ylim[0]) & (z.Y[:,0]<=ylim[1]))[0]
-    ind=np.ix_(ix,iy)
+    ind=np.ix_(iy,ix)
     z.Data=z.Data[ind]
     z.X=z.X[ind]
     z.Y=z.Y[ind]
@@ -103,61 +137,38 @@ def ClipRaster(z,xlim,ylim):
     return z
 
 '''============================================================================
+REPROJECT RASTER
+============================================================================'''
+
+def ReprojectGeoTiff(pthin,pthout,crs_dst):
+
+    cmp='lzw'
+    
+    with rasterio.open(pthin) as src:
+        transform,width,height=calculate_default_transform(src.crs,crs_dst,src.width,src.height,*src.bounds)
+        kwargs=src.meta.copy()
+        kwargs.update({'crs':crs_dst,'transform':transform,'width':width,
+                       'height':height,'dtype':rasterio.int16,
+                       'compress':cmp})
+
+        with rasterio.open(pthout, 'w',**kwargs) as dst:
+            for i in range(1,src.count+1):
+                reproject(
+                    source=rasterio.band(src,i),
+                    destination=rasterio.band(dst,i),
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=transform,
+                    dst_crs=crs_dst,
+                    resampling=Resampling.nearest)
+
+
+'''============================================================================
 POLYGON AREA
 ============================================================================'''
 
 def PolyArea(x,y):
     return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
-
-'''============================================================================
-REVISE RASTER EXTENT
-============================================================================'''
-
-def ReviseRasterExtent(fin1,fin2,fout1):
-
-    # Notes:
-    # 1) No data value specifically refers to values less than zero, set to -99
-    # 2) Set up to compress output
-    
-    # Raster 1 (with extent that will be revised)
-    ds1=gdal.Open(fin1)
-    data1=ds1.ReadAsArray()
-    m1=ds1.RasterYSize
-    n1=ds1.RasterXSize
-
-    # Raster 2 (with target extent)
-    ds2=gdal.Open(fin2)
-    gt2=ds2.GetGeoTransform()
-    proj2=ds2.GetProjection()
-    data2=ds2.ReadAsArray()
-    m2=ds2.RasterYSize
-    n2=ds2.RasterXSize
-    pw=[gt2[0],gt2[3],gt2[0]+gt2[1]*n2,gt2[3]-gt2[1]*m2] # Target extent (ulx uly lrx lry)
-
-    # Adjusted raster 1 (with same extent as raster 2)
-    ds1_adj=gdal.Open(fin1)
-    ds1_adj=gdal.Translate('',ds1_adj,projWin=pw,format="MEM")
-    ds1_adj.SetGeoTransform(ds2.GetGeoTransform())
-    ds1_adj.SetProjection(proj2)
-    data1_adj=ds1_adj.ReadAsArray()
-    m1_adj=ds1_adj.RasterYSize
-    n1_adj=ds1_adj.RasterXSize
-
-    # Adjust the no data value
-    nodatval=-99
-    data1_adj=np.where((data1_adj<0),nodatval,data1_adj)
-
-    if fout1!='NoSave':
-        driver=gdal.GetDriverByName('GTiff')
-        outdata=driver.Create(fout1,n2,m2,1,gdal.GDT_UInt16,options=['COMPRESS=LZW'])
-        outdata.SetGeoTransform(ds1_adj.GetGeoTransform()) # sets same geotransform as input
-        outdata.SetProjection(ds1_adj.GetProjection()) # sets same projection as input
-        outdata.GetRasterBand(1).WriteArray(data1_adj)
-        outdata.GetRasterBand(1).SetNoDataValue(nodatval) # if you want these values transparent
-        outdata.FlushCache() # saves to disk
-        outdata=None
-    
-    return
 
 
 '''============================================================================
@@ -189,42 +200,6 @@ def InPolygon(xg,yg,xv,yv):
         
     return InPol
 
-def InPolygon_Old(xg,yg,xv,yv):    
-    
-    nd=xg.ndim
-    if nd==1:    
-        xg=np.array(xg,ndmin=2)
-        yg=np.array(yg,ndmin=2)
-    
-    l=[]
-    for i in range(xv.size):
-        l.append([xv[i],yv[i]])
-    poly=Polygon(l)
-                
-    InPol=np.zeros(xg.shape)
-    for i in range(xg.shape[0]):
-        for j in range(xg.shape[1]):
-            pnt=Point(xg[i,j],yg[i,j])
-            if poly.contains(pnt)==True:
-                InPol[i,j]=1    
-    
-    if nd==1:
-        InPol=InPol.flatten()
-        
-    return InPol
-
-#def InPolygon(xg,yg,xv,yv): 
-    # This was not working in some cases:    
-    #shape = xg.shape
-    #xg = xg.reshape(-1)
-    #yg = yg.reshape(-1)
-    #xv = xv.reshape(-1)
-    #yv = yv.reshape(-1)
-    #q = [(xg[i], yg[i]) for i in range(xg.shape[0])]
-    #p = path.Path([(xv[i], yv[i]) for i in range(xv.shape[0])])
-    #return p.contains_points(q).reshape(shape)
-
-
 
 '''============================================================================
 EXTENT FROM GDAL
@@ -253,3 +228,19 @@ def GetExtentFromGDAL(gt,cols,rows):
             ext.append([x,y])            
         yarr.reverse()
     return ext
+
+'''============================================================================
+COMPRESS CATEGORIES IN RASTER DATASET
+============================================================================'''
+
+def CompressCats(z0,lab0):
+    uc=np.unique(z0)
+    z1=uc[0]*np.ones(z0.shape)
+    lab1=[]
+    for i in range(uc.size):
+        ind=np.where(z0==uc[i])
+        ind2=np.ix_(ind[0],ind[1])
+        z1[ind2[0].T,ind2[1]]=i+1
+        lab1.append(lab0[uc[i]-1])
+    lab1=np.array(lab1)
+    return z1,lab1

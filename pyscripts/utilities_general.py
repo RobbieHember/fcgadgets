@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib import path
 from scipy import stats, linalg
 import pickle
+from scipy.io import loadmat
 
 '''============================================================================
 PICKLE 
@@ -124,6 +125,15 @@ def isempty(value):
     return bool(value)
 
 '''============================================================================
+IMPORT MATLAB .MAT FILE
+============================================================================'''
+
+def ImportMat(pth,vnam):
+    mat=loadmat(pth)
+    d={n: mat[vnam][n][0, 0] for n in mat[vnam].dtype.names}
+    return d
+
+'''============================================================================
 MINIMUM AND MAXIMUM
 ============================================================================'''
 
@@ -209,3 +219,8 @@ def tvec(res,year1,year2):
         tv.shape    
                 
     return tv
+
+
+
+
+

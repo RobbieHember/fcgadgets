@@ -4,8 +4,21 @@ import pandas as pd
 import pickle
 import os
 import matplotlib.pyplot as plt
-
 from fcgadgets.pyscripts import utilities_general as gu
+
+'''============================================================================
+CONVERT LUT NUMBER TO STRING NAME
+============================================================================'''
+
+def lut_n2s(dc,numb):
+    if numb!=-999:
+        vals=np.fromiter(dc.values(),dtype=float)
+        keys=np.fromiter(dc.keys(),dtype='<U30')
+        ind=np.where(vals==numb)[0]
+        s=keys[ind]    
+    else:
+        s=np.array(['Unidentified'],ndmin=1)
+    return s
 
 '''============================================================================
 QUERY RESULTS CODES FOR MANAGEMENT ACTIVITY TYPES
@@ -20,30 +33,63 @@ def QueryResultsActivity(d):
     Name=[]
     for i in range(d['SILV_BASE_CODE'].size):
         
-        if (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CA') & (d['SILV_METHOD_CODE'][i]=='HELI'):
+        if (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CA'):
             Name.append('Fertilization Aerial')
         
-        elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]=='GRANU'):
+        elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]!='BAGS'):
             Name.append('Fertilization Hand')
+        
+        elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]=='BAGS'):
+            Name.append('Fertilization Teabag')
+            
+        elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='OG'):
+            Name.append('Fertilization Organic')    
         
         elif (d['SILV_BASE_CODE'][i]=='PL') & (d['SILV_METHOD_CODE'][i]!='LAYOT'):
             # The planting in road rehab projects falls into this milestone type
             Name.append('Planting')            
         
-        elif (d['SILV_BASE_CODE'][i]=='DS'):
+        elif (d['SILV_BASE_CODE'][i]=='DS') & (d['SILV_TECHNIQUE_CODE'][i]!='GS'):
+            # Everything except grass seeding
             Name.append('Direct Seeding')
+            
+        elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_OBJECTIVE_CODE_1'][i]=='DM'):
+            # This will exclude SILV_TECHNIQUE_CODE=BI. Virtually all of it is mechanical.
+            Name.append('Dwarf Mistletoe Control')
         
-        elif (d['SILV_BASE_CODE'][i]=='SU'):
-            Name.append('Surveys')
-        
-        elif (d['SILV_BASE_CODE'][i]=='SP'):
-            Name.append('Site Prep')
-        
-        elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_OBJECTIVE_CODE_1'][i]=='DM'):
-            Name.append('Control Dwarf Mistletoe')
+        elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_TECHNIQUE_CODE'][i]=='CA') & (d['SILV_OBJECTIVE_CODE_1'][i]=='ID'):
+            Name.append('IDW Control')
         
         elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
             Name.append('Road Rehab')
+        
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='BU') & (d['SILV_METHOD_CODE'][i]=='PBURN') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PBURN'):
+            Name.append('Slashpile Burn')
+            
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='SNAG') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='HAND') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MANCT'):
+            Name.append('Knockdown')
+            
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='BRIP'):
+            Name.append('Ripping')
+        
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='DISC'):
+            Name.append('Disc Trenching')
+        
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MULCH'):
+            Name.append('Mulching')
+            
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='HARV'):
+            Name.append('Salvage Logging')
+            
+        elif (d['SILV_BASE_CODE'][i]=='LB') & (d['SILV_TECHNIQUE_CODE'][i]=='GR'):
+            Name.append('LB-GR')
+            
+        elif (d['SILV_BASE_CODE'][i]=='SU'):
+            Name.append('Surveys')
             
         else:
             Name.append('Undefined')
@@ -51,42 +97,41 @@ def QueryResultsActivity(d):
     return Name
 
 
-def QueryResultsActivityNumeric(d,meta):
-    
-    lut_dist=meta['LUT Dist']
-    lut_atu=meta['LUT ATU']
-    Name=[]
-    ID=[]
-    for i in range(d['SILV_BASE_CODE'].size):
-        if (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['FE']) & (d['SILV_TECHNIQUE_CODE'][i]==lut_atu['SILV_TECHNIQUE_CODE']['CA']) & (d['SILV_METHOD_CODE'][i]==lut_atu['SILV_METHOD_CODE']['HELI']):
-            Name.append('Fertilization Aerial')
-            ID.append(lut_dist['Fertilization Aerial'])
-        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['FE']) & (d['SILV_TECHNIQUE_CODE'][i]==lut_atu['SILV_TECHNIQUE_CODE']['CG']) & (d['SILV_METHOD_CODE'][i]==lut_atu['SILV_METHOD_CODE']['GRANU']):
-            Name.append('Fertilization Hand')
-            ID.append(lut_dist['Fertilization Hand'])
-        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PL']) & (d['SILV_METHOD_CODE'][i]!=lut_atu['SILV_METHOD_CODE']['LAYOT']):
-            Name.append('Planting')     
-            ID.append(lut_dist['Planting'])
-        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['DS']):
-            Name.append('Direct Seeding')
-            ID.append(lut_dist['Direct Seeding'])
-        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['SU']):
-            Name.append('Surveys')
-            ID.append(-999)
-        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['SP']):
-            Name.append('Site Prep')
-            ID.append(-999)
-        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PC']) & (d['SILV_OBJECTIVE_CODE_1'][i]==lut_atu['SILV_OBJECTIVE_CODE_1']['DM']):
-            Name.append('Control Dwarf Mistletoe')
-            ID.append(lut_dist['Control Dwarf Mistletoe'])
-        elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
-            Name.append('Road Rehab')
-            ID.append(-999)
-        else:
-            Name.append('Undefined')
-            ID.append(-999)
-    return Name,ID
-
+#def QueryResultsActivityNumeric(d,meta):
+#    
+#    lut_dist=meta['LUT Dist']
+#    lut_atu=meta['LUT ATU']
+#    Name=[]
+#    ID=[]
+#    for i in range(d['SILV_BASE_CODE'].size):
+#        if (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['FE']) & (d['SILV_TECHNIQUE_CODE'][i]==lut_atu['SILV_TECHNIQUE_CODE']['CA']) & (d['SILV_METHOD_CODE'][i]==lut_atu['SILV_METHOD_CODE']['HELI']):
+#            Name.append('Fertilization Aerial')
+#            ID.append(lut_dist['Fertilization Aerial'])
+#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['FE']) & (d['SILV_TECHNIQUE_CODE'][i]==lut_atu['SILV_TECHNIQUE_CODE']['CG']) & (d['SILV_METHOD_CODE'][i]==lut_atu['SILV_METHOD_CODE']['GRANU']):
+#            Name.append('Fertilization Hand')
+#            ID.append(lut_dist['Fertilization Hand'])
+#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PL']) & (d['SILV_METHOD_CODE'][i]!=lut_atu['SILV_METHOD_CODE']['LAYOT']):
+#            Name.append('Planting')     
+#            ID.append(lut_dist['Planting'])
+#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['DS']):
+#            Name.append('Direct Seeding')
+#            ID.append(lut_dist['Direct Seeding'])
+#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['SU']):
+#            Name.append('Surveys')
+#            ID.append(-999)
+#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['SP']):
+#            Name.append('Site Prep')
+#            ID.append(-999)
+#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PC']) & (d['SILV_OBJECTIVE_CODE_1'][i]==lut_atu['SILV_OBJECTIVE_CODE_1']['DM']):
+#            Name.append('Dwarf Mistletoe Control')
+#            ID.append(lut_dist['Dwarf Mistletoe Control'])
+#        elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
+#            Name.append('Road Rehab')
+#            ID.append(-999)
+#        else:
+#            Name.append('Undefined')
+#            ID.append(-999)
+ #   return Name,ID
 
 
 '''============================================================================
@@ -102,7 +147,7 @@ class BunchDictionary(dict):
 CONSTRUCT DISTURBANCES FOR SPINUP
 ============================================================================'''
 
-def CompileDisturbancesForSpinup(meta,iScn):
+def CompileDisturbancesForSpinup(meta,iScn,eh):
 
     ivl_spin=meta['Spinup Disturbance Return Inverval']
     yr1=meta['Year Start']+ivl_spin
@@ -115,70 +160,67 @@ def CompileDisturbancesForSpinup(meta,iScn):
     else:
         Year=np.arange(yr1,yr2+1,meta['Spinup Disturbance Return Inverval'])
         
-    Year=Year[np.where(Year>=meta['Time'][0])[0]]               
+    eh['Year']=Year[np.where(Year>=meta['Time'][0])[0]]               
                 
-    m_Dist=Year.shape[0]        
+    m_Dist=eh['Year'].size
                
-    ID_Type=meta['LUT Dist'][meta['Spinup Disturbance Type']]*np.ones(m_Dist)
+    eh['ID_Type']=meta['LUT Dist'][meta['Spinup Disturbance Type']]*np.ones(m_Dist)
                 
-    Severity=100*np.ones(m_Dist)
+    eh['MortalityFactor']=100*np.ones(m_Dist)
+    
+    eh['GrowthFactor']=0*np.ones(m_Dist)
                 
-    if meta['Biomass Module']=='TIPSY':
-        ID_GrowthCurve=meta['Spinup Growth Curve ID']*np.ones(m_Dist)
+    if (meta['Biomass Module']=='TIPSY') | (meta['Biomass Module']=='TIPSY_EP703'):
+        eh['ID_GrowthCurve']=meta['Spinup Growth Curve ID']*np.ones(m_Dist)
     else:
-        ID_GrowthCurve=-999*np.ones(m_Dist)
+        eh['ID_GrowthCurve']=-999*np.ones(m_Dist)
    
-    return Year,ID_Type,Severity,ID_GrowthCurve
+    return eh
 
 '''============================================================================
 CONSTRUCT DISTURBANCES FROM INVENTORY
 ============================================================================'''
 
-def CompileDisturbancesFromInventory(meta,iScn,Year,ID_Type,Severity,ID_GrowthCurve):
+def CompileDisturbancesFromInventory(meta,iScn,eh):
     
-    if np.isnan(meta['Scenario'][iScn]['Year1_DisFromInv'])==False:        
-        Year=np.append(Year,meta['Scenario'][iScn]['Year1_DisFromInv'])
-        ID_Type=np.append(ID_Type,meta['LUT Dist'][meta['Scenario'][iScn]['Type1_DisFromInv']])
-        Severity=np.append(Severity,meta['Scenario'][iScn]['Severity1_DisFromInv'])
-        if meta['Biomass Module']=='TIPSY':
-            ID_GrowthCurve=np.append(ID_GrowthCurve,meta['Scenario'][iScn]['GrowthCurve1_DisFromInv'])
-        else:
-            ID_GrowthCurve=np.append(ID_GrowthCurve,-999)                    
-        
-    if np.isnan(meta['Scenario'][iScn]['Year2_DisFromInv'])==False:
-        Year=np.append(Year,meta['Scenario'][iScn]['Year2_DisFromInv'])
-        ID_Type=np.append(ID_Type,meta['LUT Dist'][meta['Scenario'][iScn]['Type2_DisFromInv']])
-        Severity=np.append(Severity,meta['Scenario'][iScn]['Severity2_DisFromInv'])
-        if meta['Biomass Module']=='TIPSY':
-            ID_GrowthCurve=np.append(ID_GrowthCurve,meta['Scenario'][iScn]['GrowthCurve2_DisFromInv'])
-        else:
-            ID_GrowthCurve=np.append(ID_GrowthCurve,-999)
-    
-    if np.isnan(meta['Scenario'][iScn]['Year3_DisFromInv'])==False:
-        Year=np.append(Year,meta['Scenario'][iScn]['Year3_DisFromInv'])
-        ID_Type=np.append(ID_Type,meta['LUT Dist'][meta['Scenario'][iScn]['Type3_DisFromInv']])
-        Severity=np.append(Severity,meta['Scenario'][iScn]['Severity3_DisFromInv'])
-        if meta['Biomass Module']=='TIPSY':
-            ID_GrowthCurve=np.append(ID_GrowthCurve,meta['Scenario'][iScn]['GrowthCurve3_DisFromInv'])
-        else:
-            ID_GrowthCurve=np.append(ID_GrowthCurve,-999)
-    
-    if np.isnan(meta['Scenario'][iScn]['Year4_DisFromInv'])==False:
-        Year=np.append(Year,meta['Scenario'][iScn]['Year4_DisFromInv'])
-        ID_Type=np.append(ID_Type,meta['LUT Dist'][meta['Scenario'][iScn]['Type4_DisFromInv']])
-        Severity=np.append(Severity,meta['Scenario'][iScn]['Severity4_DisFromInv'])
-        if meta['Biomass Module']=='TIPSY':
-            ID_GrowthCurve=np.append(ID_GrowthCurve,meta['Scenario'][iScn]['GrowthCurve4_DisFromInv'])
-        else:
-            ID_GrowthCurve=np.append(ID_GrowthCurve,-999)
+    for iYr in range(1,7):
+        if np.isnan(meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==False:  
+            
+            # If IDW, convert IDW class to growth and mortality factor
+            sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
+            flg_i=0
+            indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
+            if indSc.size!=0:                
+                if flg_i==0:
+                    dfParDistBySC=pd.read_excel(meta['Path Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
+                    flg_i=1
+                indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
+                ID_TypeN=meta['LUT Dist']['IDW']
+                MF=dfParDistBySC.loc[indPar,'MortalityFactor']
+                GF=dfParDistBySC.loc[indPar,'GrowthFactor']
+            else:
+                ID_TypeS=meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
+                ID_TypeN=meta['LUT Dist'][ID_TypeS]
+                MF=meta['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
+                GF=0
                 
-    return Year,ID_Type,Severity,ID_GrowthCurve
+            # Populate event history dictionary
+            eh['Year']=np.append(eh['Year'],meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])
+            eh['ID_Type']=np.append(eh['ID_Type'],ID_TypeN)
+            eh['MortalityFactor']=np.append(eh['MortalityFactor'],MF)
+            eh['GrowthFactor']=np.append(eh['GrowthFactor'],GF)
+            if (meta['Biomass Module']=='TIPSY') | (meta['Biomass Module']=='TIPSY_EP703'):
+                eh['ID_GrowthCurve']=np.append(eh['ID_GrowthCurve'],meta['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv'])
+            else:
+                eh['ID_GrowthCurve']=np.append(eh['ID_GrowthCurve'],-999)
+                
+    return eh
 
 '''============================================================================
 CONSTRUCT DISTURBANCES FROM SIMULATION
 ============================================================================'''
 
-def CompileHistoricalDisturbancesFromSimulation(meta,iScn,Year,ID_Type,Severity,ID_GrowthCurve):
+def CompileHistoricalDisturbancesFromSimulation(meta,iScn,eh):
 
     # Historical disturbance from simulation 1
     ri=meta['Scenario'][iScn]['ReturnInterval1_Hist_DisFromSim']
@@ -186,12 +228,13 @@ def CompileHistoricalDisturbancesFromSimulation(meta,iScn,Year,ID_Type,Severity,
         p_Dist=1/ri
         p_Rand=np.random.uniform(0,1,size=(meta['Time'].size))        
         it=np.where((p_Rand<p_Dist) & (meta['Time']>meta['Spinup Year End']) & (meta['Time']<meta['Year Project']))[0]
-        Year=np.append(Year,meta['Time'][it])
+        eh['Year']=np.append(eh['Year'],meta['Time'][it])
         ID_Type0=meta['LUT Dist'][meta['Scenario'][iScn]['Type1_Hist_DisFromSim']]
-        ID_Type=np.append(ID_Type,ID_Type0*np.ones(it.size))
-        Severity0=100
-        Severity=np.append(Severity,Severity0*np.ones(it.size))      
-        ID_GrowthCurve=np.append(ID_GrowthCurve,ID_GrowthCurve[-1]*np.ones(it.size))
+        eh['ID_Type']=np.append(eh['ID_Type'],ID_Type0*np.ones(it.size))
+        MortalityFactor0=100
+        eh['MortalityFactor']=np.append(eh['MortalityFactor'],MortalityFactor0*np.ones(it.size))
+        eh['GrowthFactor']=np.append(eh['GrowthFactor'],0*np.ones(it.size))
+        eh['ID_GrowthCurve']=np.append(eh['ID_GrowthCurve'],eh['ID_GrowthCurve'][-1]*np.ones(it.size))
     
     # Historical disturbance from simulation 2
     ri=meta['Scenario'][iScn]['ReturnInterval2_Hist_DisFromSim']
@@ -199,16 +242,17 @@ def CompileHistoricalDisturbancesFromSimulation(meta,iScn,Year,ID_Type,Severity,
         p_Dist=1/ri
         p_Rand=np.random.uniform(0,1,size=(meta['Time'].size))        
         it=np.where((p_Rand<p_Dist) & (meta['Time']>meta['Spinup Year End']) & (meta['Time']<meta['Year Project']))[0]
-        Year=np.append(Year,meta['Time'][it])
+        eh['Year']=np.append(eh['Year'],meta['Time'][it])
         ID_Type0=meta['LUT Dist'][meta['Scenario'][iScn]['Type2_Hist_DisFromSim']]
-        ID_Type=np.append(ID_Type,ID_Type0*np.ones(it.size))
-        Severity0=100
-        Severity=np.append(Severity,Severity0*np.ones(it.size))
-        ID_GrowthCurve=np.append(ID_GrowthCurve,ID_GrowthCurve[-1]*np.ones(it.size))
+        eh['ID_Type']=np.append(eh['ID_Type'],ID_Type0*np.ones(it.size))
+        MortalityFactor0=100
+        eh['MortalityFactor']=np.append(eh['MortalityFactor'],MortalityFactor0*np.ones(it.size))
+        eh['GrowthFactor']=np.append(eh['GrowthFactor'],0*np.ones(it.size))
+        eh['ID_GrowthCurve']=np.append(eh['ID_GrowthCurve'],eh['ID_GrowthCurve'][-1]*np.ones(it.size))
 
-    return Year,ID_Type,Severity,ID_GrowthCurve
+    return eh
 
-def CompileFutureDisturbancesFromSimulation(meta,iScn,Year,ID_Type,Severity,ID_GrowthCurve):
+def CompileFutureDisturbancesFromSimulation(meta,iScn,eh):
 
     # Future disturbance from simulation 1
     ri=meta['Scenario'][iScn]['ReturnInterval1_Fut_DisFromSim']
@@ -216,12 +260,13 @@ def CompileFutureDisturbancesFromSimulation(meta,iScn,Year,ID_Type,Severity,ID_G
         p_Dist=1/ri
         p_Rand=np.random.uniform(0,1,size=(meta['Time'].size))        
         it=np.where((p_Rand<p_Dist) & (meta['Time']>meta['Year Project']))[0]
-        Year=np.append(Year,meta['Time'][it])
+        eh['Year']=np.append(eh['Year'],meta['Time'][it])
         ID_Type0=meta['LUT Dist'][meta['Scenario'][iScn]['Type1_Fut_DisFromSim']]
-        ID_Type=np.append(ID_Type,ID_Type0*np.ones(it.size))
-        Severity0=100
-        Severity=np.append(Severity,Severity0*np.ones(it.size))  
-        ID_GrowthCurve=np.append(ID_GrowthCurve,ID_GrowthCurve[-1]*np.ones(it.size))             
+        eh['ID_Type']=np.append(eh['ID_Type'],ID_Type0*np.ones(it.size))
+        MortalityFactor0=100
+        eh['MortalityFactor']=np.append(eh['MortalityFactor'],MortalityFactor0*np.ones(it.size))
+        eh['GrowthFactor']=np.append(eh['GrowthFactor'],0*np.ones(it.size)) 
+        eh['ID_GrowthCurve']=np.append(eh['ID_GrowthCurve'],eh['ID_GrowthCurve'][-1]*np.ones(it.size))             
     
     # Future disturbance from simulation 2
     ri=meta['Scenario'][iScn]['ReturnInterval2_Fut_DisFromSim']
@@ -229,14 +274,15 @@ def CompileFutureDisturbancesFromSimulation(meta,iScn,Year,ID_Type,Severity,ID_G
         p_Dist=1/ri
         p_Rand=np.random.uniform(0,1,size=(meta['Time'].size))        
         it=np.where((p_Rand<p_Dist) & (meta['Time']>meta['Year Project']))[0]
-        Year=np.append(Year,meta['Time'][it])
+        eh['Year']=np.append(eh['Year'],meta['Time'][it])
         ID_Type0=meta['LUT Dist'][meta['Scenario'][iScn]['Type2_Fut_DisFromSim']]
-        ID_Type=np.append(ID_Type,ID_Type0*np.ones(it.size))
-        Severity0=100
-        Severity=np.append(Severity,Severity0*np.ones(it.size))
-        ID_GrowthCurve=np.append(ID_GrowthCurve,ID_GrowthCurve[-1]*np.ones(it.size))
+        eh['ID_Type']=np.append(eh['ID_Type'],ID_Type0*np.ones(it.size))
+        MortalityFactor0=100
+        eh['MortalityFactor']=np.append(eh['MortalityFactor'],MortalityFactor0*np.ones(it.size))
+        eh['GrowthFactor']=np.append(eh['GrowthFactor'],0*np.ones(it.size)) 
+        eh['ID_GrowthCurve']=np.append(eh['ID_GrowthCurve'],eh['ID_GrowthCurve'][-1]*np.ones(it.size))
     
-    return Year,ID_Type,Severity,ID_GrowthCurve
+    return eh
 
 '''============================================================================
 FIX ENSEMBLE NAME NUMBERING
@@ -322,6 +368,13 @@ def ImportProjectConfig(meta):
         'LandfillPaperDegradable','LandfillPaperNonDegradable','E_CO2','E_CH4','Cants']    
     meta['N Pools Pro']=len(meta['Name Pools Pro'])
     
+    # Indices to produce pools pools
+    meta['iPP']={}; cnt=0
+    for nam in meta['Name Pools Pro']:
+        meta['iPP'][nam]=cnt
+        cnt=cnt+1
+    iPP=meta['iPP']
+    
     # Custom disturbance variable names
     meta['Name CustDistVar']=[
             'Biomass_Affected_Pct','Biomass_Merch_Removed_Pct','Biomass_Merch_Burned_Pct','Biomass_Merch_LeftOnSite_Pct', \
@@ -396,7 +449,8 @@ def ImportProjectConfig(meta):
             os.mkdir(meta['Path Output Scenario'][iScn])
    
     # Scale factor for growth curves
-    meta['Scale Factor GC']=10
+    # Note: Do not change this to 10 - aerial fertilization response will not work properly at 10
+    meta['Scale Factor GC']=100
     
     # Scale factor for saving results (this needs to be 100, 10 does not capture HWP fluxes)
     meta['Scale Factor Export']=1000
@@ -405,6 +459,9 @@ def ImportProjectConfig(meta):
     for iScn in range(0,meta['N Scenario']): 
         meta['Scenario'][iScn]['Status Net Growth Factor']='Off'
         meta['Scenario'][iScn]['Status Mortality Factor']='Off'
+    
+    # Initialize flag indicating whether a disturbance occurred
+    meta['Flag_Disturbed']=np.zeros(meta['N Stand'])
     
     return meta
 
@@ -621,6 +678,88 @@ def PostProcessTIPSY(meta):
 
 
 '''============================================================================
+POST-PROCESS TIPSY GROWTH CURVES
+Nested list, gc[Scenario][Stand][Growth Curve]
+============================================================================'''
+
+def Import_BatchTIPSY_Output(meta):
+        
+    # Growth curve parameters and TIPSY outputs
+    if meta['Growth Curves Lumped']!='Yes':
+        print('This wont work')
+    dfPar=pd.read_excel(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+    txtDat=np.loadtxt(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+    
+    # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
+    colnams=['Age','VolTot0','VolMerch75','VolMerch125','VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots','ODT_Stem','Lum1_2x4','Lum1_2x6','Lum1_2x8','Lum1_2x10','Lum2orBetter_2x4','Lum2orBetter_2x6','Lum2orBetter_2x8','Lum2orBetter_2x10']
+    dfDat=pd.DataFrame(txtDat,columns=colnams)
+
+    # Define age vector (must be consistent with how TIPSY was set up)
+    Age=np.arange(0,301,1)
+
+    # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
+    N_Age=Age.size
+    N_GC=int(dfDat.shape[0]/N_Age)
+
+    gc=[None]*N_GC
+    for i in range(N_GC): gc[i]={}    
+    for i in range(len(colnams)):
+        data=np.reshape(dfDat[colnams[i]].values,(N_Age,N_GC),order='F')
+        for j in range(N_GC):
+            gc[j][colnams[i]]=data[:,j]
+
+    gc2=[]
+    uScn=np.unique(dfPar['ID_Scenario'])
+    for iScn in range(uScn.size):
+        ind=np.where(dfPar['ID_Scenario']==uScn[iScn])[0]
+        uStand=np.unique(dfPar.loc[ind,'ID_Stand'])
+        gc1=[]
+        for iS in range(uStand.size):
+            ind=np.where( (dfPar['ID_Scenario']==uScn[iScn]) & (dfPar['ID_Stand']==uStand[iS]) )[0]
+            uGC=np.unique(dfPar.loc[ind,'ID_GC'])
+            gc0=[]
+            for iGC in range(uGC.size):
+                ind=np.where( (dfPar['ID_Scenario']==uScn[iScn]) & (dfPar['ID_Stand']==uStand[iS]) & (dfPar['ID_GC']==uGC[iGC]) )[0]
+                d={}
+                for i in range(len(colnams)):
+                    data=np.reshape(dfDat[colnams[i]].values,(N_Age,N_GC),order='F')
+                    d[colnams[i]]=data[:,ind]
+                gc0.append(d)
+            gc1.append(gc0)
+        gc2.append(gc1)
+        
+    return gc2
+
+def Import_CompiledGrowthCurves(meta):
+    # gc[iScn][iGC][iStand]
+    gc=[]
+    for iScn in range(meta['N Scenario']):
+        gc0=[]
+        gc1=[]
+        for iBat in range(0,meta['N Batch']):            
+            tmp=gu.ipickle(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve1_Bat' + FixFileNum(iBat) + '.pkl')
+            tmp=np.sum(tmp,axis=2).astype(float)
+            for iS in range(tmp.shape[1]):
+                gc1.append(tmp[:,iS].copy()/meta['Scale Factor GC'])
+        gc0.append(gc1.copy())
+        gc1=[]
+        for iBat in range(0,meta['N Batch']):            
+            tmp=gu.ipickle(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve2_Bat' + FixFileNum(iBat) + '.pkl')
+            tmp=np.sum(tmp,axis=2).astype(float)
+            for iS in range(tmp.shape[1]):
+                gc1.append(tmp[:,iS].copy()/meta['Scale Factor GC'])
+        gc0.append(gc1.copy())
+        gc1=[]
+        for iBat in range(0,meta['N Batch']):            
+            tmp=gu.ipickle(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve3_Bat' + FixFileNum(iBat) + '.pkl')
+            tmp=np.sum(tmp,axis=2).astype(float)
+            for iS in range(tmp.shape[1]):
+                gc1.append(tmp[:,iS].copy()/meta['Scale Factor GC'])
+        gc0.append(gc1.copy())
+        gc.append(gc0.copy())
+    return gc
+
+'''============================================================================
 IMPORT CUSTOM HARVEST ASSUMPTIONS
 ============================================================================'''
 
@@ -820,7 +959,7 @@ def CalculateGHGBalance(v1,meta):
     return v2,meta
 
 '''============================================================================
-CREATE DATABASE TO STORE PARAMETERS
+IMPORT PARAMETERS
 ============================================================================'''
 
 def UpdateParamaters(pthin):
@@ -1215,28 +1354,72 @@ def GetDisturbanceHistory(meta):
 TIME SERIES OF AREA DISTURBED
 ============================================================================'''
 
-def TimeSeriesOfAreaDisturbedOrManaged(meta,tv,dh):    
-    A={}
-    A['Wildfire']=np.zeros(tv.size)
-    A['Beetles']=np.zeros(tv.size)
-    A['Harvesting']=np.zeros(tv.size)    
-    A['Fertilization']=np.zeros(tv.size)
-    A['Planting']=np.zeros(tv.size)
-    for i in range(len(dh)):
-        dh0=dh[i]
-        for j in range(dh0['Year'].size):
-            it=np.where(tv==np.round(dh0['Year'][j]))[0]
-            if it.size==0: 
-                continue
-            dt=dh0['ID_Type'][j]
-            if dt==meta['LUT Dist']['Wildfire']:
-                A['Wildfire'][it]=A['Wildfire'][it]+1
-            elif dt==meta['LUT Dist']['Beetles']:
-                A['Beetles'][it]=A['Beetles'][it]+1    
-            elif (dt==meta['LUT Dist']['Harvest and Slashpile Burn']) | (dt==meta['LUT Dist']['Harvest Custom']):
-                A['Harvesting'][it]=A['Harvesting'][it]+1
-            elif dt==meta['LUT Dist']['Fertilization Aerial']:
-                A['Fertilization'][it]=A['Fertilization'][it]+1      
-            elif dt==meta['LUT Dist']['Planting']:
-                A['Planting'][it]=A['Planting'][it]+1    
+def GetAreasAffected(meta):
+    A=[]
+    for iScn in range(meta['N Scenario']):
+        A.append({})
+        for key in meta['LUT Dist'].keys():
+            A[iScn][key]=np.zeros(meta['Time'].size)      
+        for iBat in range(meta['N Batch']):            
+            iEns=0            
+            dh=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\Disturbance_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')    
+            for iS in range(len(dh)):                
+                for iY in range(dh[iS]['Year'].size):
+                    it=np.where(meta['Time']==np.round(dh[iS]['Year'][iY]))[0]
+                    if it.size==0: 
+                        continue
+                    for key in meta['LUT Dist'].keys():
+                        if dh[iS]['ID_Type'][iY]==meta['LUT Dist'][key]:
+                            A[iScn][key][it]=A[iScn][key][it]+1
+        
+        #----------------------------------------------------------------------
+        # Summaries
+        #----------------------------------------------------------------------
+        
+        A[iScn]['Harvest (all)']=A[iScn]['Harvest and Slashpile Burn']+ \
+            A[iScn]['Harvest']+ \
+            A[iScn]['Harvest Custom']
+    
     return A
+
+'''============================================================================
+GRAPHICS
+
+# Look at variables in rcParams:
+plt.rcParams.keys()
+============================================================================'''
+
+def Import_GraphicsParameters(type):
+    if type=='FCI Demo':
+        fs1=7
+        fs2=9
+        params={'font.sans-serif':'Arial',
+                'font.size':fs1,
+                'figure.titlesize':fs2,
+                'figure.dpi':150,
+                'figure.constrained_layout.use':True,
+                'axes.edgecolor':'black',
+                'axes.labelsize':fs1,
+                'axes.labelcolor':'black',
+                'axes.titlesize':fs2,
+                'axes.titlepad':2,
+                'axes.linewidth':0.5,        
+                'lines.linewidth':1,
+                'text.color':'black',
+                'xtick.color':'black',        
+                'xtick.labelsize':fs1,
+                'xtick.major.width':0.5,
+                'xtick.major.size':3,
+                'xtick.direction':'in',
+                'ytick.color':'black',
+                'ytick.labelsize':fs1,
+                'ytick.major.width':0.5,
+                'ytick.major.size':3,
+                'ytick.direction':'in',
+                'legend.fontsize':fs1,        
+                'savefig.dpi':900,
+                'savefig.transparent':True,
+                'savefig.format':'png',
+                'savefig.pad_inches':0.1,
+                'savefig.bbox':'tight'}
+    return params

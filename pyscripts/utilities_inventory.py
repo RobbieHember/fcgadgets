@@ -5,24 +5,16 @@ FOREST INVENTORY UTILITIES
 
 '''
 
-import os
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 import fiona
 import matplotlib.pyplot as plt
-import numpy.matlib as ml
-import gdal, osr 
 import fiona
-import pickle
-from matplotlib import path
-import matplotlib.pyplot as plt
-import geopandas as gpd
 import time
-
-# Import custom modules
 from fcgadgets.pyscripts import utilities_gis as gis
-
+from fcgadgets.pyscripts import utilities_general as gu
+from fcgadgets.pyscripts import utilities_inventory as invu
 
 '''============================================================================
 UPDATE FOREST INVENTORY DATA
@@ -32,13 +24,14 @@ UPDATE FOREST INVENTORY DATA
     3) Build and save LUTs (20 min)
 ============================================================================'''
 
-# 1) Manually download geodatabases in ArcGIS
+# 1) Manually download geodatabases in ArcGIS (if export is not working, try copy and paste)
 
-# 2) Run function to define inventory layers and variables
-# LayerInfo=DefineInventoryLayersAndVariables()
+# 2) Run function to define inventory layers and variables (make sure folder 
+#    release dates are updated)
+# LayerInfo=invu.DefineInventoryLayersAndVariables()
 
 # 3) Run function to build and save LUTs
-# BuildForestInventoryLUTs(LayerInfo)
+# invu.BuildForestInventoryLUTs(LayerInfo)
 
 
 '''============================================================================
@@ -50,7 +43,7 @@ a flag indicating whether it is string (1) or numberic (0)
 def DefineInventoryLayersAndVariables():
 
     # Define paths to geodatabase files
-    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200204'
+    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200320'
     PathInDisturbancesFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200204'
     PathInVRIFull=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200204'
 
@@ -79,6 +72,29 @@ def DefineInventoryLayersAndVariables():
      ('FIA_PROJECT_ID',1,'int32')]
     d['LUT']={}
     for i in d['Field List']: d['LUT'][i[0]]=[] 
+    LayerInfo.append(d)
+    
+    # Add layer and define required variables
+    d={}
+    d['Layer Name']='RSLT_OPENING_SVW'
+    d['Path']=PathInResultsFull
+    d['File Name']='Results.gdb'
+    d['Field List']=[('OPENING_ID',0,'int32'), \
+     ('REGION_NAME',1,'int16'), \
+     ('DISTRICT_NAME',1,'int16'), \
+     ('TIMBER_MARK',1,'int32'), \
+     ('DISTURBANCE_START_DATE',0,'<U20'), \
+     ('DISTURBANCE_END_DATE',0,'<U20'), \
+     ('DENUDATION_1_DISTURBANCE_CODE',1,'int16'), \
+     ('DENUDATION_1_SILV_SYSTEM_CODE',1,'int16'), \
+     ('DENUDATION_1_SILV_VARIANT_CODE',1,'int16'), \
+     ('DENUDATION_1_COMPLETION_DATE',0,'<U20'), \
+     ('DENUDATION_2_DISTURBANCE_CODE',1,'int16'), \
+     ('DENUDATION_2_SILV_SYSTEM_CODE',1,'int16'), \
+     ('DENUDATION_2_SILV_VARIANT_CODE',1,'int16'), \
+     ('DENUDATION_2_COMPLETION_DATE',0,'<U20')]
+    d['LUT']={}
+    for i in d['Field List']: d['LUT'][i[0]]=[]
     LayerInfo.append(d)
 
     # Add layer and define required variables
@@ -276,7 +292,8 @@ BUILD LOOK-UP TABLES FOR THE CODES IN INVENTORY LAYERS
 
 def BuildForestInventoryLUTs(LayerInfo):
 
-    for iLyr in range(len(LayerInfo)):
+    #for iLyr in range(0,4):
+    for iLyr in range(len(LayerInfo)):    
 
         # I didn't include this in the last pull of RESULTS because I dont think we use it?
         #if LayerInfo[iLyr]['Layer Name']=='RSLT_FOREST_COVER_SILV_SVW': 
@@ -284,7 +301,7 @@ def BuildForestInventoryLUTs(LayerInfo):
     
         # Start counting time
         t_start=time.time()
-        
+        cnt=0
         # Loop through features in layer
         with fiona.open(LayerInfo[iLyr]['Path'] + '\\' + LayerInfo[iLyr]['File Name'],layer=LayerInfo[iLyr]['Layer Name']) as source:    
             
@@ -303,13 +320,15 @@ def BuildForestInventoryLUTs(LayerInfo):
                     # Add to code list
                     LayerInfo[iLyr]['LUT'][fnam].append(feat['properties'][fnam])
                 
-                    # Remove dupicates
-                    LayerInfo[iLyr]['LUT'][fnam]=np.unique(LayerInfo[iLyr]['LUT'][fnam]).tolist()           
-    
         # Check time
         t_ela=time.time()-t_start
         print(t_ela)
-
+            
+        # Remove duplicates
+        for fnam,flag,dtype in LayerInfo[iLyr]['Field List']:
+            if flag!=0:
+                LayerInfo[iLyr]['LUT'][fnam]=np.unique(LayerInfo[iLyr]['LUT'][fnam]).tolist()
+    
         # Build look-up table
         lut={}
         for fnam,flag,dtype in LayerInfo[iLyr]['Field List']:
@@ -337,27 +356,27 @@ def BuildForestInventoryLUTs(LayerInfo):
         if LayerInfo[iLyr]['Layer Name']=='RSLT_PLANTING_SVW':
             lut_pl=gu.ipickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_PLANTING_SVW.pkl')  
             
-        # Add everything to a list
-        cd=list(lut_vri['SPECIES_CD_1'].keys())
-        cd=cd+list(lut_vri['SPECIES_CD_2'].keys())
-        cd=cd+list(lut_vri['SPECIES_CD_3'].keys())
-        cd=cd+list(lut_vri['SPECIES_CD_4'].keys())
-        cd=cd+list(lut_vri['SPECIES_CD_5'].keys())
-        cd=cd+list(lut_vri['SPECIES_CD_6'].keys())
-        cd=cd+list(lut_fci['I_SPECIES_CODE_1'].keys())
-        cd=cd+list(lut_fci['I_SPECIES_CODE_2'].keys())
-        cd=cd+list(lut_fci['I_SPECIES_CODE_3'].keys())
-        cd=cd+list(lut_fci['I_SPECIES_CODE_4'].keys())
-        cd=cd+list(lut_fci['I_SPECIES_CODE_5'].keys())            
-        cd=cd+list(lut_fcs['S_SPECIES_CODE_1'].keys())
-        cd=cd+list(lut_fcs['S_SPECIES_CODE_2'].keys())
-        cd=cd+list(lut_fcs['S_SPECIES_CODE_3'].keys())
-        cd=cd+list(lut_fcs['S_SPECIES_CODE_4'].keys())
-        cd=cd+list(lut_fcs['S_SPECIES_CODE_5'].keys())            
-        cd=cd+list(lut_pl['SILV_TREE_SPECIES_CODE'].keys())
+    # Add everything to a list
+    cd=list(lut_vri['SPECIES_CD_1'].keys())
+    cd=cd+list(lut_vri['SPECIES_CD_2'].keys())
+    cd=cd+list(lut_vri['SPECIES_CD_3'].keys())
+    cd=cd+list(lut_vri['SPECIES_CD_4'].keys())
+    cd=cd+list(lut_vri['SPECIES_CD_5'].keys())
+    cd=cd+list(lut_vri['SPECIES_CD_6'].keys())
+    cd=cd+list(lut_fci['I_SPECIES_CODE_1'].keys())
+    cd=cd+list(lut_fci['I_SPECIES_CODE_2'].keys())
+    cd=cd+list(lut_fci['I_SPECIES_CODE_3'].keys())
+    cd=cd+list(lut_fci['I_SPECIES_CODE_4'].keys())
+    cd=cd+list(lut_fci['I_SPECIES_CODE_5'].keys())            
+    cd=cd+list(lut_fcs['S_SPECIES_CODE_1'].keys())
+    cd=cd+list(lut_fcs['S_SPECIES_CODE_2'].keys())
+    cd=cd+list(lut_fcs['S_SPECIES_CODE_3'].keys())
+    cd=cd+list(lut_fcs['S_SPECIES_CODE_4'].keys())
+    cd=cd+list(lut_fcs['S_SPECIES_CODE_5'].keys())            
+    cd=cd+list(lut_pl['SILV_TREE_SPECIES_CODE'].keys())
             
-        # Get unique list
-        uCode=np.unique(cd)
+    # Get unique list
+    uCode=np.unique(cd)
     
     # Save new standardized list
     for iLyr in range(len(LayerInfo)):        

@@ -77,13 +77,13 @@ def RunProject(meta):
                         # FCI standard approach:
                         vo=BiomassFromBatchTIPSY(iScn,iT,vi,vo,psl,meta,iEP)
                     
-                    elif meta['Biomass Module']=='TIPSY_SpecialAdjustments_EP703':
+                    elif meta['Biomass Module']=='TIPSY_EP703':
                         
                         # *** Special version of module writen for EP703 study ***
-                        vo=BiomassFromBatchTIPSY_SpecialAdjustments_EP703(iScn,iT,vi,vo,psl,meta,iEP)
+                        vo=BiomassFromBatchTIPSY_EP703(iScn,iT,vi,vo,psl,meta,iEP)
                     
                     # Calculate annual dead organic matter dynamics
-                    vo=DOMFromCBM08(iT,vi,vo,psl,iEP)
+                    vo=DOM_From_CBM08(iT,vi,vo,psl,iEP)
                     
                     # Calculate prescribed disturbances
                     vo=Taz(iT,vi,vo,psl,meta,iEP)
@@ -92,7 +92,7 @@ def RunProject(meta):
                     if meta['Time'][iT]>=1800:
                         
                         # No need to run this before a certain date
-                        vo=HWPFromDymond12(iT,vi,vo,psl,meta)
+                        vo=HWP_From_Dymond12(iT,vi,vo,psl,meta)
                 
                 # Export simulation results to file
                 ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP)
@@ -130,15 +130,19 @@ def InitializeStands(meta,iScn,iEns,iBat):
         
     vi['tv']=meta['Time']
     tv=meta['Time']
+    meta['N Time']=len(tv)
     
     # Import inventory
     vi['Inv']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
             
-    # Import disturbance history
-    vi['DH']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\Disturbance_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+    # Import event history
+    vi['EH']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\Disturbance_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+    
+    # Update number of stands for batch
+    meta['N Stand']=len(vi['EH'])
     
     # Import growth curves
-    if meta['Biomass Module']=='TIPSY':        
+    if (meta['Biomass Module']=='TIPSY') | (meta['Biomass Module']=='TIPSY_EP703'):
         
         # Import growth curve 1
         vi['GC1']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\GrowthCurve1_Bat' + FixFileNum(iBat) + '.pkl')
@@ -155,62 +159,73 @@ def InitializeStands(meta,iScn,iEns,iBat):
         # Import growth curve 3
         vi['GC3']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\GrowthCurve3_Bat' + FixFileNum(iBat) + '.pkl')
         
+        # Import growth curve 4 (optional)
+        try:
+            vi['GC4']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\GrowthCurve4_Bat' + FixFileNum(iBat) + '.pkl')
+        except:
+            vi['GC4']=0
+        
+        # Import growth curve 5 (optional)
+        try:
+            vi['GC5']=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\GrowthCurve5_Bat' + FixFileNum(iBat) + '.pkl')
+        except:
+            vi['GC5']=0
+        
     else:        
         
         vi['GCA']=0
         vi['GC1']=0
         vi['GC2']=0
         vi['GC3']=0
+        vi['GC4']=0
+        vi['GC5']=0    
     
     #--------------------------------------------------------------------------
     # Ensure simultaneous occurences of harvest and slashpile burning are input
     # in a realistic order
     #--------------------------------------------------------------------------
 
-    for iDH in range(len(vi['DH'])):
-        u=np.unique(vi['DH'][iDH]['Year'])
+    for iEH in range(len(vi['EH'])):
+        u=np.unique(vi['EH'][iEH]['Year'])
         for iu in range(u.size):
-            iUY=np.where(vi['DH'][iDH]['Year']==u[iu])[0]
+            iUY=np.where(vi['EH'][iEH]['Year']==u[iu])[0]
             if iUY.size>1:
-                iH=np.where(vi['DH'][iDH]['ID_Type'][iUY]==meta['LUT Dist']['Harvest'])[0]
-                iB=np.where(vi['DH'][iDH]['ID_Type'][iUY]==meta['LUT Dist']['Slashpile Burn'])[0]
+                iH=np.where(vi['EH'][iEH]['ID_Type'][iUY]==meta['LUT Dist']['Harvest'])[0]
+                iB=np.where(vi['EH'][iEH]['ID_Type'][iUY]==meta['LUT Dist']['Slashpile Burn'])[0]
                 if (iH.size>0) & (iB.size>0):
                     if iB<iH:
                         # Unrealistic sequence of slashpile burn and harvest, fix order                  
-                        ID_Type_h=vi['DH'][iDH]['ID_Type'][iUY][iH]
-                        Year_h=vi['DH'][iDH]['Year'][iUY][iH]
-                        Severity_h=vi['DH'][iDH]['Severity'][iUY][iH]
-                        ID_GrowthCurve_h=vi['DH'][iDH]['ID_GrowthCurve'][iUY][iH]
+                        ID_Type_h=vi['EH'][iEH]['ID_Type'][iUY][iH]
+                        Year_h=vi['EH'][iEH]['Year'][iUY][iH]
+                        MortalityFactor_h=vi['EH'][iEH]['MortalityFactor'][iUY][iH]
+                        GrowthFactor_h=vi['EH'][iEH]['GrowthFactor'][iUY][iH]
+                        ID_GrowthCurve_h=vi['EH'][iEH]['ID_GrowthCurve'][iUY][iH]
                         
-                        ID_Type_b=vi['DH'][iDH]['ID_Type'][iUY][iB]
-                        Year_b=vi['DH'][iDH]['Year'][iUY][iB]
-                        Severity_b=vi['DH'][iDH]['Severity'][iUY][iB]
-                        ID_GrowthCurve_b=vi['DH'][iDH]['ID_GrowthCurve'][iUY][iB]
+                        ID_Type_b=vi['EH'][iEH]['ID_Type'][iUY][iB]
+                        Year_b=vi['EH'][iEH]['Year'][iUY][iB]
+                        MortalityFactor_b=vi['EH'][iEH]['MortalityFactor'][iUY][iB]
+                        GrowthFactor_b=vi['EH'][iEH]['GrowthFactor'][iUY][iB]
+                        ID_GrowthCurve_b=vi['EH'][iEH]['ID_GrowthCurve'][iUY][iB]
                         
-                        vi['DH'][iDH]['ID_Type'][iUY][iH]=ID_Type_b
-                        vi['DH'][iDH]['Year'][iUY][iH]=Year_b
-                        vi['DH'][iDH]['Severity'][iUY][iH]=Severity_b
-                        vi['DH'][iDH]['ID_GrowthCurve'][iUY][iH]=ID_GrowthCurve_b
+                        vi['EH'][iEH]['ID_Type'][iUY][iH]=ID_Type_b
+                        vi['EH'][iEH]['Year'][iUY][iH]=Year_b
+                        vi['EH'][iEH]['MortalityFactor'][iUY][iH]=MortalityFactor_b
+                        vi['EH'][iEH]['GrowthFactor'][iUY][iH]=GrowthFactor_b
+                        vi['EH'][iEH]['ID_GrowthCurve'][iUY][iH]=ID_GrowthCurve_b
                         
-                        vi['DH'][iDH]['ID_Type'][iUY][iB]=ID_Type_h
-                        vi['DH'][iDH]['Year'][iUY][iB]=Year_h
-                        vi['DH'][iDH]['Severity'][iUY][iB]=Severity_h
-                        vi['DH'][iDH]['ID_GrowthCurve'][iUY][iB]=ID_GrowthCurve_h    
+                        vi['EH'][iEH]['ID_Type'][iUY][iB]=ID_Type_h
+                        vi['EH'][iEH]['Year'][iUY][iB]=Year_h
+                        vi['EH'][iEH]['MortalityFactor'][iUY][iB]=MortalityFactor_h
+                        vi['EH'][iEH]['GrowthFactor'][iUY][iB]=GrowthFactor_h
+                        vi['EH'][iEH]['ID_GrowthCurve'][iUY][iB]=ID_GrowthCurve_h    
 
     #--------------------------------------------------------------------------
     # Disturbance year is stored as a float, but it needs to be an integer once
     # in the model
     #--------------------------------------------------------------------------
 
-    for iDH in range(len(vi['DH'])):
-        vi['DH'][iDH]['Year']=vi['DH'][iDH]['Year'].astype(int)
-
-    #--------------------------------------------------------------------------
-    # Update project configuration
-    #--------------------------------------------------------------------------
-    
-    meta['N Time']=len(tv)
-    meta['N Stand']=vi['Inv']['Lat'].shape[1]       
+    for iEH in range(len(vi['EH'])):
+        vi['EH'][iEH]['Year']=vi['EH'][iEH]['Year'].astype(int)      
     
     #--------------------------------------------------------------------------
     # Create a monotonic increase in different growth curves with each disturbance 
@@ -218,20 +233,16 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #--------------------------------------------------------------------------
     
     for j in range(meta['N Stand']):        
-        try:
-            n=vi['DH'][j]['ID_GrowthCurve'].shape[0]
-        except:
-            print(iBat)
-            print(j)
-        vi['DH'][j]['ID_GrowthCurveM']=1*np.ones((n,))        
-        d=np.diff(vi['DH'][j]['ID_GrowthCurve'])
+        n=vi['EH'][j]['ID_GrowthCurve'].shape[0]
+        vi['EH'][j]['ID_GrowthCurveM']=1*np.ones((n,))        
+        d=np.diff(vi['EH'][j]['ID_GrowthCurve'])
         cnt=1
         for k in range(0,d.shape[0]):
             if d[k]!=0:
                 cnt=cnt+1
-                vi['DH'][j]['ID_GrowthCurveM'][k+1]=cnt 
+                vi['EH'][j]['ID_GrowthCurveM'][k+1]=cnt 
             else:
-                vi['DH'][j]['ID_GrowthCurveM'][k+1]=vi['DH'][j]['ID_GrowthCurveM'][k]
+                vi['EH'][j]['ID_GrowthCurveM'][k+1]=vi['EH'][j]['ID_GrowthCurveM'][k]
     
     #--------------------------------------------------------------------------
     # Identify the start and end of a fixed spin up disturbance interval
@@ -239,9 +250,9 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #--------------------------------------------------------------------------
     
     if meta['Biomass Module']=='Sawtooth':        
-        d=np.append(0,np.diff(vi['DH'][0]['Year']))
+        d=np.append(0,np.diff(vi['EH'][0]['Year']))
         ind=np.where(d==meta['Spinup Disturbance Return Inverval'])[0]
-        meta['SpinupSpanFastTrack']=[np.min(vi['DH'][0]['Year'][ind])+meta['Spinup Disturbance Return Inverval'],np.max(vi['DH'][0]['Year'][ind])]
+        meta['SpinupSpanFastTrack']=[np.min(vi['EH'][0]['Year'][ind])+meta['Spinup Disturbance Return Inverval'],np.max(vi['EH'][0]['Year'][ind])]
     
     #--------------------------------------------------------------------------
     # Initialize flag for fixing negative net growth. When TIPSY yields negative
@@ -437,8 +448,8 @@ def ImportParameters(meta,vi):
     # Disturbance parameters
     #--------------------------------------------------------------------------
     
-    for i in par['Disturbances'].keys():        
-        psl['bDist_' + i]=np.array(list(par['Disturbances'][i].values()))
+    for i in par['Disturbances'].keys():
+        psl['bDist_' + i]=np.nan_to_num(np.array(list(par['Disturbances'][i].values())))
      
     #--------------------------------------------------------------------------
     # Harvest wood products parameters
