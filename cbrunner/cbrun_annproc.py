@@ -10,6 +10,7 @@ class Bunch(object):
     def __init__(self, adict):
         self.__dict__.update(adict)
 
+
 '''============================================================================
 BIOMASS DYNAMICS FROM TIPSY
 ============================================================================'''
@@ -1339,6 +1340,14 @@ def DOM_From_CBM08(iT,vi,vo,psl,iEP):
     # Physical transfer
     #--------------------------------------------------------------------------
     
+    # Felled pools need to be initialized
+    vo['C_Eco_Pools'][iT,:,iEP['FelledStemMerch']]=vo['C_Eco_Pools'][iT-1,:,iEP['FelledStemMerch']]
+    vo['C_Eco_Pools'][iT,:,iEP['FelledStemNonMerch']]=vo['C_Eco_Pools'][iT-1,:,iEP['FelledStemNonMerch']]
+    vo['C_Eco_Pools'][iT,:,iEP['FelledBranch']]=vo['C_Eco_Pools'][iT-1,:,iEP['FelledBranch']]
+    vo['C_Eco_Pools'][iT,:,iEP['FelledBark']]=vo['C_Eco_Pools'][iT-1,:,iEP['FelledBark']]
+    vo['C_Eco_Pools'][iT,:,iEP['FelledSnagStem']]=vo['C_Eco_Pools'][iT-1,:,iEP['FelledSnagStem']]
+    vo['C_Eco_Pools'][iT,:,iEP['FelledSnagBranch']]=vo['C_Eco_Pools'][iT-1,:,iEP['FelledSnagBranch']]
+    
     # Physical transfer rate
     PT_FelledStemMerch=psl.bDec_FelledStemMerch_PhysTransRate*vo['C_Eco_Pools'][iT,:,iEP['FelledStemMerch']]
     PT_FelledStemNonMerch=psl.bDec_FelledStemNonMerch_PhysTransRate*vo['C_Eco_Pools'][iT,:,iEP['FelledStemNonMerch']]
@@ -1427,21 +1436,27 @@ def Taz(iT,vi,vo,psl,meta,iEP):
                     MortalityFraction=0
                 
                 # Apply severity to biomass and snags
-                Biomass_Affected_Pct=MortalityFraction
-                Snags_Affected_Pct=MortalityFraction
+                Biomass_Affected_Frac=MortalityFraction
+                Snags_Affected_Frac=MortalityFraction
                 
                 # Use default disturbance fluxes
-                Biomass_Merch_Removed_Pct=psl.bDist_Biomass_Merch_Removed[iDefPar]
-                Biomass_Merch_Burned_Pct=psl.bDist_Biomass_Merch_Burned[iDefPar]
-                Biomass_Merch_LeftOnSite_Pct=psl.bDist_Biomass_Merch_LeftOnSite[iDefPar]
-                Biomass_Merch_ToSnag_Pct=psl.bDist_Biomass_Merch_ToSnag[iDefPar]
-                Biomass_NonMerch_Removed_Pct=psl.bDist_Biomass_NonMerch_Removed[iDefPar]
-                Biomass_NonMerch_Burned_Pct=psl.bDist_Biomass_NonMerch_Burned[iDefPar]
-                Biomass_NonMerch_LeftOnSite_Pct=psl.bDist_Biomass_NonMerch_LeftOnSite[iDefPar]
-                Biomass_NonMerch_ToSnag_Pct=psl.bDist_Biomass_NonMerch_ToSnag[iDefPar]
-                Snags_Removed_Pct=psl.bDist_Snags_Removed[iDefPar]
-                Snags_Burned_Pct=psl.bDist_Snags_Burned[iDefPar]
-                Snags_LeftOnSite_Pct=psl.bDist_Snags_LeftOnSite[iDefPar]
+                Biomass_Merch_Removed_Frac=psl.bDist_Biomass_Merch_Removed[iDefPar]
+                Biomass_Merch_Burned_Frac=psl.bDist_Biomass_Merch_Burned[iDefPar]
+                Biomass_Merch_LeftOnSite_Frac=psl.bDist_Biomass_Merch_LeftOnSite[iDefPar]
+                Biomass_Merch_ToSnag_Frac=psl.bDist_Biomass_Merch_ToSnag[iDefPar]
+                Biomass_NonMerch_Removed_Frac=psl.bDist_Biomass_NonMerch_Removed[iDefPar]
+                Biomass_NonMerch_Burned_Frac=psl.bDist_Biomass_NonMerch_Burned[iDefPar]
+                Biomass_NonMerch_LeftOnSite_Frac=psl.bDist_Biomass_NonMerch_LeftOnSite[iDefPar]
+                Biomass_NonMerch_ToSnag_Frac=psl.bDist_Biomass_NonMerch_ToSnag[iDefPar]
+                Snags_Removed_Frac=psl.bDist_Snags_Removed[iDefPar]
+                Snags_Burned_Frac=psl.bDist_Snags_Burned[iDefPar]
+                Snags_LeftOnSite_Frac=psl.bDist_Snags_LeftOnSite[iDefPar]                
+                FelledStemMerch_Burned_Frac=psl.bDist_FelledStemMerch_Burned[iDefPar]
+                FelledStemNonMerch_Burned_Frac=psl.bDist_FelledStemNonMerch_Burned[iDefPar]
+                FelledBranch_Burned_Frac=psl.bDist_FelledBranch_Burned[iDefPar]
+                FelledBark_Burned_Frac=psl.bDist_FelledBark_Burned[iDefPar]
+                FelledSnagStem_Burned_Frac=psl.bDist_FelledSnagStem_Burned[iDefPar]
+                FelledSnagBranch_Burned_Frac=psl.bDist_FelledSnagBranch_Burned[iDefPar]
                 
             else:
                 
@@ -1449,36 +1464,46 @@ def Taz(iT,vi,vo,psl,meta,iEP):
                 # Use custom harvesting disturbance parameter table
                 #--------------------------------------------------------------
                 
+                # Use mortality from disturbance history
+                MortalityFraction=vi['EH'][iS]['Biomass_Affected_Pct'][iDist[i]].astype(float)/100  
+                
                 # These come from a custom user input spreadsheet, but they have been added to DH structure in pre-processing
-                Biomass_Affected_Pct=vi['EH'][iS]['Biomass_Affected_Pct'][iDist[i]].astype(float)/100                
-                Snags_Affected_Pct=vi['EH'][iS]['Snags_Affected_Pct'][iDist[i]].astype(float)/100
+                Biomass_Affected_Frac=vi['EH'][iS]['Biomass_Affected_Pct'][iDist[i]].astype(float)/100                
+                Snags_Affected_Frac=vi['EH'][iS]['Snags_Affected_Pct'][iDist[i]].astype(float)/100
                 
                 # Proportions removed, burned, and left on site                        
-                Biomass_Merch_Removed_Pct=vi['EH'][iS]['Biomass_Merch_Removed_Pct'][iDist[i]].astype(float)/100
-                Biomass_Merch_Burned_Pct=vi['EH'][iS]['Biomass_Merch_Burned_Pct'][iDist[i]].astype(float)/100          
-                Biomass_Merch_LeftOnSite_Pct=vi['EH'][iS]['Biomass_Merch_LeftOnSite_Pct'][iDist[i]].astype(float)/100
-                Biomass_Merch_ToSnag_Pct=0                
-            
-                Biomass_NonMerch_Removed_Pct=vi['EH'][iS]['Biomass_NonMerch_Removed_Pct'][iDist[i]].astype(float)/100
-                Biomass_NonMerch_Burned_Pct=vi['EH'][iS]['Biomass_NonMerch_Burned_Pct'][iDist[i]].astype(float)/100          
-                Biomass_NonMerch_LeftOnSite_Pct=vi['EH'][iS]['Biomass_NonMerch_LeftOnSite_Pct'][iDist[i]].astype(float)/100
-                Biomass_NonMerch_ToSnag_Pct=0
+                Biomass_Merch_Removed_Frac=vi['EH'][iS]['Biomass_Merch_Removed_Pct'][iDist[i]].astype(float)/100
+                Biomass_Merch_Burned_Frac=vi['EH'][iS]['Biomass_Merch_Burned_Pct'][iDist[i]].astype(float)/100          
+                Biomass_Merch_LeftOnSite_Frac=vi['EH'][iS]['Biomass_Merch_LeftOnSite_Pct'][iDist[i]].astype(float)/100
+                Biomass_Merch_ToSnag_Frac=0         
                 
-                Snags_Removed_Pct=vi['EH'][iS]['Snags_Removed_Pct'][iDist[i]].astype(float)/100
-                Snags_Burned_Pct=vi['EH'][iS]['Snags_Burned_Pct'][iDist[i]].astype(float)/100
-                Snags_LeftOnSite_Pct=vi['EH'][iS]['Snags_LeftOnSite_Pct'][iDist[i]].astype(float)/100
-                        
+                Biomass_NonMerch_Removed_Frac=vi['EH'][iS]['Biomass_NonMerch_Removed_Pct'][iDist[i]].astype(float)/100
+                Biomass_NonMerch_Burned_Frac=vi['EH'][iS]['Biomass_NonMerch_Burned_Pct'][iDist[i]].astype(float)/100          
+                Biomass_NonMerch_LeftOnSite_Frac=vi['EH'][iS]['Biomass_NonMerch_LeftOnSite_Pct'][iDist[i]].astype(float)/100
+                Biomass_NonMerch_ToSnag_Frac=0
+                
+                Snags_Removed_Frac=vi['EH'][iS]['Snags_Removed_Pct'][iDist[i]].astype(float)/100
+                Snags_Burned_Frac=vi['EH'][iS]['Snags_Burned_Pct'][iDist[i]].astype(float)/100
+                Snags_LeftOnSite_Frac=vi['EH'][iS]['Snags_LeftOnSite_Pct'][iDist[i]].astype(float)/100
+                  
+                FelledStemMerch_Burned_Frac=0
+                FelledStemNonMerch_Burned_Frac=0
+                FelledBranch_Burned_Frac=0
+                FelledBark_Burned_Frac=0
+                FelledSnagStem_Burned_Frac=0
+                FelledSnagBranch_Burned_Frac=0
+                
             #------------------------------------------------------------------
             # Total amount of each pool that is affected
             #------------------------------------------------------------------
             
-            Affected_StemMerch=Biomass_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['StemMerch']]
-            Affected_StemNonMerch=Biomass_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['StemNonMerch']]
-            Affected_Foliage=Biomass_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['Foliage']]
-            Affected_Branch=Biomass_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['Branch']]
-            Affected_Bark=Biomass_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['Bark']]            
-            Affected_RootCoarse=Biomass_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['RootCoarse']]
-            Affected_RootFine=Biomass_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['RootFine']]
+            Affected_StemMerch=Biomass_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['StemMerch']]
+            Affected_StemNonMerch=Biomass_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['StemNonMerch']]
+            Affected_Foliage=Biomass_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['Foliage']]
+            Affected_Branch=Biomass_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['Branch']]
+            Affected_Bark=Biomass_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['Bark']]            
+            Affected_RootCoarse=Biomass_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['RootCoarse']]
+            Affected_RootFine=Biomass_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['RootFine']]
             
             #if (Biomass_Affected_Pct==1) | (ID_Type==meta['LUT Dist']['Fertilization Aerial']) | (ID_Type==meta['LUT Dist']['Fertilization Hand']):
                 
@@ -1514,7 +1539,7 @@ def Taz(iT,vi,vo,psl,meta,iEP):
             #    Affected_RootFine=np.maximum(0,vo['C_Eco_Pools'][iT,iS,iEP['RootFine']]-xRF)
                 
             # Volume
-            Affected_VolumeStemMerch=Biomass_Affected_Pct*vo['V_StemMerch'][iT,iS]
+            Affected_VolumeStemMerch=Biomass_Affected_Frac*vo['V_StemMerch'][iT,iS]
                         
             # Partition bark into merch and non-merch components
             Affected_Bark_Merch=psl.bASL_MerchBarkFrac*Affected_Bark
@@ -1524,8 +1549,8 @@ def Taz(iT,vi,vo,psl,meta,iEP):
             Affected_TotNonMerch=Affected_StemNonMerch+Affected_Branch+Affected_Bark_NonMerch
             
             # Define fraction of snags that are affected            
-            Affected_SnagStem=Snags_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['SnagStem']]
-            Affected_SnagBranch=Snags_Affected_Pct*vo['C_Eco_Pools'][iT,iS,iEP['SnagBranch']]
+            Affected_SnagStem=Snags_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['SnagStem']]
+            Affected_SnagBranch=Snags_Affected_Frac*vo['C_Eco_Pools'][iT,iS,iEP['SnagBranch']]
             
             # All
             Affected_All=Affected_StemMerch+Affected_StemNonMerch+Affected_Foliage+Affected_Branch+Affected_Bark+Affected_RootCoarse+Affected_RootFine
@@ -1571,110 +1596,32 @@ def Taz(iT,vi,vo,psl,meta,iEP):
             
             # Merch biomass to mill - of the total amount of biomass affected, 
             # Add bark                        
-            Biomass_Merch_Removed=Biomass_Merch_Removed_Pct*(Affected_StemMerch+Affected_Bark_Merch)
+            Biomass_Merch_Removed=Biomass_Merch_Removed_Frac*(Affected_StemMerch+Affected_Bark_Merch)
             vo['C_Eco_Pools'][iT,iS,iEP['RemovedMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['RemovedMerch']]+Biomass_Merch_Removed
             
             # NonMerch biomass to mill - of the total amount of biomass affected, 
             # what fraction of non-merch biomass was sent to the mill?
             # - NonMerch = NonMerchStem + Foliage + Branch + Bark
-            Biomass_NonMerch_Removed=Biomass_NonMerch_Removed_Pct*Affected_TotNonMerch
+            Biomass_NonMerch_Removed=Biomass_NonMerch_Removed_Frac*Affected_TotNonMerch
             vo['C_Eco_Pools'][iT,iS,iEP['RemovedNonMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['RemovedNonMerch']]+Biomass_NonMerch_Removed
                                         
             # Snag stemwood to mill           
-            SnagStem_Removed=Snags_Removed_Pct*Affected_SnagStem
+            SnagStem_Removed=Snags_Removed_Frac*Affected_SnagStem
             vo['C_Eco_Pools'][iT,iS,iEP['RemovedSnagStem']]=vo['C_Eco_Pools'][iT,iS,iEP['RemovedSnagStem']]+SnagStem_Removed
             
             # Snag branches to mill
-            SnagBranch_Removed=Snags_Removed_Pct*Affected_SnagBranch
+            SnagBranch_Removed=Snags_Removed_Frac*Affected_SnagBranch
             vo['C_Eco_Pools'][iT,iS,iEP['RemovedSnagStem']]=vo['C_Eco_Pools'][iT,iS,iEP['RemovedSnagStem']]+SnagBranch_Removed
-            
-            #------------------------------------------------------------------
-            # Carbon burned
-            #------------------------------------------------------------------
-            
-            # Profile of emitted compounds (N2O emissions calculated upon export)
-            tf_co2=psl.bCombFrac_CO2
-            tf_ch4=psl.bCombFrac_CH4
-            tf_co=psl.bCombFrac_CO
-            
-            # Merch biomass that is burned              
-            Biomass_Merch_Burned_co2=tf_co2*Biomass_Merch_Burned_Pct*(Affected_StemMerch+Affected_Bark_Merch)
-            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Biomass_Merch_Burned_co2
-            
-            Biomass_Merch_Burned_ch4=tf_ch4*Biomass_Merch_Burned_Pct*(Affected_StemMerch+Affected_Bark_Merch)
-            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Biomass_Merch_Burned_ch4
-            
-            Biomass_Merch_Burned_co=tf_co*Biomass_Merch_Burned_Pct*(Affected_StemMerch+Affected_Bark_Merch)
-            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Biomass_Merch_Burned_co
-
-            # NonMerch biomass that is burned            
-            Biomass_NonMerch_Burned_co2=tf_co2*Biomass_NonMerch_Burned_Pct*Affected_TotNonMerch
-            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Biomass_NonMerch_Burned_co2
-            
-            Biomass_NonMerch_Burned_ch4=tf_ch4*Biomass_NonMerch_Burned_Pct*Affected_TotNonMerch
-            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Biomass_NonMerch_Burned_ch4
-            
-            Biomass_NonMerch_Burned_co=tf_co*Biomass_NonMerch_Burned_Pct*Affected_TotNonMerch
-            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Biomass_NonMerch_Burned_co
-              
-            # Snag stems that burn
-            SnagStem_Burned_co2=tf_co2*Snags_Burned_Pct*Affected_SnagStem
-            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+SnagStem_Burned_co2
-            
-            SnagStem_Burned_ch4=tf_ch4*Snags_Burned_Pct*Affected_SnagStem
-            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+SnagStem_Burned_ch4
-            
-            SnagStem_Burned_co=tf_co*Snags_Burned_Pct*Affected_SnagStem
-            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+SnagStem_Burned_co
-            
-            # Snag branches that burn
-            SnagBranch_Burned_co2=tf_co2*Snags_Burned_Pct*Affected_SnagBranch
-            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+SnagBranch_Burned_co2
-            
-            SnagBranch_Burned_ch4=tf_ch4*Snags_Burned_Pct*Affected_SnagBranch
-            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+SnagBranch_Burned_ch4
-            
-            SnagBranch_Burned_co=tf_co*Snags_Burned_Pct*Affected_SnagBranch
-            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+SnagBranch_Burned_co
-            
-            #------------------------------------------------------------------
-            # Check to confirm carbon in = carbon out
-            #------------------------------------------------------------------
-            
-            # CarbonAffectedAG=affected_StemMerch+ \
-            #    affected_Bark_Merch+ \
-            #    affected_TotNonMerch+ \
-            #    affected_SnagStem+ \
-            #    affected_SnagBranch
-            
-            # CarbonRemoved=Biomass_Merch_Removed+Biomass_NonMerch_Removed+SnagStem_Removed+SnagBranch_Removed
-            
-            # CarbonBurned=Biomass_Merch_Burned_co2+Biomass_Merch_Burned_ch4+Biomass_Merch_Burned_co+ \
-            #    Biomass_NonMerch_Burned_co2+Biomass_NonMerch_Burned_ch4+Biomass_NonMerch_Burned_co+ \
-            #    SnagStem_Burned_co2+SnagStem_Burned_ch4+SnagStem_Burned_co+ \
-            #    SnagBranch_Burned_co2+SnagBranch_Burned_ch4+SnagBranch_Burned_co
-            
-            # print([CarbonAffectedAG,CarbonRemoved,CarbonBurned,CarbonRemoved+CarbonBurned])
-            
-            #------------------------------------------------------------------
-            # Carbon that is moved from biomass to snags
-            #------------------------------------------------------------------
-            
-            # Merch biomass that is killed by wildfire
-            vo['C_Eco_Pools'][iT,iS,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,iS,iEP['SnagStem']]+Biomass_Merch_ToSnag_Pct*(Affected_StemMerch+Affected_Bark_Merch)
-            
-            # Non-merch biomass that is killed by wildfire
-            vo['C_Eco_Pools'][iT,iS,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['SnagBranch']]+Biomass_NonMerch_ToSnag_Pct*(Affected_StemNonMerch+Affected_Bark_NonMerch)
             
             #------------------------------------------------------------------
             # Carbon that is left on site (after felling or wind storms)
             #------------------------------------------------------------------
             
-            # Stem, branch and bark carbon transferred to felled pools (piles)
-            vo['C_Eco_Pools'][iT,iS,iEP['FelledStemMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledStemMerch']]+Biomass_Merch_LeftOnSite_Pct*Affected_StemMerch
-            vo['C_Eco_Pools'][iT,iS,iEP['FelledStemNonMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledStemNonMerch']]+Biomass_NonMerch_LeftOnSite_Pct*Affected_StemNonMerch            
-            vo['C_Eco_Pools'][iT,iS,iEP['FelledBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledBranch']]+Biomass_Merch_LeftOnSite_Pct*Affected_Branch
-            vo['C_Eco_Pools'][iT,iS,iEP['FelledBark']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledBark']]+Biomass_Merch_LeftOnSite_Pct*Affected_Bark
+            # Stem, branch and bark carbon transfered to felled pools (piles)
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledStemMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledStemMerch']]+Biomass_Merch_LeftOnSite_Frac*Affected_StemMerch
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledStemNonMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledStemNonMerch']]+Biomass_NonMerch_LeftOnSite_Frac*Affected_StemNonMerch            
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledBranch']]+Biomass_Merch_LeftOnSite_Frac*Affected_Branch
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledBark']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledBark']]+Biomass_Merch_LeftOnSite_Frac*Affected_Bark
                         
             # Foliage transferred directly to very fast litter
             vo['C_Eco_Pools'][iT,iS,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,iS,iEP['LitterVF']]+Affected_Foliage
@@ -1686,9 +1633,132 @@ def Taz(iT,vi,vo,psl,meta,iEP):
             vo['C_Eco_Pools'][iT,iS,iEP['SoilVF']]=vo['C_Eco_Pools'][iT,iS,iEP['SoilVF']]+0.5*Affected_RootFine
             
             # Snags transferred to felled pools (piles)
-            vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagStem']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagStem']]+Snags_LeftOnSite_Pct*Affected_SnagStem
-            vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagBranch']]+Snags_LeftOnSite_Pct*Affected_SnagBranch
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagStem']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagStem']]+Snags_LeftOnSite_Frac*Affected_SnagStem
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagBranch']]+Snags_LeftOnSite_Frac*Affected_SnagBranch
+                        
+            #------------------------------------------------------------------
+            # Biomass and DOM burned
+            #------------------------------------------------------------------
             
+            # Profile of emitted compounds (N2O emissions calculated upon export)
+            tf_co2=psl.bCombFrac_CO2
+            tf_ch4=psl.bCombFrac_CH4
+            tf_co=psl.bCombFrac_CO
+            
+            # Merch biomass that is burned              
+            Biomass_Merch_Burned_co2=tf_co2*Biomass_Merch_Burned_Frac*(Affected_StemMerch+Affected_Bark_Merch)
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Biomass_Merch_Burned_co2
+            
+            Biomass_Merch_Burned_ch4=tf_ch4*Biomass_Merch_Burned_Frac*(Affected_StemMerch+Affected_Bark_Merch)
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Biomass_Merch_Burned_ch4
+            
+            Biomass_Merch_Burned_co=tf_co*Biomass_Merch_Burned_Frac*(Affected_StemMerch+Affected_Bark_Merch)
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Biomass_Merch_Burned_co
+
+            # NonMerch biomass that is burned            
+            Biomass_NonMerch_Burned_co2=tf_co2*Biomass_NonMerch_Burned_Frac*Affected_TotNonMerch
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Biomass_NonMerch_Burned_co2
+            
+            Biomass_NonMerch_Burned_ch4=tf_ch4*Biomass_NonMerch_Burned_Frac*Affected_TotNonMerch
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Biomass_NonMerch_Burned_ch4
+            
+            Biomass_NonMerch_Burned_co=tf_co*Biomass_NonMerch_Burned_Frac*Affected_TotNonMerch
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Biomass_NonMerch_Burned_co
+              
+            # Snag stems that burn
+            SnagStem_Burned_co2=tf_co2*Snags_Burned_Frac*Affected_SnagStem
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+SnagStem_Burned_co2
+            
+            SnagStem_Burned_ch4=tf_ch4*Snags_Burned_Frac*Affected_SnagStem
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+SnagStem_Burned_ch4
+            
+            SnagStem_Burned_co=tf_co*Snags_Burned_Frac*Affected_SnagStem
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+SnagStem_Burned_co
+            
+            # Snag branches that burn
+            SnagBranch_Burned_co2=tf_co2*Snags_Burned_Frac*Affected_SnagBranch
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+SnagBranch_Burned_co2
+            
+            SnagBranch_Burned_ch4=tf_ch4*Snags_Burned_Frac*Affected_SnagBranch
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+SnagBranch_Burned_ch4
+            
+            SnagBranch_Burned_co=tf_co*Snags_Burned_Frac*Affected_SnagBranch
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+SnagBranch_Burned_co
+       
+            #------------------------------------------------------------------
+            # Carbon that is moved from biomass to snags
+            #------------------------------------------------------------------
+            
+            # Merch biomass that is killed by wildfire
+            vo['C_Eco_Pools'][iT,iS,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,iS,iEP['SnagStem']]+Biomass_Merch_ToSnag_Frac*(Affected_StemMerch+Affected_Bark_Merch)
+            
+            # Non-merch biomass that is killed by wildfire
+            vo['C_Eco_Pools'][iT,iS,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['SnagBranch']]+Biomass_NonMerch_ToSnag_Frac*(Affected_StemNonMerch+Affected_Bark_NonMerch)
+            
+            #------------------------------------------------------------------
+            # Felled carbon that is burned
+            #------------------------------------------------------------------            
+            
+            # Felled stem merch that burn
+            Affected=FelledStemMerch_Burned_Frac*vo['C_Eco_Pools'][iT,iS,iEP['FelledStemMerch']]
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledStemMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledStemMerch']]-Affected
+            Burned_As_CO2=tf_co2*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Burned_As_CO2            
+            Burned_As_CH4=tf_ch4*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Burned_As_CH4            
+            Burned_As_CO=tf_co*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Burned_As_CO
+          
+            # Felled non merch stem that burn
+            Affected=FelledStemNonMerch_Burned_Frac*vo['C_Eco_Pools'][iT,iS,iEP['FelledStemNonMerch']]
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledStemNonMerch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledStemNonMerch']]-Affected
+            Burned_As_CO2=tf_co2*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Burned_As_CO2            
+            Burned_As_CH4=tf_ch4*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Burned_As_CH4            
+            Burned_As_CO=tf_co*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Burned_As_CO
+          
+            # Felled branch that burn
+            Affected=FelledBranch_Burned_Frac*vo['C_Eco_Pools'][iT,iS,iEP['FelledBranch']]
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledBranch']]-Affected
+            Burned_As_CO2=tf_co2*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Burned_As_CO2            
+            Burned_As_CH4=tf_ch4*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Burned_As_CH4            
+            Burned_As_CO=tf_co*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Burned_As_CO
+          
+            # Felled bark that burn
+            Affected=FelledBark_Burned_Frac*vo['C_Eco_Pools'][iT,iS,iEP['FelledBark']]
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledBark']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledBark']]-Affected
+            Burned_As_CO2=tf_co2*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Burned_As_CO2            
+            Burned_As_CH4=tf_ch4*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Burned_As_CH4            
+            Burned_As_CO=tf_co*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Burned_As_CO
+          
+            # Felled snag stem that burn
+            Affected=FelledSnagStem_Burned_Frac*vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagStem']]
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagStem']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagStem']]-Affected
+            Burned_As_CO2=tf_co2*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Burned_As_CO2            
+            Burned_As_CH4=tf_ch4*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Burned_As_CH4            
+            Burned_As_CO=tf_co*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Burned_As_CO
+          
+            # Felled snag branch that burn
+            Affected=FelledSnagBranch_Burned_Frac*vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagBranch']]
+            vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagBranch']]=vo['C_Eco_Pools'][iT,iS,iEP['FelledSnagBranch']]-Affected
+            Burned_As_CO2=tf_co2*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECO2asC']]+Burned_As_CO2            
+            Burned_As_CH4=tf_ch4*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECH4asC']]+Burned_As_CH4            
+            Burned_As_CO=tf_co*Affected
+            vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]=vo['C_Eco_Pools'][iT,iS,iEP['ECOasC']]+Burned_As_CO
+                      
             #------------------------------------------------------------------
             # Update stand age
             #------------------------------------------------------------------
@@ -1702,14 +1772,15 @@ def Taz(iT,vi,vo,psl,meta,iEP):
                     vo['A'][iT,iS]=1
                 
                 else:
-                
-                    # Assume oldest trees were most affected, reduce age in prportion
-                    # with mortality rate
-                    # Not always realistic, but see how net growth is affected.
-                    #vo['A'][iT,iS]=vo['A'][iT,iS]*(1-Biomass_Affected_Pct)
                     
-                    # Assume no change
-                    vo['A'][iT,iS]=vo['A'][iT,iS]
+                    if (ID_Type==meta['LUT Dist']['Beetles']):
+                        # Assume oldest trees were most affected, reduce age in prportion
+                        # with mortality rate
+                        # Not always realistic, but see how net growth is affected.
+                        vo['A'][iT,iS]=vo['A'][iT,iS]*(1-Biomass_Affected_Frac)
+                    else:                   
+                        # Assume no change
+                        vo['A'][iT,iS]=vo['A'][iT,iS]
                     
             #------------------------------------------------------------------
             # Transition to new growth curve
@@ -1774,7 +1845,7 @@ def Taz(iT,vi,vo,psl,meta,iEP):
                     G_pre=NetGrowth.copy()
                 
                     # Growth post-event
-                    G_post=(1-Biomass_Affected_Pct)*NetGrowth.copy()
+                    G_post=(1-Biomass_Affected_Frac)*NetGrowth.copy()
                 
                     # Difference in growth
                     dG=G_pre-G_post
@@ -1798,6 +1869,7 @@ def Taz(iT,vi,vo,psl,meta,iEP):
                     # Add back to dictionary
                     NetGrowthNew=NetGrowthNew*meta['Scale Factor GC']
                     NetGrowthNew=NetGrowthNew.astype(np.int16)                
+                    
                     #vi['GCA'][:,iS,:]=NetGrowthNew
     
             #------------------------------------------------------------------
@@ -1839,17 +1911,32 @@ def Taz(iT,vi,vo,psl,meta,iEP):
                 #--------------------------------------------------------------
                 
                 if meta['Fertilization Source']=='CBRunner':
-                
-                    ResponseRatio=1.28
                     
+                    # This is the mean response ratio and duration from running
+                    # the FLNRORD standard response from BatchTIPSY. 
                     ResponsePeriod=10
+                    
+                    # For FDC (P, SI=25, SPH=1800, ages 20, 40 and 60)
+                    #ResponseRatio=1.32
+                    
+                    # For FDC (P, SI=30, SPH=1800, ages 20, 40 and 60)
+                    ResponseRatio=1.23
+                    
+                    # For FDC (P, SI=35, SPH=1800, ages 20, 40 and 60)
+                    #ResponseRatio=1.02
+                    
+                    # For PL (P, SI=15, SPH=1800, ages 20, 40 and 60)
+                    #ResponseRatio=1.21
+                    
+                    # For PL (P, SI=20, SPH=1800, ages 20, 40 and 60)
+                    #ResponseRatio=1.21
                     
                     A=np.arange(1,302,1)
                     iResponse=np.where( (A>=vo['A'][iT,iS]) & (A<=vo['A'][iT,iS]+ResponsePeriod) )[0]
                     
-                    GCA_SP=vi['GCA'][:,iS,:].copy().astype(float)/meta['Scale Factor GC']                    
+                    GCA_SP=vi['GCA'][:,iS,:].copy().astype(float)/meta['Scale Factor GC']
                     GCA_SP[iResponse,:]=ResponseRatio*GCA_SP[iResponse,:]
-                    GCA_SP=GCA_SP*meta['Scale Factor GC']                        
+                    GCA_SP=GCA_SP*meta['Scale Factor GC']
                     GCA_SP=GCA_SP.astype(np.int16)
                     vi['GCA'][:,iS,:]=GCA_SP
                 

@@ -15,7 +15,7 @@ def lut_n2s(dc,numb):
         vals=np.fromiter(dc.values(),dtype=float)
         keys=np.fromiter(dc.keys(),dtype='<U30')
         ind=np.where(vals==numb)[0]
-        s=keys[ind]    
+        s=keys[ind]
     else:
         s=np.array(['Unidentified'],ndmin=1)
     return s
@@ -95,43 +95,6 @@ def QueryResultsActivity(d):
             Name.append('Undefined')
             
     return Name
-
-
-#def QueryResultsActivityNumeric(d,meta):
-#    
-#    lut_dist=meta['LUT Dist']
-#    lut_atu=meta['LUT ATU']
-#    Name=[]
-#    ID=[]
-#    for i in range(d['SILV_BASE_CODE'].size):
-#        if (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['FE']) & (d['SILV_TECHNIQUE_CODE'][i]==lut_atu['SILV_TECHNIQUE_CODE']['CA']) & (d['SILV_METHOD_CODE'][i]==lut_atu['SILV_METHOD_CODE']['HELI']):
-#            Name.append('Fertilization Aerial')
-#            ID.append(lut_dist['Fertilization Aerial'])
-#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['FE']) & (d['SILV_TECHNIQUE_CODE'][i]==lut_atu['SILV_TECHNIQUE_CODE']['CG']) & (d['SILV_METHOD_CODE'][i]==lut_atu['SILV_METHOD_CODE']['GRANU']):
-#            Name.append('Fertilization Hand')
-#            ID.append(lut_dist['Fertilization Hand'])
-#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PL']) & (d['SILV_METHOD_CODE'][i]!=lut_atu['SILV_METHOD_CODE']['LAYOT']):
-#            Name.append('Planting')     
-#            ID.append(lut_dist['Planting'])
-#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['DS']):
-#            Name.append('Direct Seeding')
-#            ID.append(lut_dist['Direct Seeding'])
-#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['SU']):
-#            Name.append('Surveys')
-#            ID.append(-999)
-#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['SP']):
-#            Name.append('Site Prep')
-#            ID.append(-999)
-#        elif (d['SILV_BASE_CODE'][i]==lut_atu['SILV_BASE_CODE']['PC']) & (d['SILV_OBJECTIVE_CODE_1'][i]==lut_atu['SILV_OBJECTIVE_CODE_1']['DM']):
-#            Name.append('Dwarf Mistletoe Control')
-#            ID.append(lut_dist['Dwarf Mistletoe Control'])
-#        elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
-#            Name.append('Road Rehab')
-#            ID.append(-999)
-#        else:
-#            Name.append('Undefined')
-#            ID.append(-999)
- #   return Name,ID
 
 
 '''============================================================================
@@ -360,6 +323,7 @@ def ImportProjectConfig(meta):
     meta['iEP']['BiomassBelowground']=np.array([iEP['RootCoarse'],iEP['RootFine']])
     meta['iEP']['DeadWood']=np.array([iEP['FelledStemMerch'],iEP['FelledStemNonMerch'],iEP['FelledBranch'],iEP['FelledBark'],iEP['SnagStem'],iEP['SnagBranch']])
     meta['iEP']['Litter']=np.array([iEP['LitterVF'],iEP['LitterF'],iEP['LitterM'],iEP['LitterS']])
+    meta['iEP']['Felled']=np.array([iEP['FelledStemMerch'],iEP['FelledStemNonMerch'],iEP['FelledBranch'],iEP['FelledBark'],iEP['FelledSnagStem'],iEP['FelledSnagBranch']])
     meta['iEP']['Soil']=np.array([iEP['SoilVF'],iEP['SoilF'],iEP['SoilS']])
     
     # Pool names (products)
@@ -471,14 +435,14 @@ Return a list of dictionaries for each scenario. If multiple ensemble were run,
 the function will retun the average.
 ============================================================================'''
 
-def LoadScenarioResults(meta):
+def LoadScenarioResults(meta,scn):
 
     # Open connection to parameter database   
     meta=gu.ipickle(meta['Path Project'] + '\\Outputs\\Scenario' + FixFileNum(0) + '\\Metadata.pkl')
     
     # Initialize list that will contain scenarios
     v=[]
-    for iScn in range(0,meta['N Scenario']):        
+    for iScn in scn:
         for iEns in range(0,meta['N Ensemble']):            
             for iBat in range(0,meta['N Batch']):
                 
@@ -563,14 +527,15 @@ def PostProcessTIPSY(meta):
 
         # Growth curve parameters and TIPSY outputs
         if meta['Growth Curves Lumped']=='Yes':
-            dfPar=pd.read_excel(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+            dfPar=pd.read_excel(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
             txtDat=np.loadtxt(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
         else:
-            dfPar=pd.read_excel(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+            dfPar=pd.read_excel(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
             txtDat=np.loadtxt(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurvesTIPSY_Output.out',skiprows=4)
         
         # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-        colnams=['Age','VolTot0','VolMerch75','VolMerch125','VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots','ODT_Stem','Lum1_2x4','Lum1_2x6','Lum1_2x8','Lum1_2x10','Lum2orBetter_2x4','Lum2orBetter_2x6','Lum2orBetter_2x8','Lum2orBetter_2x10']
+        #colnams=['Age','VolTot0','VolMerch75','VolMerch125','VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots','ODT_Stem','Lum1_2x4','Lum1_2x6','Lum1_2x8','Lum1_2x10','Lum2orBetter_2x4','Lum2orBetter_2x6','Lum2orBetter_2x8','Lum2orBetter_2x10']
+        colnams=['Age','VolTot0','VolMerch125','VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots','ODT_Stem','MortalityVolumeTotal']
         dfDat=pd.DataFrame(txtDat,columns=colnams)
 
         # Define age vector (must be consistent with how TIPSY was set up)
@@ -687,11 +652,12 @@ def Import_BatchTIPSY_Output(meta):
     # Growth curve parameters and TIPSY outputs
     if meta['Growth Curves Lumped']!='Yes':
         print('This wont work')
-    dfPar=pd.read_excel(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+    dfPar=pd.read_excel(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
     txtDat=np.loadtxt(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
     
     # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    colnams=['Age','VolTot0','VolMerch75','VolMerch125','VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots','ODT_Stem','Lum1_2x4','Lum1_2x6','Lum1_2x8','Lum1_2x10','Lum2orBetter_2x4','Lum2orBetter_2x6','Lum2orBetter_2x8','Lum2orBetter_2x10']
+    #colnams=['Age','VolTot0','VolMerch75','VolMerch125','VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots','ODT_Stem','Lum1_2x4','Lum1_2x6','Lum1_2x8','Lum1_2x10','Lum2orBetter_2x4','Lum2orBetter_2x6','Lum2orBetter_2x8','Lum2orBetter_2x10']
+    colnams=['Age','VolTot0','VolMerch125','VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots','ODT_Stem','MortalityVolumeTotal']
     dfDat=pd.DataFrame(txtDat,columns=colnams)
 
     # Define age vector (must be consistent with how TIPSY was set up)
@@ -727,13 +693,13 @@ def Import_BatchTIPSY_Output(meta):
                 gc0.append(d)
             gc1.append(gc0)
         gc2.append(gc1)
-        
     return gc2
 
-def Import_CompiledGrowthCurves(meta):
+def Import_CompiledGrowthCurves(meta,scn):
+    # *** This needs to be fixed - Vstem is on the end column ***
     # gc[iScn][iGC][iStand]
     gc=[]
-    for iScn in range(meta['N Scenario']):
+    for iScn in range(len(scn)): #range(meta['N Scenario']):
         gc0=[]
         gc1=[]
         for iBat in range(0,meta['N Batch']):            
@@ -887,6 +853,7 @@ def CalculateGHGBalance(v1,meta):
         if meta['Save Biomass Pools']=='Yes':
             Eco_Biomass=co2_to_c*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['BiomassTotal']].copy(),axis=2)       
             Eco_BiomassAG=co2_to_c*np.nansum(v1[i].C_Eco_Pools[:,:,meta['iEP']['BiomassAboveground']].copy(),axis=2)
+            Eco_Felled=co2_to_c*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['Felled']].copy(),axis=2)
             Eco_Litter=co2_to_c*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['Litter']].copy(),axis=2)
             Eco_DeadWood=co2_to_c*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['DeadWood']].copy(),axis=2)
             Eco_Soil=co2_to_c*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['Soil']].copy(),axis=2)
@@ -897,6 +864,7 @@ def CalculateGHGBalance(v1,meta):
         elif meta['Save Biomass Pools']=='No': 
             Eco_Biomass=co2_to_c*v1[i].Eco_Biomass.copy()
             Eco_BiomassAG=co2_to_c*v1[i].Eco_BiomassAG.copy()
+            Eco_Felled=co2_to_c*v1[i].Eco_Felled.copy()
             Eco_Litter=co2_to_c*v1[i].Eco_Litter.copy()
             Eco_DeadWood=co2_to_c*v1[i].Eco_DeadWood.copy()
             Eco_Soil=co2_to_c*v1[i].Eco_Soil.copy()
@@ -904,7 +872,7 @@ def CalculateGHGBalance(v1,meta):
             Pro_DumpLandfill=co2_to_c*v1[i].Pro_DumpLandfill.copy()
             Pro_Emissions=v1[i].Pro_Emissions_co2e.copy() # Already converted to CO2e
         
-        Eco_Total=Eco_Biomass+Eco_Litter+Eco_DeadWood+Eco_Soil
+        Eco_Total=Eco_Biomass+Eco_Felled+Eco_Litter+Eco_DeadWood+Eco_Soil
         Pro_Total=Pro_InUse+Pro_DumpLandfill        
         Sec_NGHGB=Eco_NPP-Eco_RH-Eco_E_Fire-Eco_E_Operations-Pro_Emissions
     
@@ -922,6 +890,7 @@ def CalculateGHGBalance(v1,meta):
               'Eco_Removals':Eco_Removals,
               'Eco_NGHGB':Eco_NGHGB,
               'Eco_Biomass':Eco_Biomass,
+              'Eco_Felled':Eco_Felled,
               'Eco_Litter':Eco_Litter,
               'Eco_DeadWood':Eco_DeadWood,
               'Eco_Soil':Eco_Soil,
@@ -943,7 +912,7 @@ def CalculateGHGBalance(v1,meta):
              'NPP (tCO2e/ha/yr)','RH (tCO2e/ha/yr)','LF (tCO2e/ha/yr)',
              'Fire emissions (tCO2e/ha/yr)','Operational emissions (tCO2e/ha/yr)',
              'Removals (tCO2e/ha/yr)','Net ecosystem GHG balance (tCO2e/ha/yr)',
-             'Biomass (tCO2e/ha)','Litter (tCO2e/ha)','Dead wood (tCO2e/ha)',
+             'Biomass (tCO2e/ha)','Felled (tCO2e/ha)','Litter (tCO2e/ha)','Dead wood (tCO2e/ha)',
              'Soil (tCO2e/ha)','Total ecosystem (tCO2e/ha)','In-use products (tCO2e/ha)',
              'Dump and landfill (tCO2e/ha)','Total product sector (tCO2e/ha)',
              'Product emissions (tCO2e/ha/yr)','Net sector GHG balance (tCO2e/ha/yr)']        
@@ -1191,6 +1160,10 @@ def UpdateParamaters(pthin):
     
 '''============================================================================
 TIPSY BUILD INPUT FILE
+
+Notes:
+    if the input spreadsheet has nan's, all data will be converted to float
+
 ============================================================================'''
 
 def BuildTIPSYInputs(meta):
@@ -1200,7 +1173,7 @@ def BuildTIPSYInputs(meta):
     df_frmt=pd.read_excel(fin,sheet_name='Sheet1')
 
     # Format array
-    nfrmt=df_frmt.iloc[1,4:47]
+    nfrmt=df_frmt.iloc[1,4:53]
 
     # Are the growth curves stored all together, or by scenario
     if meta['Growth Curves Lumped']=='Yes':
@@ -1212,18 +1185,18 @@ def BuildTIPSYInputs(meta):
         
         # Import input data   
         if meta['Growth Curves Lumped']=='Yes':
-            df=pd.read_excel(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+            df=pd.read_excel(meta['Path Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
         else:
-            df=pd.read_excel(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+            df=pd.read_excel(meta['Path Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
     
         # Variable names to include
-        varnams=df.columns[4:47] 
+        varnams=df.columns[4:53]
 
         # Create a spacer
         spc=" " 
 
         # Number of rows to run
-        N_Run=df.shape[0] 
+        N_Run=df.shape[0]
 
         # Do it in batches of no more than 5000 rows because - slow when not defining size upfront
         Ivl_Batch=5000
@@ -1257,6 +1230,7 @@ def BuildTIPSYInputs(meta):
                     if s0=='nan': s0=''
                     if s0=='NA': s0=''
                     if s0=='NaN': s0=''
+                    if s0=='': s0=''
     
                     n=nfrmt[j]
                     if len(s0)==n: 
@@ -1355,22 +1329,26 @@ TIME SERIES OF AREA DISTURBED
 ============================================================================'''
 
 def GetAreasAffected(meta):
+    
+    it=np.where(meta['Time']>=meta['Year Start Saving'])
+    tv=meta['Time'][it]
+    
     A=[]
     for iScn in range(meta['N Scenario']):
         A.append({})
         for key in meta['LUT Dist'].keys():
-            A[iScn][key]=np.zeros(meta['Time'].size)      
+            A[iScn][key]=np.zeros((tv.size,meta['N Stand']))
         for iBat in range(meta['N Batch']):            
             iEns=0            
             dh=gu.ipickle(meta['Path Input Scenario'][iScn] + '\\Disturbance_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')    
             for iS in range(len(dh)):                
                 for iY in range(dh[iS]['Year'].size):
-                    it=np.where(meta['Time']==np.round(dh[iS]['Year'][iY]))[0]
+                    it=np.where(tv==np.round(dh[iS]['Year'][iY]))[0]
                     if it.size==0: 
                         continue
                     for key in meta['LUT Dist'].keys():
                         if dh[iS]['ID_Type'][iY]==meta['LUT Dist'][key]:
-                            A[iScn][key][it]=A[iScn][key][it]+1
+                            A[iScn][key][it,iS]=A[iScn][key][it,iS]+1
         
         #----------------------------------------------------------------------
         # Summaries

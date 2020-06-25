@@ -6,7 +6,7 @@ from matplotlib import path
 from shapely.geometry import Polygon,Point
 import pyproj
 import rasterio
-from rasterio.warp import calculate_default_transform, reproject, Resampling
+#from rasterio.warp import calculate_default_transform, reproject, Resampling
 
 '''============================================================================
 IMPORT SPATIAL REFERENCE SYSTEMS

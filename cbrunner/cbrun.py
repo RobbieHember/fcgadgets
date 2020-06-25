@@ -47,7 +47,7 @@ def RunProject(meta):
                     
                     # Create a WorkingOn file to let other instances know that this batch is
                     # in progress
-                    gu.opickle(pthWO,[])                    
+                    gu.opickle(pthWO,[])
             
                 print('Running Scenario ' + FixFileNum(iScn) + ', Ensemble ' + FixFileNum(iEns) + ', Batch ' + FixFileNum(iBat))
                 
@@ -678,6 +678,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
         # Add pool categories
         dat['Eco_Biomass']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassTotal']],axis=2)[it,:]
         dat['Eco_BiomassAG']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassAboveground']],axis=2)[it,:]
+        dat['Eco_Felled']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Felled']],axis=2)[it,:]
         dat['Eco_Litter']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Litter']],axis=2)[it,:]
         dat['Eco_DeadWood']=np.sum(vo['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)[it,:]
         dat['Eco_Soil']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)[it,:]
