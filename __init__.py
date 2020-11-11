@@ -1,2 +1,3 @@
-name="fctools"
-__all__=["cbrunner","python_scripts"]
+name="fcgadgets"
+__all__=["cbrunner"]
+# ,"activities","taz",'utilities"

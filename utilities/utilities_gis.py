@@ -6,7 +6,9 @@ from matplotlib import path
 from shapely.geometry import Polygon,Point
 import pyproj
 import rasterio
-#from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.features import shapes
+from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.transform import from_origin
 
 '''============================================================================
 IMPORT SPATIAL REFERENCE SYSTEMS
@@ -15,14 +17,21 @@ IMPORT SPATIAL REFERENCE SYSTEMS
 def ImportSRSs():
     
     srs={}
+    srs['String']={}
+    srs['Proj']={}
+    
+    # Geographic
+    srs['String']['Geographic']='+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs'
+    srs['Proj']['Geographic']=pyproj.Proj(srs['String']['Geographic'])
+    #srs['Proj']['Geographic']=pyproj.Proj(init='epsg:4326')
     
     # NACID
-    str='+proj=lcc +lat_1=49 +lat_2=77 +lat_0=40 +lon_0=-100 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
-    srs['NACID']=pyproj.Proj(str)
+    srs['String']['NACID']='+proj=lcc +lat_1=49 +lat_2=77 +lat_0=40 +lon_0=-100 +x_0=0 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
+    srs['Proj']['NACID']=pyproj.Proj(srs['String']['NACID'])
     
     # BC1ha
-    str='+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
-    srs['BC1ha']=pyproj.Proj(str)
+    srs['String']['BC1ha']='+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
+    srs['Proj']['BC1ha']=pyproj.Proj(srs['String']['BC1ha'])
     return srs
 
 '''============================================================================
@@ -59,15 +68,23 @@ def OpenGeoTiff(pthin):
     extent=(minx,maxx,miny,maxy)
     
     try:
-        x=np.reshape(np.arange(gt[0],gt[0]+gt[1]*n,gt[1]),(1,n))
+        x=np.arange(gt[0],gt[0]+gt[1]*n,gt[1])
     except:
-        x=np.reshape(np.arange(gt[0],gt[0]+gt[1]*n-gt[1],gt[1]),(1,n))
+        x=np.arange(gt[0],gt[0]+gt[1]*n-gt[1],gt[1])
+    
     try:
-        y=np.reshape(np.flip(np.arange(gt[3]-m*gt[1],gt[3],gt[1])),(m,1))
+        y=np.flip(np.arange(gt[3]-m*gt[1],gt[3],gt[1]))
     except:
-        y=np.reshape(np.flip(np.arange(gt[3]-m*gt[1]+gt[1],gt[3],gt[1])),(m,1))
-    x=np.tile(x,(m,1))
-    y=np.tile(y,(1,n))
+        y=np.flip(np.arange(gt[3]-m*gt[1]+gt[1],gt[3],gt[1]))
+    
+    x=np.tile(x,(int(m),1))
+
+    y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
+    
+    Cellsize=gt[1]
+    
+    # Transform
+    Transform=from_origin(minx,maxy,Cellsize,Cellsize)
     
     z={'gt':gt,
        'Data':data,
@@ -80,6 +97,8 @@ def OpenGeoTiff(pthin):
        'miny':miny,
        'maxy':maxy,
        'Extent':extent,
+       'Cellsize':Cellsize,
+       'Transform':Transform,
        'Projection':Projection,
        'Proj4_String':proj4_str}
     
@@ -120,8 +139,8 @@ The raster input structure must be from the OpenGdal function from this module.
 def ClipRaster(z_in,xlim,ylim):
     z=z_in.copy()
     z=Bunch(z)
-    ix=np.where((z.X[0,:]>=xlim[0]) & (z.X[0,:]<=xlim[1]))[0]
-    iy=np.where((z.Y[:,0]>=ylim[0]) & (z.Y[:,0]<=ylim[1]))[0]
+    ix=np.where((z.X[0,:]>=xlim[0]) & (z.X[0,:]<xlim[1]))[0]
+    iy=np.where((z.Y[:,0]>=ylim[0]) & (z.Y[:,0]<ylim[1]))[0]
     ind=np.ix_(iy,ix)
     z.Data=z.Data[ind]
     z.X=z.X[ind]
@@ -184,7 +203,7 @@ def InPolygon(xg,yg,xv,yv):
     
     InPol=np.zeros(xg.shape)
     
-    if xg.ndim==1:
+    if xg.ndim<=1:
         # Points in one dimension
         for i in range(xg.size):
             pnt=Point(xg[i],yg[i])
@@ -233,14 +252,49 @@ def GetExtentFromGDAL(gt,cols,rows):
 COMPRESS CATEGORIES IN RASTER DATASET
 ============================================================================'''
 
-def CompressCats(z0,lab0):
+def CompressCats(z0,id0,lab0,cl0):
     uc=np.unique(z0)
-    z1=uc[0]*np.ones(z0.shape)
-    lab1=[]
+    z1=0*np.ones(z0.shape)
+    cl1=0*np.ones((uc.size,3))
+    lab1=[None]*uc.size
     for i in range(uc.size):
         ind=np.where(z0==uc[i])
-        ind2=np.ix_(ind[0],ind[1])
-        z1[ind2[0].T,ind2[1]]=i+1
-        lab1.append(lab0[uc[i]-1])
+        z1[ind]=i
+        ind=np.where(id0==uc[i])[0]
+        if ind.size==0:
+            lab1[i]='Unknown'
+            cl1[i,:]=[0,0,0]
+        else:
+            lab1[i]=lab0[ind[0]]
+            cl1[i,:]=cl0[ind[0],:]
     lab1=np.array(lab1)
-    return z1,lab1
+    return z1,lab1,cl1
+
+'''============================================================================
+DIGITIZE (GET POLYGONS FROM BINARY MASK)
+============================================================================'''
+
+def Digitize(BinaryMask,xv,yv):
+    
+    #xv=xv.flatten()
+    #yv=yv.flatten()
+    
+    s=shapes(BinaryMask.astype('int16'),mask=None,connectivity=4) 
+    
+    xy=[]
+    for i in range(10000):
+        try:
+            a=next(s)
+            b=a[0]['coordinates'][0]
+            d={}
+            d['x']=np.array([])
+            d['y']=np.array([])
+            for j in range(len(b)):
+                col=int(b[j][0])
+                row=int(b[j][1])
+                d['x']=np.append(d['x'],xv[col-1])
+                d['y']=np.append(d['y'],yv[row-1])
+            xy.append(d)
+        except:
+            break
+    return xy

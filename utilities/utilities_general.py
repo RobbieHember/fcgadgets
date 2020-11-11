@@ -16,6 +16,7 @@ from scipy import stats, linalg
 import pickle
 from scipy.io import loadmat
 from subprocess import call
+import netCDF4 as nc
 
 #%% PICKLE INPUT AND OUTPUT
 
@@ -34,9 +35,13 @@ def opickle(path,data):
 
 def PrintFig(fin,type,dpi):    
     if type=='emf':
-        path_to_inkscape='C:\Program Files\Inkscape\inkscape.exe'    
-        plt.savefig(fin+'.svg',format='svg')    
-        call([path_to_inkscape,'--file',fin+'.svg','--export-emf',fin+'.emf'])
+        plt.savefig(fin+'.svg',format='svg')
+        try:
+            path_to_inkscape=r'C:\Program Files\Inkscape\inkscape.exe'  
+            call([path_to_inkscape,'--file',fin+'.svg','--export-emf',fin+'.emf'])            
+        except:
+            path_to_inkscape=r'C:\Program Files\Inkscape\bin\inkscape.exe'    
+            call([path_to_inkscape,'--file',fin+'.svg','--export-emf',fin+'.emf'])
         os.remove(fin+'.svg')
     elif type=='png':
         plt.savefig(fin+'.png',format='png',dpi=dpi) 
@@ -47,15 +52,16 @@ def PrintFig(fin,type,dpi):
         os.remove(fin+'.svg')
         plt.savefig(fin+'.png',format='png',dpi=dpi) 
         
-
 #%% IMPORT EXCEL SPREADSHEET AND CONVERT TO DICTIONARY
 
 def ReadExcel(*args):
     
     if len(args)==1:
         df=pd.read_excel(args[0])
-    else:
+    elif len(args)==2:
         df=pd.read_excel(args[0],sheet_name=args[1])
+    elif len(args)==3:
+        df=pd.read_excel(args[0],skiprows=args[2])
     
     d=df.to_dict('list')
     for k in d.keys():
@@ -356,5 +362,79 @@ def Import_GraphicsParameters(type):
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
                 'savefig.bbox':'tight'}
+    elif type=='spyder_fs7':
+        fs1=7
+        fs2=7
+        params={'font.sans-serif':'Arial',
+                'font.size':fs1,
+                'figure.titlesize':fs2,
+                'figure.dpi':150,
+                'figure.constrained_layout.use':True,
+                'axes.edgecolor':'black',
+                'axes.labelsize':fs1,
+                'axes.labelcolor':'black',
+                'axes.titlesize':fs2,
+                'axes.titlepad':2,
+                'axes.linewidth':0.5,        
+                'lines.linewidth':0.75,
+                'lines.markersize': 2,
+                'text.color':'black',
+                'xtick.color':'black',        
+                'xtick.labelsize':fs1,
+                'xtick.major.width':0.5,
+                'xtick.major.size':3,
+                'xtick.direction':'in',
+                'ytick.color':'black',
+                'ytick.labelsize':fs1,
+                'ytick.major.width':0.5,
+                'ytick.major.size':3,
+                'ytick.direction':'in',
+                'legend.fontsize':fs1,        
+                'savefig.dpi':900,
+                'savefig.transparent':True,
+                'savefig.format':'png',
+                'savefig.pad_inches':0.1,
+                'savefig.bbox':'tight'}
         
     return params
+
+#%% Z-score a variable
+
+def zscore(x):
+    y=(x-np.nanmean(x))/np.nanstd(x)
+    return y
+
+#%% Read NetCDF4
+
+def ReadNC(fin):
+    ds=nc.Dataset(fin)
+    d={}
+    for k in ds.variables.keys():
+        d[k]=np.array(ds.variables[k][:])    
+    return d
+
+#%% Sum over interval
+    
+def BlockSum(x,ivl):    
+    if x.ndim==1:
+        m=x.size
+        x1=np.append(x,np.nan*np.ones(ivl))
+        y=x[0::ivl]
+        for i in range(1,ivl):
+            y=y+x1[i::ivl]
+    return y
+
+#%% Sum over interval
+    
+def BlockMean(x,ivl):    
+    if x.ndim==1:
+        m=x.size
+        y=np.zeros(np.ceil(x.size/ivl).astype(int))
+        for i in range(ivl):
+            to_add=x[i::ivl]
+            y[0:to_add.size]=y[0:to_add.size]+to_add
+        y=y/ivl
+    else:
+        y='Oops!'
+        print('y=Oops, needs revision')        
+    return y
