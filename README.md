@@ -2,14 +2,13 @@
 
 # fcgadgets
 ## Features
-The fcgadgets package supports greenhouse gas (GHG) balance estimation, accounting, and reporting for climate change mitigation projects in British Columbia’s Land Use, Land Use Change and Forestry (LULUCF) sector. It is a community-based computer simulation model for estimating the GHG balance of treatment areas under various management scenarios. The fcgadgets.utilities module stores script templates and custom utilities that support application of cbrunner. 
-cbrunner is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
+The fcgadgets package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. It features a computer simulation model, **cbrunner**, that integrates methods and modules in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
-The repository was designed for intermediate and advanced analysts who value: 
-* Transparent methods;
-* Efficient workflow through custom links with BC’s spatial forest inventories and growth and yield models;
+The package features: 
+* Integration with BC’s spatial forest inventories;
+* Integration with BC's flagship growth and yield models;
 * Modular representation of biophysical processes;
-* Equivalent principles and standards applied in Canada’s National GHG Inventory.
+* Principles and standards applied in Canada’s National GHG Inventory.
 
 As examples, the demos subpackage walks through demonstrations of Forest Carbon Initiative (FCI) project types:
 * Aerial fertilization
