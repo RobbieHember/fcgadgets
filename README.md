@@ -1,5 +1,5 @@
 # fcgadgets
-## Features
+## FEATURES
 The fcgadgets package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. It features a computer simulation model, **cbrunner**, that draws on established and custom methods to simulate net forest sector GHG balance. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 The package features a versatile and streamlined workflow through integration with BC databases and models: 
@@ -9,10 +9,7 @@ The package features a versatile and streamlined workflow through integration wi
 
 The aim of the Package is to maintain the principles and standards applied in Canada’s National GHG Inventory for the purpose of analyzing actual and proposed climate change mitigation in the Land Use, Land Use Change and Forestry (LULUCF) sector. 
 
-## Dependencies
-Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
-
-## cbrunner
+## CBRUNNER
 The cbrunner subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
 
 The package adopts a probabilistic framework that can accommodate processes with deterministic and random components.
@@ -37,16 +34,19 @@ Harvested wood products:
 ### HWP_From_Dymond12: 
 * Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
-## activities 
+## ACTIVITIES
 The *activities* subpackage contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea.
-## taz: 
+## TAZ
 The *taz* subpackage contains resources for representing natural disturbances.
 ### general_stat_models:
 * Equations for 
 
-## Workflow
+## DEPENDENCIES
+Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
+
+## WORKFLOW
 There are four ways to apply cbrunner depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
 ![image info](./images/fcgadgets_runoptions.png)
 
@@ -65,7 +65,10 @@ Project workflow:
 10. Import output variables to analysis session by calling LoadScenarioResults. 
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
 
-## References
+## TIPS
+* The **meta** dictionary tracks all necessary information about a project. 
+
+## REFERENCES
 Downey, A.B., 2017. Modeling and Simulation in Python – Green Tea Press, 2.3. ed. Green Tea Press, Needham, Massaschusetts.
 
 Dymond, C.C., 2012. Forest carbon in North America: annual storage and emissions from British Columbia’s harvest, 1965-2065. Carbon Balance and Management 7, (24 July 2012)-(24 July 2012).
