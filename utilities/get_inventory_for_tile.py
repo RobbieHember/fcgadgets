@@ -47,9 +47,8 @@ gdf_tile=gpd.read_file(Paths['Project Root'] + '\\TilesBC.shp')
 
 #%% Specify the tiles to run
 
-TilesToRun_ij=np.zeros((2,2),dtype=int)
-TilesToRun_ij[0,:]=[8,8]
-TilesToRun_ij[1,:]=[9,7]
+TilesToRun_ij=np.zeros((1,2),dtype=int)
+TilesToRun_ij[0,:]=[10,9]
 #TilesToRun_ij[0,:]=[11,7]
 #TilesToRun_ij[0,:]=[9,9]
 #TilesToRun_ij[0,:]=[11,8]

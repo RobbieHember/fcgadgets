@@ -211,7 +211,7 @@ def DefineInventoryLayersAndVariables():
      ('FIRE_YEAR',0,'int16'), \
      ('FIRE_CAUSE',1,'int16'), \
      ('FIRE_DATE',0,'<U20'), \
-     ('FIRE_NO',0,'<U20')]
+     ('FIRE_NUMBER',0,'<U20')]
     d['LUT']={}
     for field in d['Field List']: d['LUT'][field[0]]=[] 
     LayerInfo.append(d)
@@ -362,7 +362,7 @@ BUILD LOOK-UP TABLES FOR THE CODES IN INVENTORY LAYERS
 
 def BuildForestInventoryLUTs(LayerInfo):
 
-    f#or iLyr in range(10,12):
+    #for iLyr in range(6,7):
     for iLyr in range(len(LayerInfo)):    
 
         # Start counting time
@@ -1498,6 +1498,8 @@ def Remove_SlashpileBurns_From_Select_Zones(meta,dmeh,ba):
             ind=np.where(dmeh[iStand]['ID_Type']!=meta['LUT Dist']['Slashpile Burn'])[0]
             if ind.size>0:
                 for key in dmeh[iStand]:
+                    if key=='ScnAffected':
+                        continue
                     dmeh[iStand][key]=dmeh[iStand][key][ind]
     
     return dmeh

@@ -61,11 +61,11 @@ def OpenGeoTiff(pthin):
     proj4_str=prj.GetAttrValue('AUTHORITY',1)
     
     m,n=data.shape    
-    minx=gt[0]
-    maxy=gt[3]
-    maxx=minx+gt[1]*n  
-    miny=maxy+gt[5]*m
-    extent=(minx,maxx,miny,maxy)
+    xmin=gt[0]
+    ymax=gt[3]
+    xmax=xmin+gt[1]*n  
+    ymin=ymax+gt[5]*m
+    extent=(xmin,xmax,ymin,ymax)
     
     try:
         x=np.arange(gt[0],gt[0]+gt[1]*n,gt[1])
@@ -84,7 +84,7 @@ def OpenGeoTiff(pthin):
     Cellsize=gt[1]
     
     # Transform
-    Transform=from_origin(minx,maxy,Cellsize,Cellsize)
+    Transform=from_origin(xmin,ymax,Cellsize,Cellsize)
     
     z={'gt':gt,
        'Data':data,
@@ -92,17 +92,19 @@ def OpenGeoTiff(pthin):
        'Y':y,
        'm':data.shape[0],
        'n':data.shape[1],
-       'minx':minx,
-       'maxx':maxx,
-       'miny':miny,
-       'maxy':maxy,
+       'xmin':xmin,
+       'xmax':xmax,
+       'ymin':ymin,
+       'ymax':ymax,
+       'xlim':[xmin,xmax],
+       'ylim':[ymin,ymax],
        'Extent':extent,
        'Cellsize':Cellsize,
        'Transform':Transform,
        'Projection':Projection,
        'Proj4_String':proj4_str}
     
-    z=Bunch(z)
+    #z=Bunch(z)
     
     return z
 
@@ -138,21 +140,25 @@ The raster input structure must be from the OpenGdal function from this module.
 
 def ClipRaster(z_in,xlim,ylim):
     z=z_in.copy()
-    z=Bunch(z)
-    ix=np.where((z.X[0,:]>=xlim[0]) & (z.X[0,:]<xlim[1]))[0]
-    iy=np.where((z.Y[:,0]>=ylim[0]) & (z.Y[:,0]<ylim[1]))[0]
+    #z=Bunch(z)
+    ix=np.where((z['X'][0,:]>=xlim[0]) & (z['X'][0,:]<xlim[1]))[0]
+    iy=np.where((z['Y'][:,0]>=ylim[0]) & (z['Y'][:,0]<ylim[1]))[0]
     ind=np.ix_(iy,ix)
-    z.Data=z.Data[ind]
-    z.X=z.X[ind]
-    z.Y=z.Y[ind]
-    z.m=iy.size
-    z.n=ix.size
-    z.minx=np.min(z.X)
-    z.maxx=np.max(z.X)
-    z.miny=np.min(z.Y)
-    z.maxy=np.max(z.Y)
-    z.gt=(z.minx,z.gt[1],z.gt[2],z.maxy,z.gt[4],z.gt[5])
-    z.Extent=(z.minx,z.maxx,z.miny,z.maxy)
+    z['Data']=z['Data'][ind]
+    z['X']=z['X'][ind]
+    z['Y']=z['Y'][ind]
+    z['m']=iy.size
+    z['n']=ix.size
+    z['xmin']=np.min(z['X'])
+    z['xmax']=np.max(z['X'])
+    z['ymin']=np.min(z['Y'])
+    z['ymax']=np.max(z['Y'])
+    z['gt']=(z['xmin'],z['gt'][1],z['gt'][2],z['ymax'],z['gt'][4],z['gt'][5])
+    z['Extent']=(z['xmin'],z['xmax'],z['ymin'],z['ymax'])
+    z['xlim']=[np.min(z['X']),np.max(z['X'])]
+    z['ylim']=[np.min(z['Y']),np.max(z['Y'])]
+    z['Transform']=from_origin(z['xmin'],z['ymax'],z['Cellsize'],z['Cellsize'])
+    
     return z
 
 '''============================================================================
