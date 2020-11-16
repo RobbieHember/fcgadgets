@@ -1,13 +1,13 @@
 # fcgadgets
 ## FEATURES
-The fcgadgets package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. It features a computer simulation model, **cbrunner**, that draws on established and custom methods to simulate net forest sector GHG balance. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
+The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. It features a computer simulation model, **cbrunner**, that draws on established and custom methods to simulate net forest sector GHG balance. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 The package features a versatile and streamlined workflow through integration with BC databases and models: 
 * Vegetation Resource Inventory (VRI);
 * Reporting Silviculture Updates and Land Status Tracking System (RESULTS);
 * Growth and yield models;
 
-The aim of the Package is to maintain the principles and standards applied in Canada’s National GHG Inventory for the purpose of analyzing actual and proposed climate change mitigation in the Land Use, Land Use Change and Forestry (LULUCF) sector. 
+The aim of the package is to maintain the principles and standards applied in Canada’s National GHG Inventory for the purpose of analyzing actual and proposed climate change mitigation in the Land Use, Land Use Change and Forestry (LULUCF) sector. 
 
 ## CBRUNNER
 The cbrunner subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
@@ -27,7 +27,8 @@ The package adopts a probabilistic framework that can accommodate processes with
 	* dead wood (snags and coarse woody debris);
 	* litter (organic soil horizon); 
 	* soil (mineral soil horizon);
-	* felled & piled materials.
+	* felled & piled materials
+* Loosely based on methods described by Kurz et al. (2009)
 ### DisturbanceAndManagement: 
 * A custom Python method designed to represent wildfire, insects, disease, and management treatments.
 Harvested wood products:
@@ -35,11 +36,11 @@ Harvested wood products:
 * Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 ## ACTIVITIES
-The *activities* subpackage contains resources for representing effects of forest management on forest sector GHG balance.
+The **activities** subpackage contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea.
 ## TAZ
-The *taz* subpackage contains resources for representing natural disturbances.
+The **taz** subpackage contains resources for representing natural disturbances.
 ### general_stat_models:
 * Equations for 
 
