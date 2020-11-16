@@ -6,7 +6,6 @@ The package features a versatile and streamlined workflow through integration wi
 * Vegetation Resource Inventory (VRI);
 * Reporting Silviculture Updates and Land Status Tracking System (RESULTS);
 * Growth and yield models;
-* British Columbia 1ha (BC1ha) package;
 
 The aim of the package is to maintain the principles and standards applied in Canada’s National GHG Inventory.
 
@@ -14,6 +13,12 @@ As examples, the demos subpackage walks through demonstrations of Forest Carbon 
 * Aerial fertilization
 * Underplanting fire-impacted forests
 * Salvage logging beetle-impacted forests under varying fibre utilization intensities
+
+## Users
+The fcgadgets 
+
+## Dependencies
+Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the BC1ha package.
 
 ## List of modules & methods
 ### BiomassFromTASSorTIPSY: 
