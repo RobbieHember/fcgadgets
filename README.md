@@ -6,8 +6,12 @@ The package features a versatile and streamlined workflow through integration wi
 * Vegetation Resource Inventory (VRI);
 * Reporting Silviculture Updates and Land Status Tracking System (RESULTS);
 * Growth and yield models;
-
 The aim of the package is to maintain the principles and standards applied in Canada’s National GHG Inventory for the purpose of analyzing actual and proposed climate change mitigation in the Land Use, Land Use Change and Forestry (LULUCF) sector. 
+
+## APPLICATIONS
+The **fcgadgets** package can be used in the following applications: 
+* estimation of GHG benefit from climate change mitigation projects identified by BC's Forest Carbon Initiative (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/forest-carbon-initiative)
+* estimation of GHG benefit from investments by non government organizations in forest sector climate change mitigation
 
 ## CBRUNNER
 The **cbrunner** subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
