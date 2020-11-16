@@ -7,7 +7,7 @@ The package features a versatile and streamlined workflow through integration wi
 * Reporting Silviculture Updates and Land Status Tracking System (RESULTS);
 * Growth and yield models;
 
-The aim of the package is to maintain the principles and standards applied in Canada’s National GHG Inventory.
+The aim of the Package is to maintain the principles and standards applied in Canada’s National GHG Inventory.
 
 ## Dependencies
 Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
@@ -18,7 +18,10 @@ The cbrunner subpackage is called to simulate the annual GHG balance for a speci
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 ### BiomassFromSawtooth:
-* Integration with an individual-tree, distance-independent model of biomass dynamics (Hember et al., 2019; Hember and Kurz, 2018).
+* Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
+* Distance-independent representation of resource competition
+* Driven by equations of annual aboveground biomass growth, annual probability of recruitment, and annual probability of mortality
+
 ### DOM_From_CBM08: 
 * Representation of carbon cycling through snags, coarse woody debris, organic soil horizon, and mineral soil horizon following methods similar to the Carbon Budget Model of the Canadian Forest Sector (Kurz et al., 2009).
 ### DisturbanceAndManagement: 
@@ -28,6 +31,7 @@ Harvested wood products:
 * Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
 
 ## activities 
+The activities subpackage contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea.
 ### taz: 
