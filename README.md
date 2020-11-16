@@ -9,18 +9,11 @@ The package features a versatile and streamlined workflow through integration wi
 
 The aim of the package is to maintain the principles and standards applied in Canada’s National GHG Inventory.
 
-As examples, the demos subpackage walks through demonstrations of Forest Carbon Initiative (FCI) project types:
-* Aerial fertilization
-* Underplanting fire-impacted forests
-* Salvage logging beetle-impacted forests under varying fibre utilization intensities
-
-## Users
-The fcgadgets 
-
 ## Dependencies
-Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the BC1ha package.
+Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
 
-## List of modules & methods
+## cbrunner
+The cbrunner subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not spatially.
 ### BiomassFromTASSorTIPSY: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
@@ -33,6 +26,8 @@ Much of the in-house background science and analysis in support of the fcgadgets
 Harvested wood products:
 ### HWP_From_Dymond12: 
 * Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
+
+## activities 
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea.
 ### taz: 
