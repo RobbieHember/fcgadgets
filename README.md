@@ -1,13 +1,11 @@
-* <a id="devex-badge" rel="Exploration" href="https://github.com/BCDevExchange/assets/blob/master/README.md"><img alt="Being designed and built, but in the lab. May change, disappear, or be buggy." style="border-width:0" src="https://assets.bcdevexchange.org/images/badges/exploration.svg" title="Being designed and built, but in the lab. May change, disappear, or be buggy." /></a>
-
 # fcgadgets
 ## Features
-The fcgadgets package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. It features a computer simulation model, **cbrunner**, that draws on established and custom methods and modules to simulate net forest sector GHG balance. It is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
+The fcgadgets package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. It features a computer simulation model, **cbrunner**, that draws on established and custom methods to simulate net forest sector GHG balance. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 The package features a versatile and streamlined workflow through integration with: 
 * Vegetation Resource Inventory (VRI);
 * Reporting Silviculture Updates and Land Status Tracking System (RESULTS);
-* Flagship growth and yield models;
+* Growth and yield models;
 * British Columbia 1ha (BC1ha) package;
 
 Principles and standards applied in Canada’s National GHG Inventory.
@@ -21,9 +19,10 @@ As examples, the demos subpackage walks through demonstrations of Forest Carbon 
 There are four ways to apply cbrunner depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
 ![image info](./images/fcgadgets_runoptions.png)
 
-## List of core modules & methods
+## List of modules & methods
 ### BiomassFromTASSorTIPSY: 
-* Integration with the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
+* Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
+* Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 ### BiomassFromSawtooth:
 * Integration with an individual-tree, distance-independent model of biomass dynamics (Hember et al., 2019; Hember and Kurz, 2018).
 ### DOM_From_CBM08: 
