@@ -20,23 +20,22 @@ As examples, the demos subpackage walks through demonstrations of Forest Carbon 
 There are four ways to apply cbrunner depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
 ![image info](./images/fcgadgets_runoptions.png)
 
-## Core modules used in cbrunner
-Biophysical processes in cbrunner are represented by a variety of Python methods within the fcgadgets.cbrunner.cbrun_annproc module. The cbrunner module can also call modules specifically developed to simulate natural disturbances, including fcgadgets.taz and forest management activities, including fcgadgets.activities.
-Biomass dynamics:
-* BiomassFromTASSorTIPSY: Integration with the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
-* BiomassFromSawtooth:* Integration with an individual-tree, distance-independent model of biomass dynamics (Hember et al., 2019; Hember and Kurz, 2018).
-Dead organic matter dynamics:
-* DOM_From_CBM08: Representation of carbon cycling through snags, coarse woody debris, organic soil horizon, and mineral soil horizon following methods similar to the Carbon Budget Model of the Canadian Forest Sector (Kurz et al., 2009).
-Natural disturbance and management events
-* DisturbanceAndManagement: A custom Python method designed to represent wildfire, insects, disease, and management treatments.
+## List of core modules & methods
+### BiomassFromTASSorTIPSY: 
+* Integration with the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
+### BiomassFromSawtooth:
+* Integration with an individual-tree, distance-independent model of biomass dynamics (Hember et al., 2019; Hember and Kurz, 2018).
+### DOM_From_CBM08: 
+* Representation of carbon cycling through snags, coarse woody debris, organic soil horizon, and mineral soil horizon following methods similar to the Carbon Budget Model of the Canadian Forest Sector (Kurz et al., 2009).
+### DisturbanceAndManagement: 
+* A custom Python method designed to represent wildfire, insects, disease, and management treatments.
 Harvested wood products:
-* HWP_From_Dymond12: Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
-
-## Additional modules
-### Management activities
-* nutrient_addition: Representation of GHG balance responses to aerial applications of Urea.
-### Natural disturbances
-* taz: Statistical models that represent natural disturbances.
+### HWP_From_Dymond12: 
+* Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
+### nutrient_addition:
+* Representation of GHG balance responses to aerial applications of Urea.
+### taz: 
+* Statistical models that represent natural disturbances.
 
 ## References
 Downey, A.B., 2017. Modeling and Simulation in Python – Green Tea Press, 2.3. ed. Green Tea Press, Needham, Massaschusetts.
