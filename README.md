@@ -7,13 +7,16 @@ The package features a versatile and streamlined workflow through integration wi
 * Reporting Silviculture Updates and Land Status Tracking System (RESULTS);
 * Growth and yield models;
 
-The aim of the Package is to maintain the principles and standards applied in Canada’s National GHG Inventory.
+The aim of the Package is to maintain the principles and standards applied in Canada’s National GHG Inventory for the purpose of analyzing actual and proposed climate change mitigation in the Land Use, Land Use Change and Forestry (LULUCF) sector. 
 
 ## Dependencies
 Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
 
 ## cbrunner
-The cbrunner subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not spatially.
+The cbrunner subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
+
+The package adopts a probabilistic framework that can accommodate processes with deterministic and random components.
+
 ### BiomassFromTASSorTIPSY: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
@@ -21,21 +24,27 @@ The cbrunner subpackage is called to simulate the annual GHG balance for a speci
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
 * Driven by equations of annual aboveground biomass growth, annual probability of recruitment, and annual probability of mortality
-
+* Equations are fitted against species/region samples (SRSs)
 ### DOM_From_CBM08: 
-* Representation of carbon cycling through snags, coarse woody debris, organic soil horizon, and mineral soil horizon following methods similar to the Carbon Budget Model of the Canadian Forest Sector (Kurz et al., 2009).
+* Simulates cycling of organic carbon through:
+	* dead wood (snags and coarse woody debris);
+	* litter (organic soil horizon); 
+	* soil (mineral soil horizon);
+	* felled & piled materials.
 ### DisturbanceAndManagement: 
 * A custom Python method designed to represent wildfire, insects, disease, and management treatments.
 Harvested wood products:
 ### HWP_From_Dymond12: 
 * Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
-
+* Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 ## activities 
-The activities subpackage contains resources for representing effects of forest management on forest sector GHG balance.
+The *activities* subpackage contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea.
-### taz: 
-* Statistical models that represent natural disturbances.
+## taz: 
+The *taz* subpackage contains resources for representing natural disturbances.
+### general_stat_models:
+* Equations for 
 
 ## Workflow
 There are four ways to apply cbrunner depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
