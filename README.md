@@ -10,7 +10,7 @@ The package features a versatile and streamlined workflow through integration wi
 The aim of the package is to maintain the principles and standards applied in Canada’s National GHG Inventory for the purpose of analyzing actual and proposed climate change mitigation in the Land Use, Land Use Change and Forestry (LULUCF) sector. 
 
 ## CBRUNNER
-The cbrunner subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
+The **cbrunner** subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
 
 The package adopts a probabilistic framework that can accommodate processes with deterministic and random components.
 
@@ -30,7 +30,8 @@ The package adopts a probabilistic framework that can accommodate processes with
 	* felled & piled materials
 * Loosely based on methods described by Kurz et al. (2009)
 ### DisturbanceAndManagement: 
-* A custom Python method designed to represent wildfire, insects, disease, and management treatments.
+* A custom Python method designed to represent wildfire, insects, disease, and management treatments
+* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume)
 Harvested wood products:
 ### HWP_From_Dymond12: 
 * Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
@@ -42,7 +43,23 @@ The **activities** subpackage contains resources for representing effects of for
 ## TAZ
 The **taz** subpackage contains resources for representing natural disturbances.
 ### general_stat_models:
-* Equations for 
+* Equations for simulating annual probability of various discrete events
+### wildfire_stat_models:
+* Equations for simualating annual probability of wildfire
+* Simple equations based on Pareto distribution fits to annual area burned, stratified by biogeoclimatic zone
+## UTILITIES
+The **utilities** subpackage contains general utilities (custom scripts) to support implementation of cbrunner and accompanying modules.
+### 
+* Pre-processing script template to prepare **cbrunner** inputs for a:
+	* Tile or multi-tile project (get_inventory_for_tile.py)
+	* Sample of points (get_inventory_from_points.py)
+	* Sample of polygons (get_inventory_from_polygons.py)
+* Methods for pre-processing spatial information from: 
+	* VRI 
+	* RESULTS (forest cover, activity treatments, planting)
+	* Aerial Overview Survey
+	* Wildfire perimiters
+
 
 ## DEPENDENCIES
 Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
