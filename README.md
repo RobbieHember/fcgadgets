@@ -23,12 +23,12 @@ The **fcgadgets** package was developed to:
 * Simulate high-resolution, wall-to-wall coverage of a watershed or timber supply area
 
 ## CBRUNNER
-The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. The main module (cbrunner.cbrun.py) configures a hierarchical structure of forest stands, batches, scenarios, and ensembles. The total number of simulations for a project is equal to:
+The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. A hierarchical structure of forest stands, batches, scenarios, and ensembles provides a flexible system for considering multiple baseline and management scenarios, processes with deterministic and random components, and uncertainty analysis. The total number of simulations for a project is equal to:
 
 N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
 
 Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. See section 5 - Biophysical Methods for additional details.
-Projects with NStand > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
+Projects with N_Stands > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
 Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
 Multiple ensembles occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual probability of tree mortality or annual probability of tree establishment and recruitment. 
 Upon running simulations, the cbrunner.cbrun.py module calls the module, cbrunner.cbrun_utilities.py, to compile project and scenario parameters, and initialize variables, and it calls the module, cbrunner.cbrun_annproc.py, to simulate annual carbon dynamics.
@@ -40,7 +40,7 @@ Upon running simulations, the cbrunner.cbrun.py module calls the module, cbrunne
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
 * Driven by equations of annual aboveground biomass growth, annual probability of recruitment, and annual probability of mortality
-* Equations are fitted against species/region samples (SRSs)
+* Equations are fitted against species/region samples
 ### DOM_From_CBM08: 
 * Simulates cycling of organic carbon through:
 	* dead wood (snags and coarse woody debris);
