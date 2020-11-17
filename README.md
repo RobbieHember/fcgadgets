@@ -24,11 +24,11 @@ The **fcgadgets** package was developed to:
 * Simulate high-resolution, wall-to-wall coverage of a watershed or timber supply area
 
 ## CBRUNNER
-The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. A hierarchical structure of forest stands, batches, scenarios, and ensembles provides a flexible system for considering multiple baseline and management scenarios, processes with deterministic and random components, and uncertainty analysis. The total number of simulations for a project is equal to:
+The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. A hierarchical structure of forest stands, batches, scenarios, and ensembles provides a system for simultaneously considering multiple baseline and management scenarios, processes with deterministic and random components, and uncertainty analysis. The total number of simulations for a project is equal to:
 
 N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
 
-Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. Projects with N_Stands > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
+Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by an inventory record, disturbance and management event chronology (DMEC), and age response functions of forest growth (if using a GY model). Projects with N_Stands > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
 
 Multiple ensembles occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual probability of tree mortality or annual probability of tree establishment and recruitment. 
 
@@ -112,6 +112,8 @@ When projects consist of fewer than 1,500 unique combinations of stand and/or sc
 
 Use an existing project template to establish the data folder and the jupyter notebook file.
 
+When the number of ensembles exceeds one, the model swaps stands for ensembles, N_Stand = N_Ensemble for each scenario. Even if some scenarios have no stochastic simulations, N_Ensemble is a project-level parameter that cannot be differentatied among scenarios.
+
 Project workflow entails:
 1. Define project-level parameters in ProjectConfig.xlsx.
 2. Define scenario-level parameters in ProjectConfig.xlsx.
@@ -129,7 +131,7 @@ Project workflow entails:
 Simulation across continuous, regular grids is faciliated by a tile system developed for BC. Such projects are supported by the **utilities_tile** module. 
 
 ## TIPS
-* The **meta** dictionary tracks all necessary information about a project. 
+* The **meta** dictionary tracks all necessary information about a project. It is meant to store parameters and assumptions and levers, but not large data. 
 
 ## REFERENCES
 Downey, A.B., 2017. Modeling and Simulation in Python – Green Tea Press, 2.3. ed. Green Tea Press, Needham, Massaschusetts.

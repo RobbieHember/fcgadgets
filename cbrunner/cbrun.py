@@ -56,7 +56,12 @@ def MeepMeep(meta):
                     # in progress
                     gu.opickle(pthWO,[])
             
-                print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble ' + cbu.FixFileNum(iEns) + ', Batch ' + cbu.FixFileNum(iBat))
+                # Say something
+                if meta['Scenario Source']=='Spreadsheet':
+                    str_ens=' through ' + str(meta['N Ensemble'])
+                    print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble(s) 1' + str_ens + ', Batch ' + cbu.FixFileNum(iBat))
+                else:
+                    print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble ' + cbu.FixFileNum(iEns) + ', Batch ' + cbu.FixFileNum(iBat))
                 
                 # Initialize stands
                 meta,vi,vo=InitializeStands(meta,iScn,iEns,iBat)

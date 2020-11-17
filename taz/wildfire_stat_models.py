@@ -17,7 +17,7 @@ from fcgadgets.taz import general_stat_models as gensm
 def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz):
     
     # Import wildfire stats    
-    wfss=gu.ipickle(meta['Paths']['Wildfire Stats and Scenarios File'])
+    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
     tv_scn=np.arange(-2000,2201,1)
     
     # Prepare mortality probability coefficients
@@ -37,24 +37,29 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz):
     uZone=np.unique(id_bgcz)    
     for iZone in range(uZone.size):
         
-        namZone=cbu.lut_n2s(meta['LUT VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+        namZone=cbu.lut_n2s(meta['LUT BGC Zone'],uZone[iZone])[0]
         
         indZone=np.where(id_bgcz==uZone[iZone])[0]
-            
+
         Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(par['WF']['Scenario ID']))]
         
         for iT in range(meta['Year'].size):
             
-            ind_scn=np.where(tv_scn==meta['Year'][iT])[0]
-            
             # Adjust shape parameter to match specified annual probability of 
             # occurrence from the deterministic component
+            ind_scn=np.where(tv_scn==meta['Year'][iT])[0]
             b0=wfss[namZone]['Beta_Pareto'].copy()
             b_shape=wfss[namZone]['Pareto_shape_for_Po'].copy()
             b0[0]=np.exp(b_shape[1]*np.log(Po_Det[ind_scn])+b_shape[0])
             
-            wf_sim['Occurrence'][iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,indZone.size,b0)
-    
+            if meta['Scenario Source']=='Spreadsheet':
+                # When run from spreadsheet, stands are swapped for ensembles so
+                # generate different records for each stand
+                wf_sim['Occurrence'][iT,:]=gensm.GenerateDisturbancesFromPareto(indZone.size,b0)
+            else:
+                # All stands get populated with the same prediction
+                wf_sim['Occurrence'][iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,b0)        
+        
     # Exclude inventory period
     if par['WF']['Exclude simulations during modern era']=='On':
         ind=np.where( (meta['Year']>=1920) & (meta['Year']<=meta['Year Project']) )[0]
@@ -79,82 +84,6 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz):
     Mort[ind[0],ind[1]]=GetMortalityFromBurnSeverityRating(ind[0].size,beta_obs)
     it=np.where(meta['Year']>=1920)[0]
     wf_sim['Mortality'][it,:]=Mort[it,:]
-    
-    return wf_sim
-
-def GenerateWildfireEnsembleFromAAO_old(meta,par,id_bgcz):
-    
-    # Import wildfire stats    
-    wfss=gu.ipickle(meta['Paths']['Wildfire Stats and Scenarios File'])
-    tv_scn=np.arange(-2000,2201,1)
-    
-    # Prepare mortality probability coefficients
-    beta_pi=np.cumsum([par['WF']['p_Unburned_pi'],par['WF']['p_Low_pi'],par['WF']['p_Medium_pi'],par['WF']['p_High_pi']])
-    beta_obs=np.cumsum([par['WF']['p_Unburned_obs'],par['WF']['p_Low_obs'],par['WF']['p_Medium_obs'],par['WF']['p_High_obs']])
-    
-    wf_sim=[]
-    for iEns in range(meta['N Ensemble']):
-    
-        # Initialize annual probability of occurrence (final with deterministic and
-        # random components)
-        Oc_sim=np.zeros((meta['Year'].size,meta['N Stand Full']))
-    
-        uZone=np.unique(id_bgcz)
-    
-        for iZone in range(uZone.size):
-        
-            indZone=np.where(id_bgcz==uZone[iZone])[0]
-            
-            namZone=cbu.lut_n2s(meta['LUT VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
-            
-            Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(par['WF']['Scenario ID'].astype(int))]
-        
-            for iT in range(meta['Year'].size):
-            
-                ind_scn=np.where(tv_scn==meta['Year'][iT])[0]
-            
-                # Adjust shape parameter to match specified annual probability of 
-                # occurrence from the deterministic component
-                b0=wfss[namZone]['Beta_Pareto'].copy()
-                b_shape=wfss[namZone]['Pareto_shape_for_Po'].copy()
-                b0[0]=np.exp(b_shape[1]*np.log(Po_Det[ind_scn])+b_shape[0])
-            
-                Oc_sim[iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,indZone.size,b0)
-    
-        # Exclude inventory period
-        if par['WF']['Exclude simulations during modern era']=='On':
-            ind=np.where( (meta['Year']>=1920) & (meta['Year']<=2020) )[0]
-            Oc_sim[ind,:]=0
-    
-        # Put events in a stand list, to be nexted within ensemble list
-        # Some may be empty!
-        wf_sim0=[None]*meta['N Stand Full']
-        for iStand in range(meta['N Stand Full']):
-            
-            ind=np.where(Oc_sim[:,iStand]==1)[0]
-            if ind.size==0:
-                continue
-            
-            d={}
-            d['Year']=meta['Year'][ind]
-            
-            # Get mortality from probability of burn severity rating
-            mort=np.zeros(ind.size,dtype='int16')
-            for iyr in range(ind.size):
-                yr=d['Year'][iyr]
-                if yr<1920:  
-                    b=beta_pi.copy()
-                else:
-                    b=beta_obs.copy()
-                mort[iyr]=GetMortalityFromBurnSeverityRating(1,b,yr)
-            d['Mortality']=mort
-            
-            wf_sim0[iStand]=d    
-        
-        del Oc_sim
-    
-    # Add to list of ensembles
-    wf_sim.append(wf_sim0)
     
     return wf_sim
 

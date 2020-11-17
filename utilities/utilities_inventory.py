@@ -1447,7 +1447,7 @@ def Load_Params(meta):
             par['IBM'][ibm['Name'][i]]=ibm['Value'][i]        
          
     # Import historical harvest reconstruction (really basic)
-    par['Ph_Simp']=gu.ReadExcel(r'G:\My Drive\Data\Harvest\Historical BC Harvesting\\HarvestHistoricalProbabilitySimple.xlsx')        
+    par['Ph_Simp']=gu.ReadExcel(meta['Paths']['Taz Datasets'] + '\\Harvest Stats and Scenarios\\HarvestHistoricalProbabilitySimple.xlsx')
             
     return par
 

@@ -7,6 +7,8 @@ import openpyxl
 import gc as garc
 import time
 from fcgadgets.utilities import utilities_general as gu
+from fcgadgets.utilities import utilities_inventory as invu
+from fcgadgets.taz import wildfire_stat_models as wfsm
 
 #%% CONVERT LUT NUMBER TO STRING NAME
 
@@ -123,10 +125,30 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 ec['GrowthFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Max Events Per Year']),dtype='int16')
                 ec['ID_GrowthCurve']=np.zeros((meta['Year'].size,indBat.size,meta['Max Events Per Year']),dtype='int16')
             
+                #--------------------------------------------------------------
+                # Simulate wildfire occurrence and severity from Taz
+                #--------------------------------------------------------------
+                    
+                if meta['Scenario'][iScn]['AAO Wildfire Status']=='On':
+                        
+                    # Import inventory to get BGC zone
+                    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                        
+                    # Prepare required parameters dictionary
+                    # Import fcgadgets parameters
+                    par=invu.Load_Params(meta)
+                    par['WF']['Scenario ID']=meta['Scenario'][iScn]['AAO Wildfire Scenario ID']
+                    par['WF']['Exclude simulations during modern era']='On'
+            
+                    # Normally, this would be run here, but this approach assumes
+                    # that stands have been swapped with ensembles (when running
+                    # from spreadsheet). Instead, it is being re-run for each stand
+                    wf_sim=wfsm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'])  
+            
                 for iS in range(N_StandsInBatch): 
                     
                     #----------------------------------------------------------
-                    # Add spinup disturbances
+                    # Add spinup events
                     #----------------------------------------------------------
                     
                     ivl_spin=meta['Spinup Disturbance Return Inverval']                
@@ -147,7 +169,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
                     
                     #----------------------------------------------------------
-                    # Simulated historical disturbances
+                    # Add simulated constant disturbances
                     #----------------------------------------------------------
                
                     # Historical disturbance from simulation 1
@@ -181,7 +203,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                             ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
       
                     #----------------------------------------------------------
-                    # Events from inventory
+                    # Add events from inventory
                     #----------------------------------------------------------
                     
                     for iYr in range(1,7):
@@ -218,7 +240,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         ec['ID_GrowthCurve'][iT,iS,iE[0]]=meta['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
 
                     #----------------------------------------------------------
-                    # Simulated future disturbances
+                    # Add simulated constant future disturbances
                     #----------------------------------------------------------
                
                     # Future disturbance from simulation 1
@@ -251,7 +273,38 @@ def BuildEventChronologyFromSpreadsheet(meta):
                             ec['GrowthFactor'][iT,iS,0]=0
                             ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']    
             
+                    #----------------------------------------------------------
+                    # Add simulated wildfire from Taz
+                    #----------------------------------------------------------
+                    
+                    if meta['Scenario'][iScn]['AAO Wildfire Status']=='On':
+            
+                        ind=np.where(wf_sim['Occurrence'][:,iS]==1)[0]
+                        if ind.size==0:
+                            continue
+                        
+                        ID_Type=meta['LUT Dist']['Wildfire']*np.ones(ind.size)
+                        Year=tv[ind]
+                        MortF=wf_sim['Mortality'][ind,iS]
+                        GrowthF=0*np.ones(ind.size)
+                        ID_GrowthCurve=1*np.ones(ind.size)
+                            
+                        for iYr in range(Year.size):
+                            iT=np.where(tv==Year[iYr])[0]
+                            ec['ID_Type'][iT,iS,0]=ID_Type[iYr]
+                            ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
+                            ec['GrowthFactor'][iT,iS,0]=GrowthF[iYr]
+                            ec['ID_GrowthCurve'][iT,iS,0]=ID_GrowthCurve[iYr]
+    
+                    #----------------------------------------------------------
+                    # Add simulated MPB from Taz
+                    #----------------------------------------------------------
+
+            
+                #--------------------------------------------------------------
                 # Save to file            
+                #--------------------------------------------------------------
+                
                 gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + \
                        '_Bat' + FixFileNum(iBat) + '.pkl',ec)
 
@@ -950,130 +1003,6 @@ def PostProcessBatchTIPSY(meta):
                     G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
                     G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['GC']['Scale Factor']
                     G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']                  
-                    
-                # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
-                    
-    return
-
-def PostProcessBatchTIPSY_old(meta):
-
-    # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr - create conversion factor
-    dm2c=0.5
-
-    for iScn in range(meta['N Scenario']):
-
-        # Growth curve parameters and TIPSY outputs
-        if meta['Growth Curves Lumped']=='Yes':
-            dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
-            txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
-        else:
-            dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
-            txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurvesTIPSY_Output.out',skiprows=4)
-        
-        # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-        dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
-
-        # Define age vector (must be consistent with how TIPSY was set up)
-        Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age'],1)
-
-        # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
-        N_Age=Age.size
-        N_GC=int(dfDat.shape[0]/N_Age)
-    
-        # Define the fraction of merchantable stemwood
-        fMerch=np.nan_to_num(np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')/np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F'))
-        fNonMerch=1-fMerch
-
-        # Merchantable stemwood volume
-        V_StemMerch=np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')
-        G_VStemMerch=np.append(np.zeros((1,N_GC)),np.diff(V_StemMerch,axis=0),axis=0)
-
-        # Extract age responses for each biomass pool
-        C_Stem=dm2c*np.reshape(dfDat['ODT_Stem'].values,(N_Age,N_GC),order='F')
-        C_StemMerch=fMerch*C_Stem
-        C_StemNonMerch=fNonMerch*C_Stem
-        C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
-        C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
-        C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
-
-        # Foliage biomass is very low, revise
-        bF1=0.579
-        bF2=0.602
-        C_Foliage=np.maximum(0,bF1*C_Stem**bF2)        
-
-        # Calculate growth
-        z=np.zeros((1,N_GC))
-        G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
-        G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
-        G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
-        G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
-        G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
-    
-        # Define growth curves (from TIPSY output)
-        for iGC in range(3):
-    
-            for iBat in range(meta['N Batch']):
-            
-                # Index to batch
-                indBat=IndexToBatch(meta,iBat)
-                
-                # Import disturbance history
-                dh=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(0) + '_Bat' + FixFileNum(iBat) + '.pkl')
-                
-                # Initialize age response of net growth
-                G=np.zeros((N_Age,indBat.size,6),dtype=np.int16)
-    
-                # Populate the growth curve
-                for iS in range(len(dh)):
-        
-                    ID_GrowthCurveM=1*np.ones((dh[iS]['ID_GrowthCurve'].shape[0],))
-                    d=np.diff(dh[iS]['ID_GrowthCurve'])
-                    cnt=1
-                    for j in range(0,d.shape[0]):
-                        if d[j]!=0:
-                            cnt=cnt+1
-                            ID_GrowthCurveM[j+1]=cnt 
-                        else:
-                            ID_GrowthCurveM[j+1]=ID_GrowthCurveM[j]        
-                    u=np.unique(ID_GrowthCurveM)
-        
-                    if iGC+1>u.size:
-                        continue
-        
-                    indDH=np.where(ID_GrowthCurveM==u[iGC])[0]
-                    if indDH.size==0:
-                        continue
-                    
-                    if meta['Scenario Source']=='Spreadsheet':
-                        
-                        indTIPSY=np.where(
-                                (dfPar['ID_Scenario']==iScn+1) &
-                                (dfPar['ID_GC']==int(dh[iS]['ID_GrowthCurve'][indDH][0])))[0]                    
-                    
-                    elif meta['Scenario Source']=='Script':                        
-                        
-                        if meta['Growth Curves Lumped']=='Yes':
-                            indTIPSY=np.where(
-                                (dfPar['ID_Stand']==indBat[iS]+1) & 
-                                (dfPar['ID_Scenario']==iScn+1) &
-                                (dfPar['ID_GC']==int(iGC+1)))[0]
-                            # dh[iS].ID_GrowthCurve[indDH][0]
-                        else:
-                            indTIPSY=np.where(
-                                (dfPar['ID_Stand']==indBat[iS]+1) &
-                                (dfPar['ID_GC']==int(dh[iS]['ID_GrowthCurve'][indDH][0])))[0]                    
-                    
-                    if indTIPSY.size==0:
-                        # This can happen if only some stands have a third GC, for example
-                        continue
-                    
-                    G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,2]=G_Bark[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
                     
                 # Save data to file in input variables folder of project
                 gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
@@ -1844,9 +1773,9 @@ def Import_GraphicsParameters(type):
                 'savefig.bbox':'tight'}
     return params
 
-#%% PREPARE INVENTORY
+#%% Prepare inventory from spreadsheet
 
-def PrepareInventory(meta):
+def PrepareInventoryFromSpreadsheet(meta):
     
     for iScn in range(0,meta['N Scenario']):
     
@@ -1866,10 +1795,12 @@ def PrepareInventory(meta):
             inv['Y']=inv['Lon']
         
             # BEC zone
-            inv['ID_BECZ']=meta['LUT BGC Zone']['IDF']*np.ones((1,N_StandsInBatch),dtype=np.int)                  
+            inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype=np.int)
+            inv['ID_BECZ'][0,:]=meta['LUT BGC Zone'][meta['Scenario'][iScn]['BGC Zone Code']]
     
             # Timber harvesting landbase (1=yes, 0=no)
             inv['THLB']=1*np.ones((1,N_StandsInBatch))
+            inv['THLB'][0,:]=meta['Scenario'][iScn]['THLB Status']
         
             # Temperature will be updated automatically
             inv['MAT']=4*np.ones((1,N_StandsInBatch))
