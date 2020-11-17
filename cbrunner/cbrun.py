@@ -146,7 +146,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
         for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
             vi['EC'][v]=np.zeros((meta['N Time'],meta['N Stand'],meta['Max Events Per Year']),dtype='int16')
             vi['EC'][v][idx[0],idx[1],idx[2]]=tmp[v]
-    del tmp
+        del tmp
     
     # Convert mortality percent to fraction
     vi['EC']['MortalityFactor']=vi['EC']['MortalityFactor'].astype(float)/100

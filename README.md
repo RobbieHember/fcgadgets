@@ -63,7 +63,8 @@ The **activities** subpackage contains resources for representing effects of for
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea
 ## TAZ
-The **taz** subpackage contains resources for representing natural disturbances.
+Forest GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. In support of the BC Forest Carbon Initiative (FCI), statistics and scenarios of natural disturbance were developed using a combination of observed constraints and probabilistic models. Despite high prediction uncertainty, using the pre-defined scenarios ensures that representation of natural disturbances is grounded by available observations and science-informed scenarios, consistent across project studies, and supported by documentation.
+
 ### general_stat_models:
 * Equations for simulating annual probability of various discrete events
 ### wildfire_stat_models:
