@@ -99,11 +99,14 @@ Much of the in-house background science and analysis in support of the fcgadgets
 
 ## WORKFLOW
 There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
-[image info](./images/fcgadgets_runoptions.png)
+![image info](./images/fcgadgets_runoptions.png)
 
 ### Small projects (with Jupyter Notebooks)
-When projects consist of fewer than 1,500 unique combinations of stand and/or scenario (e.g., see FCI project demos), cbrunner can be applied with assumptions set directly in the ProjectConfig.xlsx spreadsheet. It is recommended that the project script for small projects make use of Jupyter Notebooks (.ipynb files).
-Project workflow:
+When projects consist of fewer than 1,500 unique combinations of stand and/or scenario, assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
+
+Use an existing project template to establish the data folder and the jupyter notebook file.
+
+Project workflow entails:
 1. Define project-level parameters in ProjectConfig.xlsx.
 2. Define scenario-level parameters in ProjectConfig.xlsx.
 3. Parameterize input parameters for BatchTIPSY.exe in the file, GrowthCurvesTIPSY_Parameters.xlsx. This can be done manually for small projects.
@@ -115,6 +118,9 @@ Project workflow:
 9. Run the simulation and save the outputs by calling the method RunProject. 
 10. Import output variables to analysis session by calling LoadScenarioResults. 
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
+
+### Big projects (wall to wall)
+Simulation across continuous, regular grids is faciliated by a tile system developed for BC. Such projects are supported by the **utilities_tile** module. 
 
 ## TIPS
 * The **meta** dictionary tracks all necessary information about a project. 
