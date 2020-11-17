@@ -412,6 +412,63 @@ ax[1].set(position=[0.8,0.04,0.025,0.35])
 gu.PrintFig(r'G:\My Drive\Figures\CutYear','png',500)
 
 
+#%% Plot AOS year within the TSA mask
+
+zH=zTSA.copy()
+zH=gis.ClipRaster(zH,xlim,ylim)
+zH['Data']=0*zH['Data']
+for i in range(1,5):
+    zH_tmp=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year' + str(i) + '.tif')    
+    zH_tmp=gis.ClipRaster(zH_tmp,xlim,ylim)    
+    zH['Data']=np.maximum(zH['Data'],zH_tmp['Data'])
+    del zH_tmp
+    gc.collect()
+
+zLC2_tmp=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\VRI\lc2.tif')
+zLC2=zTSA.copy()
+zLC2['Data']=zLC2_tmp['Data']
+del zLC2_tmp
+zLC2=gis.ClipRaster(zLC2,xlim,ylim)
+gc.collect()
+
+# Grid
+bw=5; bin=np.arange(1960,2025,bw); 
+z1=(bin.size)*np.ones(zH['Data'].shape)
+for i in range(bin.size):
+    ind=np.where(np.abs(zH['Data']-bin[i])<=bw/2)
+    z1[ind]=i
+z1[(tsa_mask1['Data']==1) & (zLC2['Data']==4) & (zH['Data']==0)]=i+1
+z1[(tsa_mask1['Data']==1) & (zLC2['Data']!=4)]=i+2
+z1[(tsa_mask1['Data']!=1)]=i+3
+L=i+3
+
+# Labels
+lab=bin.astype(str)
+
+# Colormap
+#cm=plt.cm.get_cmap('viridis',i)
+cm=plt.cm.get_cmap('plasma',i)
+cm=np.vstack( (cm.colors,(0.8,0.8,0.8,1),(0.9,0.9,0.9,1),(1,1,1,1)) )
+cm=matplotlib.colors.ListedColormap(cm)
+                              
+# Plot
+plt.close('all')
+fig,ax=plt.subplots(1,2)
+mngr=plt.get_current_fig_manager()
+mngr.window.setGeometry(100,100,950,750)
+im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=zBGC['Extent'],cmap=cm)
+gdf_tsa_roi.plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
+ax[0].set(position=[0.04,0.02,0.92,0.96],xlim=xlim,ylim=ylim,aspect='auto')
+ax[0].grid(False)
+#ax[0].set(position=[0.04,0.02,0.92,0.96],xlim=[zTSA.minx,zTSA.maxx],ylim=[zTSA.miny,zTSA.maxy],aspect='auto')
+
+cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,L-1,1),ticks=np.arange(0.5,L+1.5,1))
+cb.ax.set(yticklabels=lab)
+cb.ax.tick_params(labelsize=6,length=0)
+for i in range(0,L):
+    ax[1].plot([0,100],[i/(L-2),i/(L-2)],'k-',linewidth=0.5)
+ax[1].set(position=[0.8,0.04,0.025,0.35])
+gu.PrintFig(r'G:\My Drive\Figures\CutYear','png',500)
 
 
 
@@ -466,6 +523,9 @@ cb.ax.tick_params(labelsize=11,length=0)
 for i in range(0,L):
     ax[1].plot([0,100],[i/L,i/L],'k-',linewidth=0.5)
 ax[1].set(position=[0.06,0.04,0.025,0.4])
+
+
+
 
 
 #%% Map of N deposition from 2017 aerial fertilization

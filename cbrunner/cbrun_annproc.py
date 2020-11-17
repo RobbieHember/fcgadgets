@@ -14,7 +14,7 @@ class Bunch(object):
 
 #%% Biomass dynamics
 
-def BiomassFromTASSorTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
+def BiomassFromBatchTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
     
     # Update stand age
     vo['A'][iT,:]=vo['A'][iT-1,:]+1

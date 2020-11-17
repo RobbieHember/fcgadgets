@@ -32,7 +32,7 @@ Forest stands are the primary modelling unit in GHG estimation methods. Forest s
 
 Multiple ensembles occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual probability of tree mortality or annual probability of tree establishment and recruitment. 
 
-### BiomassFromTASSorTIPSY: 
+### BiomassFromBatchTIPSY: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 ### BiomassFromSawtooth:
@@ -48,16 +48,20 @@ Multiple ensembles occur when project configuration specifies a stochastic compo
 	* felled & piled materials
 * Loosely based on methods described by Kurz et al. (2009)
 ### DisturbanceAndManagement: 
-* A custom Python method designed to represent wildfire, insects, disease, and management treatments
-* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume)
+* This method imposes changes caused by natural disturbances and management events
+* All events are defined by an event ID, decimal year, mortality factor, growth factor, and the ID of the growth curve that represents the new stand
+* It is driven by the event chronology, which has two potential sources:
+	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
+	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 Harvested wood products:
 ### HWP_From_Dymond12: 
-* Representation of GHG balance for fibre that is removed from forest ecosystems. This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012).
+* Representation of teh annual GHG balance for fibre that is removed from forest ecosystems 
+* This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 ## ACTIVITIES
 The **activities** subpackage contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_addition:
-* Representation of GHG balance responses to aerial applications of Urea.
+* Representation of GHG balance responses to aerial applications of Urea
 ## TAZ
 The **taz** subpackage contains resources for representing natural disturbances.
 ### general_stat_models:
