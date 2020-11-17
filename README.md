@@ -27,9 +27,7 @@ The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the fo
 
 N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
 
-Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. See section 5 - Biophysical Methods for additional details.
-Projects with N_Stands > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
-Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
+Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. Projects with N_Stands > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
 
 Multiple ensembles occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual probability of tree mortality or annual probability of tree establishment and recruitment. 
 
@@ -100,8 +98,8 @@ Much of the in-house background science and analysis in support of the fcgadgets
 7. 
 
 ## WORKFLOW
-There are four ways to apply cbrunner depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
-![image info](./images/fcgadgets_runoptions.png)
+There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
+[image info](./images/fcgadgets_runoptions.png)
 
 ### Small projects (with Jupyter Notebooks)
 When projects consist of fewer than 1,500 unique combinations of stand and/or scenario (e.g., see FCI project demos), cbrunner can be applied with assumptions set directly in the ProjectConfig.xlsx spreadsheet. It is recommended that the project script for small projects make use of Jupyter Notebooks (.ipynb files).
