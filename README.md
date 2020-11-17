@@ -5,13 +5,14 @@ The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, acco
 The **fcgadgets** package was developed to: 
 * Organize code resources used by the Forest Carbon Initiative (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/forest-carbon-initiative)
 * Share knowledge, methods and limitations
-* Streamline workflow specific to data systems in BC
+* Streamlined integration with BC data systems
 	* Vegetation Resource Inventory (VRI)
 	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
 	* Natural disturbance databases
 	* Climate databases
 	* Growth and yield models
-* Build synergy between existing and new approaches to GHG balance estimation in the forest sector
+* Automated pre- and post-processing 
+* Benefit from the diverse ecosystem of existing and new modelling approaches
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
 ## FEATURES
