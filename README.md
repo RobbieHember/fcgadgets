@@ -4,18 +4,24 @@ The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, acco
 
 The **fcgadgets** package was developed to: 
 * Organize code resources used by the Forest Carbon Initiative (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/forest-carbon-initiative)
+* Share knowledge, methods and limitations
 * Streamline workflow specific to data systems in BC
 	* Vegetation Resource Inventory (VRI)
 	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
 	* Growth and yield models
-* Share knowledge of methods and limitations
-* Integrate existing and new approaches to GHG balance estimation in the forest sector
-* Provide a versatile platform for a wide range of users
+* Build synergy between existing and new approaches to GHG balance estimation in the forest sector
+* Apply the information gained from experiments and monitoring programs to address complex problems in natural resource management
 
 ## CBRUNNER
-The **cbrunner** subpackage simulates the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
+The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. The main module (cbrunner.cbrun.py) configures a hierarchical structure of forest stands, batches, scenarios, and ensembles. The total number of simulations for a project is equal to:
 
-The package adopts a probabilistic framework that can accommodate processes with deterministic and random components.
+**Equation 1:** N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles
+
+Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. See section 5 - Biophysical Methods for additional details.
+Projects with NStand > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
+Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
+Multiple ensembles occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual probability of tree mortality or annual probability of tree establishment and recruitment. 
+Upon running simulations, the cbrunner.cbrun.py module calls the module, cbrunner.cbrun_utilities.py, to compile project and scenario parameters, and initialize variables, and it calls the module, cbrunner.cbrun_annproc.py, to simulate annual carbon dynamics.
 
 ### BiomassFromTASSorTIPSY: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
