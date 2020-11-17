@@ -13,6 +13,7 @@ The **fcgadgets** package was developed to:
 * Apply the information gained from experiments and monitoring programs to address complex problems in natural resource management
 
 ## CBRUNNER
+![image info](https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.pinterest.com%2Fpin%2F451204456410292257%2F&psig=AOvVaw2kkn1fIqgN9doEEVX8Jttz&ust=1605666187946000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCMDorunCiO0CFQAAAAAdAAAAABAa)
 The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. The main module (cbrunner.cbrun.py) configures a hierarchical structure of forest stands, batches, scenarios, and ensembles. The total number of simulations for a project is equal to:
 
 **Equation 1:** N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles
