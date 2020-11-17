@@ -30,8 +30,8 @@ N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
 Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. See section 5 - Biophysical Methods for additional details.
 Projects with N_Stands > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
 Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
+
 Multiple ensembles occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual probability of tree mortality or annual probability of tree establishment and recruitment. 
-Upon running simulations, the cbrunner.cbrun.py module calls the module, cbrunner.cbrun_utilities.py, to compile project and scenario parameters, and initialize variables, and it calls the module, cbrunner.cbrun_annproc.py, to simulate annual carbon dynamics.
 
 ### BiomassFromTASSorTIPSY: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
@@ -82,6 +82,22 @@ The **utilities** subpackage contains general utilities (custom scripts) to supp
 
 ## DEPENDENCIES
 Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
+
+## USEAGE
+1. Install Anaconda
+2. Create local folder for fcgadgets code and pull fcgadgets from Github
+3. Create local folder for project code
+4. Create local folder for project data
+5. Use jupyter notebook or Python script to prepare project
+6. Run fcgadgets.cbrunner.cbrun.MeepMeep
+	* data and parameters are imported
+	* variables are initialized
+	* annual carbon balance is simulated
+		* Biomass dynamics
+		* Dead organic matter dynamics
+		* Disturbance and management events occur
+		* Harvested wood products
+7. 
 
 ## WORKFLOW
 There are four ways to apply cbrunner depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
