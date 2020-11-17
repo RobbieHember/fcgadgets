@@ -224,7 +224,7 @@ for iT in range(tv.size):
 #z=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\test1.tif')
 #plt.matshow(z['Data'])
     
-#%% Rasterize IBM occurrence by year
+#%% Rasterize AOS occurrence by year
 
 # Input path to RESULTS database (downloaded from BC data catalogue)
 pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430\Disturbances.gdb'
@@ -261,8 +261,8 @@ zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
 
 tv=np.arange(1950,2020,1)
 
-fcd=['IBM','IBD','IBS','IDW','DFL']
-for iP in range(1,len(fcd)):
+fcd=['IDL','IBM','IBD','IBS','IDW','DFL']
+for iP in range(0,1):#len(fcd)):
     for iT in range(tv.size):
     
         zOut=zTSA.copy()
@@ -274,7 +274,7 @@ for iP in range(1,len(fcd)):
         if len(df0)>0:
             shapes=((geom,value) for geom, value in zip(df0.geometry,df0.PSC))    
             z0=np.zeros(zTSA['Data'].shape,dtype=float)
-            burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA.Transform)
+            burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
             zOut['Data']=burned.astype('int16')
             
         fout=r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances' + '\\' + lnam + '_' + fcd[iP] + '_SeverityClass_' + str(tv[iT]) + '.tif'
@@ -283,8 +283,6 @@ for iP in range(1,len(fcd)):
 # Test
 #z=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\test1.tif')
 #plt.matshow(z['Data'])
-
-
 
 
 

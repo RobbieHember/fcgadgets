@@ -1,20 +1,19 @@
 # fcgadgets
 ## FEATURES
-The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. It features a computer simulation model, **cbrunner**, that draws on established and custom methods to simulate net forest sector GHG balance. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
+The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
-The package features a versatile and streamlined workflow through integration with BC databases and models: 
-* Vegetation Resource Inventory (VRI);
-* Reporting Silviculture Updates and Land Status Tracking System (RESULTS);
-* Growth and yield models;
-The aim of the package is to maintain the principles and standards applied in Canada’s National GHG Inventory for the purpose of analyzing actual and proposed climate change mitigation in the Land Use, Land Use Change and Forestry (LULUCF) sector. 
-
-## APPLICATIONS
-The **fcgadgets** package can be used in the following applications: 
-* estimation of GHG benefit from climate change mitigation projects identified by BC's Forest Carbon Initiative (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/forest-carbon-initiative)
-* estimation of GHG benefit from investments by non government organizations in forest sector climate change mitigation
+The **fcgadgets** package was developed to: 
+* Organize code resources used by the Forest Carbon Initiative (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/forest-carbon-initiative)
+* Streamline workflow specific to data systems in BC
+	* Vegetation Resource Inventory (VRI)
+	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
+	* Growth and yield models
+* Share knowledge of methods and limitations
+* Integrate existing and new approaches to GHG balance estimation in the forest sector
+* Provide a versatile platform for a wide range of users
 
 ## CBRUNNER
-The **cbrunner** subpackage is called to simulate the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
+The **cbrunner** subpackage simulates the annual GHG balance for a specified set of homogeneous forest stands. Stands are georeferenced within the standard BC spatial reference system. The fate of any organic material that is removed from forest stands is tracked annually, but the pools are not tracked spatially.
 
 The package adopts a probabilistic framework that can accommodate processes with deterministic and random components.
 

@@ -12,8 +12,8 @@ import pandas as pd
 from shapely.geometry import Polygon,Point
 
 # Import custom modules
-import fcgadgets.pyscripts.utilities_general as gu
-import fcgadgets.pyscripts.utilities_gis as gis
+import fcgadgets.utilities.utilities_general as gu
+import fcgadgets.utilities.utilities_gis as gis
 
 #%% Set figure properties
 params={'font.sans-serif':'Arial',
@@ -33,7 +33,6 @@ params={'font.sans-serif':'Arial',
         'savefig.dpi':150}
 plt.rcParams.update(params)
 
-
 #%% IMPORT DATA
 
 # BC land basemap
@@ -42,7 +41,7 @@ gdf_bm=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Basemaps\bc_land.shp')
 
 # Import TSA maps
 zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
-tsa_key=pd.read_excel(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa_key.xlsx')
+tsa_key=pd.read_excel(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\lut_tsa.xlsx')
 gdf_tsa=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 
 # Roads
