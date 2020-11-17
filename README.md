@@ -13,10 +13,9 @@ The **fcgadgets** package was developed to:
 * Apply the information gained from experiments and monitoring programs to address complex problems in natural resource management
 
 ## CBRUNNER
-![image info](https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.pinterest.com%2Fpin%2F451204456410292257%2F&psig=AOvVaw2kkn1fIqgN9doEEVX8Jttz&ust=1605666187946000&source=images&cd=vfe&ved=0CAIQjRxqFwoTCMDorunCiO0CFQAAAAAdAAAAABAa)
 The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. The main module (cbrunner.cbrun.py) configures a hierarchical structure of forest stands, batches, scenarios, and ensembles. The total number of simulations for a project is equal to:
 
-**Equation 1:** N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles
+N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles (Eq.1)
 
 Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. See section 5 - Biophysical Methods for additional details.
 Projects with NStand > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
