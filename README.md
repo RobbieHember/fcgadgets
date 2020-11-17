@@ -1,5 +1,5 @@
 # fcgadgets
-## FEATURES
+## INTRODUCTION
 The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 The **fcgadgets** package was developed to: 
@@ -12,10 +12,18 @@ The **fcgadgets** package was developed to:
 * Build synergy between existing and new approaches to GHG balance estimation in the forest sector
 * Apply the information gained from experiments and monitoring programs to address complex problems in natural resource management
 
+## FEATURES
+* Explore the effects of aerial Urea application on the annual GHG balance of a forest stand
+* Explore the effects of underplanting on the annual GHG balance of a forest stand
+* Explore the effects of Salvage logging on the annual GHG balance of a forest stand
+* Simulate the forest carbon balance at set of regular points
+* Simulate the forest carbon balance across a set of vector treatment areas distributed across BC
+* Simulate high-resolution, wall-to-wall coverage of a watershed or timber supply area
+
 ## CBRUNNER
 The **cbrunner** subpackage simulates the greenhouse gas (GHG) balance of the forest sector under various management scenarios. The main module (cbrunner.cbrun.py) configures a hierarchical structure of forest stands, batches, scenarios, and ensembles. The total number of simulations for a project is equal to:
 
-N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles (Eq.1)
+N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
 
 Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by a representative inventory record, disturbance and management event history (DMEH), and age response functions of forest growth. See section 5 - Biophysical Methods for additional details.
 Projects with NStand > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
