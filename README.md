@@ -8,14 +8,16 @@ The **fcgadgets** package was developed to:
 * Streamline workflow specific to data systems in BC
 	* Vegetation Resource Inventory (VRI)
 	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
+	* Natural disturbance databases
+	* Climate databases
 	* Growth and yield models
 * Build synergy between existing and new approaches to GHG balance estimation in the forest sector
-* Apply the information gained from experiments and monitoring programs to address complex problems in natural resource management
+* Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
 ## FEATURES
 * Explore the effects of aerial Urea application on the annual GHG balance of a forest stand
 * Explore the effects of underplanting on the annual GHG balance of a forest stand
-* Explore the effects of Salvage logging on the annual GHG balance of a forest stand
+* Explore the effects of salvage logging on the annual GHG balance of a forest stand
 * Simulate the forest carbon balance at set of regular points
 * Simulate the forest carbon balance across a set of vector treatment areas distributed across BC
 * Simulate high-resolution, wall-to-wall coverage of a watershed or timber supply area
