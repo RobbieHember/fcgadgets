@@ -34,7 +34,7 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Import paths
 
-Paths=gu.ipickle(r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupByTile1\Paths.pkl')
+Paths=gu.ipickle(r'D:\Data\FCI_Projects\FCI_RollupByTile1\Paths.pkl')
 
 #%% Import tile grid
 
@@ -48,7 +48,7 @@ gdf_tile=gpd.read_file(Paths['Project Root'] + '\\TilesBC.shp')
 #%% Specify the tiles to run
 
 TilesToRun_ij=np.zeros((1,2),dtype=int)
-TilesToRun_ij[0,:]=[10,9]
+TilesToRun_ij[0,:]=[10,8]
 #TilesToRun_ij[0,:]=[11,7]
 #TilesToRun_ij[0,:]=[9,9]
 #TilesToRun_ij[0,:]=[11,8]
@@ -82,6 +82,8 @@ for hTile in range(TilesToRun_ij.shape[0]):
     jTile=TilesToRun_ij[hTile,1]
     
     infoTile=tu.GetTileInfo(Paths,iTile,jTile)
+    infoTile['X']=np.tile(np.reshape(infoTile['X'],(1,-1)),(infoTile['m'],1)) 
+    infoTile['Y']=np.tile(np.reshape(infoTile['Y'],(-1,1)),(1,infoTile['n']))
     infoTile.keys()
 
     # Transform
@@ -91,7 +93,7 @@ for hTile in range(TilesToRun_ij.shape[0]):
     # Loop through layers
     #------------------------------------------------------------------------------
     
-    for iLyr in range(len(InvLyrInfo)):
+    for iLyr in range(7,8): #len(InvLyrInfo)):
         #iLyr=0
         
         # Loop through features in layer
@@ -169,6 +171,7 @@ for hTile in range(TilesToRun_ij.shape[0]):
                             flg_outside=1
                         if np.min(y_feat)>infoTile['ymax']: 
                             flg_outside=1 
+                
                 if flg_outside==1:
                     continue
                 
@@ -212,14 +215,7 @@ for hTile in range(TilesToRun_ij.shape[0]):
                     # Update counter
                     cnt_inventory=cnt_inventory+1
                 
-                #print(cnt_inventory)
-        
-        a=0
-        for i in range(len(IdxToInv)):
-            if IdxToInv[i]==None:
-                continue
-            a=np.maximum(a,np.max(IdxToInv[i]['Index']))
-            
+                #print(cnt_inventory)            
         
         # Truncate variables at cnt_inventory
         for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:

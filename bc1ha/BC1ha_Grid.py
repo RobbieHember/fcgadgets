@@ -186,7 +186,7 @@ ds=gdal.Open(fin1_adj)
 data=ds.ReadAsArray()
 
 plt.figure(4)
-plt.imshow(data[0::5,0::5],clim=(0,150))
+plt.matshow(data[0::5,0::5],clim=(0,150))
 plt.colorbar()
 
 
@@ -582,7 +582,7 @@ for mo in range(12,13):
     del z
     gc.collect()
 
-plt.imshow(z.Data)
+plt.matshow(z.Data)
 
 
 

@@ -110,8 +110,8 @@ def BiomassFromBatchTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
         vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]=np.maximum(0,Pc*BiomassRootTotal)
     
         # Calculate net growth of roots from change in pools
-        Gnet_RC=vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]-vo['C_Eco_Pools'][iT-1,:,iEP['RootCoarse']]
-        Gnet_RF=vo['C_Eco_Pools'][iT,:,iEP['RootFine']]-vo['C_Eco_Pools'][iT-1,:,iEP['RootFine']]    
+        #Gnet_RC=vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]-vo['C_Eco_Pools'][iT-1,:,iEP['RootCoarse']]
+        #Gnet_RF=vo['C_Eco_Pools'][iT,:,iEP['RootFine']]-vo['C_Eco_Pools'][iT-1,:,iEP['RootFine']]    
     
     #--------------------------------------------------------------------------
     # Biomass turnover
@@ -1214,19 +1214,6 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
         #----------------------------------------------------------------------
             
         vo['C_M_Dist'][iT,:]=vo['C_M_Dist'][iT,:]+Affected_All
-            
-        #DistType_i=vi['EH'][iS]['ID_Type'][indDist[iDist]]                 
-        #if DistType_i==meta['LUT Dist']['Wildfire']:
-        #    vo['C_M_Inv_Fir'][iT,:]=Affected_All
-        #elif (DistType_i==meta['LUT Dist']['Beetles']) | (DistType_i==meta['LUT Dist']['IBM']) | \
-        #    (DistType_i==meta['LUT Dist']['IBB']) | (DistType_i==meta['LUT Dist']['IBS']) | \
-        #    (DistType_i==meta['LUT Dist']['IBD']):
-        #    vo['C_M_Inv_Ins'][iT,:]=Affected_All
-        #elif DistType_i==meta['LUT Dist']['Defoliators']:
-        #    vo['C_M_Inv_Ins'][iT,:]=Affected_All 
-        #elif (DistType_i==meta['LUT Dist']['Harvest']) | (DistType_i==meta['LUT Dist']['Harvest Custom']) | \
-        #    (DistType_i==meta['LUT Dist']['Salvage Logging']) | (DistType_i==meta['LUT Dist']['Harvest and Slashpile Burn']):
-        #    vo['C_M_Inv_Har'][iT,:]=Affected_All            
             
         #----------------------------------------------------------------------
         # Remove affected amount from each pool

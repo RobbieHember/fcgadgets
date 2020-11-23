@@ -124,9 +124,9 @@ def GetTileRoads():
     
 def GetIntersectingTilesAndMajorWatersheds():
 
-    tl=gpd.read_file(r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupByTile1\TilesBC.shp')
+    tl=gpd.read_file(r'D:\Data\FCI_Projects\FCI_RollupByTile1\TilesBC.shp')
 
-    wat=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps.gdb',layer='BC_MAJOR_WATERSHEDS')    
+    wat=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='BC_MAJOR_WATERSHEDS')    
     u=wat['MAJOR_WATERSHED_SYSTEM'].unique()
     
     dID={}
@@ -169,7 +169,7 @@ def GetIntersectingTilesAndMajorWatersheds():
     
 def GetIntersectingTilesAndTSAs():
 
-    tl=gpd.read_file(r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupByTile1\TilesBC.shp')
+    tl=gpd.read_file(r'D:\Data\FCI_Projects\FCI_RollupByTile1\TilesBC.shp')
 
     wat=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
     
@@ -202,5 +202,45 @@ def GetIntersectingTilesAndTSAs():
                 jTileS=str(jTile)     
             nam.append(iTileS + jTileS)
         dName[u[iU]]=np.unique(nam)        
+    
+    return dID,dName
+
+#%% Get list of tiles intersecting TSAs
+    
+def GetIntersectingTilesAndDistricts():
+
+    tl=gpd.read_file(r'D:\Data\FCI_Projects\FCI_RollupByTile1\TilesBC.shp')
+
+    wat=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='ADM_NR_DISTRICTS_SP')
+    
+    u=wat['DISTRICT_NAME'].unique()
+    dID={}
+    dName={}
+    for iU in range(u.size):
+        wat0=wat[wat['DISTRICT_NAME']==u[iU]]
+        wat0=wat0.reset_index()
+        id=[]
+        for iTile in range(len(tl)):
+            for i in range(len(wat0)):
+                if tl.loc[iTile,'geometry'].intersects(wat0.loc[i,'geometry']):
+                    id.append(tl.loc[iTile,'ID'])
+        dID[u[iU]]=np.unique(id)
+    
+        nam=[]
+        for i in range(dID[u[iU]].size):
+            iTile=tl.loc[dID[u[iU]][i],'i']
+            jTile=tl.loc[dID[u[iU]][i],'j']
+            
+            # Define string name
+            if iTile<10: 
+                iTileS='0' + str(iTile)
+            else: 
+                iTileS=str(iTile)    
+            if jTile<10: 
+                jTileS='0' + str(jTile)
+            else: 
+                jTileS=str(jTile)     
+            nam.append(iTileS + jTileS)
+        dName[u[iU]]=np.unique(nam)
     
     return dID,dName

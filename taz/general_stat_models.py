@@ -16,21 +16,14 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 #%% Generate disturbances from Pareto distribution
 
 def GenerateDisturbancesFromPareto(n,beta):
-    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=n)
-    r=np.random.random(n)
-    ind=np.where(r<po)[0]
-    y=np.zeros(n,dtype='int16')
-    y[ind]=1    
-    return y
-
-def GenerateDisturbancesFromPareto_old(m,n,beta):
-    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=m)
+    # Draw a single probability of area disturbed per year
+    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=1)
     po=np.reshape(po,(-1,1))
     po=np.tile(po,n)
-    r=np.random.random((m,n))
+    r=np.random.random((1,n))
     ind=np.where(r<po)
-    y=np.zeros((m,n),dtype='int16')
-    y[ind[0],ind[1]]=1    
+    y=np.zeros((1,n),dtype='int8')
+    y[ind[0],ind[1]]=1
     return y
 
 #%% Simulate probability of stand breakup based on age
@@ -113,7 +106,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,flag_thlb,V_Merch):
 def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
     
     # Import IBM stats    
-    ibmss=gu.ipickle(meta['Paths']['Taz Datasets']['Beetle Stats and Scenarios'] + '\\IBM_Stats_Scenarios_By_BGCZ.pkl')
+    ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
     tv_scn=np.arange(-2000,2201,1)
     
     # Prepare mortality probability coefficients
@@ -142,7 +135,8 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
             
         # Alternative model
         b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
-        ibm_sim['Occurrence'][:,indZone]=GenerateDisturbancesFromPareto(meta['Year'].size,indZone.size,b0)
+        for iT in range(tv_scn.size):
+            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(indZone.size,b0)
         
     # Exclude inventory period
     if par['IBM']['Exclude simulations during modern era']=='On':

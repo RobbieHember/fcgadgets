@@ -23,11 +23,10 @@ from fcgadgets.cbrunner import cbrun_utilities
 #%% Define paths
 
 Paths={}
-Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummary'
-#Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
+#Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummary'
+Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
 Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
 Paths['QA']=Paths['Project'] + '\\QA'
-Paths['Mapping']=Paths['Project'] + '\\Outputs\Mapping'
 Paths['Figures']=r'G:\My Drive\Figures\Fertilization'
 Paths['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
 Paths['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
@@ -35,7 +34,7 @@ Paths['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturba
 Paths['Results File']=Paths['Results'] + '\\Results.gdb'
 Paths['VRI File']=Paths['VRI'] + '\\VRI.gdb'
 Paths['Disturbances File']=Paths['Disturbances'] + '\\Disturbances.gdb'
-Paths['Wildfire Stats and Scenarios File']=r'G:\My Drive\Data\Wildfire\Wildfire_Stats_Scenarios_By_BGCZ\Wildfire_Stats_Scenarios_By_BGCZ.pkl'
+Paths['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
 # Save
 gu.opickle(Paths['Project'] + '\\Paths.pkl',Paths)

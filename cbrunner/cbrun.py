@@ -260,7 +260,11 @@ def InitializeStands(meta,iScn,iEns,iBat):
     
     # Stand age (i.e. time since stand-replacing disturbance)    
     vo['A']=np.zeros((m,n))
-        
+      
+    # Species composition
+    #vo['Spc_ID']=np.zeros((m,n,6),dtype='int8')
+    #vo['Spc_Percent']=np.zeros((m,n,6),dtype='int8')
+    
     # Carbon density of ecosystem (Mg C ha-1)
     # -> 3-D matrix: Time x Stand x Carbon pool
     vo['C_Eco_Pools']=np.zeros((m,n,o))
@@ -271,11 +275,11 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_G_Gross']=np.zeros((m,n,o))
     vo['C_M_Reg']=np.zeros((m,n,o))
     vo['C_M_Dist']=np.zeros((m,n))
-    vo['C_M_Inv_Fir']=np.zeros((m,n))
-    vo['C_M_Inv_Ins']=np.zeros((m,n))
-    vo['C_M_Inv_Pat']=np.zeros((m,n))
-    vo['C_M_Inv_Har']=np.zeros((m,n))
-    vo['C_M_Inv_Win']=np.zeros((m,n))  
+    #vo['C_M_Inv_Fir']=np.zeros((m,n))
+    #vo['C_M_Inv_Ins']=np.zeros((m,n))
+    #vo['C_M_Inv_Pat']=np.zeros((m,n))
+    #vo['C_M_Inv_Har']=np.zeros((m,n))
+    #vo['C_M_Inv_Win']=np.zeros((m,n))  
     vo['C_LF']=np.zeros((m,n,o))    
     vo['C_RH']=np.zeros((m,n,o))    
     vo['C_RemovedMerch']=np.zeros((m,n))
@@ -293,6 +297,9 @@ def InitializeStands(meta,iScn,iEns,iBat):
     
     # Summary of aboveground biomass
     vo['C_BiomassAG']=np.zeros((m,n))    
+    
+    # Stemwood merch volume
+    vo['V_StemMerch']=np.zeros((m,n))
     
     #vo['C_M_Sim_Reg']=np.zeros((m,n))
     #vo['C_M_Sim_Fir']=np.zeros((m,n))
@@ -327,24 +334,23 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #vo['TreeMean_Csw']=np.zeros((m,n))
     #vo['TreeMean_Csw_G']=np.zeros((m,n))
     
-    vo['V_StemMerch']=np.zeros((m,n))
-    
     # Lables for plotting
-    HandleLabels=['Stand age (years)','Gross growth (MgC/ha/yr)',
-             'Net growth (MgC/ha/yr)','Background mortality (MgC/ha/yr)',
-             'Litterfall (MgC/ha/yr)','NPP (MgC/ha/yr)','RH (MgC/ha/yr)',
-             'Disturbance mortality (MgC/ha/yr)',
-             'Wildfire mortality (MgC/ha/yr)','Harvest mortality (MgC/ha/yr)',
-             'Insect mortality (MgC/ha/yr)','Pathogen mortality (MgC/ha/yr)',
-             'Wind mortality (MgC/ha/yr)','Removed merch. (MgC/ha/yr)',
-             'Removed non-merch. (MgC/ha/yr)','Removed dead (MgC/ha/yr)',
-             'Wildfire emissions as CH4 (MgC/ha/yr)','Wildfire emissions as CO (MgC/ha/yr)',
-             'Wildfire emissions as CO2 (MgC/ha/yr)','Wildfire emissions as N2O (MgC/ha/yr)',
-             'Operation emissions as CO2 (MgC/ha/yr)','Merch. volume (m3/ha)',
-             'Biomass (MgC/ha)','Aboveground biomass (MgC/ha)','Felled (MgC/ha)',
-             'Litter (MgC/ha)','Dead wood (MgC/ha)',
-             'Soil (MgC/ha)','Total ecosystem carbon (MgC/ha)','In-use products (MgC/ha)',
-             'Dump and landfill (MgC/ha)','Product sector E (MgC/ha/yr)']        
+#    HandleLabels=['Stand age (years)','Gross growth (MgC/ha/yr)',
+#             'Net growth (MgC/ha/yr)','Background mortality (MgC/ha/yr)',
+#             'Litterfall (MgC/ha/yr)','NPP (MgC/ha/yr)','RH (MgC/ha/yr)',
+#             'Disturbance mortality (MgC/ha/yr)',
+#             'Removed merch. (MgC/ha/yr)',
+#             'Removed non-merch. (MgC/ha/yr)','Removed dead (MgC/ha/yr)',
+#             'Wildfire emissions as CH4 (MgC/ha/yr)','Wildfire emissions as CO (MgC/ha/yr)',
+#             'Wildfire emissions as CO2 (MgC/ha/yr)','Wildfire emissions as N2O (MgC/ha/yr)',
+#             'Operation emissions as CO2 (MgC/ha/yr)','Merch. volume (m3/ha)',
+#             'Biomass (MgC/ha)','Aboveground biomass (MgC/ha)','Felled (MgC/ha)',
+#             'Litter (MgC/ha)','Dead wood (MgC/ha)',
+#             'Soil (MgC/ha)','Total ecosystem carbon (MgC/ha)','In-use products (MgC/ha)',
+#             'Dump and landfill (MgC/ha)','Product sector E (MgC/ha/yr)']        
+    #'Wildfire mortality (MgC/ha/yr)','Harvest mortality (MgC/ha/yr)',
+    #         'Insect mortality (MgC/ha/yr)','Pathogen mortality (MgC/ha/yr)',
+    #         'Wind mortality (MgC/ha/yr)',
     #Keys=np.array(list(vo.keys()))
     #d1={}
     #for j in range(len(HandleLabels)):
