@@ -6,12 +6,6 @@ The **fcgadgets** package was developed to:
 * Organize code resources used by BC's Forest Carbon Initiative
 * Share knowledge, methods and limitations
 * Streamline project setup and integration with BC information systems
-	* Vegetation Resource Inventory (VRI)
-	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
-	* Wildfire perimiter and burn severity databases
-	* Aerial overview (forest insects and disease) survey
-	* ClimateNA base-period mean climate
-	* Growth and yield models
 * Automated pre- and post-processing 
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
@@ -86,11 +80,14 @@ effectively and consistently communicate with forest inventory databases.
 	* Tile or multi-tile project (get_inventory_for_tile.py)
 	* Sample of points (get_inventory_from_points.py)
 	* Sample of polygons (get_inventory_from_polygons.py)
-* Methods for pre-processing spatial information from: 
-	* VRI 
-	* RESULTS (forest cover, activity treatments, planting)
-	* Aerial Overview Survey
-	* Wildfire perimiters
+* Methods for processing spatial information from: 
+	* Vegetation Resource Inventory (VRI)
+	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
+	* Wildfire perimiter and burn severity databases
+	* Aerial overview (forest insects and disease) survey
+	* Strategic land and resource plans
+	* ClimateNA base-period mean climate
+	* Growth and yield models
 
 ## TAZ
 Forest sector GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed 
