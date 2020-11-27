@@ -76,20 +76,10 @@ The **cbrunner** model adopts a probabilistic framework to accommodate processes
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
-## ACTIVITIES
-The **activities** subpackage contains resources for representing effects of forest management on forest sector GHG balance.
-### nutrient_addition:
-* Representation of GHG balance responses to aerial applications of Urea
-## TAZ
-Forest GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. In support of the BC Forest Carbon Initiative (FCI), statistics and scenarios of natural disturbance were developed using a combination of observed constraints and probabilistic models. Despite high prediction uncertainty, using the pre-defined scenarios ensures that representation of natural disturbances is grounded by available observations and science-informed scenarios, consistent across project studies, and supported by documentation.
-
-### general_stat_models:
-* Equations for simulating annual probability of various discrete events
-### wildfire_stat_models:
-* Equations for simualating annual probability of wildfire
-* Simple equations based on Pareto distribution fits to annual area burned, stratified by biogeoclimatic zone
+The **cbrunner** model achieves comprehensive representation of processes through links to a constillation of supporting modules also stored in **fcgadgets**.
 ## UTILITIES
-The **utilities** subpackage contains general utilities (custom scripts) to support implementation of cbrunner and accompanying modules.
+The **utilities** module contains general custom scripts to support implementation of cbrunner and supporting modules. The **utilities** module allows all **cbrunner** projects to 
+effectively and consistently communicate with forest inventory databases.
 ### 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Tile or multi-tile project (get_inventory_for_tile.py)
@@ -101,27 +91,25 @@ The **utilities** subpackage contains general utilities (custom scripts) to supp
 	* Aerial Overview Survey
 	* Wildfire perimiters
 
+## TAZ
+Forest sector GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed 
+to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. In support of the 
+BC Forest Carbon Initiative (FCI), statistics and scenarios of natural disturbance were developed using a combination of observed constraints and probabilistic models. Despite 
+high prediction uncertainty, using the pre-defined scenarios ensures that representation of natural disturbances is grounded by available observations and science-informed 
+scenarios, consistent across project studies, and supported by documentation.
+### general_stat_models:
+* Equations for simulating annual probability of various discrete events
+### wildfire_stat_models:
+* Equations for simualating annual probability of wildfire
+* Simple equations based on Pareto distribution fits to annual area burned, stratified by biogeoclimatic zone
 
-## DEPENDENCIES
-Much of the in-house background science and analysis in support of the fcgadgets package is organized in the **fcexplore** package. The spatial reference system for many projects relies on information and processing from the **BC1ha** package.
+## ACTIVITIES
+The **activities** subpackage contains resources for representing effects of forest management on forest sector GHG balance.
+### nutrient_addition:
+* Representation of GHG balance responses to aerial applications of Urea
+s
 
-## USEAGE
-1. Install Anaconda
-2. Create local folder for fcgadgets code and pull fcgadgets from Github
-3. Create local folder for project code
-4. Create local folder for project data
-5. Use jupyter notebook or Python script to prepare project
-6. Run fcgadgets.cbrunner.cbrun.MeepMeep
-	* data and parameters are imported
-	* variables are initialized
-	* annual carbon balance is simulated
-		* Biomass dynamics
-		* Dead organic matter dynamics
-		* Disturbance and management events occur
-		* Harvested wood products
-7. 
-
-## WORKFLOW
+## PROJECT WORKFLOW
 There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
 ![image info](./images/fcgadgets_runoptions.png)
 
@@ -148,7 +136,23 @@ Project workflow entails:
 ### Big projects (wall to wall)
 Simulation across continuous, regular grids is faciliated by a tile system developed for BC. Such projects are supported by the **utilities_tile** module. 
 
-## TIPS
+## USEAGE
+1. Install Anaconda
+2. Create local folder for fcgadgets code and pull fcgadgets from Github
+3. Create local folder for project code
+4. Create local folder for project data
+5. Use jupyter notebook or Python script to prepare project
+6. Run fcgadgets.cbrunner.cbrun.MeepMeep
+	* data and parameters are imported
+	* variables are initialized
+	* annual carbon balance is simulated
+		* Biomass dynamics
+		* Dead organic matter dynamics
+		* Disturbance and management events occur
+		* Harvested wood products
+7.
+
+## TIPS & TRICKS
 * The **meta** dictionary tracks all necessary information about a project. It is meant to store parameters and assumptions and levers, but not large data. 
 
 ## REFERENCES
