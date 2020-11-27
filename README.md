@@ -60,11 +60,11 @@ Harvested wood products:
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles provides a system for simultaneously considering multiple baseline and 
 management scenarios, processes with deterministic and random components, and uncertainty analysis. The total number of simulations for a project is equal to:
 
-N_Simulation = N<sub>Stands</sub> × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
+N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>  **(Eq.1)**
 
 Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established 
 (i.e., treatment area). Each stand is described by an inventory record, disturbance and management event chronology (DMEC), and age response functions of forest growth 
-(if using a GY model). Projects with N_Stands > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual 
+(if using a GY model). Projects with N<sub>Stands</sub> > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual 
 work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and 
 ensemble. Input and output variables are organized by scenario to facilitate comparison of baseline and project scenarios. 
 
