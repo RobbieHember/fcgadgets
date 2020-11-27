@@ -51,7 +51,7 @@ The model achieves this with a set of plug-and-play functions (or "methods"), cu
 * It is driven by the event chronology, which has two potential sources:
 	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
-Harvested wood products:
+
 ### HWP_FromDymond12: 
 * Representation of teh annual GHG balance for fibre that is removed from forest ecosystems 
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
@@ -76,7 +76,8 @@ The **cbrunner** model adopts a probabilistic framework to accommodate processes
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
-The **cbrunner** model achieves comprehensive representation of processes through links to a constillation of supporting modules also stored in **fcgadgets**.
+The **cbrunner** model achieves comprehensive representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
+![image info](./images/fcgadgets_constellation.png)
 ## UTILITIES
 The **utilities** module contains general custom scripts to support implementation of cbrunner and supporting modules. The **utilities** module allows all **cbrunner** projects to 
 effectively and consistently communicate with forest inventory databases.
