@@ -8,8 +8,9 @@ The **fcgadgets** package was developed to:
 * Streamline project setup and integration with BC information systems
 	* Vegetation Resource Inventory (VRI)
 	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
-	* Natural disturbance databases
-	* Climate databases
+	* Wildfire perimiter and burn severity databases
+	* Aerial overview (forest insects and disease) survey
+	* ClimateNA base-period mean climate
 	* Growth and yield models
 * Automated pre- and post-processing 
 * Benefit from the diverse ecosystem of existing and new modelling approaches
@@ -81,7 +82,6 @@ The **cbrunner** model achieves comprehensive representation of processes throug
 ## UTILITIES
 The **utilities** module contains general custom scripts to support implementation of cbrunner and supporting modules. The **utilities** module allows all **cbrunner** projects to 
 effectively and consistently communicate with forest inventory databases.
-### 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Tile or multi-tile project (get_inventory_for_tile.py)
 	* Sample of points (get_inventory_from_points.py)
@@ -104,8 +104,8 @@ scenarios, consistent across project studies, and supported by documentation.
 * Equations for simualating annual probability of wildfire
 * Simple equations based on Pareto distribution fits to annual area burned, stratified by biogeoclimatic zone
 
-## ACTIVITIES
-The **activities** subpackage contains resources for representing effects of forest management on forest sector GHG balance.
+## ACTIONS
+The **actions** module contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea
 s
