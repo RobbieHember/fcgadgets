@@ -34,15 +34,15 @@ Multiple ensembles occur when project configuration specifies a stochastic compo
 
 ![image info](./images/fcgadgets_annual_processes.png)
 
-### BiomassFromBatchTIPSY: 
+### Biomass_FromBatchTIPSY: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
-### BiomassFromSawtooth:
+### Biomass_FromSawtooth:
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
 * Driven by equations of annual aboveground biomass growth, annual probability of recruitment, and annual probability of mortality
 * Equations are fitted against species/region samples
-### DOM_From_CBM08: 
+### DOM_FromCBM08: 
 * Simulates cycling of organic carbon through:
 	* dead wood (snags and coarse woody debris);
 	* litter (organic soil horizon); 
@@ -56,7 +56,7 @@ Multiple ensembles occur when project configuration specifies a stochastic compo
 	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 Harvested wood products:
-### HWP_From_Dymond12: 
+### HWP_FromDymond12: 
 * Representation of teh annual GHG balance for fibre that is removed from forest ecosystems 
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
