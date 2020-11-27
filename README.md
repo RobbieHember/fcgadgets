@@ -6,7 +6,7 @@ The **fcgadgets** package was developed to:
 * Organize code resources used by BC's Forest Carbon Initiative
 * Share knowledge, methods and limitations
 * Streamline project setup and integration with BC information systems
-* Automated pre- and post-processing 
+* Automated pre- and post-processing project workflow
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
@@ -52,6 +52,7 @@ The model achieves this with a set of plug-and-play functions (or "methods"), cu
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 
+### Probabilistic modelling framework: 
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
 
 N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>  **(Eq.1)**
