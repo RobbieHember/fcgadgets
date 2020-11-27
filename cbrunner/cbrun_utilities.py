@@ -15,7 +15,7 @@ from fcgadgets.taz import wildfire_stat_models as wfsm
 def lut_n2s(dc,numb):
     if numb!=-999:
         vals=np.fromiter(dc.values(),dtype=float)
-        keys=np.fromiter(dc.keys(),dtype='<U30')
+        keys=np.fromiter(dc.keys(),dtype='<U70')
         ind=np.where(vals==numb)[0]
         s=keys[ind]
     else:

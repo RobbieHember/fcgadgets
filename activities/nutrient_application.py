@@ -52,10 +52,16 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         iResponse=np.where( (A>=vo['A'][iT,meta['NM']['iApplication']]) & (A<vo['A'][iT,meta['NM']['iApplication']]+Duration) )[0]
         
         if iResponse.size==Duration:        
-            GCA_SP=vi['GC']['Active'][:,meta['NM']['iApplication'],:].copy().astype(float)*meta['Scale Factor GC']
-            GCA_SP[iResponse,:]=np.tile(rr,(Duration,1))*GCA_SP[iResponse,:]
-            GCA_SP=GCA_SP*meta['GC']['Scale Factor']
-            GCA_SP=GCA_SP.astype(np.int16)
+            
+            GCA_SP=vi['GC']['Active'][:,meta['NM']['iApplication'],:].copy().astype(float)*meta['GC']['Scale Factor']
+            
+            print(GCA_SP.shape)
+            print(np.tile(rr,(Duration,1)).shape)
+            print(rr)
+            
+            GCA_SP[iResponse,0,:]=np.tile(rr,(Duration,1))*GCA_SP[iResponse,0,:]
+            #GCA_SP=GCA_SP*meta['GC']['Scale Factor']
+            #GCA_SP=GCA_SP.astype(np.int16)
             vi['GC']['Active'][:,meta['NM']['iApplication'],:]=GCA_SP
     
     elif (comp=='BelowgroundNetGrowth') & (meta['Fertilization Source']=='CBRunner'):
@@ -102,7 +108,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         iStop=np.where( meta['NM']['ResponseCounter']>10 )[0]
         if iStop.size>0:
             meta['NM']['ResponseCounter'][iStop]=0
-    
+        
     elif (comp=='Mortality') & (meta['Fertilization Source']=='CBRunner'):
         
         #----------------------------------------------------------------------

@@ -1148,13 +1148,17 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
             vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,vi['Inv']['THLB'][iT,:],vo['V_StemMerch'][iT,:])
     
     # Initialize indicator of aerial nutrient application
-    flag_na=np.zeros(meta['N Stand'])
+    flag_nutrient_application=np.zeros(meta['N Stand'])
     
     # Loop through events in year
     for iE in range(meta['Max Events Per Year']):
         
         # Event type IDs for the iE'th event of the year
         ID_Type=vi['EC']['ID_Type'][iT,:,iE].copy()
+        
+        # Record stands with aerial nutrient application
+        ind=np.where(ID_Type==meta['LUT Dist']['Fertilization Aerial'])[0]
+        flag_nutrient_application[ind]=1
         
         # Total affected biomass carbon
         MortalityFactor=vi['EC']['MortalityFactor'][iT,:,iE].copy()
@@ -1370,23 +1374,16 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
                 if ind.size>0:
                     vi['GC']['Active'][:,ind,:]=vi['GC'][meta['GC']['ID GC'][iGC]][:,ind,:]
                     vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC'][iGC])
-        
-        #----------------------------------------------------------------------
-        # Aerial nutrient application events
-        #----------------------------------------------------------------------
-        
-        # Index to stands with aerial application
-        ind=np.where(ID_Type==meta['LUT Dist']['Fertilization Aerial'])[0]
-        flag_na[ind]=1
     
     #--------------------------------------------------------------------------
     # Aerial nutrient application events
     #--------------------------------------------------------------------------
     
-    meta['NM']['iApplication']=np.where(flag_na==meta['LUT Dist']['Fertilization Aerial'])[0]    
+    # Generate index to stands that were fertilized
+    meta['NM']['iApplication']=np.where(flag_nutrient_application==1)[0]    
         
     if meta['NM']['iApplication'].size>0:        
-            
+
         # Adjust net growth of aboveground biomass
         vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,psl,'AbovegroundNetGrowth')
                 

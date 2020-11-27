@@ -32,6 +32,8 @@ Forest stands are the primary modelling unit in GHG estimation methods. Forest s
 
 Multiple ensembles occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual probability of tree mortality or annual probability of tree establishment and recruitment. 
 
+![image info](./images/fcgadgets_annual_processes.png)
+
 ### BiomassFromBatchTIPSY: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS

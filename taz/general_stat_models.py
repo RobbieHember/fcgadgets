@@ -135,7 +135,7 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
             
         # Alternative model
         b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
-        for iT in range(tv_scn.size):
+        for iT in range(meta['Year'].size):
             ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(indZone.size,b0)
         
     # Exclude inventory period

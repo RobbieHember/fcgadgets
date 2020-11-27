@@ -38,7 +38,7 @@ import fcgadgets.utilities.utilities_gis as gis
 # Select an existing file that will define the SRS and extent of the BC1ha grid.
 # Currently, it is a tif TSA file that was rasterized in ArcGIS.
 
-finS=r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif'
+finS=r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
 zS=gis.OpenGeoTiff(finS)
 
 
@@ -575,8 +575,22 @@ out.close()
 
 #%% Import climate from old BC1ha project in matlab
 
+# Annual summary
+z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\BC_1ha_twi.tif')
+z=gis.ClipRaster(z,[zS['xmin'],zS['xmax']],[zS['ymin'],zS['ymax']])
+gis.SaveGeoTiff(z,r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\bc1ha_twi.tif')
+del z
+garc.collect()
+
+# Annual summary
+z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmin_ann_norm_1971to2000_si_hist_v1_c.tif')
+z=gis.ClipRaster(z,[zS['xmin'],zS['xmax']],[zS['ymin'],zS['ymax']])
+gis.SaveGeoTiff(z,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmin_ann_norm_1971to2000_si_hist_v1.tif')
+del z; garc.collect()
+    
+# Monthly
 for mo in range(12,13):
-    z=gis.OpenGeoTiff(r'D:\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo) + '.tif')
+    z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_dwf_ann_norm_1971to2000_si_hist_v1_c.tif')
     z=gis.ClipRaster(z,[zS['minx'],zS['maxx']],[zS['miny'],zS['maxy']])
     gis.SaveGeoTiff(z,r'C:\Users\rhember\Documents\Data\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo) + '.tif')
     del z

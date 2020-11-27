@@ -23,8 +23,8 @@ from fcgadgets.cbrunner import cbrun_utilities
 #%% Define paths
 
 Paths={}
-#Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummary'
-Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
+Paths['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
+#Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
 Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
 Paths['QA']=Paths['Project'] + '\\QA'
 Paths['Figures']=r'G:\My Drive\Figures\Fertilization'
