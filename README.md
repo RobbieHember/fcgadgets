@@ -25,8 +25,8 @@ The **fcgadgets** package was developed to:
 
 ## CBRUNNER
 The **cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and wood products.
-The model simulates several processes each yeay, including biomass dynamics, dead organic matter dynamics, the impact of natural disturbances, harvest removals, and silviculture and nutrient 
-management. 
+The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the biomass dynamics of trees,
+the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and nutrient applications. 
 ![image info](./images/fcgadgets_annual_processes.png)
 
 The model achieves this with a set of plug-and-play functions (or "methods"), currently consisting of:
@@ -60,7 +60,7 @@ Harvested wood products:
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles provides a system for simultaneously considering multiple baseline and 
 management scenarios, processes with deterministic and random components, and uncertainty analysis. The total number of simulations for a project is equal to:
 
-N_Simulation = N_Stands × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
+N_Simulation = N<sub>Stands</sub> × N_Batches × N_Scenarios × N_Ensembles  **(Eq.1)**
 
 Forest stands are the primary modelling unit in GHG estimation methods. Forest stands comprise an area of homogeneous conditions at the time a project is established 
 (i.e., treatment area). Each stand is described by an inventory record, disturbance and management event chronology (DMEC), and age response functions of forest growth 
