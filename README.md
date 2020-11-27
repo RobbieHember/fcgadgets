@@ -52,7 +52,7 @@ The model achieves this with a set of plug-and-play functions (or "methods"), cu
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 
-### Probabilistic modelling framework: 
+### Working within a probabilistic modelling framework 
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
 
 N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>  **(Eq.1)**
@@ -72,6 +72,7 @@ The **cbrunner** model adopts a probabilistic framework to accommodate processes
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
+### Plug-and-play modularity
 The **cbrunner** model achieves comprehensive representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
 ![image info](./images/fcgadgets_constellation.png)
 ## UTILITIES
