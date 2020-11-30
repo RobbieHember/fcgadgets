@@ -3,10 +3,10 @@
 The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 The **fcgadgets** package was developed to: 
-* Organize code resources used by BC's Forest Carbon Initiative
+* Consolidate source code used by BC's Forest Carbon Initiative
 * Share knowledge, methods and limitations
 * Streamline project setup and integration with BC information systems
-* Automated pre- and post-processing project workflow
+* Automate pre- and post-processing project workflow
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
@@ -25,7 +25,7 @@ the decay and physical transformation of dead organic matter, the impact of natu
 ![image info](./images/fcgadgets_annual_processes.png)
 
 The model achieves this with a set of plug-and-play functions (or "methods"), currently consisting of:
-### Biomass_FromBatchTIPSY: 
+### Biomass_FromTIPSYorTASS: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 ### Biomass_FromSawtooth:
@@ -52,10 +52,10 @@ The model achieves this with a set of plug-and-play functions (or "methods"), cu
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 
-### Working within a probabilistic modelling framework 
+### Probabilistic modelling framework 
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
 
-N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>  **(Eq.1)**
+N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>
 
 Forest stands are the primary modelling unit in GHG estimation methods, and define an area of homogeneous conditions at the time a project is established 
 (i.e., treatment area). Each stand is described by an inventory record, disturbance and management event chronology (DMEC), and age response functions of forest growth 
@@ -73,7 +73,7 @@ occur when project configuration specifies a stochastic component to simulations
 probability of tree mortality or annual probability of tree recruitment. 
 
 ### Plug-and-play modularity
-The **cbrunner** model achieves comprehensive representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
+The **cbrunner** model achieves comprehensive, granular representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
 ![image info](./images/fcgadgets_constellation.png)
 ## UTILITIES
 The **utilities** module contains general custom scripts to support implementation of cbrunner and supporting modules. The **utilities** module allows all **cbrunner** projects to 

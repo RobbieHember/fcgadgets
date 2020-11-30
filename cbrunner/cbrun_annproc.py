@@ -14,7 +14,7 @@ class Bunch(object):
 
 #%% Biomass dynamics
 
-def BiomassFromBatchTIPSY(iScn,iT,vi,vo,psl,meta,iEP):
+def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP):
     
     # Update stand age
     vo['A'][iT,:]=vo['A'][iT-1,:]+1
@@ -1382,8 +1382,8 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
     # Generate index to stands that were fertilized
     meta['NM']['iApplication']=np.where(flag_nutrient_application==1)[0]    
         
-    if meta['NM']['iApplication'].size>0:        
-
+    if meta['NM']['iApplication'].size>0:
+        
         # Adjust net growth of aboveground biomass
         vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,psl,'AbovegroundNetGrowth')
                 

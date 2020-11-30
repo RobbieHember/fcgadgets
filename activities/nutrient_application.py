@@ -10,7 +10,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         meta['NM']['ResponseCounter'][meta['NM']['iApplication']]=meta['NM']['ResponseCounter'][meta['NM']['iApplication']]+1
     
     elif (comp=='AbovegroundNetGrowth') & (meta['Fertilization Source']=='CBRunner'):
-        
+
         # Need to revise to be based on N
         # r_NonUniform_Spatial_Distribution
         
@@ -47,22 +47,42 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         # Append biomass response with volume response
         rr=np.append(rr,rrS)
         
+        # Get age vector for GC's
         A=np.arange(1,meta['GC']['BatchTIPSY Maximum Age'],1)
         
-        iResponse=np.where( (A>=vo['A'][iT,meta['NM']['iApplication']]) & (A<vo['A'][iT,meta['NM']['iApplication']]+Duration) )[0]
+        # Extract active growth curves, apply scale factor
+        GCA_SP=vi['GC']['Active'][:,meta['NM']['iApplication'],:].copy().astype(float)*meta['GC']['Scale Factor']
         
-        if iResponse.size==Duration:        
+        for iA in range(meta['NM']['iApplication'].size):
             
-            GCA_SP=vi['GC']['Active'][:,meta['NM']['iApplication'],:].copy().astype(float)*meta['GC']['Scale Factor']
+            # Fix age -> there appear to be fertilizations at age zero, which will
+            # cause a crash because GC age response starts at 1
+            Ac=np.maximum(1,vo['A'][iT,meta['NM']['iApplication'][iA]])
             
-            print(GCA_SP.shape)
-            print(np.tile(rr,(Duration,1)).shape)
-            print(rr)
+            # Index to the response period that will be alterred
+            iResponse=np.where( (A>=Ac) & (A<Ac+Duration) )[0]
+        
+            # This will crash if an application occurs within 10 years of the maximum
+            # TIPSY age curve (eg 200 years) -> adjust response period so that it
+            # does not crash
+            if iResponse.size==Duration:
             
-            GCA_SP[iResponse,0,:]=np.tile(rr,(Duration,1))*GCA_SP[iResponse,0,:]
-            #GCA_SP=GCA_SP*meta['GC']['Scale Factor']
-            #GCA_SP=GCA_SP.astype(np.int16)
-            vi['GC']['Active'][:,meta['NM']['iApplication'],:]=GCA_SP
+                for iRR in range(rr.size):
+                    GCA_SP[iResponse,iA,iRR]=rr[iRR]*GCA_SP[iResponse,iA,iRR]
+        
+            else:
+                
+                em='Error: Nutrient application not implemented - stand age exceeds max age of growth curves.'
+                print(em)
+                
+        # Re-applly scalefactor
+        GCA_SP=GCA_SP/meta['GC']['Scale Factor']
+            
+        # Convert to 16-bit integers
+        GCA_SP=GCA_SP.astype(np.int16)
+            
+        # Repopulate in input variable dictionary
+        vi['GC']['Active'][:,meta['NM']['iApplication'],:]=GCA_SP
     
     elif (comp=='BelowgroundNetGrowth') & (meta['Fertilization Source']=='CBRunner'):
         

@@ -22,6 +22,14 @@ def lut_n2s(dc,numb):
         s=np.array(['Unidentified'],ndmin=1)
     return s
 
+#%% Index to batch
+
+def IndexToBatch(meta,iBat):
+    iStart=meta['Batch Interval']*iBat
+    iStop=np.minimum(meta['N Stand Full'],iStart+meta['Batch Interval'])
+    indBat=np.arange(iStart,iStop,1)
+    return indBat
+
 #%% QUERY RESULTS CODES FOR MANAGEMENT ACTIVITY TYPES
 
 def QueryResultsActivity(d):
@@ -756,152 +764,6 @@ def CalculateGHGBalance(v1,meta):
     #v2=v2[0]
     
     return v2,meta
-
-#%% CALCULATE MODEL OUTPUT STATISTICS
-
-def ModelOutputStats(meta,flag_save):
-
-    mos=[None]*meta['N Scenario']
-    
-    for iScn in range(meta['N Scenario']):
-        
-        tv=np.arange(meta['Year Start Saving'],meta['Year End']+1,1)
-        tv_full=np.arange(meta['Year Start'],meta['Year End']+1,1)
-        
-        # Initialize structure
-        mos[iScn]={}
-        
-        mos[iScn]['v1']={}
-        mos[iScn]['v1']['Mean']={}
-        mos[iScn]['v1']['Sum']={}
-        d1=LoadSingleOutputFile(meta,0,0,0)
-        for k in d1.keys(): 
-            if (k=='Year'):
-                continue
-            mos[iScn]['v1']['Mean'][k]={}
-            mos[iScn]['v1']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
-            mos[iScn]['v1']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v1']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
-            mos[iScn]['v1']['Sum'][k]={}
-            mos[iScn]['v1']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
-            mos[iScn]['v1']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v1']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
-            
-        mos[iScn]['v2']={}
-        mos[iScn]['v2']['Mean']={}
-        mos[iScn]['v2']['Sum']={}
-        d2=CalculateGHGBalance(d1,meta)        
-        for k in d2[0][0].keys(): 
-            if (k=='Year'):
-                continue
-            mos[iScn]['v2']['Mean'][k]={}
-            mos[iScn]['v2']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
-            mos[iScn]['v2']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v2']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
-            mos[iScn]['v2']['Sum'][k]={}
-            mos[iScn]['v2']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
-            mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
-            
-        mos[iScn]['Area']={}
-        for k in meta['LUT Dist'].keys():
-            mos[iScn]['Area'][k]={}
-            mos[iScn]['Area'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
-            mos[iScn]['Area'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['Area'][k]['Ensemble SD']=np.zeros(tv.size)
-            
-        # Loop through ensembles
-        for iEns in range(meta['N Ensemble']):
-            
-            v1={}
-            v2={}          
-            for iBat in range(meta['N Batch']):
-            
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
-                d2=CalculateGHGBalance(d1,meta)
-            
-                for k in d1.keys(): 
-                    if (k=='Year'):
-                        continue
-                    if iBat==0:
-                        v1[k]=np.sum(d1[k],axis=1)
-                    else:
-                        v1[k]=v1[k]+np.sum(d1[k],axis=1)
-            
-                for k in d2[0][0].keys(): 
-                    if k=='Year':
-                        continue
-                    if iBat==0:
-                        v2[k]=np.sum(d2[0][0][k],axis=1)
-                    else:
-                        v2[k]=v2[k]+np.sum(d2[0][0][k],axis=1)    
-            
-                # Import event chronology
-                ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
-            
-                # Uncompress event chronology if it has been compressed
-                if 'idx' in ec:
-                    idx=ec['idx']
-                    tmp=ec.copy()
-                    for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
-                        ec[v]=np.zeros((meta['N Year'],d1['A'].shape[1],meta['Max Events Per Year']),dtype='int16')
-                        ec[v][idx[0],idx[1],idx[2]]=tmp[v]
-                del tmp
-            
-                for iYr in range(tv_full.size):
-                    it=np.where(tv==tv_full[iYr])[0]
-                    if it.size==0:
-                        continue
-                    ID_Type0=ec['ID_Type'][iYr,:,:].flatten()
-                    u=np.unique(ID_Type0)
-                    for iU in range(u.size):
-                        if u[iU]==0:
-                            continue
-                        id=lut_n2s(meta['LUT Dist'],u[iU])[0]
-                        ind=np.where(ID_Type0==u[iU])[0]
-                        mos[iScn]['Area'][id]['Ensembles'][it,iEns]=mos[iScn]['Area'][id]['Ensembles'][it,iEns]+ind.size
-                del d1,d2,ec
-                garc.collect()
-            
-            # Populate mos for each scenario
-            for k in v1.keys():
-                if k=='Year':
-                    continue
-                mos[iScn]['v1']['Sum'][k]['Ensembles'][:,iEns]=v1[k].copy()
-                mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['N Stand Full']
-            for k in v2.keys():
-                if k=='Year':
-                    continue
-                mos[iScn]['v2']['Sum'][k]['Ensembles'][:,iEns]=v2[k].copy()
-                mos[iScn]['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/meta['N Stand Full']                                   
-        
-        for k in v1.keys():
-            if k=='Year':
-                continue
-            mos[iScn]['v1']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['v1']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v1']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v1']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
-            mos[iScn]['v1']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
-        
-        for k in v2.keys():
-            if k=='Year':
-                continue
-            mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['v2']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['v2']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v2']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['v2']['Mean'][k]['Ensembles'],axis=1)
-            mos[iScn]['v2']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['v2']['Mean'][k]['Ensembles'],axis=1)
-        
-        for k in mos[iScn]['Area'].keys():
-            mos[iScn]['Area'][k]['Ensemble Mean']=np.mean(mos[iScn]['Area'][k]['Ensembles'],axis=1)
-            mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
-            mos[iScn]['Area'][k]['Ensemble Mean']=np.mean(mos[iScn]['Area'][k]['Ensembles'],axis=1)
-            mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
-        
-    # Save
-    if flag_save=='SaveOn':
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS.pkl',mos)
-    
-    return mos
 
 #%% Post process BatchTIPSY output
 
@@ -1826,111 +1688,29 @@ def PrepareInventoryFromSpreadsheet(meta):
         
     return
 
-#%% SAVE CBRUNNER VARIABLES BY MULTIPOLYGON (BY PROJECT)
-# This is only good for the inventory from polygons template.
-
-def SaveByMultipolygon(meta,tv):
-
-    # Import multipolygons
-    atu_multipolys=gu.ipickle(meta['Paths']['Geospatial'] + '\\atu_multipolygons.pkl')
-
-    # Import sxy
-    sxy=gu.ipickle(meta['Paths']['Geospatial'] + '\\sxy.pkl')
-
-    uMP=np.unique(sxy['ID_atu_multipolygons'])
-
-    # Create listed index (faster than indexing on the fly)
-    idx=[None]*uMP.size
-    for iMP in range(uMP.size):
-        d={}
-        d['Index']=np.where(sxy['ID_atu_multipolygons']==uMP[iMP])[0]
-        idx[iMP]=d
-
-    # Time period to save
-    it=np.where( (tv>=meta['Year Start Saving']) & (tv<=2050) )[0]
-
-    # Variables to save
-    nam1=['V_StemMerch']
-    nam2=['A','Eco_Biomass','Eco_DeadWood','Eco_Litter','Eco_Total','Eco_RH','Eco_E_Fire','Eco_Removals','Eco_NGHGB','Sec_NGHGB',]
-
-    # Initialize temporary data structure (full simulation)
-    # Give each variable two columns for instances where areas overlap multiple batches.
-    # Values for areas with data from multiple batches will be averaged.
-    ScaleFactor=0.01
-    Data=[None]*meta['N Scenario']
-    for iScn in range(meta['N Scenario']):
-        d={}
-        d['Time']=tv[it]
-        for iVar in range(len(nam1)):
-            d[nam1[iVar]]=np.zeros((d['Time'].size,meta['N Stand Full']),dtype=int)        
-        for iVar in range(len(nam2)):
-            d[nam2[iVar]]=np.zeros((d['Time'].size,meta['N Stand Full']),dtype=int)
-        Data[iScn]=d
-
-    iEns=0
-    for iScn in range(meta['N Scenario']):    
+#%% Compile events
     
-        for iBat in range(meta['N Batch']):       
-        
-            print(iBat)
-        
-            iStart=meta['Batch Interval']*iBat
-            iStop=np.minimum(meta['N Stand Full'],iStart+meta['Batch Interval'])
-            indBat=np.arange(iStart,iStop,1)
-        
-            d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
-            d2=CalculateGHGBalance(d1,meta)
-        
-            for iVar in range(len(nam1)):
-                tmp=d1[0][nam1[iVar]][it,:]/ScaleFactor
-                Data[iScn][nam1[iVar]][:,indBat]=tmp.copy().astype(int)
-            
-            for iVar in range(len(nam2)):
-                tmp=d2[0][0][nam2[iVar]][it,:]/ScaleFactor
-                Data[iScn][nam2[iVar]][:,indBat]=tmp.copy().astype(int)
-        
-            del d1,d2
-            garc.collect()
+def CompileEvents(ec,tv,iS,ID_Type,Year,MortalityFactor,GrowthFactor,ID_GrowthCurve):    
+    if Year.size>0:
+        YearFloor=np.floor(Year)
+        uYearFloor=np.unique(YearFloor)
+        for iU in range(uYearFloor.size):
+            iT=np.where(tv==uYearFloor[iU])[0]
+            if iT.size==0:
+                continue
+            indYear=np.where(YearFloor==uYearFloor[iU])[0]                        
+            for iY in range(indYear.size):
+                indAvailable=np.where(ec['ID_Type'][iT,iS,:].flatten()==0)[0]
+                if indAvailable.size==0:
+                    print('Warning, more events per year than can be handled!')
+                else:
+                    iE=indAvailable[0]
+                    ec['ID_Type'][iT,iS,iE]=ID_Type[indYear[iY]]
+                    ec['MortalityFactor'][iT,iS,iE]=MortalityFactor[indYear[iY]]
+                    ec['GrowthFactor'][iT,iS,iE]=GrowthFactor[indYear[iY]]
+                    ec['ID_GrowthCurve'][iT,iS,iE]=ID_GrowthCurve[indYear[iY]]
+    return ec
 
-    # Initialize data by multipolygon structure
-    DataByMP=[None]*meta['N Scenario']
-    for iScn in range(meta['N Scenario']):
-        d={}
-        d['Time']=tv[it]
-        for iVar in range(len(nam1)):
-            d[nam1[iVar]]={}
-            d[nam1[iVar]]['Mean']=np.zeros((d['Time'].size,uMP.size))
-            d[nam1[iVar]]['Sum']=np.zeros((d['Time'].size,uMP.size))
-        for iVar in range(len(nam2)):
-            d[nam2[iVar]]={}
-            d[nam2[iVar]]['Mean']=np.zeros((d['Time'].size,uMP.size))    
-            d[nam2[iVar]]['Sum']=np.zeros((d['Time'].size,uMP.size))    
-        DataByMP[iScn]=d
-
-    # Scale average to treatment area   
-    for iMP in range(uMP.size):
-        ATA=atu_multipolys[uMP[iMP]]['ACTUAL_TREATMENT_AREA']        
-        ind=idx[iMP]['Index']
-        for iScn in range(meta['N Scenario']):
-            for iVar in range(len(nam1)):
-                tmp=ScaleFactor*Data[iScn][nam1[iVar]][:,ind].astype(float)
-                DataByMP[iScn][nam1[iVar]]['Mean'][:,iMP]=np.mean(tmp,axis=1)
-                DataByMP[iScn][nam1[iVar]]['Sum'][:,iMP]=ATA*np.mean(tmp,axis=1)
-            for iVar in range(len(nam2)):
-                tmp=ScaleFactor*Data[iScn][nam2[iVar]][:,ind].astype(float)
-                DataByMP[iScn][nam2[iVar]]['Mean'][:,iMP]=np.mean(tmp,axis=1)
-                DataByMP[iScn][nam2[iVar]]['Sum'][:,iMP]=ATA*np.mean(tmp,axis=1)
-
-    # Save
-    gu.opickle(meta['Paths']['Project'] + '\\Outputs\\SummaryByMultipolygonAreaSummed.pkl',DataByMP)
-     
-    #a=Data[0]['V_StemMerch'].astype(float)*ScaleFactor
-    #plt.close('all')
-    #plt.plot(np.mean(a,axis=1),linewidth=1)
-    
-    #plt.close('all')
-    #plt.plot(DataByMP[0]['Eco_Biomass']['Mean'][:,0::50],linewidth=1)
-    
 #%% Mortality frequency distribution
 
 def GetMortalityFrequencyDistribution(meta):
@@ -1975,33 +1755,287 @@ def GetMortalityFrequencyDistribution(meta):
     
     return M
 
-#%% Index to batch
+#%% Save output variables by multipolygon
+# This is only designed for projects that apply inventory_from_polygons method.
 
-def IndexToBatch(meta,iBat):
-    iStart=meta['Batch Interval']*iBat
-    iStop=np.minimum(meta['N Stand Full'],iStart+meta['Batch Interval'])
-    indBat=np.arange(iStart,iStop,1)
-    return indBat
+def MosByMultipolygon(meta):
 
-#%% Compile events
+    # Import multipolygons
+    atu_multipolys=gu.ipickle(meta['Paths']['Geospatial'] + '\\atu_multipolygons.pkl')
+
+    # Import sxy
+    sxy=gu.ipickle(meta['Paths']['Geospatial'] + '\\sxy.pkl')
+
+    uMP=np.unique(sxy['ID_atu_multipolygons'])
+
+    # Create listed index (faster than indexing on the fly)
+    Crosswalk_sxy_to_mp=[None]*uMP.size
+    for iMP in range(uMP.size):
+        d={}
+        d['Index']=np.where(sxy['ID_atu_multipolygons']==uMP[iMP])[0]
+        Crosswalk_sxy_to_mp[iMP]=d
+
+    # Time series of saved results
+    tv_full=np.arange(meta['Year Start'],meta['Year End']+1,1)
+    tv_saving=np.arange(meta['Year Start Saving'],meta['Year End']+1,1)
+    it=np.where( (tv_full>=tv_saving[0]) & (tv_full<=tv_saving[-1]) )[0]
     
-def CompileEvents(ec,tv,iS,ID_Type,Year,MortalityFactor,GrowthFactor,ID_GrowthCurve):    
-    if Year.size>0:
-        YearFloor=np.floor(Year)
-        uYearFloor=np.unique(YearFloor)
-        for iU in range(uYearFloor.size):
-            iT=np.where(tv==uYearFloor[iU])[0]
-            if iT.size==0:
+    # Variables to save
+    nam1=['V_StemMerch']
+    nam2=['A','Eco_Biomass','Eco_DeadWood','Eco_Litter','Eco_Total','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Eco_NGHGB','Sec_NGHGB']
+
+    # Initialize data by multipolygon structure    
+    MosByMP=[None]*meta['N Scenario']
+    for iScn in range(meta['N Scenario']):
+        d={}
+        d['v1']={}
+        for iVar in range(len(nam1)):
+            d['v1'][nam1[iVar]]={}
+            d['v1'][nam1[iVar]]['Mean']=np.zeros((tv_saving.size,uMP.size))
+            d['v1'][nam1[iVar]]['Sum']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']={}
+        for iVar in range(len(nam2)):
+            d['v2'][nam2[iVar]]={}
+            d['v2'][nam2[iVar]]['Mean']=np.zeros((tv_saving.size,uMP.size))    
+            d['v2'][nam2[iVar]]['Sum']=np.zeros((tv_saving.size,uMP.size))
+        d['Area']={}
+        for k in meta['LUT Dist'].keys():
+            d['Area'][k]=np.zeros((tv_saving.size,uMP.size))
+        MosByMP[iScn]=d
+    
+    # Specify what ensemble to run (will need fixing to handle multiple ensembes)
+    iEns=0
+    
+    # Scale factor used to temporarily store data
+    ScaleFactor=0.01
+    
+    # Loop through scenarios
+    for iScn in range(meta['N Scenario']):
+        
+        # Initialize temporary data structure for full simulation
+        # Give each variable two columns for instances where areas overlap multiple batches.
+        # Values for areas with data from multiple batches will be averaged.        
+        Data={}
+        Data['v1']={}
+        for iVar in range(len(nam1)):
+            Data['v1'][nam1[iVar]]=np.zeros((tv_saving.size,meta['N Stand Full']),dtype=int)        
+        Data['v2']={}
+        for iVar in range(len(nam2)):
+            Data['v2'][nam2[iVar]]=np.zeros((tv_saving.size,meta['N Stand Full']),dtype=int)
+        Data['Area']={}
+        for k in MosByMP[iScn]['Area']:
+            Data['Area'][k]=np.zeros((tv_saving.size,meta['N Stand Full']),dtype=int)
+
+        # Populate full simulation results       
+        for iBat in range(meta['N Batch']):
+        
+            indBat=IndexToBatch(meta,iBat)            
+            
+            d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+            d2=CalculateGHGBalance(d1,meta)        
+            for iVar in range(len(nam1)):
+                tmp=d1[nam1[iVar]]/ScaleFactor
+                Data['v1'][nam1[iVar]][:,indBat]=tmp.copy().astype(int)            
+            for iVar in range(len(nam2)):
+                tmp=d2[0][0][nam2[iVar]]/ScaleFactor
+                Data['v2'][nam2[iVar]][:,indBat]=tmp.copy().astype(int)
+            
+            # Import event chronology
+            ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+            
+            # Uncompress event chronology if it has been compressed
+            if 'idx' in ec:
+                idx=ec['idx']
+                tmp=ec.copy()
+                for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
+                    ec[v]=np.zeros((tv_full.size,d1['A'].shape[1],meta['Max Events Per Year']),dtype='int16')
+                    ec[v][idx[0],idx[1],idx[2]]=tmp[v]
+            del tmp
+            
+            for k in Data['Area'].keys():
+                Data0=np.zeros((tv_saving.size,indBat.size))
+                for iEY in range(meta['Max Events Per Year']):
+                    ind=np.where(ec['ID_Type'][it,:,iEY]==meta['LUT Dist'][k])[0]
+                    Data0[ind]=Data0[ind]+1
+                Data['Area'][k][:,indBat]=Data0
+            
+            del d1,d2,ec
+            garc.collect()
+        
+        # Populating the final structure with area data is slow - get a flag
+        # indicator of whether each event ID can be skipped because it has no
+        # info
+        flg_area={}
+        for k in Data['Area'].keys():            
+            if np.sum(Data['Area'][k])>0:
+                flg_area[k]=1
+            else:
+                flg_area[k]=0
+        
+        # Calculate stats and populate results for each treatment area    
+        for iMP in range(uMP.size):
+            #print(iMP)
+            ATA=atu_multipolys[uMP[iMP]]['ACTUAL_TREATMENT_AREA']        
+            ind=Crosswalk_sxy_to_mp[iMP]['Index']
+            for iVar in range(len(nam1)):
+                tmp=ScaleFactor*Data['v1'][nam1[iVar]][:,ind].astype(float)
+                MosByMP[iScn]['v1'][nam1[iVar]]['Mean'][:,iMP]=np.mean(tmp,axis=1)
+                MosByMP[iScn]['v1'][nam1[iVar]]['Sum'][:,iMP]=ATA*np.mean(tmp,axis=1)
+            for iVar in range(len(nam2)):
+                tmp=ScaleFactor*Data['v2'][nam2[iVar]][:,ind].astype(float)
+                MosByMP[iScn]['v2'][nam2[iVar]]['Mean'][:,iMP]=np.mean(tmp,axis=1)
+                MosByMP[iScn]['v2'][nam2[iVar]]['Sum'][:,iMP]=ATA*np.mean(tmp,axis=1)
+            for k in MosByMP[iScn]['Area']:
+                if flg_area[k]==1:
+                    # Only continue if there are some events
+                    MosByMP[iScn]['Area'][k][:,iMP]=np.sum(Data['Area'][k][:,ind],axis=1)
+
+    # Save    
+    gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MosByMultipolygon.pkl',MosByMP)
+
+
+#%% CALCULATE MODEL OUTPUT STATISTICS
+
+def ModelOutputStats(meta,flag_save):
+
+    mos=[None]*meta['N Scenario']
+    
+    for iScn in range(meta['N Scenario']):
+        
+        tv=np.arange(meta['Year Start Saving'],meta['Year End']+1,1)
+        tv_full=np.arange(meta['Year Start'],meta['Year End']+1,1)
+        
+        # Initialize structure
+        mos[iScn]={}
+        
+        mos[iScn]['v1']={}
+        mos[iScn]['v1']['Mean']={}
+        mos[iScn]['v1']['Sum']={}
+        d1=LoadSingleOutputFile(meta,0,0,0)
+        for k in d1.keys(): 
+            if (k=='Year'):
                 continue
-            indYear=np.where(YearFloor==uYearFloor[iU])[0]                        
-            for iY in range(indYear.size):
-                indAvailable=np.where(ec['ID_Type'][iT,iS,:].flatten()==0)[0]
-                if indAvailable.size==0:
-                    print('Warning, more events per year than can be handled!')
-                else:
-                    iE=indAvailable[0]
-                    ec['ID_Type'][iT,iS,iE]=ID_Type[indYear[iY]]
-                    ec['MortalityFactor'][iT,iS,iE]=MortalityFactor[indYear[iY]]
-                    ec['GrowthFactor'][iT,iS,iE]=GrowthFactor[indYear[iY]]
-                    ec['ID_GrowthCurve'][iT,iS,iE]=ID_GrowthCurve[indYear[iY]]
-    return ec
+            mos[iScn]['v1']['Mean'][k]={}
+            mos[iScn]['v1']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
+            mos[iScn]['v1']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['v1']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+            mos[iScn]['v1']['Sum'][k]={}
+            mos[iScn]['v1']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
+            mos[iScn]['v1']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['v1']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+            
+        mos[iScn]['v2']={}
+        mos[iScn]['v2']['Mean']={}
+        mos[iScn]['v2']['Sum']={}
+        d2=CalculateGHGBalance(d1,meta)        
+        for k in d2[0][0].keys(): 
+            if (k=='Year'):
+                continue
+            mos[iScn]['v2']['Mean'][k]={}
+            mos[iScn]['v2']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
+            mos[iScn]['v2']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['v2']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+            mos[iScn]['v2']['Sum'][k]={}
+            mos[iScn]['v2']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
+            mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+            
+        mos[iScn]['Area']={}
+        for k in meta['LUT Dist'].keys():
+            mos[iScn]['Area'][k]={}
+            mos[iScn]['Area'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
+            mos[iScn]['Area'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['Area'][k]['Ensemble SD']=np.zeros(tv.size)
+            
+        # Loop through ensembles
+        for iEns in range(meta['N Ensemble']):
+            
+            v1={}
+            v2={}          
+            for iBat in range(meta['N Batch']):
+            
+                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                d2=CalculateGHGBalance(d1,meta)
+            
+                for k in d1.keys(): 
+                    if (k=='Year'):
+                        continue
+                    if iBat==0:
+                        v1[k]=np.sum(d1[k],axis=1)
+                    else:
+                        v1[k]=v1[k]+np.sum(d1[k],axis=1)
+            
+                for k in d2[0][0].keys(): 
+                    if k=='Year':
+                        continue
+                    if iBat==0:
+                        v2[k]=np.sum(d2[0][0][k],axis=1)
+                    else:
+                        v2[k]=v2[k]+np.sum(d2[0][0][k],axis=1)    
+            
+                # Import event chronology
+                ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+            
+                # Uncompress event chronology if it has been compressed
+                if 'idx' in ec:
+                    idx=ec['idx']
+                    tmp=ec.copy()
+                    for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
+                        ec[v]=np.zeros((tv_full.size,d1['A'].shape[1],meta['Max Events Per Year']),dtype='int16')
+                        ec[v][idx[0],idx[1],idx[2]]=tmp[v]
+                del tmp
+            
+                for iYr in range(tv_full.size):
+                    it=np.where(tv==tv_full[iYr])[0]
+                    if it.size==0:
+                        continue
+                    ID_Type0=ec['ID_Type'][iYr,:,:].flatten()
+                    u=np.unique(ID_Type0)
+                    for iU in range(u.size):
+                        if u[iU]==0:
+                            continue
+                        id=lut_n2s(meta['LUT Dist'],u[iU])[0]
+                        ind=np.where(ID_Type0==u[iU])[0]
+                        mos[iScn]['Area'][id]['Ensembles'][it,iEns]=mos[iScn]['Area'][id]['Ensembles'][it,iEns]+ind.size
+                del d1,d2,ec
+                garc.collect()
+            
+            # Populate mos for each scenario
+            for k in v1.keys():
+                if k=='Year':
+                    continue
+                mos[iScn]['v1']['Sum'][k]['Ensembles'][:,iEns]=v1[k].copy()
+                mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['N Stand Full']
+            for k in v2.keys():
+                if k=='Year':
+                    continue
+                mos[iScn]['v2']['Sum'][k]['Ensembles'][:,iEns]=v2[k].copy()
+                mos[iScn]['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/meta['N Stand Full']                                   
+        
+        for k in v1.keys():
+            if k=='Year':
+                continue
+            mos[iScn]['v1']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['v1']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['v1']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['v1']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
+            mos[iScn]['v1']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
+        
+        for k in v2.keys():
+            if k=='Year':
+                continue
+            mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['v2']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['v2']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['v2']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['v2']['Mean'][k]['Ensembles'],axis=1)
+            mos[iScn]['v2']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['v2']['Mean'][k]['Ensembles'],axis=1)
+        
+        for k in mos[iScn]['Area'].keys():
+            mos[iScn]['Area'][k]['Ensemble Mean']=np.mean(mos[iScn]['Area'][k]['Ensembles'],axis=1)
+            mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
+            mos[iScn]['Area'][k]['Ensemble Mean']=np.mean(mos[iScn]['Area'][k]['Ensembles'],axis=1)
+            mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
+        
+    # Save
+    if flag_save=='On':
+        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS.pkl',mos)
+    
+    return mos

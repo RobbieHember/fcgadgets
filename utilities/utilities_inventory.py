@@ -18,6 +18,8 @@ from fcgadgets.utilities import utilities_gis as gis
 from fcgadgets.utilities import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 
+#%% Look at contents of geodatabase
+
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Conservation.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706\LandUse.gdb')
@@ -29,29 +31,25 @@ StringsToFill=['Month','Day','FCI_Funded','FIA_PROJECT_ID','OPENING_ID','ACTUAL_
                'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
                'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5']
 
-'''============================================================================
-UPDATE FOREST INVENTORY DATA
-    1) Download geodatabases from BC Data Catelogue (60 min)
-        - store files at the paths indicated in "DefineInventoryLayersAndVariables"
-    2) Define inventory layers and variable
-    3) Build and save LUTs (20 min)
-============================================================================'''
 
-# 1) Manually download geodatabases in ArcGIS (if export is not working, try copy and paste)
+''' 
+Update forest inventory data
 
-# 2) Run function to define inventory layers and variables (make sure folder 
-#    release dates are updated)
-# LayerInfo=invu.DefineInventoryLayersAndVariables()
+ 1) Manually download geodatabases from BCGW in ArcGIS (60 min)
+    - if export not working, use copy and paste 
+    - store files at the paths indicated in "DefineInventoryLayersAndVariables"
 
-# 3) Run function to build and save LUTs
-# invu.BuildForestInventoryLUTs(LayerInfo)
+ 2) Define inventory layers and variables (<1min))
+    - Run: LayerInfo=invu.DefineInventoryLayersAndVariables()
+    - make sure folder release dates are updated
 
+ 3) Build and save LUTs (20 min)
+    - Run: invu.BuildForestInventoryLUTs(LayerInfo)
+'''
 
-'''============================================================================
-DEFINE INVENTORY LAYERS AND VARIABLES
-The "Field List" variable contains touples containing the variable name and 
-a flag indicating whether it is string (1) or numberic (0)
-============================================================================'''
+#%% Define inventory layers and varialbes
+# The "Field List" variable contains touples containing the variable name and 
+# a flag indicating whether it is string (1) or numberic (0)
 
 def DefineInventoryLayersAndVariables():
 
@@ -1519,7 +1517,6 @@ def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
     
     return dmec
 
-
 '''============================================================================
 ENSURE EVERY STAND HAS A MODERN DISTURBANCE
 ============================================================================'''
@@ -1547,13 +1544,11 @@ So that age at fert is specified.
 
 def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
 
-    # Assumptions
-    #AgeAtFert=35
-    #ID_Type_Prev=meta['LUT Dist']['Harvest']
-    #sev_Prev=100
-
-    Ntot=np.array([])
-    Nfix=np.array([])
+    ListOfTestedDist=[meta['LUT Dist']['Wildfire'],meta['LUT Dist']['Harvest'],
+            meta['LUT Dist']['Knockdown'],meta['LUT Dist']['Salvage Logging'],
+            meta['LUT Dist']['Beetles'],meta['LUT Dist']['IBM'],meta['LUT Dist']['IBB'],
+            meta['LUT Dist']['IBD'],meta['LUT Dist']['IBS']]
+    
     for iStand in range(meta['N Stand Full']):
         
         if dmec[iStand]==None:
@@ -1562,16 +1557,12 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
         iA=np.where( (dmec[iStand]['ID_Type']==meta['LUT Dist']['Fertilization Aerial']) )[0]
         if iA.size==0: 
             continue
-    
-        # QA: Look at what events occur before fert
-        #print(cbu.lut_n2s(meta['LUT Dist'],dmec[iStand]['ID_Type'][iA[0]-1]))
-        #print(dmec[iStand]['MortalityFactor'][iA[0]-1])    
-
-        Ntot=np.append(Ntot,1)
         
-        if (dmec[iStand]['Year'][iA[0]]==np.min(dmec[iStand]['Year'])) | (np.max(dmec[iStand]['MortalityFactor'][0:iA[0]+1])<th_sev_last_dist):        
+        # Index to events prior to first fertilization with 100% mortality
+        ind=np.where( (dmec[iStand]['Year']<=dmec[iStand]['Year'][iA[0]]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
         
-            Nfix=np.append(Nfix,1)    
+        #dYear=dmec[iStand]['Year'][iA[0]]-dmec[iStand]['Year'][ind[-1]]
+        if (ind.size==0):
             
             # Add harvest
             Year=dmec[iStand]['Year'][iA[0]]-AgeAtFert
@@ -1590,13 +1581,13 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
             for v in StringsToFill:
                 dmec[iStand][v]=np.append(dmec[iStand][v],-999)  
             
-            # Think about whether a planting event should go here
-            # ->
-            
-    # What fraction of fertilization events had no record of a stand-replacing disturbance
-    print(str(np.sum(Nfix)/np.sum(Ntot)) + ' of study area required generating a pre-fert disturbance.')
-
-    #Age=vri['PROJ_AGE_1'][iStand]+dmec[iStand]['Year'][0]-vri['Year'][iStand]
+            # Add planting
+            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+0.2)
+            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT Dist']['Planting'])
+            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
+            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],0)
+            for v in StringsToFill:
+                dmec[iStand][v]=np.append(dmec[iStand][v],-999)            
     
     return dmec
 
@@ -2144,3 +2135,13 @@ def AdjustSpeciesSpecificMortality(meta,dmec,par,gc,iB):
 
     return dmec
 
+#%% Put DMEC events in order
+
+def PutEventsInOrder(dmec,meta):    
+    for iStand in range(meta['N Stand Full']):
+        d=dmec[iStand].copy()
+        ord=np.argsort(d['Year'])
+        for key in d.keys():
+            d[key]=d[key][ord]
+        dmec[iStand]=d.copy()
+    return dmec

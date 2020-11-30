@@ -87,7 +87,7 @@ def MeepMeep(meta):
                     if meta['Biomass Module']=='BatchTIPSY':
                         
                         # Biomass from BatchTIPSY.exe (or TASS)
-                        vo=annproc.BiomassFromBatchTIPSY(iScn,iT,vi,vo,psl,meta,iEP)
+                        vo=annproc.Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP)
                     
                     # Calculate annual dead organic matter dynamics
                     vo=annproc.DOM_like_CBM08(iT,vi,vo,psl,iEP,meta)
