@@ -24,7 +24,7 @@ The annual net flux of GHGs between the forest sector and the atmosphere is esti
 the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and nutrient applications. 
 ![image info](./images/fcgadgets_annual_processes.png)
 
-The model achieves this with a set of plug-and-play functions (or "methods"), currently consisting of:
+The model achieves this with a set of plug-and-play functions, currently consisting of:
 ### Biomass_FromTIPSYorTASS: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling)
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
@@ -52,7 +52,7 @@ The model achieves this with a set of plug-and-play functions (or "methods"), cu
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 
-### Probabilistic modelling framework 
+### Organizational structure
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
 
 N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>
@@ -65,6 +65,7 @@ Projects with N<sub>Stands</sub> > 1,500 are segmented internally into batches t
 work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and 
 ensemble. 
 
+### Scenarios & probabilistic modelling framework
 Projects that explore climate change impacts or mitigation activities invariably consider multiple hypothetical scenarios for each forest stand. the hierarchical structure is
 therefore build around developing and easily analyzing multiple scenarios.
 
