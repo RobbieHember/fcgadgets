@@ -844,16 +844,12 @@ def PostProcessBatchTIPSY(meta):
                     
                     elif meta['Scenario Source']=='Script':                        
                         
-                        if meta['Growth Curves Lumped']=='Yes':
-                            indTIPSY=np.where(
-                                (dfPar['ID_Stand']==indBat[iS]+1) & 
-                                (dfPar['ID_Scenario']==iScn+1) &
-                                (dfPar['ID_GC']==int(iGC+1)))[0]
-                            # dh[iS].ID_GrowthCurve[indDH][0]
-                        else:
-                            indTIPSY=np.where(
-                                (dfPar['ID_Stand']==indBat[iS]+1) &
-                                (dfPar['ID_GC']==int(dh[iS]['ID_GrowthCurve'][indDH][0])))[0]                    
+                        indTIPSY=np.where(
+                            (dfPar['ID_Stand']==indBat[iS]+1) & 
+                            (dfPar['ID_Scenario']==iScn+1) &
+                            (dfPar['ID_GC']==int(iGC+1)))[0]
+                        # dh[iS].ID_GrowthCurve[indDH][0]
+                        
                     
                     if indTIPSY.size==0:
                         # This can happen if only some stands have a third GC, for example
@@ -901,8 +897,6 @@ def GetTASSCurves(meta,iScn,iGC,fny,fnc,fnm):
 def Import_BatchTIPSY_Output(meta):
         
     # Growth curve parameters and TIPSY outputs
-    if meta['Growth Curves Lumped']!='Yes':
-        print('This wont work')
     dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
     txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
     
@@ -1757,6 +1751,9 @@ def GetMortalityFrequencyDistribution(meta):
 
 #%% Save output variables by multipolygon
 # This is only designed for projects that apply inventory_from_polygons method.
+# Not only is this outputting by project, but the project flux sums are accurately
+# representing the given treatment area, rather than the area inferred from the 
+# total number of sparse sample points within a project area, which can be wrong.
 
 def MosByMultipolygon(meta):
 

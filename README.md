@@ -35,10 +35,10 @@ The model achieves this with a set of plug-and-play functions, currently consist
 * Equations are fitted against species/region samples
 ### DOM_FromCBM08: 
 * Simulates cycling of organic carbon through:
-	* dead wood (snags and coarse woody debris);
-	* litter (organic soil horizon); 
-	* soil (mineral soil horizon);
-	* felled & piled materials
+	* Dead wood (snags and coarse woody debris);
+	* Litter (organic soil horizon); 
+	* Soil (mineral soil horizon);
+	* Felled & piled materials
 * Loosely based on methods described by Kurz et al. (2009)
 ### DisturbanceAndManagement: 
 * This method imposes changes caused by natural disturbances and management events
@@ -67,7 +67,7 @@ ensemble.
 
 ### Scenarios & probabilistic modelling framework
 Projects that explore climate change impacts or mitigation activities invariably consider multiple hypothetical scenarios for each forest stand. the hierarchical structure is
-therefore build around developing and easily analyzing multiple scenarios.
+therefore built around running and comparing multiple scenarios.
 
 The **cbrunner** model adopts a probabilistic framework to accommodate processes with both deterministic and random components, as well as uncertainty analysis. Multiple ensembles
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 

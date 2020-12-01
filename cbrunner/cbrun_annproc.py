@@ -2,7 +2,7 @@
 #%% Import python modules
 
 import numpy as np
-from fcgadgets.activities.nutrient_application import update_nutrient_status 
+from fcgadgets.actions.nutrient_application import update_nutrient_status 
 from fcgadgets.taz import general_stat_models as gensm
 
 #%% Define class objects
@@ -1142,10 +1142,17 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
     if meta['Simulate breakup on the fly']=='On':
         vi=gensm.PredictStandBreakup_OnTheFly(meta,vi,iT,vo['A'][iT,:])    
     
-    # Predict harvesting (on the fly)
-    if meta['Simulate harvesting on the fly']=='On':            
-        if meta['Dist on Fly']['Harvesting'][meta['iScn']]==1:
-            vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,vi['Inv']['THLB'][iT,:],vo['V_StemMerch'][iT,:])
+    # Predict historical harvesting (on the fly)
+    if (meta['Simulate harvesting on the fly (historical)']=='On'):
+        if meta['Dist on Fly']['Harvesting (historical)'][meta['iScn']]==1:
+            if meta['Time'][iT]<=meta['Year Project']:
+                vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,vi['Inv']['THLB'][iT,:],vo['V_StemMerch'][iT,:])
+    
+    # Predict future harvesting (on the fly)        
+    if (meta['Simulate harvesting on the fly (future)']=='On'):
+        if meta['Dist on Fly']['Harvesting (future)'][meta['iScn']]==1:
+            if meta['Time'][iT]>meta['Year Project']:
+                vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,vi['Inv']['THLB'][iT,:],vo['V_StemMerch'][iT,:])        
     
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta['N Stand'])

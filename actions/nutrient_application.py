@@ -9,7 +9,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         
         meta['NM']['ResponseCounter'][meta['NM']['iApplication']]=meta['NM']['ResponseCounter'][meta['NM']['iApplication']]+1
     
-    elif (comp=='AbovegroundNetGrowth') & (meta['Fertilization Source']=='CBRunner'):
+    elif (comp=='AbovegroundNetGrowth') & (meta['Nutrient Application Module']=='cbrunner'):
 
         # Need to revise to be based on N
         # r_NonUniform_Spatial_Distribution
@@ -84,7 +84,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         # Repopulate in input variable dictionary
         vi['GC']['Active'][:,meta['NM']['iApplication'],:]=GCA_SP
     
-    elif (comp=='BelowgroundNetGrowth') & (meta['Fertilization Source']=='CBRunner'):
+    elif (comp=='BelowgroundNetGrowth') & (meta['Nutrient Application Module']=='cbrunner'):
         
         #----------------------------------------------------------------------
         # Adjust root net growth
@@ -129,7 +129,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         if iStop.size>0:
             meta['NM']['ResponseCounter'][iStop]=0
         
-    elif (comp=='Mortality') & (meta['Fertilization Source']=='CBRunner'):
+    elif (comp=='Mortality') & (meta['Nutrient Application Module']=='cbrunner'):
         
         #----------------------------------------------------------------------
         # Adjust mortality
@@ -137,7 +137,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         
         vo['C_M_Reg'][iT,meta['NM']['iApplication'],0:7]=psl['bNA_rPrime_TreeMortality']*vo['C_M_Reg'][iT,meta['NM']['iApplication'],0:7] 
      
-    elif (comp=='Litterfall') & (meta['Fertilization Source']=='CBRunner'):
+    elif (comp=='Litterfall') & (meta['Nutrient Application Module']=='cbrunner'):
         
         #----------------------------------------------------------------------
         # Adjust biomass turnover
@@ -196,7 +196,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         # the vo object.
         vo['C_E_Operations'][iT,meta['NM']['iApplication']]=psl['bRatio_C_to_CO2']*E_Tot
     
-    elif (comp=='HeterotrophicRespiration') & (meta['Fertilization Source']=='CBRunner'):
+    elif (comp=='HeterotrophicRespiration') & (meta['Nutrient Application Module']=='cbrunner'):
         
         #----------------------------------------------------------------------
         # Adjust rate of heterotrophic respiration

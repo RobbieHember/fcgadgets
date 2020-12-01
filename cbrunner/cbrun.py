@@ -770,7 +770,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
     # If events are added on the fly, they will only be accessable if resaved.
     #--------------------------------------------------------------------------
     
-    if (meta['Simulate harvesting on the fly']=='On') | (meta['Simulate breakup on the fly']=='On'):
+    if (meta['Simulate harvesting on the fly (historical)']=='On') | (meta['Simulate harvesting on the fly (future)']=='On') | (meta['Simulate breakup on the fly']=='On'):
         
         # If it was input as compressed, output as re-compressed
         if 'idx' in vi['EC']:
