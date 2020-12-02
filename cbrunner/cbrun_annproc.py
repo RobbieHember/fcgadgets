@@ -1145,13 +1145,13 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
     # Predict historical harvesting (on the fly)
     if (meta['Simulate harvesting on the fly (historical)']=='On'):
         if meta['Dist on Fly']['Harvesting (historical)'][meta['iScn']]==1:
-            if meta['Time'][iT]<=meta['Year Project']:
+            if vi['tv'][iT]<=meta['Year Project']:
                 vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,vi['Inv']['THLB'][iT,:],vo['V_StemMerch'][iT,:])
     
     # Predict future harvesting (on the fly)        
     if (meta['Simulate harvesting on the fly (future)']=='On'):
         if meta['Dist on Fly']['Harvesting (future)'][meta['iScn']]==1:
-            if meta['Time'][iT]>meta['Year Project']:
+            if vi['tv'][iT]>meta['Year Project']:
                 vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,vi['Inv']['THLB'][iT,:],vo['V_StemMerch'][iT,:])        
     
     # Initialize indicator of aerial nutrient application

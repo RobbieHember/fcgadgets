@@ -15,16 +15,24 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Generate disturbances from Pareto distribution
 
-def GenerateDisturbancesFromPareto(n,beta):
-    # Draw a single probability of area disturbed per year
-    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=1)
+def GenerateDisturbancesFromPareto(N_t,N_s,beta):
+
+    # Initialize occurrence array
+    oc=np.zeros((N_t,N_s),dtype='int8')
+    
+    # Draw a probability of area disturbed per time step
+    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
     po=np.reshape(po,(-1,1))
-    po=np.tile(po,n)
-    r=np.random.random((1,n))
-    ind=np.where(r<po)
-    y=np.zeros((1,n),dtype='int8')
-    y[ind[0],ind[1]]=1
-    return y
+    po=np.tile(po,N_s)
+    
+    # Loop through time steps
+    rn=np.random.random((N_t,N_s))
+    
+    # Populate occurrence
+    ind=np.where(rn<po)    
+    oc[ind[0],ind[1]]=1
+    
+    return oc
 
 #%% Simulate probability of stand breakup based on age
 
@@ -136,7 +144,7 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
         # Alternative model
         b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
         for iT in range(meta['Year'].size):
-            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(indZone.size,b0)
+            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0)
         
     # Exclude inventory period
     if par['IBM']['Exclude simulations during modern era']=='On':

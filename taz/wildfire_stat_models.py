@@ -16,9 +16,8 @@ from fcgadgets.taz import general_stat_models as gensm
 
 def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
     
-    # Import wildfire stats    
-    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
-    
+    # Import wildfire stats (by BGC zone)  
+    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')    
     tv_wfss=np.arange(-2000,2201,1)
     
     # Prepare mortality probability coefficients
@@ -60,10 +59,10 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
                 if meta['Scenario Source']=='Spreadsheet':
                     # When run from spreadsheet, stands are swapped for ensembles so
                     # generate different records for each stand
-                    wf_sim['Occurrence'][iT,:]=gensm.GenerateDisturbancesFromPareto(indZone.size,b0)
+                    wf_sim['Occurrence'][iT,:]=gensm.GenerateDisturbancesFromPareto(1,indZone.size,b0)
                 else:
                     # All stands get populated with the same prediction
-                    wf_sim['Occurrence'][iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,b0)        
+                    wf_sim['Occurrence'][iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,1,b0)        
     
         elif method_occ=='PreRun':
             # Using this will ensure consistency across tiles
