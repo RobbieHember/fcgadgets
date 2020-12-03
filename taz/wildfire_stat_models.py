@@ -52,9 +52,13 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
                 # Adjust shape parameter to match specified annual probability of 
                 # occurrence from the deterministic component
                 ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
-                b0=wfss[namZone]['Beta_Pareto'].copy()
-                b_shape=wfss[namZone]['Pareto_shape_for_Po'].copy()
-                b0[0]=np.exp(b_shape[1]*np.log(Po_Det[ind_scn])+b_shape[0])
+                #b0=wfss[namZone]['Beta_Pareto'].copy()
+                #b_shape=wfss[namZone]['Pareto_shape_for_Po'].copy()
+                #b0[0]=np.exp(b_shape[1]*np.log(Po_Det[ind_scn])+b_shape[0])
+                b0=wfss[namZone]['Beta_Pareto_Cal'].copy()
+                Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
+                b0[1]=-Scale
+                b0[2]=Scale
             
                 if meta['Scenario Source']=='Spreadsheet':
                     # When run from spreadsheet, stands are swapped for ensembles so
@@ -62,7 +66,7 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
                     wf_sim['Occurrence'][iT,:]=gensm.GenerateDisturbancesFromPareto(1,indZone.size,b0)
                 else:
                     # All stands get populated with the same prediction
-                    wf_sim['Occurrence'][iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,1,b0)        
+                    wf_sim['Occurrence'][iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,indZone.size,b0)        
     
         elif method_occ=='PreRun':
             # Using this will ensure consistency across tiles
