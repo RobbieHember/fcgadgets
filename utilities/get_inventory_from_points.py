@@ -28,6 +28,7 @@ Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
 Paths['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
 Paths['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 Paths['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
+Paths['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
 Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
 Paths['Mapping']=Paths['Project'] + '\\Outputs\Mapping'
 Paths['Figures']=r'G:\My Drive\Figures\SparseGrid'
@@ -54,15 +55,15 @@ zLC2=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\VRI\lc2.tif')
 sfreq=100
 
 # Extract subgrid
-zTSA.X=zTSA.X[0::sfreq,0::sfreq]
-zTSA.Y=zTSA.Y[0::sfreq,0::sfreq]
-zTSA.Data=zTSA.Data[0::sfreq,0::sfreq]
-zLC2.Data=zLC2.Data[0::sfreq,0::sfreq]
+zTSA['X']=zTSA['X'][0::sfreq,0::sfreq]
+zTSA['Y']=zTSA['Y'][0::sfreq,0::sfreq]
+zTSA['Data']=zTSA['Data'][0::sfreq,0::sfreq]
+zLC2['Data']=zLC2['Data'][0::sfreq,0::sfreq]
 
 # Define additional inclusion criteria
 
 # Treed, province-wide
-iIreg=np.where( (zLC2.Data==4) )
+iIreg=np.where( (zLC2['Data']==4) )
 
 # Treed, Williams Lake TSA only
 #iTSA=lut_tsa.loc[lut_tsa.Name=='Williams Lake TSA','VALUE'].values
@@ -70,9 +71,9 @@ iIreg=np.where( (zLC2.Data==4) )
 
 # Apply filters to BC1ha grid 
 sxy={}
-sxy['x']=zTSA.X[iIreg]
-sxy['y']=zTSA.Y[iIreg]
-sxy['ID_TSA']=zTSA.Data[iIreg]
+sxy['x']=zTSA['X'][iIreg]
+sxy['y']=zTSA['Y'][iIreg]
+sxy['ID_TSA']=zTSA['Data'][iIreg]
 
 # Save to pickle file
 gu.opickle(Paths['Geospatial'] + '\\sxy.pkl',sxy)

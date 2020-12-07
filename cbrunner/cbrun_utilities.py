@@ -527,13 +527,24 @@ def ImportProjectConfig(meta):
     meta['GC']['Scale Factor']=0.01
     
     #--------------------------------------------------------------------------
+    # Initialize scenario switches
+    #--------------------------------------------------------------------------
+    
+    meta['Scenario Switch']={}
+    
+    #--------------------------------------------------------------------------
     # Growth factor information
+    # *** Not currently used ***
     #--------------------------------------------------------------------------
     
     # Default status of growth factors
+    meta['Scenario Switch']['Net Growth Factor Status']=[None]*meta['N Scenario']
+    meta['Scenario Switch']['Mortality Factor Status']=[None]*meta['N Scenario']
     for iScn in range(0,meta['N Scenario']): 
-        meta['Scenario'][iScn]['Status Net Growth Factor']='Off'
-        meta['Scenario'][iScn]['Status Mortality Factor']='Off'
+        meta['Scenario Switch']['Net Growth Factor Status'][iScn]='Off'
+        meta['Scenario Switch']['Mortality Factor Status'][iScn]='Off'
+        #meta['Scenario Switch'][iScn]['Status Net Growth Factor']='Off'
+        #meta['Scenario'][iScn]['Status Mortality Factor']='Off'
     
     #--------------------------------------------------------------------------
     # Harvested wood product information
@@ -543,7 +554,7 @@ def ImportProjectConfig(meta):
     meta['HWP Year Start']=1800
     
     #--------------------------------------------------------------------------
-    # Nutrient addition information
+    # Nutrient application information (for compatibility with "actions" module)
     #--------------------------------------------------------------------------
     
     meta['NM']={}

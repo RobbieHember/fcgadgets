@@ -849,16 +849,20 @@ GET MISSING ATU LAYER GEOMETRIES FROM OPENING LAYER
 ============================================================================'''
 
 def GetMissingATUGeometries(meta):
-
-    Paths={}
-    meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
-    meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
-    meta['Paths']['Results File']=meta['Paths']['Results'] + '\\Results.gdb'
+    # Takes 19 min
+    
+    t0=time.time()
+    
+    meta={}
+    meta['Paths']=Paths
+    #meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
+    #meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
+    #meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
     
     # Define name of layer
-    fiona.listlayers(meta['Paths']['Results File'])
+    fiona.listlayers(meta['Paths']['Results'] + '\\Results.gdb')
     nam_lyr='RSLT_ACTIVITY_TREATMENT_SVW'
-    lyr=fiona.open(meta['Paths']['Results File'],layer=nam_lyr)
+    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr)
     L=len(lyr)
     scma=lyr.schema
 
@@ -867,7 +871,7 @@ def GetMissingATUGeometries(meta):
     atu_mis['OPENING_ID']=np.zeros(L)
     atu_mis['SpatialMissing']=np.zeros(L)
     cnt=0
-    with fiona.open(meta['Paths']['Results File'],layer=nam_lyr) as source:
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
         for feat in source:
             atu_mis['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']        
             if feat['geometry']==None:
@@ -876,12 +880,12 @@ def GetMissingATUGeometries(meta):
 
     # Import a complete list of openings from the OPENING layer
     nam_lyr='RSLT_OPENING_SVW'
-    lyr=fiona.open(meta['Paths']['Results File'],layer=nam_lyr)
+    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr)
     L=len(lyr)
     op_mis={}
     op_mis['OPENING_ID']=np.zeros(L)
     cnt=0
-    with fiona.open(meta['Paths']['Results File'],layer=nam_lyr) as source:
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
         for feat in source:
             op_mis['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
             cnt=cnt+1
@@ -903,7 +907,7 @@ def GetMissingATUGeometries(meta):
     # Create a list that will contain the geometries for the missing AT rows
     at_geo_from_op=[None]*atu_mis['OPENING_ID'].size
     cnt=0
-    with fiona.open(meta['Paths']['Results File'],layer=nam_lyr) as source:
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
         for feat in source:
             ind=np.where(iMisOp==cnt)[0]
             if ind.size!=0:
@@ -912,7 +916,8 @@ def GetMissingATUGeometries(meta):
 
     gu.opickle(meta['Paths']['Results'] + '\\atu_mis.pkl',atu_mis)
     gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl',at_geo_from_op)
-
+    print((time.time()-t0)/60)
+    
 '''============================================================================
 ADD PLANTING INFO TO DMEC
 ============================================================================'''

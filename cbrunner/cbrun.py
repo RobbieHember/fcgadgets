@@ -139,7 +139,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vi['Inv']=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         
     # Update number of stands for batch
-    meta['N Stand']=vi['Inv']['X'].shape[1]
+    meta['N Stand']=vi['Inv']['X'].shape[1]          
     
     # Import event chronology
     vi['EC']=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
