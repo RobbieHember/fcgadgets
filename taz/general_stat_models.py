@@ -75,7 +75,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,flag_thlb,V_Merch):
         f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
         beta0=f1*f2
     else:
-        beta0=0.02
+        beta0=0.03
     
     beta=[beta0,-0.025,400]
     #V_Merch=np.arange(1,1200)

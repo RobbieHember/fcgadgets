@@ -30,7 +30,7 @@ Paths={}
 Paths['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 #Paths['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
 #Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
-Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
+Paths['Geospatial']=Paths['Project'] + '\\Inputs\\Geospatial'
 Paths['QA']=Paths['Project'] + '\\QA'
 #Paths['Figures']=r'G:\My Drive\Figures\Fertilization'
 Paths['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
@@ -165,9 +165,9 @@ with fiona.open(path,layer=lyr_nam) as source:
             # Reforestation Summary query
             Year=int(prp['ATU_COMPLETION_DATE'][0:4])
             flg=0
-            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
+            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year==1998):
                 flg=1
-            elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
+            elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year==1998):
                 flg=1
             else:
                 flg=0
@@ -186,7 +186,7 @@ with fiona.open(path,layer=lyr_nam) as source:
                 continue
         
         cnt=cnt+1
-        print(cnt/365884)
+        print(cnt)
         
         # Populate missing ATU layer geometry with geometry from 
         # OPENING layer where possible.
@@ -380,6 +380,10 @@ with fiona.open(path,layer=lyr_nam) as source:
         # Update counter for multipolygon
         atu_multipolygons[cnt_atu_multipolygons]=prp
         cnt_atu_multipolygons=cnt_atu_multipolygons+1
+        
+        # ***** *****
+        if cnt_atu_multipolygons>50:
+            break
 
 #%% Truncate data
 
@@ -482,8 +486,8 @@ print((time.time()-t0)/60)
 
 garc.collect()
 
-atu_multipolygons=gu.ipickle(Paths['Project'] + '\\Inputs\\Geospatial\\atu_multipolygons.pkl')
-sxy=gu.ipickle(Paths['Project'] + '\\Inputs\\Geospatial\\sxy.pkl')
+#atu_multipolygons=gu.ipickle(Paths['Project'] + '\\Inputs\\Geospatial\\atu_multipolygons.pkl')
+#sxy=gu.ipickle(Paths['Project'] + '\\Inputs\\Geospatial\\sxy.pkl')
 
 for iLyr in range(len(InvLyrInfo)):
     
@@ -506,7 +510,8 @@ for iLyr in range(len(InvLyrInfo)):
     IdxToInv=[None]*sxy['x'].size
         
     # Initialize inventory dictionary
-    L=sxy['x'].size+1000000
+    #L=sxy['x'].size+1000000
+    L=40*sxy['x'].size
     data={}
     data['IdxToSXY']=np.zeros(L,dtype=int)
     for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
