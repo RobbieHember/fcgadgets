@@ -30,7 +30,7 @@ Paths={}
 #Paths['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 #Paths['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
 Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
-Paths['Geospatial']=Paths['Project'] + '\\Inputs\\Geospatial'
+Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
 Paths['QA']=Paths['Project'] + '\\QA'
 #Paths['Figures']=r'G:\My Drive\Figures\Fertilization'
 Paths['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
@@ -174,7 +174,7 @@ with fiona.open(path,layer=lyr_nam) as source:
             if flg==0:
                 continue
         
-        elif project_name=='FCI Rollup':
+        elif project_name=='FCI_RollupFCI_Inv':
             
             # FCI query
             if prp['RESULTS_IND']=='N':
@@ -183,9 +183,12 @@ with fiona.open(path,layer=lyr_nam) as source:
                 continue
             if prp['SILV_BASE_CODE']=='SU':
                 continue
+        else:
+            print('Project name unspecified!')
+            continue
         
-        cnt=cnt+1
-        print(cnt)
+        #cnt=cnt+1
+        print(cnt_atu_multipolygons)
         
         # Populate missing ATU layer geometry with geometry from 
         # OPENING layer where possible.
@@ -250,13 +253,6 @@ with fiona.open(path,layer=lyr_nam) as source:
             dp0['SILV_BASE_CODE']=prp['SILV_BASE_CODE']
             dp0['ACTUAL_TREATMENT_AREA']=prp['ACTUAL_TREATMENT_AREA']            
             dp0['Year']=prp['Year']
-#            gdf_atu_polygons.loc[cnt_atu_polygons,'ID_atu_polygons']=cnt_atu_polygons
-#            gdf_atu_polygons.loc[cnt_atu_polygons,'ID_atu_multipolygons']=cnt_atu_multipolygons            
-#            gdf_atu_polygons.loc[cnt_atu_polygons,'OPENING_ID']=prp['OPENING_ID']
-#            gdf_atu_polygons.loc[cnt_atu_polygons,'FIA_PROJECT_ID']=prp['FIA_PROJECT_ID']            
-#            gdf_atu_polygons.loc[cnt_atu_polygons,'SILV_BASE_CODE']=prp['SILV_BASE_CODE']
-#            gdf_atu_polygons.loc[cnt_atu_polygons,'ACTUAL_TREATMENT_AREA']=prp['ACTUAL_TREATMENT_AREA']            
-#            gdf_atu_polygons.loc[cnt_atu_polygons,'Year']=prp['Year']
             
             gdf_outer=gpd.GeoDataFrame(crs=gdf_bm.crs)
             gdf_outer.loc[0,'geometry']=Polygon(coords1[0])
@@ -396,20 +392,6 @@ for k in sxy.keys():
 gdf_atu_polygons=gpd.GeoDataFrame(list_atu_polygons,columns=cn_atu_polygons,crs=gdf_bm.crs)
 gdf_atu_polygons=gdf_atu_polygons.set_geometry('geometry')
 
-#%% Convert atu multipolygons to gdf
-# I added this for Darius and the FCI map
-
-List=[None]*len(atu_multipolygons)
-for i in range(len(atu_multipolygons)):
-    d={}
-    d['geometry']=atu_multipolygons[i]['geom']
-    d['SBC']=atu_multipolygon[i]['SILV_BASE_CODE']
-    List[i]=d
-
-cn=
-gdf_atu_multipolygons=gpd.GeoDataFrame(List,columns=cn,crs=gdf_bm.crs)
-gdf_atu_multipolygons=gdf_atu_multipolygons.set_geometry('geometry')
-
 #%% Remove duplicate cells
 # Notes: This means that some values of ID_atu_multipolygons may not exist in
 # the sxy dictionaries - they were only retained for one of the IDs of the 
@@ -466,15 +448,13 @@ for i in range(sxy['x'].size):
 #%% Save to file
     
 # Save multipolygon file
-gu.opickle(Paths['Project'] + '\\Inputs\\Geospatial\\atu_multipolygons.pkl',atu_multipolygons)
+gu.opickle(Paths['Project'] + '\\Geospatial\\atu_multipolygons.pkl',atu_multipolygons)
 
 # Save sparse sample file
-gu.opickle(Paths['Project'] + '\\Inputs\\Geospatial\\sxy.pkl',sxy)
-
-# Save geodataframe of multipolygons to shape file
+gu.opickle(Paths['Project'] + '\\Geospatial\\sxy.pkl',sxy)
 
 # Save geodataframe of polygons to shape file
-gdf_atu_polygons.to_file(filename=Paths['Project'] + '\\Inputs\\Geospatial\\atu_polygons.shp',driver="ESRI Shapefile")
+gdf_atu_polygons.to_file(filename=Paths['Project'] + '\\Geospatial\\atu_polygons.shp',driver="ESRI Shapefile")
 
 # Save sparse grid as shapefile
 flg=1
@@ -488,7 +468,7 @@ if flg==1:
                               'ID_atu_polygons':sxy['ID_atu_polygons'],
                               'ID_TSA':sxy['ID_TSA']})
     gdf_sxy.crs=gdf_bm.crs   
-    gdf_sxy.to_file(Paths['Project'] + '\\Inputs\\Geospatial\\sxy.shp')
+    gdf_sxy.to_file(Paths['Project'] + '\\Geospatial\\sxy.shp')
 
 print((time.time()-t0)/60)
 
@@ -662,8 +642,8 @@ for iLyr in range(len(InvLyrInfo)):
     # Save to file
     #--------------------------------------------------------------------------
     
-    gu.opickle(Paths['Project'] + '\\Inputs\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
-    gu.opickle(Paths['Project'] + '\\Inputs\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
+    gu.opickle(Paths['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
+    gu.opickle(Paths['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
         
 
 #%% Retrieve planting information 
@@ -763,8 +743,6 @@ gu.opickle(Paths['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
 
 t1=time.time()
 print(t1-t0)
-
-
 
 
 #%% Get multipolygons for FCI map
