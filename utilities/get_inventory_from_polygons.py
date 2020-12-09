@@ -20,16 +20,16 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Project name
 
-#project_name='FCI_RollupFCI_Inv'
+project_name='FCI_RollupFCI_Inv'
 #project_name='FertSummary'
-project_name='ReforestationSummary'
+#project_name='ReforestationSummary'
 
 #%% Define paths
 
 Paths={}
-Paths['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+#Paths['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 #Paths['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
-#Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
+Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
 Paths['Geospatial']=Paths['Project'] + '\\Inputs\\Geospatial'
 Paths['QA']=Paths['Project'] + '\\QA'
 #Paths['Figures']=r'G:\My Drive\Figures\Fertilization'
@@ -116,7 +116,6 @@ cnt_atu_multipolygons=0
 cnt_atu_polygons=0
 cn_atu_polygons=['ID_atu_polygons','ID_atu_multipolygons','OPENING_ID','FIA_PROJECT_ID','SILV_BASE_CODE','ACTUAL_TREATMENT_AREA','Year','geometry']
 list_atu_polygons=[None]*5000000
-#gdf_atu_polygons=gpd.GeoDataFrame(columns=cn_atu_polygons,crs=gdf_bm.crs)
     
 #%% Initialize sparse grid coordinate dictionary
 
@@ -380,10 +379,6 @@ with fiona.open(path,layer=lyr_nam) as source:
         # Update counter for multipolygon
         atu_multipolygons[cnt_atu_multipolygons]=prp
         cnt_atu_multipolygons=cnt_atu_multipolygons+1
-        
-        # ***** *****
-        if cnt_atu_multipolygons>50:
-            break
 
 #%% Truncate data
 
@@ -399,6 +394,21 @@ for k in sxy.keys():
 #%% Convert list of atu polygons to gdf
 
 gdf_atu_polygons=gpd.GeoDataFrame(list_atu_polygons,columns=cn_atu_polygons,crs=gdf_bm.crs)
+gdf_atu_polygons=gdf_atu_polygons.set_geometry('geometry')
+
+#%% Convert atu multipolygons to gdf
+# I added this for Darius and the FCI map
+
+List=[None]*len(atu_multipolygons)
+for i in range(len(atu_multipolygons)):
+    d={}
+    d['geometry']=atu_multipolygons[i]['geom']
+    d['SBC']=atu_multipolygon[i]['SILV_BASE_CODE']
+    List[i]=d
+
+cn=
+gdf_atu_multipolygons=gpd.GeoDataFrame(List,columns=cn,crs=gdf_bm.crs)
+gdf_atu_multipolygons=gdf_atu_multipolygons.set_geometry('geometry')
 
 #%% Remove duplicate cells
 # Notes: This means that some values of ID_atu_multipolygons may not exist in
@@ -411,7 +421,7 @@ uxy,ind_xy,inv_xy=np.unique(np.column_stack((sxy['x'],sxy['y'])),return_index=Tr
 for k in sxy.keys():
     sxy[k]=sxy[k][ind_xy]
 
-#%% Check lengths and make note of (expected) discrepency in length between uniquq
+#%% Check lengths and make note of (expected) discrepency in length between unique
 # IDs from sxy dictionary and unique IDs from list of multipolygons
 
 flg=0
@@ -461,8 +471,9 @@ gu.opickle(Paths['Project'] + '\\Inputs\\Geospatial\\atu_multipolygons.pkl',atu_
 # Save sparse sample file
 gu.opickle(Paths['Project'] + '\\Inputs\\Geospatial\\sxy.pkl',sxy)
 
+# Save geodataframe of multipolygons to shape file
+
 # Save geodataframe of polygons to shape file
-gdf_atu_polygons=gdf_atu_polygons.set_geometry('geometry')
 gdf_atu_polygons.to_file(filename=Paths['Project'] + '\\Inputs\\Geospatial\\atu_polygons.shp',driver="ESRI Shapefile")
 
 # Save sparse grid as shapefile
@@ -752,4 +763,96 @@ gu.opickle(Paths['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
 
 t1=time.time()
 print(t1-t0)
+
+
+
+
+#%% Get multipolygons for FCI map
+# Unlike above, this include planned and surveys. Too slow when run with sparse grid extraction.
+
+atu_multipolygons=[None]*5000000
+cnt_atu_multipolygons=0
+
+with fiona.open(path,layer=lyr_nam) as source:
+        
+    for feat in source:
+          
+        print(cnt_atu_multipolygons)
+        
+        # Extract attributes and geometry
+        prp=feat['properties']
+        geom=feat['geometry']
+        
+        # In rare instances, there are no dates - add dummy numbers so that it 
+        # does not crash - it appears to be so rare that it should not be a big
+        # problem
+        if prp['ATU_COMPLETION_DATE']==None:
+            prp['ATU_COMPLETION_DATE']='99990000'
+        
+        # FCI query
+        
+        #if prp['RESULTS_IND']=='N':
+        #    continue
+        if (prp['SILV_FUND_SOURCE_CODE']!='FCE') & (prp['SILV_FUND_SOURCE_CODE']!='FCM') & (np.isin(prp['FIA_PROJECT_ID'],uPP)==False):
+            continue
+        #if prp['SILV_BASE_CODE']=='SU':
+        #    continue
+        
+        # Populate missing ATU layer geometry with geometry from 
+        # OPENING layer where possible.
+        flg_geom_from_op=0
+        if (geom==None):
+            ind=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
+            if ind.size>0:
+                for i_ind in range(len(ind)):
+                    if at_geo_from_op[ind[i_ind]]!=None:
+                        geom=at_geo_from_op[ind[i_ind]]
+                flg_geom_from_op=1
+            else:
+                print('Checked for opening spatial, but no match')
+            
+        # Don't conitnue if no spatial data
+        if (geom==None): 
+            N_Missing_Spatial=N_Missing_Spatial+1
+            continue
+        
+        prp['ID_atu_multipolygons']=cnt_atu_multipolygons
+        prp['Year']=int(prp['ATU_COMPLETION_DATE'][0:4])
+        prp['geometry']=geom
+        prp['GeomFromOpLyr']=flg_geom_from_op
+
+        # Update counter for multipolygon
+        atu_multipolygons[cnt_atu_multipolygons]=prp
+        cnt_atu_multipolygons=cnt_atu_multipolygons+1
+
+#%% Truncate data
+
+# Vector geometries
+atu_multipolygons=atu_multipolygons[0:cnt_atu_multipolygons]
+
+#%% Convert atu multipolygons to gdf
+# I added this for Darius and the FCI map
+
+List=[None]*len(atu_multipolygons)
+for i in range(len(atu_multipolygons)):
+    d={}
+    d['geometry']=atu_multipolygons[i]['geometry']
+    prp={}
+    for k in atu_multipolygons[i].keys():
+        if k!='geometry':
+            prp[k]=atu_multipolygons[i][k]
+    d['properties']=prp
+    List[i]=d
+
+gu.opickle(Paths['Project'] + '\\Geospatial\\atu_multipolygons_ForFCIMap.pkl',List)
+
+gdf=gpd.GeoDataFrame.from_features(List,crs=gdf_bm.crs)
+gdf=gdf.set_geometry('geometry')
+gdf.plot()
+
+# Save geodataframe of polygons to shape file
+fiona.supported_drivers
+fnam=Paths['Project'] + '\\Geospatial\\atu_multipolygons_ForFCIMap.shp'
+gdf.to_file(filename=fnam,driver='ESRI Shapefile')
+
 
