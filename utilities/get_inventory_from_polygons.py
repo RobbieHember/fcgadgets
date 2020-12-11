@@ -20,19 +20,21 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Project name
 
-project_name='FCI_RollupFCI_Inv'
+#project_name='FCI_RollupFCI_Inv'
+#project_name='SurveySummary'
 #project_name='FertSummary'
-#project_name='ReforestationSummary'
+project_name='ReforestationSummary'
 
 #%% Define paths
 
 Paths={}
-#Paths['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+Paths['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 #Paths['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
-Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
+#Paths['Project']=r'D:\Data\FCI_Projects\SurveySummary'
+#Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
+
 Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
 Paths['QA']=Paths['Project'] + '\\QA'
-#Paths['Figures']=r'G:\My Drive\Figures\Fertilization'
 Paths['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
 Paths['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 Paths['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
@@ -70,6 +72,11 @@ y_bc_all=zTSA['Y'][:,0]
 
 # Load basemap (for CRS)
 gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
+
+#%% Define subsampling frequency
+# Some projects are way too big to collect 1-hectare coverage - subsample randomly
+
+subsampling_frequency=0.01
 
 #%% Compile inventory data at sparse grid locations
 
@@ -160,18 +167,31 @@ with fiona.open(path,layer=lyr_nam) as source:
                 continue
             
         elif project_name=='ReforestationSummary':
-            
+              
             # Reforestation Summary query
-            Year=int(prp['ATU_COMPLETION_DATE'][0:4])
+            
+            Year=int(prp['ATU_COMPLETION_DATE'][0:4]) 
+            
             flg=0
-            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year==1998):
+            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
                 flg=1
-            elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year==1998):
+            elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
                 flg=1
             else:
                 flg=0
             
             if flg==0:
+                continue
+        
+        elif project_name=='SurveySummary':
+            
+            # Survey Summary query            
+            
+            Year=int(prp['ATU_COMPLETION_DATE'][0:4])   
+            
+            if (prp['SILV_BASE_CODE']!='SU'):
+                continue
+            if (Year<2017):
                 continue
         
         elif project_name=='FCI_RollupFCI_Inv':
@@ -313,9 +333,16 @@ with fiona.open(path,layer=lyr_nam) as source:
           
             # Index to cells within feature geometry
             ikp=np.where(InPol==1)
-        
+            
             # If grid cell(s) fall within the project area, use those grid cells
-            if ikp[0].size!=0:        
+            if ikp[0].size!=0:
+                
+                # Subsampling
+                if subsampling_frequency<1:
+                    Nss=np.maximum(1,np.ceil(subsampling_frequency*ikp[0].size)).astype(int)
+                    iSS=np.random.randint(ikp[0].size,size=Nss)   
+                    ikp=(ikp[0][iSS],ikp[1][iSS])
+                
                 x_ikp=np.atleast_1d(x_bb[ikp])
                 y_ikp=np.atleast_1d(y_bb[ikp])
                 
@@ -472,15 +499,18 @@ if flg==1:
 
 print((time.time()-t0)/60)
 
-
 #%% Extract inventory information for sparse grid sample over polygons
+# *** See new removal of SU and incomplete entries from AT layer ***
 
 garc.collect()
 
-#atu_multipolygons=gu.ipickle(Paths['Project'] + '\\Inputs\\Geospatial\\atu_multipolygons.pkl')
-#sxy=gu.ipickle(Paths['Project'] + '\\Inputs\\Geospatial\\sxy.pkl')
+atu_multipolygons=gu.ipickle(Paths['Project'] + '\\Geospatial\\atu_multipolygons.pkl')
+sxy=gu.ipickle(Paths['Project'] + '\\Geospatial\\sxy.pkl')
 
 for iLyr in range(len(InvLyrInfo)):
+    
+    #if iLyr>0:
+    #    continue
     
     # Define path
     path=InvLyrInfo[iLyr]['Path'] + '\\' + InvLyrInfo[iLyr]['File Name']
@@ -502,7 +532,7 @@ for iLyr in range(len(InvLyrInfo)):
         
     # Initialize inventory dictionary
     #L=sxy['x'].size+1000000
-    L=40*sxy['x'].size
+    L=20*sxy['x'].size
     data={}
     data['IdxToSXY']=np.zeros(L,dtype=int)
     for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
@@ -543,9 +573,14 @@ for iLyr in range(len(InvLyrInfo)):
             if (geom==None) | (geom==[]):
                 continue
             
+            # If AT layer, may not be much need in retaining planned or SU
+            if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):
+                if (prp['RESULTS_IND']=='N') | (prp['SILV_BASE_CODE']=='SU'):
+                    continue                
+            
             # Extract multipolygon
             coords0=geom['coordinates']
-        
+            
             # loop through multipolygon
             for i in range(len(coords0)):
                 
@@ -645,7 +680,6 @@ for iLyr in range(len(InvLyrInfo)):
     gu.opickle(Paths['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
     gu.opickle(Paths['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
         
-
 #%% Retrieve planting information 
 # Some projects did not report spatial planting info. Without the spatial info
 # in the planting layer, the initial import of the PL layer (above) will miss
@@ -669,9 +703,7 @@ lyr_nam=InvLyrInfo[iLyr]['Layer Name']
 gdf_pl=gpd.read_file(path,layer=lyr_nam)        
 d_pl=gu.DataFrameToDict(gdf_pl.drop(columns='geometry'))
         
-# Open the planting sparse grid
-#pl=gu.ipickle(Paths['TileGeospatial'] + '\\RSLT_PLANTING_SVW.pkl')
-    
+
 # Get keys for planting layer
 key_pl=[]
 for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
@@ -686,7 +718,7 @@ pl_code=InvLyrInfo[0]['LUT']['SILV_BASE_CODE']['PL']
 ind_at=np.where(atu['SILV_BASE_CODE']==pl_code)[0]
 
 # Initialize dictionary
-L=1000000
+L=20*sxy['x'].size
 pl={}
 pl['IdxToSXY']=np.zeros(L,dtype=int)
 for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
@@ -833,4 +865,7 @@ fiona.supported_drivers
 fnam=Paths['Project'] + '\\Geospatial\\atu_multipolygons_ForFCIMap.shp'
 gdf.to_file(filename=fnam,driver='ESRI Shapefile')
 
-
+# Asked for spreadsheet
+gdf=gpd.read_file(fnam)
+df1=pd.DataFrame(gdf.drop(columns='geometry'))
+df1.to_excel(Paths['Project'] + '\\Geospatial\\atu_multipolygons_ForFCIMap.xlsx')
