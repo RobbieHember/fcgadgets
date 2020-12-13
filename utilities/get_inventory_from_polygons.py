@@ -22,8 +22,8 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #project_name='FCI_RollupFCI_Inv'
 #project_name='SurveySummary'
-#project_name='FertSummary'
-project_name='ReforestationSummary'
+project_name='FertilizationSummary'
+#project_name='ReforestationSummary'
 
 #%% Define paths
 
@@ -76,7 +76,7 @@ gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
 #%% Define subsampling frequency
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
 
-subsampling_frequency=0.01
+subsampling_frequency=0.02
 
 #%% Compile inventory data at sparse grid locations
 
@@ -160,7 +160,7 @@ with fiona.open(path,layer=lyr_nam) as source:
         if prp['ATU_COMPLETION_DATE']==None:
             prp['ATU_COMPLETION_DATE']='99990000'
         
-        if project_name=='FertSummary':
+        if project_name=='FertilizationSummary':
             
             # Fert Summary query
             if (prp['SILV_BASE_CODE']!='FE') | (prp['SILV_TECHNIQUE_CODE']!='CA') | (prp['RESULTS_IND']!='Y'):
@@ -777,95 +777,3 @@ t1=time.time()
 print(t1-t0)
 
 
-#%% Get multipolygons for FCI map
-# Unlike above, this include planned and surveys. Too slow when run with sparse grid extraction.
-
-atu_multipolygons=[None]*5000000
-cnt_atu_multipolygons=0
-
-with fiona.open(path,layer=lyr_nam) as source:
-        
-    for feat in source:
-          
-        print(cnt_atu_multipolygons)
-        
-        # Extract attributes and geometry
-        prp=feat['properties']
-        geom=feat['geometry']
-        
-        # In rare instances, there are no dates - add dummy numbers so that it 
-        # does not crash - it appears to be so rare that it should not be a big
-        # problem
-        if prp['ATU_COMPLETION_DATE']==None:
-            prp['ATU_COMPLETION_DATE']='99990000'
-        
-        # FCI query
-        
-        #if prp['RESULTS_IND']=='N':
-        #    continue
-        if (prp['SILV_FUND_SOURCE_CODE']!='FCE') & (prp['SILV_FUND_SOURCE_CODE']!='FCM') & (np.isin(prp['FIA_PROJECT_ID'],uPP)==False):
-            continue
-        #if prp['SILV_BASE_CODE']=='SU':
-        #    continue
-        
-        # Populate missing ATU layer geometry with geometry from 
-        # OPENING layer where possible.
-        flg_geom_from_op=0
-        if (geom==None):
-            ind=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
-            if ind.size>0:
-                for i_ind in range(len(ind)):
-                    if at_geo_from_op[ind[i_ind]]!=None:
-                        geom=at_geo_from_op[ind[i_ind]]
-                flg_geom_from_op=1
-            else:
-                print('Checked for opening spatial, but no match')
-            
-        # Don't conitnue if no spatial data
-        if (geom==None): 
-            N_Missing_Spatial=N_Missing_Spatial+1
-            continue
-        
-        prp['ID_atu_multipolygons']=cnt_atu_multipolygons
-        prp['Year']=int(prp['ATU_COMPLETION_DATE'][0:4])
-        prp['geometry']=geom
-        prp['GeomFromOpLyr']=flg_geom_from_op
-
-        # Update counter for multipolygon
-        atu_multipolygons[cnt_atu_multipolygons]=prp
-        cnt_atu_multipolygons=cnt_atu_multipolygons+1
-
-#%% Truncate data
-
-# Vector geometries
-atu_multipolygons=atu_multipolygons[0:cnt_atu_multipolygons]
-
-#%% Convert atu multipolygons to gdf
-# I added this for Darius and the FCI map
-
-List=[None]*len(atu_multipolygons)
-for i in range(len(atu_multipolygons)):
-    d={}
-    d['geometry']=atu_multipolygons[i]['geometry']
-    prp={}
-    for k in atu_multipolygons[i].keys():
-        if k!='geometry':
-            prp[k]=atu_multipolygons[i][k]
-    d['properties']=prp
-    List[i]=d
-
-gu.opickle(Paths['Project'] + '\\Geospatial\\atu_multipolygons_ForFCIMap.pkl',List)
-
-gdf=gpd.GeoDataFrame.from_features(List,crs=gdf_bm.crs)
-gdf=gdf.set_geometry('geometry')
-gdf.plot()
-
-# Save geodataframe of polygons to shape file
-fiona.supported_drivers
-fnam=Paths['Project'] + '\\Geospatial\\atu_multipolygons_ForFCIMap.shp'
-gdf.to_file(filename=fnam,driver='ESRI Shapefile')
-
-# Asked for spreadsheet
-gdf=gpd.read_file(fnam)
-df1=pd.DataFrame(gdf.drop(columns='geometry'))
-df1.to_excel(Paths['Project'] + '\\Geospatial\\atu_multipolygons_ForFCIMap.xlsx')

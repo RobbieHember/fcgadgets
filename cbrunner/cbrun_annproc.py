@@ -1350,13 +1350,19 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
         #----------------------------------------------------------------------
             
         if meta['Biomass Module']!='Sawtooth':
-                    
+            
+            # List of exception event types (that will remain at the same age)
+            Exceptions_to_Partial_Mortality=[ meta['LUT Dist']['IDL'] ]
+            
             if (meta['Partial Mortality Affects Age']=='On'):
-                        
+                
+                # Index to types where age will change
+                ind=np.where( (np.isin(ID_Type,Exceptions_to_Partial_Mortality)==False) )[0]
+                
                 # Assume oldest trees were most affected, reduce age in prportion
                 # with mortality rate
                 # Not always realistic, but see how net growth is affected.
-                vo['A'][iT,:]=vo['A'][iT,:]*(1-MortalityFactor)
+                vo['A'][iT,ind]=vo['A'][iT,ind]*(1-MortalityFactor)
                         
             else:                   
                         
@@ -1384,6 +1390,96 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
                     vi['GC']['Active'][:,ind,:]=vi['GC'][meta['GC']['ID GC'][iGC]][:,ind,:]
                     vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC'][iGC])
     
+        #------------------------------------------------------------------
+        # Update net growth (in response to lethal events)
+        #
+        # Partial disturbances likely have a lasting impact on gross growth 
+        # by removing growing stock. Without ad hoc 
+        # adjustment, this will not be reflected in the growth curve from TIPSY.
+        #
+        # This will apply to instances where Mortality=100% only if the
+        # user does not specify a change in growth curve. 
+        # With this functionality, the user has the options of:
+        #  1) Changing the growth curve
+        #  2) Assuming a gradual recovery to the previous curve, as defined
+        #     by the default recovery half life for that disturbance type.
+        #------------------------------------------------------------------
+        
+        # *** This is not up to date - will crash if attempted - needs update. ***
+        flg=0
+        
+        if (flg==1) & (meta['Biomass Module']!='Sawtooth'):
+                
+            # Half life
+            hl=psl['bDist_GrowthRecovery_HL']
+                
+            # Only proceed if:
+            #   1) the disturbance has a lasting growth impact/recovery
+            #   2) the user is not specifying a change in growth curve
+            if (hl>0) & (flg_gc_change==0):
+                
+                # Extract net growth for active growth curve
+                NetGrowth=vi['GCA'][:,iS,:].copy().astype(float)*meta['GC']['Scale Factor']
+                
+                # Growth pre-event
+                G_pre=NetGrowth.copy()
+                
+                # Growth post-event
+                G_post=(1-Biomass_Affected_Frac)*NetGrowth.copy()
+            
+                # Difference in growth
+                dG=G_pre-G_post
+                
+                # Age vector
+                A=np.arange(1,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+                
+                # Time since disturbance                    
+                TSD=np.tile(A-vo['A'][iT,iS],(G_pre.shape[1],1)).T
+                
+                # Relative effect
+                fTSD=1/(1+np.exp(-0.5*(TSD-hl)))
+                fTSD[0:int(vo['A'][iT,iS]),:]=0
+                
+                # Growth recovery
+                G_Recovery=fTSD*dG
+                
+                # New estimate of net growth
+                NetGrowthNew=G_post+G_Recovery
+                
+                # Add back to dictionary
+                NetGrowthNew=NetGrowthNew*meta['GC']['Scale Factor']
+                NetGrowthNew=NetGrowthNew.astype(np.int16)                
+                    
+                vi['GCA'][:,iS,:]=NetGrowthNew
+    
+#            #------------------------------------------------------------------
+#            # Apply growth factors (in response to non-lethal events)
+#            #------------------------------------------------------------------
+#
+#            flg=0
+#            if (flg==1) & (meta['Biomass Module']!='Sawtooth'):
+#                
+#                GF=vi['EH'][iS]['GrowthFactor'][indDist[iDist]]
+#                
+#                if (np.isnan(GF)==False) & (GF!=-999):
+#                    
+#                    GrowthFraction=1+GF.astype(float)/100               
+#                    NetGrowth=vi['GCA'][:,iS,:].copy().astype(float)/meta['GC']['Scale Factor']
+#                    
+#                    if ID_Type==meta['LUT Dist']['IDW']:
+#                        # Only a temporary change in growth (see severity class table)
+#                        ResponsePeriod=2  
+#                        A=np.arange(1,302,1)
+#                        iResponse=np.where( (A>=vo['A'][iT,iS]) & (A<=vo['A'][iT,iS]+ResponsePeriod) )[0]
+#                        NetGrowth[iResponse,:]=GrowthFraction*NetGrowth[iResponse,:]
+#                    else:
+#                        # A permanent change in growth
+#                        NetGrowth=GrowthFraction*NetGrowth                        
+#                    
+#                    NetGrowth=NetGrowth*meta['GC']['Scale Factor']
+#                    NetGrowth=NetGrowth.astype(np.int16)
+#                    vi['GCA'][:,iS,:]=NetGrowth
+
     #--------------------------------------------------------------------------
     # Aerial nutrient application events
     #--------------------------------------------------------------------------

@@ -33,15 +33,15 @@ params={'font.sans-serif':'Arial',
         'savefig.dpi':150}
 plt.rcParams.update(params)
 
-#%% IMPORT DATA
+#%% Import data
 
 # BC land basemap
-gdf_bc_boundary=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
-gdf_bm=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Basemaps\bc_land.shp')
+gdf_bc_boundary=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
+gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
 
 # Import TSA maps
-zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
-tsa_key=pd.read_excel(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\lut_tsa.xlsx')
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
+tsa_key=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx')
 gdf_tsa=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 
 # Roads
@@ -51,7 +51,7 @@ gdf_tsa=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 #gdf_d=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Districts\district.shp')
 
 
-#%% ISOLATE ROI
+#%% Area of interest
 
 # Pick the TSAs to include
 #tsaList=['Soo TSA']
@@ -78,7 +78,8 @@ gc.collect()
 gdf_tsa_roi=gdf_tsa[np.isin(gdf_tsa.Name,tsaList)]
 gdf_tsa_roi=gdf_tsa_roi.reset_index(drop=True)
 
-# Isolate lakes inside the ROI
+#%% Isolate lakes inside the ROI
+
 gdf_lakes_roi=gpd.overlay(gdf_bm[(gdf_bm['TAG']=='lake')],gdf_tsa[np.isin(gdf_tsa.Name,tsaList)],how='intersection')
 #gdf_rivers_roi=gpd.overlay(gdf_bm[(gdf_bm['TAG']=='river')],gdf_tsa[np.isin(gdf_tsa.Name,tsaList)],how='intersection')
 
@@ -414,15 +415,23 @@ gu.PrintFig(r'G:\My Drive\Figures\CutYear','png',500)
 
 #%% Plot AOS year within the TSA mask
 
-zH=zTSA.copy()
-zH=gis.ClipRaster(zH,xlim,ylim)
-zH['Data']=0*zH['Data']
-for i in range(1,5):
-    zH_tmp=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year' + str(i) + '.tif')    
-    zH_tmp=gis.ClipRaster(zH_tmp,xlim,ylim)    
-    zH['Data']=np.maximum(zH['Data'],zH_tmp['Data'])
-    del zH_tmp
-    gc.collect()
+dSC=gu.ReadExcel(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\PEST_INFESTATION_POLY_PEST_SEVERITY_CODE.xlsx')
+sco=['L','M','S','V']
+tv=np.arange(1990,2021,1)
+A=np.zeros((tv.size,len(sco)))
+for iT in range(tv.size):
+    print(tv[iT])
+    z=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\PEST_INFESTATION_POLY_IDL_SeverityClass_' + str(tv[iT]) + '.tif')
+    for iSC in range(len(sco)):
+        ind=np.where(dSC['PEST_SEVERITY_CODE']==sco[iSC])[0]
+        ind=np.where(z['Data']==dSC['ID'][ind])[0]
+        A[iT,iSC]=ind.size
+
+plt.close('all')
+plt.plot(tv,A[:,1],'-s')        
+plt.plot(tv,A[:,2],'-o')
+plt.plot(tv,A[:,3],'-d')
+
 
 zLC2_tmp=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\VRI\lc2.tif')
 zLC2=zTSA.copy()
