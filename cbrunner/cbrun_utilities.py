@@ -1567,38 +1567,39 @@ def GetDisturbanceHistory(meta):
     return dh
 
 #%% TIME SERIES OF AREA DISTURBED
-
-def GetAreasAffected(meta):
+# *** OLD THINK ABOUT DELETING ***
     
-    it=np.where(meta['Year']>=meta['Year Start Saving'])
-    tv=meta['Year'][it]
-    
-    A=[]
-    for iScn in range(meta['N Scenario']):
-        A.append({})
-        for key in meta['LUT Dist'].keys():
-            A[iScn][key]=np.zeros((tv.size,meta['N Stand']))
-        for iBat in range(meta['N Batch']):            
-            iEns=0            
-            dh=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')    
-            for iS in range(len(dh)):                
-                for iY in range(dh[iS]['Year'].size):
-                    it=np.where(tv==np.round(dh[iS]['Year'][iY]))[0]
-                    if it.size==0: 
-                        continue
-                    for key in meta['LUT Dist'].keys():
-                        if dh[iS]['ID_Type'][iY]==meta['LUT Dist'][key]:
-                            A[iScn][key][it,iS]=A[iScn][key][it,iS]+1
-        
-        #----------------------------------------------------------------------
-        # Summaries
-        #----------------------------------------------------------------------
-        
-        A[iScn]['Harvest (all)']=A[iScn]['Harvest and Slashpile Burn']+ \
-            A[iScn]['Harvest']+ \
-            A[iScn]['Harvest Custom']
-    
-    return A
+#def GetAreasAffected(meta):
+#    
+#    it=np.where(meta['Year']>=meta['Year Start Saving'])
+#    tv=meta['Year'][it]
+#    
+#    A=[]
+#    for iScn in range(meta['N Scenario']):
+#        A.append({})
+#        for key in meta['LUT Dist'].keys():
+#            A[iScn][key]=np.zeros((tv.size,meta['N Stand']))
+#        for iBat in range(meta['N Batch']):            
+#            iEns=0            
+#            dh=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')    
+#            for iS in range(len(dh)):                
+#                for iY in range(dh[iS]['Year'].size):
+#                    it=np.where(tv==np.round(dh[iS]['Year'][iY]))[0]
+#                    if it.size==0: 
+#                        continue
+#                    for key in meta['LUT Dist'].keys():
+#                        if dh[iS]['ID_Type'][iY]==meta['LUT Dist'][key]:
+#                            A[iScn][key][it,iS]=A[iScn][key][it,iS]+1
+#        
+#        #----------------------------------------------------------------------
+#        # Summaries
+#        #----------------------------------------------------------------------
+#        
+#        A[iScn]['Harvest (all)']=A[iScn]['Harvest and Slashpile Burn']+ \
+#            A[iScn]['Harvest']+ \
+#            A[iScn]['Harvest Custom']
+#    
+#    return A
 
 #%% GRAPHICS
 
@@ -1737,9 +1738,7 @@ def GetMortalityFrequencyDistribution(meta):
         
         for iBat in range(meta['N Batch']): 
             
-            iStart=meta['Batch Interval']*iBat
-            iStop=np.minimum(meta['N Stand Full'],iStart+meta['Batch Interval'])
-            indBat=np.arange(iStart,iStop,1)
+            indBat=IndexToBatch(meta,iBat)
             
             d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)        
             dh=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
@@ -1789,7 +1788,7 @@ def MosByMultipolygon(meta):
     it=np.where( (tv_full>=tv_saving[0]) & (tv_full<=tv_saving[-1]) )[0]
     
     # Variables to save
-    nam1=['V_StemMerch','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem']
+    nam1=['V_StemMerch','C_Ecosystem', 'C_InUse', 'C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem']
     nam2=['A','Eco_Biomass','Eco_DeadWood','Eco_Litter','Eco_Total','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Eco_NGHGB','Sec_NGHGB']
 
     # Initialize data by multipolygon structure    
@@ -2077,3 +2076,77 @@ def ModelOutputStats(meta,flag_save):
         gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS.pkl',mos)
     
     return mos
+
+#%% Summarize affected area due to natural disturbance and management
+
+def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
+    
+    A={}
+    if iEns>=0:
+        # Individual ensemble        
+        A['Nat Dist']=[None]*10; c=-1
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Wildfire']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain Pine beetle'; A['Nat Dist'][c]['Color']=[0,0.8,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBM']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.6,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBD']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.1,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBS']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBB']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Beetles']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IDW']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Rust'; A['Nat Dist'][c]['Color']=[0.75,0.5,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Rust Onset']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Dwarf Mistletoe'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Onset']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mechanical'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Mechanical']['Ensembles'][:,iEns]
+        A['Nat Dist']=A['Nat Dist'][0:c+1]
+
+        A['Management']=[None]*10; c=-1
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensembles'][:,iEns]+mos[iScn]['Area']['Salvage Logging']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensembles'][:,iEns]+mos[iScn]['Area']['Salvage Logging']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Knockdown']['Ensembles'][:,iEns]+mos[iScn]['Area']['Thinning']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.2,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensembles'][:,iEns]+mos[iScn]['Area']['Ripping']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Prescribed Burn']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Control']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=mos[iScn]['Area']['Planting']['Ensembles'][:,iEns]+mos[iScn]['Area']['Direct Seeding']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=mos[iScn]['Area']['IDW Btk Spray']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.65,0,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Fertilization Aerial']['Ensembles'][:,iEns]
+        A['Management']=A['Management'][0:c+1]
+        
+    else:
+        # Ensemble mean
+        A['Nat Dist']=[None]*10; c=-1
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Wildfire']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain Pine beetle'; A['Nat Dist'][c]['Color']=[0,0.8,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBM']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.6,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBD']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.1,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBS']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBB']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Beetles']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IDW']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Rust'; A['Nat Dist'][c]['Color']=[0.75,0.5,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Rust Onset']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Dwarf Mistletoe'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Onset']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mechanical'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Mechanical']['Ensemble Mean']
+        A['Nat Dist']=A['Nat Dist'][0:c+1]
+
+        A['Management']=[None]*10; c=-1
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensemble Mean']+mos[iScn]['Area']['Salvage Logging']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensemble Mean']+mos[iScn]['Area']['Salvage Logging']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Knockdown']['Ensemble Mean']+mos[iScn]['Area']['Thinning']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.2,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensemble Mean']+mos[iScn]['Area']['Ripping']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Prescribed Burn']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Control']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=mos[iScn]['Area']['Planting']['Ensemble Mean']+mos[iScn]['Area']['Direct Seeding']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=mos[iScn]['Area']['IDW Btk Spray']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.65,0,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Fertilization Aerial']['Ensemble Mean']
+        A['Management']=A['Management'][0:c+1]
+
+    # Apply area expansion factor
+    for i in range(len(A['Nat Dist'])):
+        A['Nat Dist'][i]['Data']=AEF*A['Nat Dist'][i]['Data']
+    for i in range(len(A['Management'])):
+        A['Management'][i]['Data']=AEF*A['Management'][i]['Data']    
+        
+    # Convert to x-year intervals
+    A['tv']=gu.BlockMean(tv,ivlT)
+    for i in range(len(A['Nat Dist'])):
+        A['Nat Dist'][i]['Data']=gu.BlockMean(A['Nat Dist'][i]['Data'],ivlT)
+    for i in range(len(A['Management'])):
+        A['Management'][i]['Data']=gu.BlockMean(A['Management'][i]['Data'],ivlT)        
+    
+    return A

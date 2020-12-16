@@ -368,9 +368,7 @@ def DefineInventoryLayersAndVariables():
     
     return LayerInfo
 
-'''============================================================================
-BUILD LOOK-UP TABLES FOR THE CODES IN INVENTORY LAYERS
-============================================================================'''
+#%% BUILD LOOK-UP TABLES FOR THE CODES IN INVENTORY LAYERS
 
 def BuildForestInventoryLUTs(LayerInfo):
 
@@ -512,9 +510,7 @@ def BuildForestInventoryLUTs(LayerInfo):
             gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_PLANTING_SVW.pkl',lut_pl)
 
 
-'''============================================================================
-EXTRACT NUMERIC TIME VECTORS FROM DATE STRINGS IN RESULTS
-============================================================================'''
+#%% EXTRACT NUMERIC TIME VECTORS FROM DATE STRINGS IN RESULTS
 
 def ExtractDateStringsFromRESULTS(lyr_nam,data):
     
@@ -844,9 +840,7 @@ def ExtractDateStringsFromRESULTS_old(lyr_nam,data):
     return data
 
 
-'''============================================================================
-GET MISSING ATU LAYER GEOMETRIES FROM OPENING LAYER
-============================================================================'''
+#%% GET MISSING ATU LAYER GEOMETRIES FROM OPENING LAYER
 
 def GetMissingATUGeometries(meta):
     # Takes 19 min
@@ -918,9 +912,7 @@ def GetMissingATUGeometries(meta):
     gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl',at_geo_from_op)
     print((time.time()-t0)/60)
     
-'''============================================================================
-ADD PLANTING INFO TO DMEC
-============================================================================'''
+#%% ADD PLANTING INFO TO DMEC
 
 # Create function to avoid duplication of bulky code
 def AddPlantingWithNoData(d_nd):
@@ -930,9 +922,7 @@ def AddPlantingWithNoData(d_nd):
         d_nd['PL_SPECIES_GW' + str(i)]=np.append(d_nd['PL_SPECIES_GW' + str(i)],-999)
     return d_nd
 
-'''============================================================================
-PREPARE DISTURBANCE MANAGEMENT ENVENT HISTORY
-============================================================================'''
+#%% PREPARE DISTURBANCE MANAGEMENT ENVENT HISTORY
 
 def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
     
@@ -1406,9 +1396,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
     
     return dmec
 
-'''============================================================================
-LOAD Look-up-tables
-============================================================================'''
+#%% LOAD Look-up-tables
 
 def Load_LUTs(meta):
     
@@ -1434,9 +1422,7 @@ def Load_LUTs(meta):
     
     return meta
 
-'''============================================================================
-LOAD PARAMTERS
-============================================================================'''
+#%% LOAD PARAMTERS
 
 def Load_Params(meta):
     
@@ -1469,9 +1455,7 @@ def Load_Params(meta):
             
     return par
 
-'''============================================================================
-EXCLUDE DUPLICATE EVENTS
-============================================================================'''
+#%% EXCLUDE DUPLICATE EVENTS
 
 def Exclude_Duplicate_Events(meta,dmec):
     for iStand in range(meta['N Stand Full']):
@@ -1487,9 +1471,7 @@ def Exclude_Duplicate_Events(meta,dmec):
                 dmec[iStand]['ID_Type'][ind[1:]]=-999
     return dmec
 
-'''============================================================================
-EXCLUDE UNIDENTIFIED EVENTS
-============================================================================'''
+#%% EXCLUDE UNIDENTIFIED EVENTS
 
 def Exclude_Unidentified_Events(meta,dmec):
 
@@ -1501,9 +1483,7 @@ def Exclude_Unidentified_Events(meta,dmec):
             dmec[iStand][key]=dmec[iStand][key][ind]
     return dmec
 
-'''============================================================================
-REMOVE SLASHPILE BURNS IN SELECT BGC ZONES
-============================================================================'''
+#%% REMOVE SLASHPILE BURNS IN SELECT BGC ZONES
 
 def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
 
@@ -1522,9 +1502,7 @@ def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
     
     return dmec
 
-'''============================================================================
-ENSURE EVERY STAND HAS A MODERN DISTURBANCE
-============================================================================'''
+#%% ENSURE EVERY STAND HAS A MODERN DISTURBANCE
 
 def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity):
     for iStand in range(meta['N Stand Full']):
@@ -1542,10 +1520,8 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity):
                 dmec[iStand][v]=np.append(dmec[iStand][v],-999)
     return dmec
 
-'''============================================================================
-ENSURE DISTURBANCE PRECEDES AERIAL FERTILIZATION
-So that age at fert is specified.
-============================================================================'''
+#%% ENSURE DISTURBANCE PRECEDES AERIAL FERTILIZATION
+# So that age at fert is specified.
 
 def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
 
@@ -1596,11 +1572,9 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
     
     return dmec
 
-'''============================================================================
-IDW FIX SEVERITY
+#%% IDW FIX SEVERITY
 # The dmec was populated with the numeric severity ID. Mortality only occurs 
 # following repeated outrbreak years. 
-============================================================================'''
 
 def IDW_Fix_Severity(meta,dmec,par):
 
@@ -1651,10 +1625,8 @@ def IDW_Fix_Severity(meta,dmec,par):
                 dmec[iStand]['MortalityFactor'][iA]=np.array(Mortality1,dtype='int16')
     return dmec
 
-'''============================================================================
-ADD OLDEST KNOWN DISTURBANCE FROM VRI
-This really doesn't work well.
-============================================================================'''
+#%% ADD OLDEST KNOWN DISTURBANCE FROM VRI
+# This really doesn't work well.
 
 def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
     
@@ -1687,9 +1659,7 @@ def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
         
     return dmec
 
-'''============================================================================
-CLEAN SPECIES COMPOSITION
-============================================================================'''
+#%% CLEAN SPECIES COMPOSITION
 
 def Clean_Species_Composition(meta,dmec,vri,fcinv):
     
@@ -1734,9 +1704,7 @@ def Clean_Species_Composition(meta,dmec,vri,fcinv):
     
     return meta,dmec,vri,fcinv
 
-'''============================================================================
-CREATE BEST AVAILABLE INVENTORY
-============================================================================'''
+#%% CREATE BEST AVAILABLE INVENTORY
 
 def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
 

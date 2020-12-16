@@ -23,23 +23,18 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Define paths
 
-Paths={}
-Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
-Paths['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
-Paths['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
-Paths['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
-Paths['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
-Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
-Paths['Mapping']=Paths['Project'] + '\\Outputs\Mapping'
-Paths['Figures']=r'G:\My Drive\Figures\SparseGrid'
-Paths['Results File']=Paths['Results'] + '\\Results.gdb'
-Paths['VRI File']=Paths['VRI'] + '\\VRI.gdb'
-Paths['Disturbances File']=Paths['Disturbances'] + '\\Disturbances.gdb'
-Paths['Wildfire Stats and Scenarios File']=r'G:\My Drive\Data\Wildfire\Wildfire_Stats_Scenarios_By_BGCZ\Wildfire_Stats_Scenarios_By_BGCZ.pkl'
-Paths['IBM Stats and Scenarios File']=r'G:\My Drive\Data\G:\My Drive\Data\Beetle_Stats_Scenarios_By_BGCZ\IBM_Stats_Scenarios_By_BGCZ.pkl'
+meta={}
+meta['Paths']={}
+meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
+meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
+meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
 # Save
-gu.opickle(Paths['Project'] + '\\Inputs\Paths.pkl',Paths)
+gu.opickle(meta['Paths']['Project'] + '\\Inputs\\MetaData.pkl',meta)
 
 #%% Define sparse grid sample
 
@@ -192,6 +187,10 @@ for iLyr in range(len(InvLyrInfo)):
             
             # Fill missing AT spatial with OP spatial            
             if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):
+                
+                # No need to record surveys
+                if prp['SILV_BASE_CODE']=='SU':
+                    continue
                 
                 # Populate missing ATU layer geometry with geometry from 
                 # OPENING layer where possible.

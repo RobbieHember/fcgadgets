@@ -1352,7 +1352,8 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
         if meta['Biomass Module']!='Sawtooth':
             
             # List of exception event types (that will remain at the same age)
-            Exceptions_to_Partial_Mortality=[ meta['LUT Dist']['IDL'] ]
+            Exceptions_to_Partial_Mortality=[  ]
+            #v2[iB1]['A']
             
             if (meta['Partial Mortality Affects Age']=='On'):
                 

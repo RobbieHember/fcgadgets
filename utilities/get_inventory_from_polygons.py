@@ -22,27 +22,33 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #project_name='FCI_RollupFCI_Inv'
 #project_name='SurveySummary'
-project_name='FertilizationSummary'
-#project_name='ReforestationSummary'
+#project_name='FertilizationSummary'
+project_name='ReforestationSummary'
 
 #%% Define paths
 
-Paths={}
-Paths['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
-#Paths['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
-#Paths['Project']=r'D:\Data\FCI_Projects\SurveySummary'
-#Paths['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
+meta={}
+meta['Paths']={}
+meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SurveySummary'
+#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
+meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
+meta['Paths']['QA']=meta['Paths']['Project'] + '\\QA'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
+meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
-Paths['Geospatial']=Paths['Project'] + '\\Geospatial'
-Paths['QA']=Paths['Project'] + '\\QA'
-Paths['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
-Paths['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
-Paths['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
-Paths['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
-Paths['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
+#%% Define subsampling frequency
+# Some projects are way too big to collect 1-hectare coverage - subsample randomly
 
-# Save
-gu.opickle(Paths['Project'] + '\\Paths.pkl',Paths)
+meta['subsampling_frequency']=0.02
+
+#%% Save metadata
+
+gu.opickle(meta['Paths']['Project'] + '\\MetaData.pkl',meta)
 
 #%% Import FCI Admin Table
 #Notes:
@@ -51,8 +57,8 @@ gu.opickle(Paths['Project'] + '\\Paths.pkl',Paths)
 
 flg=0
 if flg==1:
-    Paths['FCI DB File']='Z:\!Workgrp\Forest Carbon\Forest Carbon Initiative\Program\RollupProjects\Live Run\FCI_RollupProjects_01_Admin.xlsx'
-    df_FCI=pd.read_excel(Paths['FCI DB File'],sheet_name='Sheet1')
+    meta['Paths']['FCI DB File']='Z:\!Workgrp\Forest Carbon\Forest Carbon Initiative\Program\RollupProjects\Live Run\FCI_RollupProjects_01_Admin.xlsx'
+    df_FCI=pd.read_excel(meta['Paths']['FCI DB File'],sheet_name='Sheet1')
 
     # Unique PP numbers in the database
     uPP=df_FCI['PP Number'].unique()
@@ -73,11 +79,6 @@ y_bc_all=zTSA['Y'][:,0]
 # Load basemap (for CRS)
 gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
 
-#%% Define subsampling frequency
-# Some projects are way too big to collect 1-hectare coverage - subsample randomly
-
-subsampling_frequency=0.02
-
 #%% Compile inventory data at sparse grid locations
 
 # Get layer names and variables
@@ -94,8 +95,8 @@ for iLyr in range(len(InvLyrInfo)):
 #%% Open crosswalk between missing AT geometries and opening geometries
 # If this doesn't work, you need to run the script that creates the crosswalk
 
-atu_mis=gu.ipickle(Paths['Results'] + '\\atu_mis.pkl')
-at_geo_from_op=gu.ipickle(Paths['Results'] + '\\at_geo_from_op.pkl')
+atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\atu_mis.pkl')
+at_geo_from_op=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl')
 
 #%% Get layer
 
@@ -338,8 +339,8 @@ with fiona.open(path,layer=lyr_nam) as source:
             if ikp[0].size!=0:
                 
                 # Subsampling
-                if subsampling_frequency<1:
-                    Nss=np.maximum(1,np.ceil(subsampling_frequency*ikp[0].size)).astype(int)
+                if meta['subsampling_frequency']<1:
+                    Nss=np.maximum(1,np.ceil(meta['subsampling_frequency']*ikp[0].size)).astype(int)
                     iSS=np.random.randint(ikp[0].size,size=Nss)   
                     ikp=(ikp[0][iSS],ikp[1][iSS])
                 
@@ -435,7 +436,7 @@ for k in sxy.keys():
 
 flg=0
 if flg==1:
-    atu_multipolygons=gu.ipickle(Paths['Geospatial'] + '\\atu_multipolygons.pkl')
+    atu_multipolygons=gu.ipickle(meta['Paths']['Geospatial'] + '\\atu_multipolygons.pkl')
     print(len(atu_multipolygons))
     a=[]
     for i in range(len(atu_multipolygons)):
@@ -475,13 +476,13 @@ for i in range(sxy['x'].size):
 #%% Save to file
     
 # Save multipolygon file
-gu.opickle(Paths['Project'] + '\\Geospatial\\atu_multipolygons.pkl',atu_multipolygons)
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\atu_multipolygons.pkl',atu_multipolygons)
 
 # Save sparse sample file
-gu.opickle(Paths['Project'] + '\\Geospatial\\sxy.pkl',sxy)
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\sxy.pkl',sxy)
 
 # Save geodataframe of polygons to shape file
-gdf_atu_polygons.to_file(filename=Paths['Project'] + '\\Geospatial\\atu_polygons.shp',driver="ESRI Shapefile")
+gdf_atu_polygons.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\atu_polygons.shp',driver="ESRI Shapefile")
 
 # Save sparse grid as shapefile
 flg=1
@@ -495,7 +496,7 @@ if flg==1:
                               'ID_atu_polygons':sxy['ID_atu_polygons'],
                               'ID_TSA':sxy['ID_TSA']})
     gdf_sxy.crs=gdf_bm.crs   
-    gdf_sxy.to_file(Paths['Project'] + '\\Geospatial\\sxy.shp')
+    gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\sxy.shp')
 
 print((time.time()-t0)/60)
 
@@ -504,8 +505,8 @@ print((time.time()-t0)/60)
 
 garc.collect()
 
-atu_multipolygons=gu.ipickle(Paths['Project'] + '\\Geospatial\\atu_multipolygons.pkl')
-sxy=gu.ipickle(Paths['Project'] + '\\Geospatial\\sxy.pkl')
+atu_multipolygons=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\atu_multipolygons.pkl')
+sxy=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\sxy.pkl')
 
 for iLyr in range(len(InvLyrInfo)):
     
@@ -677,8 +678,8 @@ for iLyr in range(len(InvLyrInfo)):
     # Save to file
     #--------------------------------------------------------------------------
     
-    gu.opickle(Paths['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
-    gu.opickle(Paths['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
+    gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
+    gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
         
 #%% Retrieve planting information 
 # Some projects did not report spatial planting info. Without the spatial info
@@ -690,7 +691,7 @@ for iLyr in range(len(InvLyrInfo)):
 t0=time.time()
 
 # Import coordinates   
-sxy=gu.ipickle(Paths['Geospatial'] + '\\sxy.pkl')
+sxy=gu.ipickle(meta['Paths']['Geospatial'] + '\\sxy.pkl')
  
 # Get planting lyaer id
 for iLyr in range(len(InvLyrInfo)):
@@ -710,7 +711,7 @@ for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
     key_pl.append(fnam)
             
 # Open AT sparse grid
-atu=gu.ipickle(Paths['Geospatial'] + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
+atu=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
 
 pl_code=InvLyrInfo[0]['LUT']['SILV_BASE_CODE']['PL']
     
@@ -770,8 +771,8 @@ for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
 pl=invu.ExtractDateStringsFromRESULTS(lyr_nam,pl)
        
 # Save    
-gu.opickle(Paths['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl',pl)
-gu.opickle(Paths['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
+gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl',pl)
+gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
 
 t1=time.time()
 print(t1-t0)
