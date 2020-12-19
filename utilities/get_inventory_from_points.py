@@ -130,8 +130,9 @@ gu.opickle(r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummaryNd
 
 #%% Open crosswalk between missing AT geometries and opening geometries (if already exists)
 
-atu_mis=gu.ipickle(Paths['Results'] + '\\atu_mis.pkl')
-at_geo_from_op=gu.ipickle(Paths['Results'] + '\\at_geo_from_op.pkl')
+atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\atu_mis.pkl')
+at_geo_from_op=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl')
+at_geo_from_fc=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_fcinv.pkl')
 
 #%% Import inventory layer information (names, variables, LUTs)
 
@@ -195,13 +196,15 @@ for iLyr in range(len(InvLyrInfo)):
                 # Populate missing ATU layer geometry with geometry from 
                 # OPENING layer where possible.
                 flg_geom_from_op=0
-                if (geom==None):
+                if (geom==None):                                            
                     ind=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
                     if ind.size>0:
                         geom=at_geo_from_op[ind[0]]
                         flg_geom_from_op=1
                     else:
                         print('Checked for opening spatial, but no match')
+                    # 
+                    if prp['SILV_BASE_CODE']=='PL':
             
             # Only continue if spatial info exists
             if (geom==None) | (geom==[]):
