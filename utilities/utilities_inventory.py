@@ -849,51 +849,88 @@ def RecoverMissingATUGeometries(meta):
     
     # Prepare meta['Paths']
     
-    # atu_mis=gu.ipickle(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203\atu_mis.pkl')
+    # atu_complete=gu.ipickle(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203\atu_mis.pkl')
     
     #--------------------------------------------------------------------------
     # Query AT layer for features with missing spatial information
     #--------------------------------------------------------------------------
     
-    # Define name of layer
-    fiona.listlayers(meta['Paths']['Results'] + '\\Results.gdb')
-    nam_lyr='RSLT_ACTIVITY_TREATMENT_SVW'
-    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr)
+    # fiona.listlayers(meta['Paths']['Results'] + '\\Results.gdb')
+    
+    # Query AT layer for openings with no spatial information
+    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW')
     L=len(lyr)
-    #scma=lyr.schema
-
-    # Query AT layer for openings with no spatial inforation
-    atu_mis={}
-    atu_mis['OPENING_ID']=np.zeros(L)
-    atu_mis['SpatialMissing']=np.zeros(L)
-    atu_mis['Flag PL']=np.zeros(L)
+    atu_complete={}
+    atu_complete['OPENING_ID']=np.zeros(L)
+    atu_complete['SpatialMissing']=np.zeros(L)
+    atu_complete['Flag PL']=np.zeros(L)
     cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
         for feat in source:
-            atu_mis['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
+            atu_complete['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
             if feat['properties']['SILV_BASE_CODE']=='PL':
-                atu_mis['Flag PL'][cnt]=1
+                atu_complete['Flag PL'][cnt]=1
             if feat['geometry']==None:
-                atu_mis['SpatialMissing'][cnt]=1      
+                atu_complete['SpatialMissing'][cnt]=1      
             cnt=cnt+1
     
     # Index to missing AT geometries
-    iMisAT=np.where(atu_mis['SpatialMissing']==1)[0]
+    iMisAT=np.where(atu_complete['SpatialMissing']==1)[0]
+    
+
+    
+    at_geo_from_op=[None]*atu_complete['OPENING_ID'].size
+    t0=time.time()
+    cnt=0
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
+        for feat in source:
+            ind0=np.where( (atu_complete['OPENING_ID']==feat['properties']['OPENING_ID']) & (atu_complete['SpatialMissing']==1) & (atu_complete['Flag PL']==1) )[0]
+            for i in range(ind0.size):
+                at_geo_from_op[ind0[i]]=feat['geometry']
+            cnt=cnt+1
+            if cnt==1000:
+                break
+    print((time.time()-t0)/60/1000*L)
+    
+    # Forest cover (only saving geometries for immature artificial status)
+    # Too big if you save all geometries
+    # Takes 71 min
+    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
+    L=len(lyr)
+    at_geo_from_fc=[None]*atu_complete['OPENING_ID'].size
+    t0=time.time()
+    cnt=0
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+        for feat in source:
+            if (feat['properties']['STOCKING_STATUS_CODE']!='IMM') | (feat['properties']['STOCKING_TYPE_CODE']!='ART'):
+                continue
+            ind0=np.where( (atu_complete['OPENING_ID']==feat['properties']['OPENING_ID']) & (atu_complete['SpatialMissing']==1) & (atu_complete['Flag PL']==1) )[0]
+            if ind0.size==0:
+                continue
+            for i in range(ind0.size):
+                if at_geo_from_fc[ind0[i]]==None:
+                    at_geo_from_fc[ind0[i]]=[feat['geometry']]
+                else:
+                    at_geo_from_fc[ind0[i]].append(feat['geometry'])
+                    #print('mult')
+            cnt=cnt+1
+            #if cnt==5000:
+            #    break
+    print((time.time()-t0)/60/5000*L)
     
     #--------------------------------------------------------------------------
     # Query OPENING layer for corresponding openings
     #--------------------------------------------------------------------------
     
     # Import a complete list of openings from the OPENING layer
-    nam_lyr='RSLT_OPENING_SVW'
-    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr)
+    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW')
     L=len(lyr)
-    op_mis={}
-    op_mis['OPENING_ID']=np.zeros(L)
+    op_complete={}
+    op_complete['OPENING_ID']=np.zeros(L)
     cnt=0
     with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
         for feat in source:
-            op_mis['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
+            op_complete['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
             cnt=cnt+1
 
     # Define indices to missing AT spatial openings and the same openings
@@ -903,16 +940,16 @@ def RecoverMissingATUGeometries(meta):
     iMisOp=np.zeros(iMisAT.size)
     mis=0
     for i in range(iMisAT.size):
-        ind0=np.where(op_mis['OPENING_ID']==atu_mis['OPENING_ID'][iMisAT[i]])[0]
+        ind0=np.where(op_complete['OPENING_ID']==atu_complete['OPENING_ID'][iMisAT[i]])[0]
         if ind0.size==0:
             mis=mis+1
             continue
         iMisOp[i]=ind0
 
     # Create a list that will contain the opening-layer geometries for the missing AT rows
-    at_geo_from_op=[None]*atu_mis['OPENING_ID'].size
+    at_geo_from_op=[None]*atu_complete['OPENING_ID'].size
     cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
         for feat in source:
             ind=np.where(iMisOp==cnt)[0]
             if ind.size!=0:
@@ -924,20 +961,17 @@ def RecoverMissingATUGeometries(meta):
     #--------------------------------------------------------------------------
 
     # Import a complete list of openings from the forest cover inventory layer
-    nam_lyr='RSLT_FOREST_COVER_INV_SVW'
-    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr)
+    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
     L=len(lyr)
-    fcinv_mis={}
-    fcinv_mis['OPENING_ID']=np.zeros(L)
-    fcinv_mis['IMM_ART']=np.zeros(L)
-    #fcinv_mis['geometry']=[None]*L
+    fcinv_complete={}
+    fcinv_complete['OPENING_ID']=np.zeros(L)
+    fcinv_complete['IMM_ART']=np.zeros(L)
     cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
         for feat in source:
-            fcinv_mis['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
+            fcinv_complete['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
             if (feat['properties']['STOCKING_STATUS_CODE']=='IMM') & (feat['properties']['STOCKING_TYPE_CODE']=='ART'):
-                fcinv_mis['IMM_ART'][cnt]=1
-            #fcinv_mis['geometry'][cnt]=feat['geometry']
+                fcinv_complete['IMM_ART'][cnt]=1
             cnt=cnt+1
 
     # Define indices to missing AT spatial openings and the same openings
@@ -951,7 +985,7 @@ def RecoverMissingATUGeometries(meta):
     cnt=0
     mis=0
     for i in range(iMisAT.size):
-        ind0=np.where( (fcinv_mis['OPENING_ID']==atu_mis['OPENING_ID'][iMisAT[i]]) & (fcinv_mis['IMM_ART']==1) )[0]
+        ind0=np.where( (fcinv_complete['OPENING_ID']==atu_complete['OPENING_ID'][iMisAT[i]]) & (fcinv_complete['IMM_ART']==1) )[0]
         if ind0.size==0:
             mis=mis+1
             continue
@@ -964,27 +998,43 @@ def RecoverMissingATUGeometries(meta):
     iMisFC['iAT']=iMisFC['iAT'][0:cnt-1]
     iMisFC['iFC']=iMisFC['iFC'][0:cnt-1]
     
-    # This will only be good for AT features that were PL
-    at_geo_from_fc=[None]*atu_mis['OPENING_ID'].size
-    nam_lyr='RSLT_FOREST_COVER_INV_SVW'
-    reader=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr)
-    for i in range(iMisAT.size):
-        if atu_mis['Flag PL'][i]==0:
-            continue
-        ind=np.where(iMisFC['iAT']==iMisAT[i])[0]
-        #ind=np.where(iMisFC['iAT']==i)[0]
-        if ind.size==0:
-            continue        
-        idxList=iMisFC['iFC'][ind]
-        geo=[]
-        for j in range(idxList.size):
-            x=int(idxList[j])
-            if reader[x]!=None:
-                geo.append(reader[x]['geometry'])
-        at_geo_from_fc[iMisAT[i]]=geo
+    # New
+    at_geo_from_fc=[None]*atu_complete['OPENING_ID'].size
+    cnt=-1
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+        for feat in source:
+            cnt=cnt+1
+            if feat['geometry']==None:
+                continue
+            indFC=np.where(iMisFC['iFC']==cnt)[0]            
+            if indFC.size==0:                
+                continue
+            print(cnt)
+            indAT=iMisAT[np.array(iMisFC['iAT'][indFC],dtype=int)]
+            for i in range(indAT.size):
+                at_geo_from_fc[i]=feat['geometry']
+            
+        
+#    # This will only be good for AT features that were PL
+#    at_geo_from_fc=[None]*atu_complete['OPENING_ID'].size
+#    reader=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
+#    for i in range(iMisAT.size):
+#        if atu_complete['Flag PL'][iMisAT[i]]==0:
+#            continue
+#        ind=np.where(iMisFC['iAT']==iMisAT[i])[0]
+#        #ind=np.where(iMisFC['iAT']==i)[0]
+#        if ind.size==0:
+#            continue        
+#        idxList=iMisFC['iFC'][ind]
+#        geo=[]
+#        for j in range(idxList.size):
+#            x=int(idxList[j])
+#            if reader[x]!=None:
+#                geo.append(reader[x]['geometry'])
+#        at_geo_from_fc[iMisAT[i]]=geo
 
     # Save
-    gu.opickle(meta['Paths']['Results'] + '\\atu_mis.pkl',atu_mis)
+    gu.opickle(meta['Paths']['Results'] + '\\atu_mis.pkl',atu_complete)
     gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl',at_geo_from_op)
     gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_fcinv.pkl',at_geo_from_fc)
     print((time.time()-t0)/60)

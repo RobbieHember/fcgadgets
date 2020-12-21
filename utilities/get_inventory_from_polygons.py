@@ -161,20 +161,22 @@ with fiona.open(path,layer=lyr_nam) as source:
         if prp['ATU_COMPLETION_DATE']==None:
             prp['ATU_COMPLETION_DATE']='99990000'
         
+        #----------------------------------------------------------------------
+        # Project-specific query
+        #----------------------------------------------------------------------
+        
         if project_name=='FertilizationSummary':
             
-            # Fert Summary query
             if (prp['SILV_BASE_CODE']!='FE') | (prp['SILV_TECHNIQUE_CODE']!='CA') | (prp['RESULTS_IND']!='Y'):
                 continue
             
         elif project_name=='ReforestationSummary':
-              
-            # Reforestation Summary query
             
             Year=int(prp['ATU_COMPLETION_DATE'][0:4]) 
             
             flg=0
-            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
+            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & \
+                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
                 flg=1
             elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
                 flg=1
@@ -185,8 +187,6 @@ with fiona.open(path,layer=lyr_nam) as source:
                 continue
         
         elif project_name=='SurveySummary':
-            
-            # Survey Summary query            
             
             Year=int(prp['ATU_COMPLETION_DATE'][0:4])   
             

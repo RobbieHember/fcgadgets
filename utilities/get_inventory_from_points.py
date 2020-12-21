@@ -26,7 +26,7 @@ from fcgadgets.cbrunner import cbrun_utilities
 meta={}
 meta['Paths']={}
 meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
 meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
@@ -39,12 +39,12 @@ gu.opickle(meta['Paths']['Project'] + '\\Inputs\\MetaData.pkl',meta)
 #%% Define sparse grid sample
 
 # Import TSA maps
-zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
-lut_tsa=pd.read_excel(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\lut_tsa.xlsx')
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
+lut_tsa=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx')
 tsa_boundaries=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 
 # Import land cover
-zLC2=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\VRI\lc2.tif')
+zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 
 # Define regular grid sampling frequency
 sfreq=100
@@ -71,7 +71,7 @@ sxy['y']=zTSA['Y'][iIreg]
 sxy['ID_TSA']=zTSA['Data'][iIreg]
 
 # Save to pickle file
-gu.opickle(Paths['Geospatial'] + '\\sxy.pkl',sxy)
+gu.opickle(meta['Paths']['Geospatial'] + '\\sxy.pkl',sxy)
 
 # Save as shapefile
 flg=1
@@ -81,12 +81,12 @@ if flg==1:
         points.append(Point(sxy['x'][k],sxy['y'][k]))
     gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':sxy['ID_TSA']})
     gdf_sxy.crs=tsa_boundaries.crs  
-    gdf_sxy.to_file(Paths['Geospatial'] + '\\sxy.shp')
+    gdf_sxy.to_file(meta['Paths']['Geospatial'] + '\\sxy.shp')
 
 #%% Plot
 
 # Load basemap
-gdf_bm=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Basemaps\bcbound.shp')
+gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
 
 plt.close('all')
 fig,ax=plt.subplots(figsize=gu.cm2inch(7.8,6.6))
@@ -178,6 +178,7 @@ for iLyr in range(len(InvLyrInfo)):
         
     # Scan through layer file to extract selected variables, and convert string
     # variables to numeric based on LUTs
+    cc=0
     with fiona.open(path,layer=lyr_nam) as source:    
         
         for feat in source:
@@ -194,18 +195,62 @@ for iLyr in range(len(InvLyrInfo)):
                     continue
                 
                 # Populate missing ATU layer geometry with geometry from 
-                # OPENING layer where possible.
+                # OPENING or FC layer where possible.
                 flg_geom_from_op=0
+                flg_geom_from_fc=0
                 if (geom==None):                                            
-                    ind=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
-                    if ind.size>0:
-                        geom=at_geo_from_op[ind[0]]
-                        flg_geom_from_op=1
+                    
+                    # check to see if the opening is listed in the AT missing dictionary
+                    indMis=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
+                    
+                    if indMis.size>0:
+                     
+                        if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']=='PL') & (prp['SILV_METHOD_CODE']=='CTAIN'):
+                            
+                            # Convert features to fiona-like dictionary and combine multipolygons
+                            geom={}
+                            geom['coordinates']=[]
+                            feat_fc=[]
+                            for iMis in range(indMis.size):
+                                geo0=at_geo_from_fc[indMis[iMis]]
+                                if geo0!=None:
+                                    for i in range(len(geo0)):
+                                        if type(geo0[i])==dict:
+                                            geo1=geo0[i]['coordinates']
+                                            geom['coordinates'].append(geo1[0])
+                                            feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
+                                            feat_fc.append(feat0)
+                                        else:
+                                            if geo0[i]==None:
+                                                continue
+                                            for j in range(len(geo0[i])):
+                                                geo1=geo0[i][j]['coordinates']
+                                                geom['coordinates'].append(geo1[0])
+                                                feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
+                                                feat_fc.append(feat0)
+                            flg_geom_from_fc=1
+                        
+                            # Plot
+                            flg=0
+                            if flg==1:
+                                gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
+                                plt.close('all')
+                                fig,ax=plt.subplots(1)
+                                feat_op={}; feat_op['properties']=prp; feat_op['geometry']=at_geo_from_op[indMis[0]]
+                                gdf_op=gpd.GeoDataFrame.from_features([feat_op])
+                                gdf_op.plot(ax=ax,facecolor='None',linewidth=4,edgecolor='k')
+                                gdf_fc.plot(ax=ax,facecolor='None',linewidth=1.25,edgecolor='r',linestyle='--')
+                    
+                        else:
+                            
+                            # Not a planting, use spatial from opening
+                            geom=at_geo_from_op[indMis[0]]
+                            flg_geom_from_op=1
+                    
                     else:
-                        print('Checked for opening spatial, but no match')
-                    # 
-                    if prp['SILV_BASE_CODE']=='PL':
-            
+                        
+                        print('Missing spatial could not be recovered')
+                        
             # Only continue if spatial info exists
             if (geom==None) | (geom==[]):
                 continue
@@ -298,8 +343,8 @@ for iLyr in range(len(InvLyrInfo)):
     # Save to file
     #--------------------------------------------------------------------------
     
-    gu.opickle(Paths['Geospatial'] + '\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
-    gu.opickle(Paths['Geospatial'] + '\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
+    gu.opickle(meta['Paths']['Geospatial'] + '\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
+    gu.opickle(meta['Paths']['Geospatial'] + '\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
 
 #%% Retrieve planting information 
 # Some projects did not report spatial planting info. Without the spatial info
@@ -322,7 +367,7 @@ gdf_pl=gpd.read_file(path,layer=lyr_nam)
 d_pl=gu.DataFrameToDict(gdf_pl.drop(columns='geometry'))
         
 # Open the planting sparse grid
-#pl=gu.ipickle(Paths['TileGeospatial'] + '\\RSLT_PLANTING_SVW.pkl')
+#pl=gu.ipickle(meta['Paths']['TileGeospatial'] + '\\RSLT_PLANTING_SVW.pkl')
     
 # Get keys for planting layer
 key_pl=[]
@@ -330,7 +375,7 @@ for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
     key_pl.append(fnam)
             
 # Open AT sparse grid
-atu=gu.ipickle(Paths['Project'] + '\\Inputs\\Geospatial\\' + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
+atu=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Geospatial\\' + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
 
 pl_code=InvLyrInfo[0]['LUT']['SILV_BASE_CODE']['PL']
     
@@ -393,6 +438,6 @@ t1=time.time()
 print(t1-t0)
        
 # Save    
-gu.opickle(Paths['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl',pl)
-gu.opickle(Paths['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
+gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl',pl)
+gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
 
