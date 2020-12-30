@@ -30,11 +30,7 @@ project_name='ReforestationSummary'
 meta={}
 meta['Paths']={}
 meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\FertilizationSummary'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SurveySummary'
-#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv'
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
-meta['Paths']['QA']=meta['Paths']['Project'] + '\\QA'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
@@ -44,7 +40,7 @@ meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 #%% Define subsampling frequency
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
 
-meta['subsampling_frequency']=0.02
+meta['subsampling_frequency']=0.05
 
 #%% Save metadata
 
@@ -97,6 +93,7 @@ for iLyr in range(len(InvLyrInfo)):
 
 atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\atu_mis.pkl')
 at_geo_from_op=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl')
+at_geo_from_fc=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_fcinv.pkl')
 
 #%% Get layer
 
@@ -176,9 +173,13 @@ with fiona.open(path,layer=lyr_nam) as source:
             
             flg=0
             if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & \
-                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
+                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (prp['SILV_FUND_SOURCE_CODE']!='IA') & \
+                (prp['SILV_FUND_SOURCE_CODE']!='VOI') & (prp['SILV_FUND_SOURCE_CODE']!='BCT') & (prp['SILV_FUND_SOURCE_CODE']!='SBF') & \
+                (prp['SILV_FUND_SOURCE_CODE']!='LFP') & (prp['SILV_FUND_SOURCE_CODE']!='IR'):
                 flg=1
-            elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (Year>=1990):
+            elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & \
+                (prp['SILV_FUND_SOURCE_CODE']!='IA') & (prp['SILV_FUND_SOURCE_CODE']!='VOI') & (prp['SILV_FUND_SOURCE_CODE']!='BCT') & \
+                (prp['SILV_FUND_SOURCE_CODE']!='SBF') & (prp['SILV_FUND_SOURCE_CODE']!='LFP') & (prp['SILV_FUND_SOURCE_CODE']!='IR'):
                 flg=1
             else:
                 flg=0
@@ -212,17 +213,61 @@ with fiona.open(path,layer=lyr_nam) as source:
         print(cnt_atu_multipolygons)
         
         # Populate missing ATU layer geometry with geometry from 
-        # OPENING layer where possible.
+        # OPENING or FC layer where possible.
         flg_geom_from_op=0
-        if (geom==None):
-            ind=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
-            if ind.size>0:
-                for i_ind in range(len(ind)):
-                    if at_geo_from_op[ind[i_ind]]!=None:
-                        geom=at_geo_from_op[ind[i_ind]]
-                flg_geom_from_op=1
+        flg_geom_from_fc=0
+        if (geom==None):                                            
+                    
+            # check to see if the opening is listed in the AT missing dictionary
+            indMis=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
+                    
+            if indMis.size>0:
+                     
+                if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']=='PL') & (prp['SILV_METHOD_CODE']=='CTAIN'):
+                            
+                    # Convert features to fiona-like dictionary and combine multipolygons
+                    geom={}
+                    geom['coordinates']=[]
+                    feat_fc=[]
+                    for iMis in range(indMis.size):
+                        geo0=at_geo_from_fc[indMis[iMis]]
+                        if geo0!=None:
+                            for i in range(len(geo0)):
+                                if type(geo0[i])==dict:
+                                    geo1=geo0[i]['coordinates']
+                                    geom['coordinates'].append(geo1[0])
+                                    feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
+                                    feat_fc.append(feat0)
+                                else:
+                                    if geo0[i]==None:
+                                        continue
+                                    for j in range(len(geo0[i])):
+                                        geo1=geo0[i][j]['coordinates']
+                                        geom['coordinates'].append(geo1[0])
+                                        feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
+                                        feat_fc.append(feat0)
+                    flg_geom_from_fc=1
+                        
+                    # Plot
+                    flg=0
+                    if flg==1:
+                        gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
+                        plt.close('all')
+                        fig,ax=plt.subplots(1)
+                        feat_op={}; feat_op['properties']=prp; feat_op['geometry']=at_geo_from_op[indMis[0]]
+                        gdf_op=gpd.GeoDataFrame.from_features([feat_op])
+                        gdf_op.plot(ax=ax,facecolor='None',linewidth=4,edgecolor='k')
+                        gdf_fc.plot(ax=ax,facecolor='None',linewidth=1.25,edgecolor='r',linestyle='--')
+                
+                else:
+                            
+                    # Not a planting, use spatial from opening
+                    geom=at_geo_from_op[indMis[0]]
+                    flg_geom_from_op=1
+                    
             else:
-                print('Checked for opening spatial, but no match')
+                        
+                print('Missing spatial could not be recovered')
             
         # Don't conitnue if no spatial data
         if (geom==None): 
@@ -233,6 +278,7 @@ with fiona.open(path,layer=lyr_nam) as source:
         prp['Year']=int(prp['ATU_COMPLETION_DATE'][0:4])
         prp['geometry']=geom
         prp['GeomFromOpLyr']=flg_geom_from_op
+        prp['GeomFromFcLyr']=flg_geom_from_fc
         
         # Extract vector geometries and store as a list of dictionaries.
         # The list contains each polygon ("block"). Within each block, a
@@ -510,9 +556,6 @@ sxy=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\sxy.pkl')
 
 for iLyr in range(len(InvLyrInfo)):
     
-    #if iLyr>0:
-    #    continue
-    
     # Define path
     path=InvLyrInfo[iLyr]['Path'] + '\\' + InvLyrInfo[iLyr]['File Name']
     
@@ -532,7 +575,6 @@ for iLyr in range(len(InvLyrInfo)):
     IdxToInv=[None]*sxy['x'].size
         
     # Initialize inventory dictionary
-    #L=sxy['x'].size+1000000
     L=20*sxy['x'].size
     data={}
     data['IdxToSXY']=np.zeros(L,dtype=int)

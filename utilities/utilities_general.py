@@ -329,9 +329,9 @@ def Import_GraphicsParameters(type):
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
                 'savefig.bbox':'tight'}
-    elif type=='spyder1':
+    elif type=='spyder_fs6':
         fs1=6
-        fs2=7
+        fs2=6
         params={'font.sans-serif':'Arial',
                 'font.size':fs1,
                 'figure.titlesize':fs2,

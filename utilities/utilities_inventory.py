@@ -2267,9 +2267,12 @@ def ExportATLayerToSpreadsheet(meta,atu):
         df['SILV_FUND_SOURCE_CODE'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]    
     df['ACTUAL_TREATMENT_AREA']=atu['ACTUAL_TREATMENT_AREA']
     df['ACTUAL_PLANTED_NUMBER']=atu['ACTUAL_PLANTED_NUMBER']
-    df['Month']=atu['Month']
-    df['Day']=atu['Day']
+    #df['Month']=atu['Month']
+    #df['Day']=atu['Day']
     df=df.sort_values(by=['IdxToSXY','Year','Month','Day'])
+    
+    
+    
     df.to_excel(meta['Paths']['Project'] + '\\Inputs\\atu_Summary.xlsx',index=False)
     
     return
