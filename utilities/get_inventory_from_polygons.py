@@ -44,7 +44,7 @@ meta['subsampling_frequency']=0.05
 
 #%% Save metadata
 
-gu.opickle(meta['Paths']['Project'] + '\\MetaData.pkl',meta)
+gu.opickle(meta['Paths']['Project'] + '\\Inputs\\MetaData.pkl',meta)
 
 #%% Import FCI Admin Table
 #Notes:
