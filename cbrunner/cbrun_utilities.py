@@ -71,16 +71,26 @@ def QueryResultsActivity(d):
         elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
             Name.append('Road Rehab')
         
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='BU') & (d['SILV_METHOD_CODE'][i]=='PBURN') | \
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='BU') | \
             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PBURN'):
             Name.append('Slashpile Burn')
             
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='SNAG') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
+        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='Unidentified') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='GUARD') | \
             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='HAND') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MANCT'):
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='KNOCK') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='POWER') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MANCT') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='PILE') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='SNAG') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='CABLE') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='GUARD') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PILE') | \
+            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PUSH'):
             Name.append('Knockdown')
-            
+        
         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='BRIP'):
             Name.append('Ripping')
         
@@ -112,7 +122,7 @@ class BunchDictionary(dict):
         self.__dict__ = self
 
 
-#%% Build disturbance chronology from spreadsheet
+#%% Build event chronology from spreadsheet
 
 def BuildEventChronologyFromSpreadsheet(meta):       
     
@@ -147,11 +157,14 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     par=invu.Load_Params(meta)
                     par['WF']['Scenario ID']=meta['Scenario'][iScn]['AAO Wildfire Scenario ID']
                     par['WF']['Exclude simulations during modern era']='On'
-            
+                    
+                    # Think about moving this into the par dictionary
+                    method_occ='DirectFromParetoDraw'
+                    
                     # Normally, this would be run here, but this approach assumes
                     # that stands have been swapped with ensembles (when running
                     # from spreadsheet). Instead, it is being re-run for each stand
-                    wf_sim=wfsm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'])  
+                    wf_sim=wfsm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'],method_occ)  
             
                 for iS in range(N_StandsInBatch): 
                     
@@ -223,7 +236,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
                         flg_i=0
                         indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
-                        if indSc.size!=0:                
+                        if indSc.size!=0:
                             if flg_i==0:
                                 dfParDistBySC=pd.read_excel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
                                 flg_i=1
@@ -240,7 +253,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         Year=meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
                         iT=np.where(tv==Year)[0]
                         
-                        iE=np.where(ec['ID_Type'][iT,iS,:]==0)[0]
+                        iE=np.where(ec['ID_Type'][iT,iS,:]==0)[1]
 
                         ec['ID_Type'][iT,iS,iE[0]]=ID_TypeN
                         ec['MortalityFactor'][iT,iS,iE[0]]=MF
@@ -313,8 +326,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 # Save to file            
                 #--------------------------------------------------------------
                 
-                gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + \
-                       '_Bat' + FixFileNum(iBat) + '.pkl',ec)
+                gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',ec)
 
 #%% Fix ensemble name and numbering
 
@@ -523,7 +535,7 @@ def ImportProjectConfig(meta):
         'ODT_Stem','MortalityVolumeTotal']
     
     # Scale factor for growth curves
-    # Note: Do not change this to 10 - aerial fertilization response will not work properly at 10
+    # Note: Do not change this to 0.1 - aerial fertilization response will not work properly at 0.1
     meta['GC']['Scale Factor']=0.01
     
     #--------------------------------------------------------------------------
@@ -576,8 +588,18 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
                 
     # Convert to float and apply scale factor
     for k in data.keys():
+        
+        # Skip mortality summary by agent
+        if k=='C_M_ByAgent':
+            continue
+        
         data[k]=data[k].astype(float)
         data[k]=data[k]*meta['Scale Factor Export']
+    
+    # Mortality summary by agent
+    for k in data['C_M_ByAgent'].keys():
+        data['C_M_ByAgent'][k]=data['C_M_ByAgent'][k].astype(float)
+        #data['C_M_ByAgent'][k]=data['C_M_ByAgent'][k]*meta['Scale Factor Export']
     
     v=BunchDictionary(data)
         
@@ -603,7 +625,12 @@ def LoadScenarioResults(meta,scn):
                 data_bat=gu.ipickle(pth)
                 
                 # Convert to float and apply scale factor
-                for k in data_bat.keys():                        
+                for k in data_bat.keys():
+                    
+                    # Skip mortality summary by agent
+                    if k=='C_M_ByAgent':
+                        continue                      
+                    
                     data_bat[k]=data_bat[k].astype(float)
                     data_bat[k]=data_bat[k]*meta['Scale Factor Export']
                 
@@ -613,8 +640,14 @@ def LoadScenarioResults(meta,scn):
                     data_all=data_bat
                 else:                    
                     for key in data_bat.keys():
+                        
                         if key=='Year':
                             continue
+                        
+                        # Skip mortality summary by agent
+                        if key=='C_M_ByAgent':
+                            continue  
+                    
                         data_all[key]=np.append(data_all[key],data_bat[key],axis=1)
             
             # Sum across ensembles
@@ -622,10 +655,19 @@ def LoadScenarioResults(meta,scn):
                 data_sum2ave=data_all
             else:                    
                 for key in data_bat.keys():
+                    
+                    # Skip mortality summary by agent
+                    if key=='C_M_ByAgent':
+                        continue 
                     data_sum2ave[key]=data_sum2ave[key]+data_all[key]
         
         # If the simulation includes ensembles, calculate average
         for key in data_bat.keys():
+            
+            # Skip mortality summary by agent
+            if key=='C_M_ByAgent':
+                continue 
+            
             data_sum2ave[key]=data_sum2ave[key]/meta['N Ensemble']        
         
         v.append(BunchDictionary(data_sum2ave))
@@ -780,6 +822,12 @@ def CalculateGHGBalance(v1,meta):
 
 def PostProcessBatchTIPSY(meta):
 
+    # Function used to smooth curves
+    def smooth(y, box_pts):
+        box = np.ones(box_pts)/box_pts
+        y_smooth = np.convolve(y, box, mode='same')
+        return y_smooth
+    
     # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr - create conversion factor
     dm2c=0.5
 
@@ -796,32 +844,82 @@ def PostProcessBatchTIPSY(meta):
     # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
     N_Age=Age.size
     N_GC=int(dfDat.shape[0]/N_Age)
-    
-    # Define the fraction of merchantable stemwood
-    fMerch=np.nan_to_num(np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')/np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F'))
-    fNonMerch=1-fMerch
+
+    # Stemwood
 
     # Merchantable stemwood volume
     V_StemMerch=np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')
+    V_StemTot=np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F')
     G_VStemMerch=np.append(np.zeros((1,N_GC)),np.diff(V_StemMerch,axis=0),axis=0)
 
     # Extract age responses for each biomass pool
     C_Stem=dm2c*np.reshape(dfDat['ODT_Stem'].values,(N_Age,N_GC),order='F')
+
+    #import matplotlib.pyplot as plt
+    #plt.close('all')
+    #plt.plot(C_Stem[:,0])
+
+    # Apply smoothing - it messes up the last ten years so don't smooth that part
+    for j in range(C_Stem.shape[1]):
+        a=smooth(C_Stem[:,j],10)
+        C_Stem[:-10,j]=a[:-10]
+        a=smooth(V_StemMerch[:,j],10)
+        V_StemMerch[:-10,j]=a[:-10]
+        a=smooth(V_StemTot[:,j],10)
+        V_StemTot[:-10,j]=a[:-10]
+    #plt.plot(C_Stem[:,0],'--')
+    
+    # Define the fraction of merchantable stemwood
+    fMerch=np.nan_to_num(V_StemMerch/V_StemTot)
+    fNonMerch=1-fMerch  
+
+    # Calculate growth
+    z=np.zeros((1,N_GC))
+    G_Stem=np.append(z,np.diff(C_Stem,axis=0),axis=0)
+
+    # Adjust early net growth, but don't change the total stock change
+    A_th=30
+    ind=np.where(Age<=A_th)[0]
+    bin=np.arange(0.005,0.15,0.005)
+    x=np.arange(0,A_th+1,1)
+    for j in range(N_GC):
+        Gtot=C_Stem[ind[-1],j]
+        y_th=G_Stem[ind[-1],j]
+        Gtot_hat=1000*np.ones(bin.size)
+        for k in range(bin.size):
+            Gtot_hat[k]=np.sum(y_th*np.exp(bin[k]*(x-A_th)))
+        ind1=np.where(np.abs(Gtot_hat-Gtot)==np.min(np.abs(Gtot_hat-Gtot)))[0]
+        G_Stem[ind,j]=y_th*np.exp(bin[ind1[0]]*(x-A_th))
+
+    # Update merch and nonmerch growth
+    C_Stem=np.cumsum(G_Stem,axis=0)
     C_StemMerch=fMerch*C_Stem
     C_StemNonMerch=fNonMerch*C_Stem
-    C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
-    C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
-    C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
+    G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
+    G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
+    
+    # Add negative nonmerch to merch 
+    ind=np.where(G_StemNonMerch<0)
+    G_StemMerch[ind]=G_StemMerch[ind]+G_StemNonMerch[ind]
+    G_StemNonMerch[ind]=0    
+    
+    #import matplotlib.pyplot as plt
+    #plt.close('all')
+    #plt.plot(np.maximum(-1,G_Stem[:,0]))
+    #plt.plot(np.maximum(-1,G_StemMerch[:,0]),'--')
+    #plt.plot(np.maximum(-1,G_StemNonMerch[:,0]),'-.')
+
+    # Other pools   
 
     # Foliage biomass is very low, revise
     bF1=0.579
     bF2=0.602
-    C_Foliage=np.maximum(0,bF1*C_Stem**bF2)        
+    C_Foliage=np.maximum(0,bF1*C_Stem**bF2)   
+    #C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
+    
+    C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
+    C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
 
-    # Calculate growth
-    z=np.zeros((1,N_GC))
-    G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
-    G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
     G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
     G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
     G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
@@ -840,7 +938,7 @@ def PostProcessBatchTIPSY(meta):
             for iGC in range(3):
                 
                 # Initialize age response of net growth
-                G=np.zeros((N_Age,indBat.size,6),dtype=np.int16)
+                G=np.zeros((N_Age,indBat.size,6),dtype=np.int32)
     
                 # Populate the growth curve
                 for iS in range(indBat.size):
@@ -958,6 +1056,7 @@ def Import_CompiledGrowthCurves(meta,scn):
     gc=[]
     for iScn in range(len(scn)): #range(meta['N Scenario']):
         gc0=[]
+        
         gc1=[]
         for iBat in range(0,meta['N Batch']):            
             tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve1_Bat' + FixFileNum(iBat) + '.pkl')
@@ -965,6 +1064,7 @@ def Import_CompiledGrowthCurves(meta,scn):
             for iS in range(tmp.shape[1]):
                 gc1.append(tmp[:,iS].copy()/meta['GC']['Scale Factor'])
         gc0.append(gc1.copy())
+        
         gc1=[]
         for iBat in range(0,meta['N Batch']):            
             tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve2_Bat' + FixFileNum(iBat) + '.pkl')
@@ -972,6 +1072,7 @@ def Import_CompiledGrowthCurves(meta,scn):
             for iS in range(tmp.shape[1]):
                 gc1.append(tmp[:,iS].copy()/meta['GC']['Scale Factor'])
         gc0.append(gc1.copy())
+        
         gc1=[]
         for iBat in range(0,meta['N Batch']):            
             tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve3_Bat' + FixFileNum(iBat) + '.pkl')
@@ -1765,7 +1866,7 @@ def GetMortalityFrequencyDistribution(meta):
 # representing the given treatment area, rather than the area inferred from the 
 # total number of sparse sample points within a project area, which can be wrong.
 
-def MosByMultipolygon(meta):
+def MosByMultipolygon(meta,include_area):
 
     # Import multipolygons
     atu_multipolygons=gu.ipickle(meta['Paths']['Geospatial'] + '\\atu_multipolygons.pkl')
@@ -1815,11 +1916,12 @@ def MosByMultipolygon(meta):
             d['v2']['Sum'][nam2[iV]]={}
             d['v2']['Sum'][nam2[iV]]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
             d['v2']['Sum'][nam2[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
-        d['Area']={}
-        for k in meta['LUT Dist'].keys():
-            d['Area'][k]={}
-            d['Area'][k]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
-            #d['Area'][k]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+        if include_area=='On':
+            d['Area']={}
+            for k in meta['LUT Dist'].keys():
+                d['Area'][k]={}
+                d['Area'][k]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
+                #d['Area'][k]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
         MosByMP[iScn]=d
     
     # Scale factor used to temporarily store data
@@ -1840,9 +1942,10 @@ def MosByMultipolygon(meta):
             Data['v2']={}
             for iV in range(len(nam2)):
                 Data['v2'][nam2[iV]]=np.zeros((tv_saving.size,meta['N Stand Full']),dtype=int)
-            Data['Area']={}
-            for k in MosByMP[iScn]['Area']:
-                Data['Area'][k]=np.zeros((tv_saving.size,meta['N Stand Full']),dtype=int)
+            if include_area=='On':
+                Data['Area']={}
+                for k in MosByMP[iScn]['Area']:
+                    Data['Area'][k]=np.zeros((tv_saving.size,meta['N Stand Full']),dtype=int)
 
             # Populate full simulation results       
             for iBat in range(meta['N Batch']):
@@ -1858,42 +1961,50 @@ def MosByMultipolygon(meta):
                     tmp=d2[0][0][nam2[iV]]/ScaleFactor
                     Data['v2'][nam2[iV]][:,indBat]=tmp.copy().astype(int)
             
-                # Import event chronology
-                ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                if include_area=='On':
+                    # Import event chronology
+                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
             
-                # Uncompress event chronology if it has been compressed
-                if 'idx' in ec:
-                    idx=ec['idx']
-                    tmp=ec.copy()
-                    for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
-                        ec[v]=np.zeros((tv_full.size,d1['A'].shape[1],meta['Max Events Per Year']),dtype='int16')
-                        ec[v][idx[0],idx[1],idx[2]]=tmp[v]
-                del tmp
+                    # Uncompress event chronology if it has been compressed
+                    if 'idx' in ec:
+                        idx=ec['idx']
+                        tmp=ec.copy()
+                        for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
+                            ec[v]=np.zeros((tv_full.size,d1['A'].shape[1],meta['Max Events Per Year']),dtype='int16')
+                            ec[v][idx[0],idx[1],idx[2]]=tmp[v]
+                    del tmp            
+                
+                    for k in Data['Area'].keys():
+                        Data0=np.zeros((tv_saving.size,indBat.size))
+                        for iEY in range(meta['Max Events Per Year']):
+                            ind=np.where(ec['ID_Type'][it,:,iEY]==meta['LUT Dist'][k])[0]
+                            Data0[ind]=Data0[ind]+1
+                        Data['Area'][k][:,indBat]=Data0
+                    
+                    del ec
             
-                for k in Data['Area'].keys():
-                    Data0=np.zeros((tv_saving.size,indBat.size))
-                    for iEY in range(meta['Max Events Per Year']):
-                        ind=np.where(ec['ID_Type'][it,:,iEY]==meta['LUT Dist'][k])[0]
-                        Data0[ind]=Data0[ind]+1
-                    Data['Area'][k][:,indBat]=Data0
-            
-                del d1,d2,ec
+                del d1,d2
                 garc.collect()
         
-            # Populating the final structure with area data is slow - get a flag
-            # indicator of whether each event ID can be skipped because it has no
-            # info
-            flg_area={}
-            for k in Data['Area'].keys():            
-                if np.sum(Data['Area'][k])>0:
-                    flg_area[k]=1
-                else:
-                    flg_area[k]=0
+            if include_area=='On':
+                # Populating the final structure with area data is slow - get a flag
+                # indicator of whether each event ID can be skipped because it has no
+                # info
+                flg_area={}
+                for k in Data['Area'].keys():            
+                    if np.sum(Data['Area'][k])>0:
+                        flg_area[k]=1
+                    else:
+                        flg_area[k]=0
         
             # Calculate stats and populate results for each treatment area    
             for iMP in range(uMP.size):
                 #print(iMP)
-                ATA=atu_multipolygons[uMP[iMP]]['ACTUAL_TREATMENT_AREA']        
+                ATA=atu_multipolygons[uMP[iMP]]['ACTUAL_TREATMENT_AREA']
+                if ATA==None:
+                    print('Encounterd no area, using zero')
+                    ATA=0
+                    
                 ind=Crosswalk_sxy_to_mp[iMP]['Index']
                 for iV in range(len(nam1)):
                     tmp=ScaleFactor*Data['v1'][nam1[iV]][:,ind].astype(float)
@@ -1907,10 +2018,11 @@ def MosByMultipolygon(meta):
                     MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD'][:,iMP]+np.std(tmp,axis=1)
                     MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean'][:,iMP]+ATA*np.mean(tmp,axis=1)
                     MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD'][:,iMP]+ATA*np.std(tmp,axis=1)
-                for k in MosByMP[iScn]['Area']:
-                    if flg_area[k]==1:
-                        # Only continue if there are some events
-                        MosByMP[iScn]['Area'][k]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Area'][k]['Ensemble Mean'][:,iMP]+np.sum(Data['Area'][k][:,ind],axis=1)
+                if include_area=='On':
+                    for k in MosByMP[iScn]['Area']:
+                        if flg_area[k]==1:
+                            # Only continue if there are some events
+                            MosByMP[iScn]['Area'][k]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Area'][k]['Ensemble Mean'][:,iMP]+np.sum(Data['Area'][k][:,ind],axis=1)
 
     # Divide by number of ensembles
     for iScn in range(meta['N Scenario']):
@@ -1924,8 +2036,9 @@ def MosByMultipolygon(meta):
             MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD']=MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD']/meta['N Ensemble']
             MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean']/meta['N Ensemble']
             MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD']/meta['N Ensemble']
-        for iV in MosByMP[iScn]['Area']:
-            MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]/meta['N Ensemble']
+        if include_area=='On':
+            for iV in MosByMP[iScn]['Area']:
+                MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]/meta['N Ensemble']
 
     # Save
     gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MosByMultipolygon.pkl',MosByMP)
@@ -1950,7 +2063,9 @@ def ModelOutputStats(meta,flag_save):
         mos[iScn]['v1']['Sum']={}
         d1=LoadSingleOutputFile(meta,0,0,0)
         for k in d1.keys(): 
-            if (k=='Year'):
+            if k=='Year':
+                continue
+            if k=='C_M_ByAgent':
                 continue
             mos[iScn]['v1']['Mean'][k]={}
             mos[iScn]['v1']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
@@ -1976,7 +2091,20 @@ def ModelOutputStats(meta,flag_save):
             mos[iScn]['v2']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
             mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
             mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
-            
+        
+        mos[iScn]['C_M_ByAgent']={}
+        mos[iScn]['C_M_ByAgent']['Mean']={}
+        mos[iScn]['C_M_ByAgent']['Sum']={}   
+        for k in d1['C_M_ByAgent'].keys(): 
+            mos[iScn]['C_M_ByAgent']['Mean'][k]={}
+            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
+            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+            mos[iScn]['C_M_ByAgent']['Sum'][k]={}
+            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
+            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+        
         mos[iScn]['Area']={}
         for k in meta['LUT Dist'].keys():
             mos[iScn]['Area'][k]={}
@@ -1989,22 +2117,41 @@ def ModelOutputStats(meta,flag_save):
             
             v1={}
             v2={}          
+            C_M_ByAgent={}
             for iBat in range(meta['N Batch']):
             
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
-                d2=CalculateGHGBalance(d1,meta)
+                # Basic output
+                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)                
             
                 for k in d1.keys(): 
-                    if (k=='Year'):
+                    
+                    if k=='Year':
                         continue
+                    
+                    # Skip mortality summary by agent
+                    if k=='C_M_ByAgent':
+                        continue
+                    
                     if iBat==0:
                         v1[k]=np.sum(d1[k],axis=1)
                     else:
                         v1[k]=v1[k]+np.sum(d1[k],axis=1)
-            
+                
+                # Mortality summary by agent                
+                for k in d1['C_M_ByAgent'].keys():
+                    if iBat==0:
+                        C_M_ByAgent[k]=d1['C_M_ByAgent'][k].flatten()
+                    else:
+                        C_M_ByAgent[k]=C_M_ByAgent[k]+d1['C_M_ByAgent'][k].flatten()
+                
+                # CO2e fluxes and pools
+                d2=CalculateGHGBalance(d1,meta)
+                
                 for k in d2[0][0].keys(): 
+                    
                     if k=='Year':
                         continue
+                    
                     if iBat==0:
                         v2[k]=np.sum(d2[0][0][k],axis=1)
                     else:
@@ -2039,10 +2186,21 @@ def ModelOutputStats(meta,flag_save):
             
             # Populate mos for each scenario
             for k in v1.keys():
+                
                 if k=='Year':
                     continue
+                
+                # Skip mortality summary by agent
+                if k=='C_M_ByAgent':
+                    continue
+                
                 mos[iScn]['v1']['Sum'][k]['Ensembles'][:,iEns]=v1[k].copy()
                 mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['N Stand Full']
+            
+            for k in C_M_ByAgent.keys():                
+                mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()
+                mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()/meta['N Stand Full']
+            
             for k in v2.keys():
                 if k=='Year':
                     continue
@@ -2056,6 +2214,12 @@ def ModelOutputStats(meta,flag_save):
             mos[iScn]['v1']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Sum'][k]['Ensembles'],axis=1)
             mos[iScn]['v1']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
             mos[iScn]['v1']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
+        
+        for k in C_M_ByAgent.keys():
+            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'],axis=1)
+            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'],axis=1)
         
         for k in v2.keys():
             if k=='Year':
@@ -2088,7 +2252,7 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Wildfire']['Ensembles'][:,iEns]
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain Pine beetle'; A['Nat Dist'][c]['Color']=[0,0.8,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBM']['Ensembles'][:,iEns]
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.6,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBD']['Ensembles'][:,iEns]
-        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.1,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBS']['Ensembles'][:,iEns]
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.25,1,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBS']['Ensembles'][:,iEns]
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBB']['Ensembles'][:,iEns]
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Beetles']['Ensembles'][:,iEns]
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IDW']['Ensembles'][:,iEns]
@@ -2101,7 +2265,7 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensembles'][:,iEns]+mos[iScn]['Area']['Salvage Logging']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensembles'][:,iEns]+mos[iScn]['Area']['Salvage Logging']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Knockdown']['Ensembles'][:,iEns]+mos[iScn]['Area']['Thinning']['Ensembles'][:,iEns]
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.2,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensembles'][:,iEns]+mos[iScn]['Area']['Ripping']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensembles'][:,iEns]+mos[iScn]['Area']['Ripping']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Prescribed Burn']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Control']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=mos[iScn]['Area']['Planting']['Ensembles'][:,iEns]+mos[iScn]['Area']['Direct Seeding']['Ensembles'][:,iEns]
@@ -2115,7 +2279,7 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Wildfire']['Ensemble Mean']
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain Pine beetle'; A['Nat Dist'][c]['Color']=[0,0.8,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBM']['Ensemble Mean']
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.6,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBD']['Ensemble Mean']
-        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.1,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBS']['Ensemble Mean']
+        c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.25,1,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBS']['Ensemble Mean']
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IBB']['Ensemble Mean']
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['Beetles']['Ensemble Mean']
         c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=mos[iScn]['Area']['IDW']['Ensemble Mean']
@@ -2128,7 +2292,7 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensemble Mean']+mos[iScn]['Area']['Salvage Logging']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensemble Mean']+mos[iScn]['Area']['Salvage Logging']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Knockdown']['Ensemble Mean']+mos[iScn]['Area']['Thinning']['Ensemble Mean']
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.2,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensemble Mean']+mos[iScn]['Area']['Ripping']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensemble Mean']+mos[iScn]['Area']['Ripping']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Prescribed Burn']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Control']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=mos[iScn]['Area']['Planting']['Ensemble Mean']+mos[iScn]['Area']['Direct Seeding']['Ensemble Mean']

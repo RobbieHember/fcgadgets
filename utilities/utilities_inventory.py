@@ -26,7 +26,7 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Define strings that frequently need to be populated with zeros
 
-StringsToFill=['Month','Day','FCI_Funded','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
+StringsToFill=['Month','Day','SILV_FUND_SOURCE_CODE','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
                'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
                'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
                'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5']
@@ -1089,7 +1089,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
         dmec0['ID_Type']=-999*np.ones(1,dtype='int16')
         dmec0['MortalityFactor']=-999*np.ones(1,dtype='int16')
         dmec0['GrowthFactor']=-999*np.ones(1,dtype='int16')
-        dmec0['FCI_Funded']=-999*np.ones(1,dtype='int16')
+        dmec0['SILV_FUND_SOURCE_CODE']=-999*np.ones(1,dtype='int16')
         dmec0['FIA_PROJECT_ID']=-999*np.ones(1,dtype='int16')
         dmec0['OPENING_ID']=-999*np.ones(1,dtype='int16')
         dmec0['ACTUAL_TREATMENT_AREA']=-999*np.ones(1,dtype='int32')
@@ -1129,6 +1129,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dNames['SILV_METHOD_CODE']=cbu.lut_n2s(meta['LUT ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][iA])        
                 dNames['SILV_OBJECTIVE_CODE_1']=cbu.lut_n2s(meta['LUT ATU']['SILV_OBJECTIVE_CODE_1'],atu['SILV_OBJECTIVE_CODE_1'][iA])
                 Name_Type=cbu.QueryResultsActivity(dNames)[0]
+                
                 try:
                     ID_Type=meta['LUT Dist'][Name_Type]
                 except:
@@ -1137,27 +1138,20 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 # Skip surveys (added to avoid surveys being included in tile runs)
                 if Name_Type=='Surveys':
                     continue
-                    
-                # Define FCI funded activities
-                FCI_Funded=0
-                if (atu['SILV_FUND_SOURCE_CODE'][iA]==meta['LUT ATU']['SILV_FUND_SOURCE_CODE']['FCE']) | \
-                    (atu['SILV_FUND_SOURCE_CODE'][iA]==meta['LUT ATU']['SILV_FUND_SOURCE_CODE']['FCM']):
-                    FCI_Funded=1    
-                    # Criterion taken out - find another way - modifiy the FSC code instead prior to running this script
-                    #(np.isin(cbu.lut_n2s(meta['LUT ATU']['FIA_PROJECT_ID'],atu['FIA_PROJECT_ID'][iA]),meta['uPP'])==True):
-                    
+                
+                # Populate DMEC dictionary
                 dmec0['Year']=np.append(dmec0['Year'],np.round(atu['Year'][iA]+atu['Month'][iA]/12,decimals=2))
                 dmec0['Month']=np.append(dmec0['Month'],atu['Month'][iA])
                 dmec0['Day']=np.append(dmec0['Day'],atu['Day'][iA])
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],ID_Type)                
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],np.array(0,dtype='int16'))
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],np.array(0,dtype='int16'))
-                dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],FCI_Funded)
+                dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][iA])
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],atu['OPENING_ID'][iA])
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],atu['FIA_PROJECT_ID'][iA])
                 dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],np.maximum(1,atu['ACTUAL_TREATMENT_AREA'][iA]))
                 dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],atu['ACTUAL_PLANTED_NUMBER'][iA])
-                dmec0=AddPlantingWithNoData(dmec0)
+                dmec0=AddPlantingWithNoData(dmec0)                    
     
         #--------------------------------------------------------------------------
         # Planting layer
@@ -1261,7 +1255,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Wildfire'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],Severity)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                 dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1286,7 +1280,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Wildfire'])            
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],50)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)            
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                 dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1311,7 +1305,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Harvest'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                 dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1326,7 +1320,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Slashpile Burn'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                 dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1368,7 +1362,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Harvest'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                    dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                     dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1383,7 +1377,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                    dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                     dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1412,7 +1406,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Harvest'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                    dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                     dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1427,7 +1421,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
-                    dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                     dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
@@ -1457,7 +1451,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['Year']=np.append(dmec0['Year'],pest['CAPTURE_YEAR'][iYr])
                 dmec0['Month']=np.append(dmec0['Month'],-999)
                 dmec0['Day']=np.append(dmec0['Day'],-999)
-                dmec0['FCI_Funded']=np.append(dmec0['FCI_Funded'],0)
+                dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
                 dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)

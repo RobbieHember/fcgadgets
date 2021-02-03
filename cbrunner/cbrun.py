@@ -275,11 +275,9 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_G_Gross']=np.zeros((m,n,o))
     vo['C_M_Reg']=np.zeros((m,n,o))
     vo['C_M_Dist']=np.zeros((m,n))
-    #vo['C_M_Inv_Fir']=np.zeros((m,n))
-    #vo['C_M_Inv_Ins']=np.zeros((m,n))
-    #vo['C_M_Inv_Pat']=np.zeros((m,n))
-    #vo['C_M_Inv_Har']=np.zeros((m,n))
-    #vo['C_M_Inv_Win']=np.zeros((m,n))  
+    vo['C_M_ByAgent']={}
+    for k in meta['LUT Dist']:
+        vo['C_M_ByAgent'][k]=np.zeros((m,1))        
     vo['C_LF']=np.zeros((m,n,o))    
     vo['C_RH']=np.zeros((m,n,o))    
     vo['C_RemovedMerch']=np.zeros((m,n))
@@ -655,7 +653,14 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
     
     it=np.where(meta['Year']>=meta['Year Start Saving'])[0]    
     for k in vo:
+        # Skip mortality summary
+        if k=='C_M_ByAgent':
+            continue
         vo[k]=vo[k][it,:]
+    
+    # Mortality summaries
+    for k in vo['C_M_ByAgent']:
+        vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k][it,:]
     
     #--------------------------------------------------------------------------
     # Convert emissions to CO2e
@@ -730,13 +735,25 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
     
     for k in vo.keys():
         
+        # Skip mortality summary by agent
+        if k=='C_M_ByAgent':
+            continue
+        
         vo[k]=vo[k]/meta['Scale Factor Export']
         
         if np.max(vo[k])<32767:
             vo[k]=vo[k].astype('int16')
         else:
             vo[k]=vo[k].astype(int)
-       
+    
+    # Mortality summary by agent
+    for k in vo['C_M_ByAgent'].keys():
+        if np.max(vo['C_M_ByAgent'][k]<32767):
+            vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype('int16')
+        else:
+            vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype(int)
+            
+    
     #--------------------------------------------------------------------------  
     # Sawtooth variables
     #--------------------------------------------------------------------------  

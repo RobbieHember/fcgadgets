@@ -2,6 +2,7 @@
 #%% Import python modules
 
 import numpy as np
+from fcgadgets.cbrunner import cbrun_utilities as cbu
 from fcgadgets.actions.nutrient_application import update_nutrient_status 
 from fcgadgets.taz import general_stat_models as gensm
 
@@ -33,6 +34,11 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP):
     NetGrowth=np.zeros((meta['N Stand'],6))
     for iS in range(meta['N Stand']):
         NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:]
+    
+    # *** New net growth of
+    Stem=NetGrowth[:,iEP['StemMerch']]+NetGrowth[:,iEP['StemNonMerch']]
+    NetGrowth[:,iEP['Foliage']]=Stem*(0.02+(3-0.02)*np.exp(-0.1*vo['A'][iT,:]))
+    NetGrowth[:,iEP['Branch']]=Stem*(0.1+(1-0.1)*np.exp(-0.1*vo['A'][iT,:]))
     
     # Add net growth to output variable structure and apply scale factor
     # Oddly, using meta['iEP']['BiomassAboveground'] will invert the dimensions 
@@ -179,20 +185,28 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP):
     # Litterfall
     #--------------------------------------------------------------------------
     
+    #fA=-0.001
+    fA=0
+    Aref=100
+    
     # Calculate foliage biomass turnover due to litterfall
-    vo['C_LF'][iT,:,iEP['Foliage']]=psl['bTR_Foliage'][0,:]*vo['C_Eco_Pools'][iT,:,iEP['Foliage']]
+    tr=fA*(vo['A'][iT,:]-Aref)+psl['bTR_Foliage'][0,:]
+    vo['C_LF'][iT,:,iEP['Foliage']]=tr*vo['C_Eco_Pools'][iT,:,iEP['Foliage']]
     
     # Calculate branch biomass turnover due to litterfall
-    vo['C_LF'][iT,:,iEP['Branch']]=psl['bTR_Branch'][0,:]*vo['C_Eco_Pools'][iT,:,iEP['Branch']]
+    tr=fA*(vo['A'][iT,:]-Aref)+psl['bTR_Branch'][0,:]
+    vo['C_LF'][iT,:,iEP['Branch']]=tr*vo['C_Eco_Pools'][iT,:,iEP['Branch']]
     
     # Calculate bark biomass turnover due to litterfall
     vo['C_LF'][iT,:,iEP['Bark']]=psl['bTR_Bark'][0,:]*vo['C_Eco_Pools'][iT,:,iEP['Bark']]
     
     # Calculate coarse root biomass turnover due to litterfall
-    vo['C_LF'][iT,:,iEP['RootCoarse']]=psl['bTR_RootCoarse'][0,:]*vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]
+    tr=fA*(vo['A'][iT,:]-Aref)+psl['bTR_RootCoarse'][0,:]
+    vo['C_LF'][iT,:,iEP['RootCoarse']]=tr*vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]
     
     # Calculate fine root biomass turnover due to litterfall
-    vo['C_LF'][iT,:,iEP['RootFine']]=psl['bTR_RootFine'][0,:]*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
+    tr=fA*(vo['A'][iT,:]-Aref)+psl['bTR_RootFine'][0,:]
+    vo['C_LF'][iT,:,iEP['RootFine']]=tr*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
         
     # Adjust litterfall to account for N application response
     if meta['NM']['iApplication'].size>0:
@@ -958,7 +972,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
 def DOM_like_CBM08(iT,vi,vo,psl,iEP,meta):
      
     #--------------------------------------------------------------------------
-    # Flux of carbon between biomass components and dead organic matter components
+    # Flux of carbon between biomass pools and dead organic matter pools
     #--------------------------------------------------------------------------
     
     # Transfer biomass turnover to very fast litter pool
@@ -1051,10 +1065,10 @@ def DOM_like_CBM08(iT,vi,vo,psl,iEP,meta):
     vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]-meta['R_SoilS']
                 
     # Re-define decayed fast litter
-    vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+psl['bIPF_SnagStemToLitterF']*meta['R_SnagStem']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+psl['bIPF_SnagBranchToLitterF']*meta['R_SnagBranch']
     
     # Re-define decayed medium litter
-    vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+psl['bIPF_SnagBranchToLitterM']*meta['R_SnagBranch']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+psl['bIPF_SnagStemToLitterM']*meta['R_SnagStem']
     
     # Re-define decayed slow litter
     vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]+psl['bIPF_LitterVFToLitterS']*meta['R_LitterVF']
@@ -1177,8 +1191,7 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
             continue
         
         # Get event-specific parameters        
-        u,idx,inv=np.unique(ID_Type,return_index=True,return_inverse=True)
-        
+        u,idx,inv=np.unique(ID_Type,return_index=True,return_inverse=True)        
         b={}
         for k in psl['Dist'][1].keys():
             bU=np.zeros(u.size)
@@ -1228,6 +1241,15 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
             
         vo['C_M_Dist'][iT,:]=vo['C_M_Dist'][iT,:]+Affected_All
             
+        # Mortality by category (lumping stands together)
+        uType=np.unique(ID_Type)
+        for iType in range(len(uType)):
+            if uType[iType]==0:
+                continue
+            indType=np.where(ID_Type==uType[iType])[0]
+            String_Type=cbu.lut_n2s(meta['LUT Dist'],uType[iType])[0]
+            vo['C_M_ByAgent'][String_Type][iT,0]=vo['C_M_ByAgent'][String_Type][iT,0]+np.sum(Affected_All[indType])
+
         #----------------------------------------------------------------------
         # Remove affected amount from each pool
         #----------------------------------------------------------------------
@@ -1329,6 +1351,7 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
         Bark=b['FelledBark_Burned']*vo['C_Eco_Pools'][iT,:,iEP['FelledBark']]
         SnagStem=b['FelledSnagStem_Burned']*vo['C_Eco_Pools'][iT,:,iEP['FelledSnagStem']]
         SnagBranch=b['FelledSnagStem_Burned']*vo['C_Eco_Pools'][iT,:,iEP['FelledSnagBranch']]
+        Total_Burned=StemMerch+StemNonMerch+Branch+Bark+SnagStem+SnagBranch
         
         # Remove affected carbon
         vo['C_Eco_Pools'][iT,:,iEP['FelledStemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['FelledStemMerch']]-StemMerch
@@ -1337,8 +1360,6 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
         vo['C_Eco_Pools'][iT,:,iEP['FelledBark']]=vo['C_Eco_Pools'][iT,:,iEP['FelledBark']]-Bark
         vo['C_Eco_Pools'][iT,:,iEP['FelledSnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['FelledSnagStem']]-SnagStem
         vo['C_Eco_Pools'][iT,:,iEP['FelledSnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['FelledSnagBranch']]-SnagBranch
-        
-        Total_Burned=StemMerch+StemNonMerch+Branch+Bark+SnagStem+SnagBranch
         
         # Add to fire emissions
         vo['C_E_FireAsCO2'][iT,:]=vo['C_E_FireAsCO2'][iT,:]+psl['bCombFrac_CO2']*Total_Burned        
@@ -1365,7 +1386,7 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
                 # Not always realistic, but see how net growth is affected.
                 vo['A'][iT,ind]=vo['A'][iT,ind]*(1-MortalityFactor)
                         
-            else:                   
+            else:
                         
                 # Assume no change
                 vo['A'][iT,:]=vo['A'][iT,:]

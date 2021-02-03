@@ -23,7 +23,7 @@ from fcgadgets.cbrunner import cbrun_utilities
 #project_name='FCI_RollupFCI_Inv'
 #project_name='SurveySummary'
 #project_name='FertilizationSummary'
-project_name='ReforestationSummary'
+project_name='ReforestationNonObSummary'
 
 #%% Define paths
 
@@ -167,17 +167,21 @@ with fiona.open(path,layer=lyr_nam) as source:
             if (prp['SILV_BASE_CODE']!='FE') | (prp['SILV_TECHNIQUE_CODE']!='CA') | (prp['RESULTS_IND']!='Y'):
                 continue
             
-        elif project_name=='ReforestationSummary':
+        elif project_name=='ReforestationNonObSummary':
             
             Year=int(prp['ATU_COMPLETION_DATE'][0:4]) 
             
+            if Year<2011:
+                continue
+            
             flg=0
             if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & \
-                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (prp['SILV_FUND_SOURCE_CODE']!='IA') & \
-                (prp['SILV_FUND_SOURCE_CODE']!='VOI') & (prp['SILV_FUND_SOURCE_CODE']!='BCT') & (prp['SILV_FUND_SOURCE_CODE']!='SBF') & \
-                (prp['SILV_FUND_SOURCE_CODE']!='LFP') & (prp['SILV_FUND_SOURCE_CODE']!='IR'):
+                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & \
+                (prp['SILV_FUND_SOURCE_CODE']!='IA') &  (prp['SILV_FUND_SOURCE_CODE']!='VOI') & (prp['SILV_FUND_SOURCE_CODE']!='BCT') & \
+                (prp['SILV_FUND_SOURCE_CODE']!='SBF') & (prp['SILV_FUND_SOURCE_CODE']!='LFP') & (prp['SILV_FUND_SOURCE_CODE']!='IR'):
                 flg=1
-            elif (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & \
+            elif (prp['SILV_BASE_CODE']=='DS') & \
+                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & \
                 (prp['SILV_FUND_SOURCE_CODE']!='IA') & (prp['SILV_FUND_SOURCE_CODE']!='VOI') & (prp['SILV_FUND_SOURCE_CODE']!='BCT') & \
                 (prp['SILV_FUND_SOURCE_CODE']!='SBF') & (prp['SILV_FUND_SOURCE_CODE']!='LFP') & (prp['SILV_FUND_SOURCE_CODE']!='IR'):
                 flg=1
