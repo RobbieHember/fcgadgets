@@ -93,10 +93,10 @@ effectively and consistently communicate with forest inventory databases.
 	* ClimateNA base-period mean climate
 	* Growth and yield models
 
-### Build Look-up Tables
-Prior to running simulations, functions from fcgadgets.pyscripts.utilities_inventory.py were run to build look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, and Disturbance.gdb. The purpose of the LUTs was to: 
-1.	Create a list of the subset of variables from each layer that are needed for modelling and
-2.	Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase. 
+### Look-up Tables
+The general workflow of **cbrunner** projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb. The purpose of the LUTs was to: 
+1.	Create a list of the subset of variables from each layer that are needed for modelling (utilities_inventory.DefineInventoryLayersAndVariables);
+2.	Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase (utilities_inventory.BuildForestInventoryLUTs). 
 Filtering out unnecessary variables, and converting all retained variables to numeric data types, improved ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
 Species codes occurred across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
 The LUTs for each inventory layer were stored as pickle files.
