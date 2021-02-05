@@ -35,15 +35,21 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP):
     for iS in range(meta['N Stand']):
         NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:]
     
-    # *** New net growth of
-    Stem=NetGrowth[:,iEP['StemMerch']]+NetGrowth[:,iEP['StemNonMerch']]
-    NetGrowth[:,iEP['Foliage']]=Stem*(0.02+(3-0.02)*np.exp(-0.1*vo['A'][iT,:]))
-    NetGrowth[:,iEP['Branch']]=Stem*(0.1+(1-0.1)*np.exp(-0.1*vo['A'][iT,:]))
+    NetGrowth=meta['GC']['Scale Factor']*NetGrowth.astype(float)
     
-    # Add net growth to output variable structure and apply scale factor
+    # Net growth of total stemwood
+    Gnet_Stem=NetGrowth[:,iEP['StemMerch']]+NetGrowth[:,iEP['StemNonMerch']]
+    
+    # Net growth of foliage    
+    NetGrowth[:,iEP['Foliage']]=Gnet_Stem*(0.02+(3-0.02)*np.exp(-0.1*vo['A'][iT,:]))
+    
+    # Net growth of branches
+    NetGrowth[:,iEP['Branch']]=Gnet_Stem*(0.1+(1.5-0.1)*np.exp(-0.1*vo['A'][iT,:]))
+    
+    # Add net growth to output variable structure 
     # Oddly, using meta['iEP']['BiomassAboveground'] will invert the dimensions 
     # of C_G_Net - don't change it.
-    vo['C_G_Net'][iT,:,0:5]=meta['GC']['Scale Factor']*NetGrowth[:,0:5].astype(float)
+    vo['C_G_Net'][iT,:,0:5]=NetGrowth[:,0:5]
     
     # Total net growth of root biomass (Li et al. 2003, Eq. 4)
     G_Net_Root_Total=0.22*np.sum(vo['C_G_Net'][iT,:,0:5],axis=1)
@@ -54,7 +60,7 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP):
     vo['C_G_Net'][iT,:,iEP['RootFine']]=0.072*G_Net_Root_Total
     
     # Update stemwood merchantable volume
-    vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT-1,:]+NetGrowth[:,5].astype(float)*meta['GC']['Scale Factor']      
+    vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT-1,:]+NetGrowth[:,5]#.astype(float)*meta['GC']['Scale Factor']      
 
     #--------------------------------------------------------------------------
     # Nutrient application effects to net growth
@@ -185,8 +191,9 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP):
     # Litterfall
     #--------------------------------------------------------------------------
     
-    #fA=-0.001
+    # Setting turnover as a function of age will decouple NPP from net growth.
     fA=0
+    #fA=-0.001    
     Aref=100
     
     # Calculate foliage biomass turnover due to litterfall

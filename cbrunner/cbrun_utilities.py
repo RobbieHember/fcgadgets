@@ -2113,7 +2113,7 @@ def ModelOutputStats(meta,flag_save):
             mos[iScn]['Area'][k]['Ensemble SD']=np.zeros(tv.size)
             
         # Loop through ensembles
-        for iEns in range(meta['N Ensemble']):
+        for iEns in range(92,meta['N Ensemble']):
             
             v1={}
             v2={}          
@@ -2121,7 +2121,7 @@ def ModelOutputStats(meta,flag_save):
             for iBat in range(meta['N Batch']):
             
                 # Basic output
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)                
+                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
             
                 for k in d1.keys(): 
                     
