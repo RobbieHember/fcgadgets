@@ -93,7 +93,7 @@ effectively and consistently communicate with forest inventory databases.
 	* ClimateNA base-period mean climate
 	* Growth and yield models
 
-###Build Look-up Tables
+### Build Look-up Tables
 Prior to running simulations, functions from fcgadgets.pyscripts.utilities_inventory.py were run to build look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, and Disturbance.gdb. The purpose of the LUTs was to: 
 1.	Create a list of the subset of variables from each layer that are needed for modelling and
 2.	Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase. 
@@ -101,7 +101,7 @@ Filtering out unnecessary variables, and converting all retained variables to nu
 Species codes occurred across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
 The LUTs for each inventory layer were stored as pickle files.
 
-###Query Inventory Layers
+### Query Inventory Layers
 The script, fciproscripts.rollup.FCI_Rollup_00_FromInv_QueryFCI.py, scanned the Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW layer to find projects that were completed and funded by FCI and archive the treatment areas. Completed FCI projects were defined by two criteria:
 1)	Those that were completed (RESULTS_IND = “Y”) and
 2)	those that were funded by FCI (SILV_FUND_SOURCE_CODE = “FCE” or SILV_FUND_SOURCE_CODE = “FCM”) or those with FIA_PROJECT_ID that are present in the FCI Admin Table. The latter condition accounted for projects that FESBC deemed carbon eligible, but with FIA_PROJECT_ID = “FES”. 
@@ -110,13 +110,13 @@ The resulting query, herein called “FCI query,” included all activities subm
 Prior to update of the RESULTS information submission guide to make it mandatory to submit spatial geometries for all FCI and FFT silviculture activities in January 2020, some projects were not submitting geometries. After the query of Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW completed, missing geometries were replaced by scanning through Results.gdb.RSLT_OPENING_SVW for matching values of OPENING_ID. The geometry from the opening was added to the FCI query, noting frequent discrepancies between treatment area and opening area. 
 The FCI query was saved to a pickle file and shapefile.
 
-###Define Sparse Grid Sample
+### Define Sparse Grid Sample
 While inventory data were maintained in vector format, a raster database was adopted for modelling and analysis. The system defined a grid sample across BC and then extracted a sparse sample of the grid cells that fell within the FCI query. This was achieved with the script, fciproscripts.rollup.FCI_Rollup_01_FromInv_CreateSparseGrid.py. The spatial sampling resolution was set to 100 m. 
 Milestones in the FCI query that did not lead to a GHG benefit (e.g., surveys) were excluded from the sparse grid. Some milestones in the FCI query were missed by the 100 m sampling resolution. When this occurred, the script iteratively attempted to sample from a higher spatial frequency until a single grid cell within the treatment area was identified. As such, although a regular grid was the foundation for sampling, the final sparse grid sample included some irregular spatial sampling. 
 Once the sparse grid sample had been defined, overlay between sparse grid and each inventory layer was performed to compile attributes at each sample cell. This was achieved by looping through the FCI query, and then sub-looping though each block (i.e., each polygon in the multipolygon geometry) for each entry in the FCI query list. Only the attributes identified in the LUT for each inventory layer were retained and added to a list. 
 Some inventory variables were date strings. As all inventory data were stored in numeric data type moving forward, the date string variables were broken down into numeric fields for year, month and day. The original date strings were then deleted.
 
-###Prepare Simulation Assumptions and Inputs
+### Prepare Simulation Assumptions and Inputs
 To apply the model, the following input files were prepared:
 •	Inventory summary
 •	Disturbance and management event history
@@ -124,7 +124,7 @@ To apply the model, the following input files were prepared:
 These files were compiled in the script, fciproscripts.rollup.FCI_Rollup_02_FromInv_PrepCBRun.py. 
 Inventory and growth curve files were specific to unique combinations of scenario and batch. 
 
-###Disturbance and Management Event Chronology
+### Disturbance and Management Event Chronology
 Disturbance and management event chronology (DMEC) files were specific to unique combinations of scenario, batch, and ensemble. The inventory file was produced automatically. There were three information sources for events listed in the DMEH that include tree mortality:
 1.	Prescribed from BC inventory records;
 2.	Simulated by a user-specified models; 
@@ -132,17 +132,17 @@ Disturbance and management event chronology (DMEC) files were specific to unique
 Compilation of the DMEC started by adding information available from inventory data. For example, much was known about previous harvests, wildfires, and beetle outbreaks from BC disturbance databases. 
 Simulated events were added automatically later in the script according to the spin-up and future disturbance assumptions in the ProjectConfig.xlsx file for the project. 
 
-###Gap-filled Events
+### Gap-filled Events
 Some contexts require the analyst to add events to the DMEH that were not informed by disturbance databases, or simulation modelling. These are referred to as gap-filled events. Gap-filled events required some scrutiny granted that they were subjective in nature. 
 For example, consider a grid cell where the inventory indicated no 2017 wildfire, but the recipient indicated that a wildfire occurred in that year. Here, FCI assumed that the absence of the event reflected an omission (false negative) error in the disturbance databases, and the event was added to the DMEH. 
 As a second example, consider a Dwarf Mistletoe Control milestone. The onset of Dwarf Mistletoe in that stand at some time prior to the milestone is not informed by the disturbance database or simulation modelling. Instead, it is inherently assumed to occur and added at the year following the first stand-replacing disturbance of the modern era by the analyst.
 The baseline scenario in planting projects required transition to an age response of net growth for a stand that regenerates naturally following the previous stand-replacing disturbance. However, in some cases BC disturbance databases did not record a disturbance in the modern era. Because the preparation of age responses occurs in the pre-processing, the last disturbance event in the spin-up era could not act as the preceding event. In such cases, a previous stand-replacing disturbance was added to the beginning of the modern era. 
 As site preparation and forest health milestones can precede stand establishment, they can appear in the FCI query as completed. If a future planting event is not added, the GHG balance will not reflect the expected outcome. As such, when those milestones are not accompanied by subsequent stand establishment, a planting event is added to the analyst to support program summarization in real time. 
 
-###Back-to-back Planting Events
+### Back-to-back Planting Events
 There were instances of planting events in back-to-back years. These drive up the number of growth curves and can cause erroneous results in some cases. They could have indicated fill-planting or re-planting following partial or complete regeneration failure, respectively. However, in instances where the planting events were not accompanied by spatial geometries, it is also possible that back-to-back planting events simply reflected a single treatment area that was spread over two calendar years (herein called multi-year projects). In those cases, planting from each event likely occurred on two distinct sub-areas of the whole treatment area. However, because missing spatial information for the treatment area is filled by geometry of the opening, the events are perceived as repeated planting events on at the exact same location. One could establish rules based on planting density and treatment area to discern whether it was likely fill planting vs. multi-year projects. For now, FCI simply omits the second of the two planting events.
 
-###Best-available Variables
+### Best-available Variables
 The script then compiled a “best available” version of many inventory variables that were used to parameterize BatchTIPSY.exe. Unrecognized species codes were all converted to those recognized by BatchTIPSY.exe. For baseline scenarios, the best-available species composition was compiled first from any previous planting information (generally absent), then from the forest cover silviculture layer, then from the forest cover inventory layer, then from VRI, and finally from regional assumptions. For project scenarios with planting, species composition was drawn from the planting layers. For non-planting project scenarios, selection rules followed that of the baseline scenario.
 In order of preference, best-available site index was created from:
 1)	Site Productivity Layer
@@ -150,7 +150,7 @@ In order of preference, best-available site index was created from:
 3)	Vegetation Resource Inventory layer 
 Genetic worth and selection age were commonly provided for a large list of unique combinations of species and genetic worth than can be applied in BatchTIPSY.exe. Final estimates of genetic worth for up to five planted species were calculated by weighting each entry in the planting layer by the number of trees planted.
 
-###Age Response Functions of Net Biomass Growth
+### Age Response Functions of Net Biomass Growth
 Building growth curves for each grid cell was typically unnecessary when there was redundancy in species composition and other stand attributes. For example, although the FCI completed projects could include 33,000 grid cells, there may have only be 5,000 unique stand types. Unique stand types were identified and parameters for each stand type were exported to GrowthCurvesTIPSY_Parameters.xlsx. Then fcgadgets.cbrunner.cbrun_utilities.py.BuildTIPSYInputs was used to build the data input file readable by BatchTIPSY.exe. Then BatchTIPSY.exe was run.
 The inventory summaries were saved to pickle file. The DMEHs were then saved to pickle file. At this point, FIZ was used to specify the disturbance return intervals of coastal and interior projects during spin up. Growth curves were then imported from the BatchTIPSY.exe output file and converted to the format required for fcgadgets.cbrunner, and then finally saved to pickle file. Finally, the script executed the function, fcgadgets.cbrunner.cbrun.py.RunProject, to simulate the results.
 
