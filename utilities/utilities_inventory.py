@@ -2248,25 +2248,24 @@ def ExportATLayerToSpreadsheet(meta,atu):
     df['Year']=atu['Year']
     df['OPENING_ID']=atu['OPENING_ID']
     df['SBC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size): 
+    for i in range(atu['Year'].size):
         df['SBC'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][i])[0]
     df['SMC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size): 
+    for i in range(atu['Year'].size):
         df['SMC'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][i])[0]
     df['STC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size): 
+    for i in range(atu['Year'].size):
         df['STC'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]    
     df['SILV_FUND_SOURCE_CODE']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size): 
+    for i in range(atu['Year'].size):
         df['SILV_FUND_SOURCE_CODE'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]    
     df['ACTUAL_TREATMENT_AREA']=atu['ACTUAL_TREATMENT_AREA']
     df['ACTUAL_PLANTED_NUMBER']=atu['ACTUAL_PLANTED_NUMBER']
     #df['Month']=atu['Month']
     #df['Day']=atu['Day']
-    df=df.sort_values(by=['IdxToSXY','Year','Month','Day'])
-    
-    
+    df=df.sort_values(by=['IdxToSXY','Year','Month','Day'])    
     
     df.to_excel(meta['Paths']['Project'] + '\\Inputs\\atu_Summary.xlsx',index=False)
     
     return
+

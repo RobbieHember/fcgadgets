@@ -25,30 +25,30 @@ the decay and physical transformation of dead organic matter, the impact of natu
 ![image info](./images/fcgadgets_annual_processes.png)
 
 The model achieves this with a set of plug-and-play functions, currently consisting of:
-### Biomass_FromTIPSYorTASS: 
+### cbrun_annproc.py.Biomass_FromTIPSYorTASS: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling).
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 * Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period will match that originally predicted by the GY model.
-### Biomass_FromSawtooth:
+### cbrun_annproc.py.Biomass_FromSawtooth:
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
 * Driven by equations of annual aboveground biomass growth, annual probability of recruitment, and annual probability of mortality
 * Equations are fitted against species/region samples
-### DOM_FromCBM08: 
+### cbrun_annproc.py.DOM_FromCBM08: 
 * Simulates cycling of organic carbon through:
 	* Dead wood (snags and coarse woody debris);
 	* Litter (organic soil horizon); 
 	* Soil (mineral soil horizon);
 	* Felled & piled materials
 * Loosely based on methods described by Kurz et al. (2009)
-### DisturbanceAndManagement: 
+### cbrun_annproc.py.DisturbanceAndManagement: 
 * This method imposes changes caused by natural disturbances and management events
 * All events are defined by an event ID, decimal year, mortality factor, growth factor, and the ID of the growth curve that represents the new stand
 * It is driven by the event chronology, which has two potential sources:
 	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 
-### HWP_FromDymond12: 
+### cbrun_annproc.py.HWP_FromDymond12: 
 * Representation of teh annual GHG balance for fibre that is removed from forest ecosystems 
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
@@ -98,35 +98,23 @@ The general workflow of **cbrunner** projects rely on the use of look-up tables 
 1.	Create a list of the subset of variables from each layer that are needed for modelling (utilities_inventory.DefineInventoryLayersAndVariables);
 2.	Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase (utilities_inventory.BuildForestInventoryLUTs). 
 
-Filtering out unnecessary variables, and converting all retained variables to numeric data types, improved ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
-Species codes occurred across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
-The LUTs for each inventory layer were stored as pickle files.
+Filtering out unnecessary variables, and converting all retained variables to numeric data types, improves ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
+Species codes occur across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
+The LUTs for each inventory layer are stored as pickle files.
 
-### Query Inventory Layers
-The script, fciproscripts.rollup.FCI_Rollup_00_FromInv_QueryFCI.py, scanned the Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW layer to find projects that were completed and funded by FCI and archive the treatment areas. Completed FCI projects were defined by two criteria:
-1)	Those that were completed (RESULTS_IND = “Y”) and
-2)	those that were funded by FCI (SILV_FUND_SOURCE_CODE = “FCE” or SILV_FUND_SOURCE_CODE = “FCM”) or those with FIA_PROJECT_ID that are present in the FCI Admin Table. The latter condition accounted for projects that FESBC deemed carbon eligible, but with FIA_PROJECT_ID = “FES”. 
-Regrettably, this meant that FESBC projects that were not eligible and not funded by LCELF entered the query. This occurred because there was not a unique crosswalk between Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW and the FESBC database. A solution was not attainable, and the projects were manually removed from the dataset.
-The resulting query, herein called “FCI query,” included all activities submitted to RESULTS. Activities that met the query statements were added to a list variable. The list retained all attributes from Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW within a dictionary in each element of the list variable. The geometries could have multipolygon types. The script scanned through the multipolygons and added the geometries to a list called “Blocks”. 
-Prior to update of the RESULTS information submission guide to make it mandatory to submit spatial geometries for all FCI and FFT silviculture activities in January 2020, some projects were not submitting geometries. After the query of Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW completed, missing geometries were replaced by scanning through Results.gdb.RSLT_OPENING_SVW for matching values of OPENING_ID. The geometry from the opening was added to the FCI query, noting frequent discrepancies between treatment area and opening area. 
-The FCI query was saved to a pickle file and shapefile.
+### Query Silviculture Activities from RESULTS
+The function, utilities_inventory.QueryResultsActivity, scans the codes in Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW layer and classifies the activity as disturbance or management type listed in the DMEC:
 
 ### Define Sparse Grid Sample
-While inventory data were maintained in vector format, a raster database was adopted for modelling and analysis. The system defined a grid sample across BC and then extracted a sparse sample of the grid cells that fell within the FCI query. This was achieved with the script, fciproscripts.rollup.FCI_Rollup_01_FromInv_CreateSparseGrid.py. The spatial sampling resolution was set to 100 m. 
+While inventory data are maintained in vector format, a raster database can be adopted for modelling and analysis. The system definesd a grid sample across BC and then extracts a sparse sample of the grid cells that fall within the specified query conditions of a project. 
+
+This was achieved with the script, fciproscripts.rollup.FCI_Rollup_01_FromInv_CreateSparseGrid.py. The spatial sampling resolution was set to 100 m. 
 Milestones in the FCI query that did not lead to a GHG benefit (e.g., surveys) were excluded from the sparse grid. Some milestones in the FCI query were missed by the 100 m sampling resolution. When this occurred, the script iteratively attempted to sample from a higher spatial frequency until a single grid cell within the treatment area was identified. As such, although a regular grid was the foundation for sampling, the final sparse grid sample included some irregular spatial sampling. 
 Once the sparse grid sample had been defined, overlay between sparse grid and each inventory layer was performed to compile attributes at each sample cell. This was achieved by looping through the FCI query, and then sub-looping though each block (i.e., each polygon in the multipolygon geometry) for each entry in the FCI query list. Only the attributes identified in the LUT for each inventory layer were retained and added to a list. 
 Some inventory variables were date strings. As all inventory data were stored in numeric data type moving forward, the date string variables were broken down into numeric fields for year, month and day. The original date strings were then deleted.
 
-### Prepare Simulation Assumptions and Inputs
-To apply the model, the following input files were prepared:
-•	Inventory summary
-•	Disturbance and management event history
-•	Age responses of net biomass growth
-These files were compiled in the script, fciproscripts.rollup.FCI_Rollup_02_FromInv_PrepCBRun.py. 
-Inventory and growth curve files were specific to unique combinations of scenario and batch. 
-
 ### Disturbance and Management Event Chronology
-Disturbance and management event chronology (DMEC) files were specific to unique combinations of scenario, batch, and ensemble. The inventory file was produced automatically. There were three information sources for events listed in the DMEH that include tree mortality:
+Disturbance and management event chronology (DMEC) files are specific to unique combinations of scenario, batch, and ensemble. The inventory file was produced automatically. There were three information sources for events listed in the DMEH that include tree mortality:
 1.	Prescribed from BC inventory records;
 2.	Simulated by a user-specified models; 
 3.	Gap-filled. 

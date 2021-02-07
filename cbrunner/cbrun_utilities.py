@@ -2113,7 +2113,7 @@ def ModelOutputStats(meta,flag_save):
             mos[iScn]['Area'][k]['Ensemble SD']=np.zeros(tv.size)
             
         # Loop through ensembles
-        for iEns in range(92,meta['N Ensemble']):
+        for iEns in range(meta['N Ensemble']):
             
             v1={}
             v2={}          
