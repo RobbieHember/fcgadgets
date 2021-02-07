@@ -78,12 +78,11 @@ probability of tree mortality or annual probability of tree recruitment.
 The **cbrunner** model achieves comprehensive, granular representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
 ![image info](./images/fcgadgets_constellation.png)
 ## UTILITIES
-The **utilities** module contains general custom scripts to support implementation of cbrunner and supporting modules. The **utilities** module allows all **cbrunner** projects to 
-effectively and consistently communicate with forest inventory databases.
+The **utilities** module contains custom scripts that compile information sources and prepare projects that **cbrunner**.
 * Pre-processing script template to prepare **cbrunner** inputs for a:
-	* Tile or multi-tile project (get_inventory_for_tile.py)
 	* Sample of points (get_inventory_from_points.py)
 	* Sample of polygons (get_inventory_from_polygons.py)
+	* Tile or multi-tile project (get_inventory_for_tile.py)
 * Methods for processing spatial information from: 
 	* Vegetation Resource Inventory (VRI)
 	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
@@ -101,35 +100,6 @@ The general workflow of **cbrunner** projects rely on the use of look-up tables 
 Filtering out unnecessary variables, and converting all retained variables to numeric data types, improves ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
 Species codes occur across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
 The LUTs for each inventory layer are stored as pickle files.
-
-### Query Silviculture Activities from RESULTS
-The function, utilities_inventory.QueryResultsActivity, scans the codes in Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW layer and classifies the activity as disturbance or management type listed in the DMEC:
-
-### Define Sparse Grid Sample
-While inventory data are maintained in vector format, a raster database can be adopted for modelling and analysis. The system definesd a grid sample across BC and then extracts a sparse sample of the grid cells that fall within the specified query conditions of a project. 
-
-This was achieved with the script, fciproscripts.rollup.FCI_Rollup_01_FromInv_CreateSparseGrid.py. The spatial sampling resolution was set to 100 m. 
-Milestones in the FCI query that did not lead to a GHG benefit (e.g., surveys) were excluded from the sparse grid. Some milestones in the FCI query were missed by the 100 m sampling resolution. When this occurred, the script iteratively attempted to sample from a higher spatial frequency until a single grid cell within the treatment area was identified. As such, although a regular grid was the foundation for sampling, the final sparse grid sample included some irregular spatial sampling. 
-Once the sparse grid sample had been defined, overlay between sparse grid and each inventory layer was performed to compile attributes at each sample cell. This was achieved by looping through the FCI query, and then sub-looping though each block (i.e., each polygon in the multipolygon geometry) for each entry in the FCI query list. Only the attributes identified in the LUT for each inventory layer were retained and added to a list. 
-Some inventory variables were date strings. As all inventory data were stored in numeric data type moving forward, the date string variables were broken down into numeric fields for year, month and day. The original date strings were then deleted.
-
-### Disturbance and Management Event Chronology
-Disturbance and management event chronology (DMEC) files are specific to unique combinations of scenario, batch, and ensemble. The inventory file was produced automatically. There were three information sources for events listed in the DMEH that include tree mortality:
-1.	Prescribed from BC inventory records;
-2.	Simulated by a user-specified models; 
-3.	Gap-filled. 
-Compilation of the DMEC started by adding information available from inventory data. For example, much was known about previous harvests, wildfires, and beetle outbreaks from BC disturbance databases. 
-Simulated events were added automatically later in the script according to the spin-up and future disturbance assumptions in the ProjectConfig.xlsx file for the project. 
-
-### Gap-filled Events
-Some contexts require the analyst to add events to the DMEH that were not informed by disturbance databases, or simulation modelling. These are referred to as gap-filled events. Gap-filled events required some scrutiny granted that they were subjective in nature. 
-For example, consider a grid cell where the inventory indicated no 2017 wildfire, but the recipient indicated that a wildfire occurred in that year. Here, FCI assumed that the absence of the event reflected an omission (false negative) error in the disturbance databases, and the event was added to the DMEH. 
-As a second example, consider a Dwarf Mistletoe Control milestone. The onset of Dwarf Mistletoe in that stand at some time prior to the milestone is not informed by the disturbance database or simulation modelling. Instead, it is inherently assumed to occur and added at the year following the first stand-replacing disturbance of the modern era by the analyst.
-The baseline scenario in planting projects required transition to an age response of net growth for a stand that regenerates naturally following the previous stand-replacing disturbance. However, in some cases BC disturbance databases did not record a disturbance in the modern era. Because the preparation of age responses occurs in the pre-processing, the last disturbance event in the spin-up era could not act as the preceding event. In such cases, a previous stand-replacing disturbance was added to the beginning of the modern era. 
-As site preparation and forest health milestones can precede stand establishment, they can appear in the FCI query as completed. If a future planting event is not added, the GHG balance will not reflect the expected outcome. As such, when those milestones are not accompanied by subsequent stand establishment, a planting event is added to the analyst to support program summarization in real time. 
-
-### Back-to-back Planting Events
-There were instances of planting events in back-to-back years. These drive up the number of growth curves and can cause erroneous results in some cases. They could have indicated fill-planting or re-planting following partial or complete regeneration failure, respectively. However, in instances where the planting events were not accompanied by spatial geometries, it is also possible that back-to-back planting events simply reflected a single treatment area that was spread over two calendar years (herein called multi-year projects). In those cases, planting from each event likely occurred on two distinct sub-areas of the whole treatment area. However, because missing spatial information for the treatment area is filled by geometry of the opening, the events are perceived as repeated planting events on at the exact same location. One could establish rules based on planting density and treatment area to discern whether it was likely fill planting vs. multi-year projects. For now, FCI simply omits the second of the two planting events.
 
 ### Best-available Variables
 The script then compiled a “best available” version of many inventory variables that were used to parameterize BatchTIPSY.exe. Unrecognized species codes were all converted to those recognized by BatchTIPSY.exe. For baseline scenarios, the best-available species composition was compiled first from any previous planting information (generally absent), then from the forest cover silviculture layer, then from the forest cover inventory layer, then from VRI, and finally from regional assumptions. For project scenarios with planting, species composition was drawn from the planting layers. For non-planting project scenarios, selection rules followed that of the baseline scenario.
@@ -160,13 +130,13 @@ scenarios, consistent across project studies, and supported by documentation.
 The **actions** module contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea
-s
+
 
 ## PROJECT WORKFLOW
 There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
 ![image info](./images/fcgadgets_runoptions.png)
 
-### Small projects (with Jupyter Notebooks)
+## SMALL PROJECTS (WITH JUPYTER NOTEBOOKS)
 When projects consist of fewer than 1,500 unique combinations of stand and/or scenario, assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
 
 Use an existing project template to establish the data folder and the jupyter notebook file.
@@ -185,6 +155,45 @@ Project workflow entails:
 9. Run the simulation and save the outputs by calling the method RunProject. 
 10. Import output variables to analysis session by calling LoadScenarioResults. 
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
+
+## FCI STANDARD MODELLING
+
+### Query Silviculture Activities from RESULTS
+The function, utilities_inventory.QueryResultsActivity, scans the codes in Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW layer and classifies the activity as disturbance or management type listed in the DMEC:
+
+### Define Sparse Grid Sample
+While inventory data are maintained in vector format, a raster database can be adopted for modelling and analysis. The system definesd a grid sample across BC and then extracts a sparse sample of the grid cells that fall within the specified query conditions of a project. 
+
+This was achieved with the script, fciproscripts.rollup.FCI_Rollup_01_FromInv_CreateSparseGrid.py. The spatial sampling resolution was set to 100 m. 
+Milestones in the FCI query that did not lead to a GHG benefit (e.g., surveys) were excluded from the sparse grid. Some milestones in the FCI query were missed by the 100 m sampling resolution. When this occurred, the script iteratively attempted to sample from a higher spatial frequency until a single grid cell within the treatment area was identified. As such, although a regular grid was the foundation for sampling, the final sparse grid sample included some irregular spatial sampling. 
+Once the sparse grid sample had been defined, overlay between sparse grid and each inventory layer was performed to compile attributes at each sample cell. This was achieved by looping through the FCI query, and then sub-looping though each block (i.e., each polygon in the multipolygon geometry) for each entry in the FCI query list. Only the attributes identified in the LUT for each inventory layer were retained and added to a list. 
+Some inventory variables were date strings. As all inventory data were stored in numeric data type moving forward, the date string variables were broken down into numeric fields for year, month and day. The original date strings were then deleted.
+
+### Disturbance and Management Event Chronology
+Disturbance and management event chronology (DMEC) files are specific to unique combinations of scenario, batch, and ensemble. The inventory file was produced automatically. There were three information sources for events listed in the DMEH that include tree mortality:
+1.	Prescribed from BC inventory records;
+2.	Simulated by a user-specified models; 
+3.	Gap-filled. 
+Compilation of the DMEC started by adding information available from inventory data. For example, much was known about previous harvests, wildfires, and beetle outbreaks from BC disturbance databases. 
+Simulated events were added automatically later in the script according to the spin-up and future disturbance assumptions in the ProjectConfig.xlsx file for the project. 
+
+### Gap-filled Events
+Some contexts require the analyst to add events to the DMEH that were not informed by disturbance databases, or simulation modelling. These are referred to as gap-filled events. Gap-filled events required some scrutiny granted that they were subjective in nature. 
+For example, consider a grid cell where the inventory indicated no 2017 wildfire, but the recipient indicated that a wildfire occurred in that year. Here, FCI assumed that the absence of the event reflected an omission (false negative) error in the disturbance databases, and the event was added to the DMEH. 
+As a second example, consider a Dwarf Mistletoe Control milestone. The onset of Dwarf Mistletoe in that stand at some time prior to the milestone is not informed by the disturbance database or simulation modelling. Instead, it is inherently assumed to occur and added at the year following the first stand-replacing disturbance of the modern era by the analyst.
+The baseline scenario in planting projects required transition to an age response of net growth for a stand that regenerates naturally following the previous stand-replacing disturbance. However, in some cases BC disturbance databases did not record a disturbance in the modern era. Because the preparation of age responses occurs in the pre-processing, the last disturbance event in the spin-up era could not act as the preceding event. In such cases, a previous stand-replacing disturbance was added to the beginning of the modern era. 
+As site preparation and forest health milestones can precede stand establishment, they can appear in the FCI query as completed. If a future planting event is not added, the GHG balance will not reflect the expected outcome. As such, when those milestones are not accompanied by subsequent stand establishment, a planting event is added to the analyst to support program summarization in real time. 
+
+### Back-to-back Planting Events
+There were instances of planting events in back-to-back years. These drive up the number of growth curves and can cause erroneous results in some cases. They could have indicated fill-planting or re-planting following partial or complete regeneration failure, respectively. However, in instances where the planting events were not accompanied by spatial geometries, it is also possible that back-to-back planting events simply reflected a single treatment area that was spread over two calendar years (herein called multi-year projects). In those cases, planting from each event likely occurred on two distinct sub-areas of the whole treatment area. However, because missing spatial information for the treatment area is filled by geometry of the opening, the events are perceived as repeated planting events on at the exact same location. One could establish rules based on planting density and treatment area to discern whether it was likely fill planting vs. multi-year projects. For now, FCI simply omits the second of the two planting events.
+
+
+
+
+
+
+
+
 
 ### Big projects (wall to wall)
 Simulation across continuous, regular grids is faciliated by a tile system developed for BC. Such projects are supported by the **utilities_tile** module. 
