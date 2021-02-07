@@ -77,6 +77,7 @@ probability of tree mortality or annual probability of tree recruitment.
 ### Plug-and-play modularity
 The **cbrunner** model achieves comprehensive, granular representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
 ![image info](./images/fcgadgets_constellation.png)
+
 ## UTILITIES
 The **utilities** module contains custom scripts that compile information sources and prepare projects that **cbrunner**.
 * Pre-processing script template to prepare **cbrunner** inputs for a:
@@ -93,9 +94,13 @@ The **utilities** module contains custom scripts that compile information source
 	* Growth and yield models
 
 ### Look-up Tables
-The general workflow of **cbrunner** projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb. The purpose of the LUTs was to: 
-1.	Create a list of the subset of variables from each layer that are needed for modelling (utilities_inventory.DefineInventoryLayersAndVariables);
-2.	Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase (utilities_inventory.BuildForestInventoryLUTs). 
+The general workflow of **cbrunner** projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb. The purpose of the LUTs was to:
+
+1. Create a list of the subset of variables from each layer that are needed for modelling (utilities_inventory.DefineInventoryLayersAndVariables);
+* utilities_inventory.py.DefineInventoryLayersAndVariables
+
+2. Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase (utilities_inventory.BuildForestInventoryLUTs). 
+* utilities_inventory.py.BuildForestInventoryLUTs
 
 Filtering out unnecessary variables, and converting all retained variables to numeric data types, improves ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
 Species codes occur across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
@@ -137,7 +142,7 @@ There are four ways to apply **cbrunner** depending on the nature of the desired
 ![image info](./images/fcgadgets_runoptions.png)
 
 ## SMALL PROJECTS (WITH JUPYTER NOTEBOOKS)
-Run in 30 minutes or its free! When projects consist of fewer than 10 stands, or 10 scenarios for one stand, **cbrunner** can be controlled by a simple spreadsheet and run within Jupyter Notebooks. Assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
+Run in 30 minutes or its free! When projects consist of fewer than 20 stands, or 20 scenarios for one stand, **cbrunner** can be controlled by spreadsheet and run within Jupyter Notebooks. Assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
 
 Through the FCI program, many project templates have been established so you're never starting from scratch.
 
@@ -194,11 +199,7 @@ There were instances of planting events in back-to-back years. These drive up th
 
 
 
-
-### Big projects (wall to wall)
-Simulation across continuous, regular grids is faciliated by a tile system developed for BC. Such projects are supported by the **utilities_tile** module. 
-
-## USEAGE
+## GETTING STARTED
 1. Install Anaconda
 2. Create local folder for fcgadgets code and pull fcgadgets from Github
 3. Create local folder for project code
@@ -212,10 +213,7 @@ Simulation across continuous, regular grids is faciliated by a tile system devel
 		* Dead organic matter dynamics
 		* Disturbance and management events occur
 		* Harvested wood products
-7.
 
-## TIPS & TRICKS
-* The **meta** dictionary tracks all necessary information about a project. It is meant to store parameters and assumptions and levers, but not large data. 
 
 ## REFERENCES
 Downey, A.B., 2017. Modeling and Simulation in Python – Green Tea Press, 2.3. ed. Green Tea Press, Needham, Massaschusetts.
