@@ -137,11 +137,11 @@ There are four ways to apply **cbrunner** depending on the nature of the desired
 ![image info](./images/fcgadgets_runoptions.png)
 
 ## SMALL PROJECTS (WITH JUPYTER NOTEBOOKS)
-When projects consist of fewer than 1,500 unique combinations of stand and/or scenario, assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
+Run in 30 minutes or its free! When projects consist of fewer than 10 stands, or 10 scenarios for one stand, **cbrunner** can be controlled by a simple spreadsheet and run within Jupyter Notebooks. Assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
 
-Use an existing project template to establish the data folder and the jupyter notebook file.
+Through the FCI program, many project templates have been established so you're never starting from scratch.
 
-When the number of ensembles exceeds one, the model swaps stands for ensembles, N_Stand = N_Ensemble for each scenario. Even if some scenarios have no stochastic simulations, N_Ensemble is a project-level parameter that cannot be differentatied among scenarios.
+When the number of ensembles exceeds one, the model knows to treat stands like ensembles (i.e. N_Stand = N_Ensemble for each scenario). This makes it lightning fast to run 1,000s of ensembles. Even if some scenarios have no stochastic simulations, N_Ensemble is a project-level parameter that cannot be differentatied among scenarios.
 
 Project workflow entails:
 1. Define project-level parameters in ProjectConfig.xlsx.
@@ -156,7 +156,7 @@ Project workflow entails:
 10. Import output variables to analysis session by calling LoadScenarioResults. 
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
 
-## FCI STANDARD MODELLING
+## FCI PROGRAM MODELLING
 
 ### Query Silviculture Activities from RESULTS
 The function, utilities_inventory.QueryResultsActivity, scans the codes in Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW layer and classifies the activity as disturbance or management type listed in the DMEC:
