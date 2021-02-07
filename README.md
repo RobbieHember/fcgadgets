@@ -79,7 +79,7 @@ The **cbrunner** model achieves comprehensive, granular representation of proces
 ![image info](./images/fcgadgets_constellation.png)
 
 ## UTILITIES
-The **utilities** module contains custom scripts that compile information sources and prepare projects that **cbrunner**.
+The **utilities** module contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Sample of points (get_inventory_from_points.py)
 	* Sample of polygons (get_inventory_from_polygons.py)
@@ -97,14 +97,21 @@ The **utilities** module contains custom scripts that compile information source
 The general workflow of **cbrunner** projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb. The purpose of the LUTs was to:
 
 1. Create a list of the subset of variables from each layer that are needed for modelling (utilities_inventory.DefineInventoryLayersAndVariables);
-* utilities_inventory.py.DefineInventoryLayersAndVariables
 
 2. Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase (utilities_inventory.BuildForestInventoryLUTs). 
-* utilities_inventory.py.BuildForestInventoryLUTs
 
 Filtering out unnecessary variables, and converting all retained variables to numeric data types, improves ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
 Species codes occur across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
 The LUTs for each inventory layer are stored as pickle files.
+
+### utilities_inventory.py.PrepDMEC
+This function compiles an initial version of the Disturbance and Management Event Chronology (DMEC) from forest inventory databases.
+
+### utilities_inventory.py.Remove_SlashpileBurns_From_Select_Zones
+While the initial DMEC assumes slashpile burning always occurs following harvest, this function can be used to remove the slashpile burning events from the DMEC in certain BGC zones.
+
+### utilities_inventory.py.Ensure_Fert_Preceded_By_Disturbance
+Aerial nutrient application events should be applied to stands with a known stand age. However, some treatment areas have no forest cover history. This function gap-fills the DMEC using simplified assumptions about the likely preceding disturbance events.
 
 ### Best-available Variables
 The script then compiled a “best available” version of many inventory variables that were used to parameterize BatchTIPSY.exe. Unrecognized species codes were all converted to those recognized by BatchTIPSY.exe. For baseline scenarios, the best-available species composition was compiled first from any previous planting information (generally absent), then from the forest cover silviculture layer, then from the forest cover inventory layer, then from VRI, and finally from regional assumptions. For project scenarios with planting, species composition was drawn from the planting layers. For non-planting project scenarios, selection rules followed that of the baseline scenario.
