@@ -1667,40 +1667,7 @@ def GetDisturbanceHistory(meta):
             dh.append(dhB)
     return dh
 
-#%% TIME SERIES OF AREA DISTURBED
-# *** OLD THINK ABOUT DELETING ***
-    
-#def GetAreasAffected(meta):
-#    
-#    it=np.where(meta['Year']>=meta['Year Start Saving'])
-#    tv=meta['Year'][it]
-#    
-#    A=[]
-#    for iScn in range(meta['N Scenario']):
-#        A.append({})
-#        for key in meta['LUT Dist'].keys():
-#            A[iScn][key]=np.zeros((tv.size,meta['N Stand']))
-#        for iBat in range(meta['N Batch']):            
-#            iEns=0            
-#            dh=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')    
-#            for iS in range(len(dh)):                
-#                for iY in range(dh[iS]['Year'].size):
-#                    it=np.where(tv==np.round(dh[iS]['Year'][iY]))[0]
-#                    if it.size==0: 
-#                        continue
-#                    for key in meta['LUT Dist'].keys():
-#                        if dh[iS]['ID_Type'][iY]==meta['LUT Dist'][key]:
-#                            A[iScn][key][it,iS]=A[iScn][key][it,iS]+1
-#        
-#        #----------------------------------------------------------------------
-#        # Summaries
-#        #----------------------------------------------------------------------
-#        
-#        A[iScn]['Harvest (all)']=A[iScn]['Harvest and Slashpile Burn']+ \
-#            A[iScn]['Harvest']+ \
-#            A[iScn]['Harvest Custom']
-#    
-#    return A
+
 
 #%% GRAPHICS
 

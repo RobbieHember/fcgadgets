@@ -74,6 +74,25 @@ The **cbrunner** model adopts a probabilistic framework to accommodate processes
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
+### Identify Events Types from RESULTS Codes
+The **cbrunner** model relies on distinct event types to represent harvesting and silviculture. The crosswalk between **cbrunner** event types and RESULTS silviculture codes is given in **cbrun_utilities.py.QueryResultsActivity**.
+
+### Working with Growth & Yield Models
+The **cbrunner** model can be driven with output from TASS/TIPSY growth and yield (GY) modelling applications.
+* Prepare input parameters that are required to run BatchTIPSY.exe in a spreadsheet with **cbrun_utilities.py.Write_BatchTIPSY_Input_Spreadsheet**
+* Convert the spreadsheet of input parameters to the format expected by BatchTIPSY.exe using **cbrun_utilities.py.Write_BatchTIPSY_Input_File**
+* Convert the output from BatchTIPSY.exe to pickle files that will be read by cbrunner using **cbrun_utilities.py.PostProcessBatchTIPSY**
+* Convert the output from TASS for use in cbrunner with **cbrun_utilities.py.GetTASSCurves**
+* Import GY curves into a work session with **cbrun_utilities.py.Import_BatchTIPSY_Output**
+
+### Analyze Model Output Statistics
+Once simulations are complete, use a series of functions to summarize the outputs.
+* Import simulation output variables for a given scenario, ensemble, and batch using **cbrun_utilities.py.LoadSingleOutputFile**
+* Import simulation output variables for a given scenario using **cbrun_utilities.py.LoadScenarioResults**
+* Calculate net forest sector greenhouse gas balance from simulation outputs using **cbrun_utilities.py.CalculateGHGBalance**
+* Calculate the mean and variance of ensemble simulations using **cbrun_utilities.py.ModelOutputStats**
+* When projects have been run for multi-polygon openings from RESULTS, model outputs can be summarized while preserving the exact treatment area that is specified for each multi-polygon using **cbrun_utilities.py.MosByMultipolygon**
+
 ### Plug-and-play modularity
 The **cbrunner** model achieves comprehensive, granular representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
 ![image info](./images/fcgadgets_constellation.png)
@@ -174,41 +193,7 @@ Project workflow entails:
 10. Import output variables to analysis session by calling LoadScenarioResults. 
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
 
-## FCI PROGRAM MODELLING
-
-### Query Silviculture Activities from RESULTS
-The function, utilities_inventory.QueryResultsActivity, scans the codes in Results.gdb.RSLT_ACTIVITY_TREATMENT_SVW layer and classifies the activity as disturbance or management type listed in the DMEC:
-
-### Define Sparse Grid Sample
-While inventory data are maintained in vector format, a raster database can be adopted for modelling and analysis. The system definesd a grid sample across BC and then extracts a sparse sample of the grid cells that fall within the specified query conditions of a project. 
-
-This was achieved with the script, fciproscripts.rollup.FCI_Rollup_01_FromInv_CreateSparseGrid.py. The spatial sampling resolution was set to 100 m. 
-Milestones in the FCI query that did not lead to a GHG benefit (e.g., surveys) were excluded from the sparse grid. Some milestones in the FCI query were missed by the 100 m sampling resolution. When this occurred, the script iteratively attempted to sample from a higher spatial frequency until a single grid cell within the treatment area was identified. As such, although a regular grid was the foundation for sampling, the final sparse grid sample included some irregular spatial sampling. 
-Once the sparse grid sample had been defined, overlay between sparse grid and each inventory layer was performed to compile attributes at each sample cell. This was achieved by looping through the FCI query, and then sub-looping though each block (i.e., each polygon in the multipolygon geometry) for each entry in the FCI query list. Only the attributes identified in the LUT for each inventory layer were retained and added to a list. 
-Some inventory variables were date strings. As all inventory data were stored in numeric data type moving forward, the date string variables were broken down into numeric fields for year, month and day. The original date strings were then deleted.
-
-### Disturbance and Management Event Chronology
-Disturbance and management event chronology (DMEC) files are specific to unique combinations of scenario, batch, and ensemble. The inventory file was produced automatically. There were three information sources for events listed in the DMEH that include tree mortality:
-1.	Prescribed from BC inventory records;
-2.	Simulated by a user-specified models; 
-3.	Gap-filled. 
-Compilation of the DMEC started by adding information available from inventory data. For example, much was known about previous harvests, wildfires, and beetle outbreaks from BC disturbance databases. 
-Simulated events were added automatically later in the script according to the spin-up and future disturbance assumptions in the ProjectConfig.xlsx file for the project. 
-
-### Gap-filled Events
-Some contexts require the analyst to add events to the DMEH that were not informed by disturbance databases, or simulation modelling. These are referred to as gap-filled events. Gap-filled events required some scrutiny granted that they were subjective in nature. 
-For example, consider a grid cell where the inventory indicated no 2017 wildfire, but the recipient indicated that a wildfire occurred in that year. Here, FCI assumed that the absence of the event reflected an omission (false negative) error in the disturbance databases, and the event was added to the DMEH. 
-As a second example, consider a Dwarf Mistletoe Control milestone. The onset of Dwarf Mistletoe in that stand at some time prior to the milestone is not informed by the disturbance database or simulation modelling. Instead, it is inherently assumed to occur and added at the year following the first stand-replacing disturbance of the modern era by the analyst.
-The baseline scenario in planting projects required transition to an age response of net growth for a stand that regenerates naturally following the previous stand-replacing disturbance. However, in some cases BC disturbance databases did not record a disturbance in the modern era. Because the preparation of age responses occurs in the pre-processing, the last disturbance event in the spin-up era could not act as the preceding event. In such cases, a previous stand-replacing disturbance was added to the beginning of the modern era. 
-As site preparation and forest health milestones can precede stand establishment, they can appear in the FCI query as completed. If a future planting event is not added, the GHG balance will not reflect the expected outcome. As such, when those milestones are not accompanied by subsequent stand establishment, a planting event is added to the analyst to support program summarization in real time. 
-
-### Back-to-back Planting Events
-There were instances of planting events in back-to-back years. These drive up the number of growth curves and can cause erroneous results in some cases. They could have indicated fill-planting or re-planting following partial or complete regeneration failure, respectively. However, in instances where the planting events were not accompanied by spatial geometries, it is also possible that back-to-back planting events simply reflected a single treatment area that was spread over two calendar years (herein called multi-year projects). In those cases, planting from each event likely occurred on two distinct sub-areas of the whole treatment area. However, because missing spatial information for the treatment area is filled by geometry of the opening, the events are perceived as repeated planting events on at the exact same location. One could establish rules based on planting density and treatment area to discern whether it was likely fill planting vs. multi-year projects. For now, FCI simply omits the second of the two planting events.
-
-
-
-
-
+## PROJECTS FROM POLYGONS
 
 
 
