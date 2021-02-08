@@ -19,7 +19,7 @@ The **fcgadgets** package was developed to:
 * Simulate high-resolution, wall-to-wall coverage of a watershed or timber supply area
 
 ## CBRUNNER
-The **cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and wood products.
+The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and wood products.
 The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the biomass dynamics of trees,
 the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and nutrient applications. 
 ![image info](./images/fcgadgets_annual_processes.png)
@@ -74,7 +74,7 @@ The **cbrunner** model adopts a probabilistic framework to accommodate processes
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
-### Identify Events Types from RESULTS Codes
+### Identify Event Types from RESULTS Codes
 The **cbrunner** model relies on distinct event types to represent harvesting and silviculture. The crosswalk between **cbrunner** event types and RESULTS silviculture codes is given in **cbrun_utilities.py.QueryResultsActivity**.
 
 ### Working with Growth & Yield Models
@@ -98,7 +98,7 @@ The **cbrunner** model achieves comprehensive, granular representation of proces
 ![image info](./images/fcgadgets_constellation.png)
 
 ## UTILITIES
-The **utilities** module contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
+The **fcgadgets.utilities** subpackage contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Sample of points (get_inventory_from_points.py)
 	* Sample of polygons (get_inventory_from_polygons.py)
@@ -123,6 +123,8 @@ The purpose of adopting LUTs was to:
 Filtering out unnecessary variables, and converting all retained variables to numeric data types, improves ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
 Species codes occur across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
 The LUTs for each inventory layer are stored as pickle files.
+
+The LUTs can be imported into the workspace using **cbrun_utilities.py.ImportLUTs**.
 
 ### utilities_inventory.py.PrepDMEC
 This function compiles an initial version of the Disturbance and Management Event Chronology (DMEC) from forest inventory databases.
@@ -153,15 +155,11 @@ The inventory summaries are saved to pickle file. The DMECs were then saved to p
 
 ## TAZ
 Forest sector GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed 
-to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. In support of the 
-BC Forest Carbon Initiative (FCI), statistics and scenarios of natural disturbance were developed using a combination of observed constraints and probabilistic models. Despite 
+to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. The **fcgadgets.taz** subpackage was developed to improve representation of disturbances in carbon models. It consists of statistics and scenarios of disturbance that were developed using a combination of observed constraints and probabilistic models. Despite 
 high prediction uncertainty, using the pre-defined scenarios ensures that representation of natural disturbances is grounded by available observations and science-informed 
 scenarios, consistent across project studies, and supported by documentation.
-### general_stat_models:
-* Equations for simulating annual probability of various discrete events
-### wildfire_stat_models:
-* Equations for simualating annual probability of wildfire
-* Simple equations based on Pareto distribution fits to annual area burned, stratified by biogeoclimatic zone
+* Equations for simulating annual probability of various discrete events are outlined in **general_stat_models.py**
+* Equations for simualating annual probability of wildfire are outlined in **wildfire_stat_models.py**
 
 ## ACTIONS
 The **actions** module contains resources for representing effects of forest management on forest sector GHG balance.
