@@ -3,7 +3,7 @@
 The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 The **fcgadgets** package was developed to: 
-* Consolidate source code used by BC's Forest Carbon Initiative
+* Consolidate source code used by BC's Forest Carbon Initiative (FCI)
 * Share knowledge, methods and limitations
 * Streamline project setup and integration with BC information systems
 * Automate pre- and post-processing project workflow
@@ -11,11 +11,10 @@ The **fcgadgets** package was developed to:
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
 ## FEATURES
+* Simulate forest sector greenhouse gas (GHG) balance for treatment areas, point locations, or hypothetical stands
 * Explore the effects of aerial Urea application on the annual GHG balance of a forest stand
 * Explore the effects of underplanting on the annual GHG balance of a forest stand
 * Explore the effects of salvage logging on the annual GHG balance of a forest stand
-* Simulate the forest carbon balance at set of regular points
-* Simulate the forest carbon balance across a set of vector treatment areas distributed across BC
 * Simulate high-resolution, wall-to-wall coverage of a watershed or timber supply area
 
 ## CBRUNNER
