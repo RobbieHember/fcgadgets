@@ -2014,6 +2014,33 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
 
     return ba,basp
 
+#%% Get unique growth curves
+    
+def ExtractUniqueGrowthCurves(meta,gc,GC_Variable_List):
+
+    ugc={}
+    ugc['GC_Variable_List']=np.array(GC_Variable_List)[3:]
+
+    # Calculate unique stand types
+    ugc['Full']=np.zeros((int(4e6),len(GC_Variable_List)))
+
+    cnt=0
+    for iStand in range(meta['N Stand']):
+        for iScn in range(meta['N Scenario']):
+            gc0=gc[iStand][iScn]
+            for iGC in range(gc0['ID_GC'].size):
+                for k in range(len(GC_Variable_List)):
+                    key=GC_Variable_List[k]
+                    ugc['Full'][cnt,k]=gc0[key][iGC]
+                cnt=cnt+1
+    ugc['Full']=ugc['Full'][0:cnt,:]
+
+    # Unique growth curves
+    # The 'Inverse' variable acts as the crosswalk between the full and unique gc arrays
+    ugc['Unique'],ugc['Index'],ugc['Inverse']=np.unique(ugc['Full'][:,3:],return_index=True,return_inverse=True,axis=0)
+
+    return ugc
+
 #%% Adjust species-specific mortality
 
 def AdjustSpeciesSpecificMortality(meta,dmec,par,gc,iB):

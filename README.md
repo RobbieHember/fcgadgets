@@ -53,7 +53,7 @@ The model achieves this with a set of plug-and-play functions, currently consist
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 
-### Organizational structure
+### Organizational structure of cbrunner
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
 
 N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>
@@ -114,7 +114,13 @@ While the initial DMEC assumes slashpile burning always occurs following harvest
 ### utilities_inventory.py.Ensure_Fert_Preceded_By_Disturbance
 Aerial nutrient application events should be applied to stands with a known stand age. However, some treatment areas have no forest cover history. This function gap-fills the DMEC using simplified assumptions about the likely preceding disturbance events.
 
-### Best-available Variables
+### utilities_invetory.py.AdjustSpeciesSpecificMortality & utilities_inventory.py.IDW_Fix_Severity
+Western spruce budworm only impacts certain species. Fix the initial growth and mortality impacts of IDW in the DMEC to reflect the actual species composition of the stand.
+
+### utilities_inventory.py.Clean_Species_Composition
+There are frequent irregularities and species in the inventory that are not recognized by **BatchTIPSY.exe**. This function will clean the species inventory estimates identified by forest inventory layers.
+
+### utilities_inventory.py.CreateBestAvailableInventory
 The script then compiled a “best available” version of many inventory variables that were used to parameterize BatchTIPSY.exe. Unrecognized species codes were all converted to those recognized by BatchTIPSY.exe. For baseline scenarios, the best-available species composition was compiled first from any previous planting information (generally absent), then from the forest cover silviculture layer, then from the forest cover inventory layer, then from VRI, and finally from regional assumptions. For project scenarios with planting, species composition was drawn from the planting layers. For non-planting project scenarios, selection rules followed that of the baseline scenario.
 In order of preference, best-available site index was created from:
 1)	Site Productivity Layer
@@ -122,10 +128,9 @@ In order of preference, best-available site index was created from:
 3)	Vegetation Resource Inventory layer 
 Genetic worth and selection age were commonly provided for a large list of unique combinations of species and genetic worth than can be applied in BatchTIPSY.exe. Final estimates of genetic worth for up to five planted species were calculated by weighting each entry in the planting layer by the number of trees planted.
 
-### Age Response Functions of Net Biomass Growth
-Building growth curves for each grid cell was typically unnecessary when there was redundancy in species composition and other stand attributes. For example, although the FCI completed projects could include 33,000 grid cells, there may have only be 5,000 unique stand types. Unique stand types were identified and parameters for each stand type were exported to GrowthCurvesTIPSY_Parameters.xlsx. Then fcgadgets.cbrunner.cbrun_utilities.py.BuildTIPSYInputs was used to build the data input file readable by BatchTIPSY.exe. Then BatchTIPSY.exe was run.
-The inventory summaries were saved to pickle file. The DMEHs were then saved to pickle file. At this point, FIZ was used to specify the disturbance return intervals of coastal and interior projects during spin up. Growth curves were then imported from the BatchTIPSY.exe output file and converted to the format required for fcgadgets.cbrunner, and then finally saved to pickle file. Finally, the script executed the function, fcgadgets.cbrunner.cbrun.py.RunProject, to simulate the results.
-
+### utilities_inventory.py.ExtractUniqueGrowthCurves
+Building growth curves for each grid cell is typically unnecessary when there is redundancy in species composition and other stand attributes. For example, although the FCI completed projects could include 33,000 grid cells, there may have only be 5,000 unique stand types. Unique stand types were identified and parameters for each stand type were exported to GrowthCurvesTIPSY_Parameters.xlsx. Then fcgadgets.cbrunner.cbrun_utilities.py.BuildTIPSYInputs was used to build the data input file readable by BatchTIPSY.exe. Then BatchTIPSY.exe was run.
+The inventory summaries are saved to pickle file. The DMECs were then saved to pickle file. At this point, FIZ was used to specify the disturbance return intervals of coastal and interior projects during spin up. Growth curves were then imported from the BatchTIPSY.exe output file and converted to the format required for fcgadgets.cbrunner, and then finally saved to pickle file. Finally, the script executed the function, fcgadgets.cbrunner.cbrun.py.RunProject, to simulate the results.
 
 ## TAZ
 Forest sector GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed 
