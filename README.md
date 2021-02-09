@@ -185,7 +185,7 @@ Project workflow entails:
 6. Prepare inventory. (automated)
 7. Prepare disturbance and management event history. (automated)
 8. Prepare growth curves. (automated)
-9. Run the simulation and save the outputs by calling the method RunProject. 
+9. Run the simulation and save the outputs by calling **cbrunner.cbrun.py.MeepMeep**. 
 10. Import output variables to analysis session by calling LoadScenarioResults. 
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
 
@@ -206,7 +206,7 @@ All three approaches rely on an automated set of invenotry pre-processing script
 	* **utilites.get_inventory_from_polygons.py**
 	* **utilites.get_inventory_for_tile.py**
 6. Prepare project configuration and input variables for **cbrunner** by adopting a script from pre-existing projects.
-7. Run the simulation (**cbrunner.cbrun.MeepMeep**)
+7. Run the simulation (**cbrunner.cbrun.py.MeepMeep**)
 8. Explore results with a post-processing project script.
 
 Steps 1-4 are shared among projects. That is, you can have multiple different projects all working from the same set of inventory sources. As such, steps 1-4 only need to be repeated for the purpose of getting the most up-to-date forest inventories.
