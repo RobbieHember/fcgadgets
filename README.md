@@ -209,6 +209,8 @@ All three approaches rely on an automated set of invenotry pre-processing script
 7. Run the simulation (**cbrunner.cbrun.MeepMeep**)
 8. Explore results with a post-processing project script.
 
+Steps 1-4 are shared among projects. That is, you can have multiple different projects all working from the same set of inventory sources. As such, steps 1-4 only need to be repeated for the purpose of getting the most up-to-date forest inventories.
+
 ## GETTING STARTED
 1. Install Anaconda
 2. Create local folder for fcgadgets code and pull fcgadgets from Github
