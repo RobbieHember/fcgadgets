@@ -201,10 +201,13 @@ All three approaches rely on an automated set of invenotry pre-processing script
 2. Define a subset of variables that will be retained from each source geodatabase (**utilities_inventory.py.DefineInventoryLayersAndVariables**); 
 3. Build LUTs for each categorical variable (see section on LUTs) (**utilities_inventory.py.BuildForestInventoryLUTs**);
 4. Prepare a set of gap-filled geometries for instances where no geometry is listed for activities (**utilities_inventory.py.RecoverMissingATUGeometries**); 
-5. Identify which type of 'big project' best matches your project needs:
+5. Identify which type of 'big project' best matches your project needs and run that script after specifying the project path:
 	* **utilites.get_inventory_from_points.py**
 	* **utilites.get_inventory_from_polygons.py**
 	* **utilites.get_inventory_for_tile.py**
+6. Prepare project configuration and input variables for **cbrunner** by adopting a script from pre-existing projects.
+7. Run the simulation (**cbrunner.cbrun.MeepMeep**)
+8. Explore results with a post-processing project script.
 
 ## GETTING STARTED
 1. Install Anaconda
