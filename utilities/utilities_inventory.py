@@ -54,7 +54,7 @@ Update forest inventory data
 def DefineInventoryLayersAndVariables():
 
     # Define paths to geodatabase files
-    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20200430'
+    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
     PathInDisturbancesFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
     PathInVRIFull=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
     PathInLUPFull=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
@@ -372,6 +372,7 @@ def DefineInventoryLayersAndVariables():
 
 def BuildForestInventoryLUTs(LayerInfo):
 
+    t0=time.time()
     #for iLyr in range(6,7):
     for iLyr in range(len(LayerInfo)):    
 
@@ -508,7 +509,7 @@ def BuildForestInventoryLUTs(LayerInfo):
             for i in range(len(uCode)):
                 lut_pl['SILV_TREE_SPECIES_CODE'][uCode[i]]=i+1
             gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_RSLT_PLANTING_SVW.pkl',lut_pl)
-
+    print((time.time()-t0)/60)
 
 #%% EXTRACT NUMERIC TIME VECTORS FROM DATE STRINGS IN RESULTS
 

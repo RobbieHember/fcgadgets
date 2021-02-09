@@ -165,7 +165,6 @@ The **actions** module contains resources for representing effects of forest man
 ### nutrient_addition:
 * Representation of GHG balance responses to aerial applications of Urea
 
-
 ## PROJECT WORKFLOW
 There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
 ![image info](./images/fcgadgets_runoptions.png)
@@ -190,9 +189,22 @@ Project workflow entails:
 10. Import output variables to analysis session by calling LoadScenarioResults. 
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
 
-## PROJECTS FROM POLYGONS
+## BIG PROJECTS
+Big projects are all run in a spatially explicit framework with the standard spatial reference system used for BC. The framework draws on vector geometry sources to simulate at:
+* Irregular point sample ("inventory from points"), or 
+* Sparse regular grid ("inventory from polygons"), or 
+* Continuous regular grid ("inventory for tile")
 
+All three approaches rely on an automated set of invenotry pre-processing scripts. 
 
+1. Download inventory layers (this is the only manual step)
+2. Define a subset of variables that will be retained from each source geodatabase (**utilities_inventory.py.DefineInventoryLayersAndVariables**); 
+3. Build LUTs for each categorical variable (see section on LUTs) (**utilities_inventory.py.BuildForestInventoryLUTs**);
+4. Prepare a set of gap-filled geometries for instances where no geometry is listed for activities (**utilities_inventory.py.RecoverMissingATUGeometries**); 
+5. Identify which type of 'big project' best matches your project needs:
+	* **utilites.get_inventory_from_points.py**
+	* **utilites.get_inventory_from_polygons.py**
+	* **utilites.get_inventory_for_tile.py**
 
 ## GETTING STARTED
 1. Install Anaconda
