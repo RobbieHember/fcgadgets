@@ -20,10 +20,10 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Project name
 
-#project_name='FCI_RollupFCI_Inv'
+project_name='FCI_RollupFCI_Inv'
 #project_name='SurveySummary'
 #project_name='FertilizationSummary'
-project_name='ReforestationNonObSummary'
+#project_name='ReforestationNonObSummary'
 
 #%% Define paths
 
@@ -31,7 +31,7 @@ meta={}
 meta['Paths']={}
 meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
 meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'

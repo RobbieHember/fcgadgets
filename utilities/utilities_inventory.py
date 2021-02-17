@@ -23,6 +23,7 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Conservation.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706\LandUse.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208\Results.gdb')
 
 #%% Define strings that frequently need to be populated with zeros
 
@@ -170,6 +171,19 @@ def DefineInventoryLayersAndVariables():
      ('FOREST_COVER_WHO_UPDATED',1,'int16'), \
      ('FOREST_COVER_WHEN_CREATED',0,'<U20'), \
      ('FOREST_COVER_WHEN_UPDATED',0,'<U20')]
+    d['LUT']={}
+    for field in d['Field List']: d['LUT'][field[0]]=[] 
+    LayerInfo.append(d)
+
+    # Add layer and define required variables
+    # *** Notes:OBSERVATION_DATE is empty ***
+    d={}
+    d['Layer Name']='RSLT_FOREST_COVER_RESERVE_SVW'
+    d['Path']=PathInResultsFull
+    d['File Name']='Results.gdb'
+    d['Field List']=[('OPENING_ID',0,'float32'), \
+     ('SILV_RESERVE_CODE',1,'int16'), \
+     ('SILV_RESERVE_OBJECTIVE_CODE',1,'int16')]
     d['LUT']={}
     for field in d['Field List']: d['LUT'][field[0]]=[] 
     LayerInfo.append(d)
@@ -373,8 +387,8 @@ def DefineInventoryLayersAndVariables():
 def BuildForestInventoryLUTs(LayerInfo):
 
     t0=time.time()
-    #for iLyr in range(6,7):
-    for iLyr in range(len(LayerInfo)):    
+    for iLyr in range(4,5):
+    #for iLyr in range(len(LayerInfo)):    
 
         # Start counting time
         t_start=time.time()
@@ -758,7 +772,7 @@ def RecoverMissingATUGeometries(meta):
     op_complete={}
     op_complete['OPENING_ID']=np.zeros(L)
     cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer=nam_lyr) as source:
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
         for feat in source:
             op_complete['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
             cnt=cnt+1
@@ -954,14 +968,14 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 
                 # Convert RESULTS activity to fcgadgets event type
                 dNames={}
-                dNames['SILV_BASE_CODE']=cbu.lut_n2s(meta['LUT ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][iA])
-                dNames['SILV_TECHNIQUE_CODE']=cbu.lut_n2s(meta['LUT ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][iA])
-                dNames['SILV_METHOD_CODE']=cbu.lut_n2s(meta['LUT ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][iA])        
-                dNames['SILV_OBJECTIVE_CODE_1']=cbu.lut_n2s(meta['LUT ATU']['SILV_OBJECTIVE_CODE_1'],atu['SILV_OBJECTIVE_CODE_1'][iA])
+                dNames['SILV_BASE_CODE']=cbu.lut_n2s(meta['LUT']['ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][iA])
+                dNames['SILV_TECHNIQUE_CODE']=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][iA])
+                dNames['SILV_METHOD_CODE']=cbu.lut_n2s(meta['LUT']['ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][iA])        
+                dNames['SILV_OBJECTIVE_CODE_1']=cbu.lut_n2s(meta['LUT']['ATU']['SILV_OBJECTIVE_CODE_1'],atu['SILV_OBJECTIVE_CODE_1'][iA])
                 Name_Type=cbu.QueryResultsActivity(dNames)[0]
                 
                 try:
-                    ID_Type=meta['LUT Dist'][Name_Type]
+                    ID_Type=meta['LUT']['Dist'][Name_Type]
                 except:
                     ID_Type=-999
                  
@@ -1031,7 +1045,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 pct1=np.array(pct1,dtype=int)
         
                 ind_dmec=np.where( (np.floor(dmec0['Year'])==uYear[iYear]) & 
-                          (dmec0['ID_Type']==meta['LUT Dist']['Planting']) )[0]
+                          (dmec0['ID_Type']==meta['LUT']['Dist']['Planting']) )[0]
         
                 # Populate q1 structure
                 if cd1.size>0:
@@ -1069,11 +1083,11 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
             for i in range(indS.size):
             
                 bsr=burnsev['BURN_SEVERITY_RATING'][indS[i]]
-                if bsr==meta['LUT BS']['BURN_SEVERITY_RATING']['Low']: 
+                if bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['Low']: 
                     Severity=50
-                elif bsr==meta['LUT BS']['BURN_SEVERITY_RATING']['Medium']:
+                elif bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['Medium']:
                     Severity=90
-                elif bsr==meta['LUT BS']['BURN_SEVERITY_RATING']['High']: 
+                elif bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['High']: 
                     Severity=100
                 else:
                     Severity=5
@@ -1082,7 +1096,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['Year']=np.append(dmec0['Year'],burnsev['FIRE_YEAR'][indS[i]]+Month/12)
                 dmec0['Month']=np.append(dmec0['Month'],Month)
                 dmec0['Day']=np.append(dmec0['Day'],-999)
-                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Wildfire'])
+                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],Severity)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1100,14 +1114,14 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
         
                 # Only continue if nothing yet added through burnsev layer
                 ind=np.where( (np.floor(dmec0['Year'])==np.floor(fire['FIRE_YEAR'][indS[i]])) & 
-                             (dmec0['ID_Type']==meta['LUT Dist']['Wildfire']) )[0]
+                             (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
                 if ind.size>0: 
                     continue
             
                 dmec0['Year']=np.append(dmec0['Year'],fire['FIRE_YEAR'][indS[i]]+fire['Month'][indS[i]]/12)
                 dmec0['Month']=np.append(dmec0['Month'],fire['Month'][indS[i]])
                 dmec0['Day']=np.append(dmec0['Day'],fire['Day'][indS[i]])
-                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Wildfire'])            
+                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])            
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],50)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1132,7 +1146,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['Year']=np.append(dmec0['Year'],yr_harv)
                 dmec0['Month']=np.append(dmec0['Month'],-999)
                 dmec0['Day']=np.append(dmec0['Day'],-999)
-                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Harvest'])
+                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Harvest'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1147,7 +1161,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['Year']=np.append(dmec0['Year'],yr_burn)
                 dmec0['Month']=np.append(dmec0['Month'],-999)
                 dmec0['Day']=np.append(dmec0['Day'],-999)
-                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Slashpile Burn'])
+                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1163,7 +1177,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
     
         if indS_op!=None: 
         
-            iExisting=np.where( (dmec0['ID_Type']==meta['LUT Dist']['Harvest']) )[0]
+            iExisting=np.where( (dmec0['ID_Type']==meta['LUT']['Dist']['Harvest']) )[0]
             YearExisting=np.floor(dmec0['Year'][iExisting])
         
             indS=indS_op['Index']
@@ -1172,7 +1186,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
         
                 Year=np.floor(op['Year_Denu1_Comp'][indS[i]])
                 Month=op['Month_Denu1_Comp'][indS[i]]
-                cd=cbu.lut_n2s(meta['LUT OP']['DENUDATION_1_DISTURBANCE_CODE'],op['DENUDATION_1_DISTURBANCE_CODE'][indS[i]])
+                cd=cbu.lut_n2s(meta['LUT']['OP']['DENUDATION_1_DISTURBANCE_CODE'],op['DENUDATION_1_DISTURBANCE_CODE'][indS[i]])
             
                 # Determine whether it should be added, or whether it was already in the
                 # consolidated cutblocks DB
@@ -1189,7 +1203,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['Year']=np.append(dmec0['Year'],yr_harv)
                     dmec0['Month']=np.append(dmec0['Month'],Month)
                     dmec0['Day']=np.append(dmec0['Day'],-999)
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Harvest'])
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Harvest'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1204,7 +1218,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['Year']=np.append(dmec0['Year'],yr_burn)
                     dmec0['Month']=np.append(dmec0['Month'],-999)
                     dmec0['Day']=np.append(dmec0['Day'],-999)
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Slashpile Burn'])
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1216,7 +1230,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
         
                 Year=np.floor(op['Year_Denu2_Comp'][indS[i]])
                 Month=op['Month_Denu2_Comp'][indS[i]]
-                cd=cbu.lut_n2s(meta['LUT OP']['DENUDATION_2_DISTURBANCE_CODE'],op['DENUDATION_2_DISTURBANCE_CODE'][indS[i]])
+                cd=cbu.lut_n2s(meta['LUT']['OP']['DENUDATION_2_DISTURBANCE_CODE'],op['DENUDATION_2_DISTURBANCE_CODE'][indS[i]])
             
                 # Determine whether it should be added, or whether it was already in the
                 # consolidated cutblocks DB
@@ -1233,7 +1247,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['Year']=np.append(dmec0['Year'],yr_harv)
                     dmec0['Month']=np.append(dmec0['Month'],Month)
                     dmec0['Day']=np.append(dmec0['Day'],-999)
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Harvest'])
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Harvest'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1248,7 +1262,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     dmec0['Year']=np.append(dmec0['Year'],yr_burn)
                     dmec0['Month']=np.append(dmec0['Month'],-999)
                     dmec0['Day']=np.append(dmec0['Day'],-999)
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Slashpile Burn'])
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
@@ -1291,35 +1305,35 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 # Shorten for repeated use
                 psp=pest['PEST_SPECIES_CODE'][iYr]
                 sev=pest['PEST_SEVERITY_CODE'][iYr]
-                sev_s=cbu.lut_n2s(meta['LUT Pest']['PEST_SEVERITY_CODE'],sev)[0]
+                sev_s=cbu.lut_n2s(meta['LUT']['Pest']['PEST_SEVERITY_CODE'],sev)[0]
             
                 # Mountain pine beetle - Adjust severity based on fractin of pine later using: AdjustSpeciesSpecificMortality         
-                if (psp==meta['LUT Pest']['PEST_SPECIES_CODE']['IBM']):
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['IBM'])
+                if (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBM']):
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBM'])
                     ind=np.where( (par['DistBySC']['Name']=='IBM') & (par['DistBySC']['SeverityCD']==sev_s) )[0]
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],par['DistBySC']['MortalityFactor'][ind])
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],par['DistBySC']['GrowthFactor'][ind])
                 
                 # Western Balsam Bark Beetle
                 # (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-health/forest-pests/bark-beetles/western-balsam-bark-beetle)
-                elif (psp==meta['LUT Pest']['PEST_SPECIES_CODE']['IBB']):
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['IBB'])
+                elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBB']):
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBB'])
                     ind=np.where( (par['DistBySC']['Name']=='IBB') & (par['DistBySC']['SeverityCD']==sev_s) )[0]
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],par['DistBySC']['MortalityFactor'][ind])
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],par['DistBySC']['GrowthFactor'][ind])
             
                 # Douglas-fir beetle
                 # (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-health/forest-pests/bark-beetles/western-balsam-bark-beetle)
-                elif (psp==meta['LUT Pest']['PEST_SPECIES_CODE']['IBD']):
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['IBD'])
+                elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBD']):
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBD'])
                     ind=np.where( (par['DistBySC']['Name']=='IBD') & (par['DistBySC']['SeverityCD']==sev_s) )[0]
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],par['DistBySC']['MortalityFactor'][ind])
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],par['DistBySC']['GrowthFactor'][ind])
                 
                 # Spruce beetle
                 # (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-health/forest-pests/bark-beetles/western-balsam-bark-beetle)
-                elif (psp==meta['LUT Pest']['PEST_SPECIES_CODE']['IBS']):
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['IBS'])
+                elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBS']):
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBS'])
                     ind=np.where( (par['DistBySC']['Name']=='IBS') & (par['DistBySC']['SeverityCD']==sev_s) )[0]
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],par['DistBySC']['MortalityFactor'][ind])
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],par['DistBySC']['GrowthFactor'][ind])
@@ -1327,15 +1341,15 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 # Western spruce budworm 
                 # Populate severity with the ID for severity - it will be revised below
                 # to model mortality that occurs from repeated infestation
-                elif (psp==meta['LUT Pest']['PEST_SPECIES_CODE']['IDW']):
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['IDW'])
+                elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IDW']):
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
                     ind=np.where( (par['DistBySC']['Name']=='IDW') & (par['DistBySC']['SeverityCD']==sev_s) )[0]
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],sev)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],par['DistBySC']['GrowthFactor'][ind])
                 
                 # Other
                 else:
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT Dist']['Beetles'])
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Beetles'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],5)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
     
@@ -1351,25 +1365,26 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
 
 def Load_LUTs(meta):
     
-    meta['LUT ATU']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_ACTIVITY_TREATMENT_SVW.pkl')
-    meta['LUT OP']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_OPENING_SVW.pkl')
-    meta['LUT PL']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_PLANTING_SVW.pkl')
-    meta['LUT FC_I']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_INV_SVW.pkl')
-    meta['LUT FC_S']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_SILV_SVW.pkl')
-    meta['LUT VRI']=gu.ipickle(meta['Paths']['VRI'] + '\\LUTs_VEG_COMP_LYR_R1_POLY.pkl')
-    meta['LUT BS']=gu.ipickle(meta['Paths']['Disturbances'] + '\\LUTs_VEG_BURN_SEVERITY_SP.pkl')
-    meta['LUT Pest']=gu.ipickle(meta['Paths']['Disturbances'] + '\\LUTs_PEST_INFESTATION_POLY.pkl')
+    meta['LUT']['ATU']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_ACTIVITY_TREATMENT_SVW.pkl')
+    meta['LUT']['OP']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_OPENING_SVW.pkl')
+    meta['LUT']['PL']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_PLANTING_SVW.pkl')
+    meta['LUT']['FC_I']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_INV_SVW.pkl')
+    meta['LUT']['FC_S']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_SILV_SVW.pkl')
+    meta['LUT']['VRI']=gu.ipickle(meta['Paths']['VRI'] + '\\LUTs_VEG_COMP_LYR_R1_POLY.pkl')
+    meta['LUT']['BS']=gu.ipickle(meta['Paths']['Disturbances'] + '\\LUTs_VEG_BURN_SEVERITY_SP.pkl')
+    meta['LUT']['Pest']=gu.ipickle(meta['Paths']['Disturbances'] + '\\LUTs_PEST_INFESTATION_POLY.pkl')
     try:
-        meta['LUT LU NL']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_PLAN_NON_LEGAL_POLY_SVW.pkl')
-        meta['LUT LU L']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_PLAN_LEGAL_POLY_SVW.pkl')
-        meta['LUT PARK']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_TA_PARK_ECORES_PA_SVW.pkl')
-        meta['LUT OGMA']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
-        meta['LUT UWR']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_WCP_UNGULATE_WINTER_RANGE_SP.pkl')   
+        meta['LUT']['FC_R']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_RESERVE_SVW.pkl')
+        meta['LUT']['LU NL']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_PLAN_NON_LEGAL_POLY_SVW.pkl')
+        meta['LUT']['LU L']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_PLAN_LEGAL_POLY_SVW.pkl')
+        meta['LUT']['PARK']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_TA_PARK_ECORES_PA_SVW.pkl')
+        meta['LUT']['OGMA']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
+        meta['LUT']['UWR']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_WCP_UNGULATE_WINTER_RANGE_SP.pkl')   
     except:
         pass
-    meta['LUT TIPSY']={}
-    meta['LUT TIPSY']['FIZ']={'C':np.array(1,dtype=int),'I':np.array(2,dtype=int)}
-    meta['LUT TIPSY']['regeneration_method']={'C':np.array(1,dtype=int),'N':np.array(2,dtype=int),'P':np.array(3,dtype=int)}
+    meta['LUT']['TIPSY']={}
+    meta['LUT']['TIPSY']['FIZ']={'C':np.array(1,dtype=int),'I':np.array(2,dtype=int)}
+    meta['LUT']['TIPSY']['regeneration_method']={'C':np.array(1,dtype=int),'N':np.array(2,dtype=int),'P':np.array(3,dtype=int)}
     
     return meta
 
@@ -1412,13 +1427,13 @@ def Exclude_Duplicate_Events(meta,dmec):
     for iStand in range(meta['N Stand Full']):
         if dmec[iStand]==None:
             continue
-        for key in meta['LUT Dist'].keys():
-            ind=np.where(dmec[iStand]['ID_Type']==meta['LUT Dist'][key])[0]
+        for key in meta['LUT']['Dist'].keys():
+            ind=np.where(dmec[iStand]['ID_Type']==meta['LUT']['Dist'][key])[0]
             if ind.size==0:
                 continue
             uYear=np.unique(np.floor(dmec[iStand]['Year'][ind]))
             for iYear in range(uYear.size):
-                ind=np.where( (dmec[iStand]['ID_Type']==meta['LUT Dist'][key]) & (np.floor(dmec[iStand]['Year'])==uYear[iYear]) )[0]
+                ind=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist'][key]) & (np.floor(dmec[iStand]['Year'])==uYear[iYear]) )[0]
                 dmec[iStand]['ID_Type'][ind[1:]]=-999
     return dmec
 
@@ -1443,8 +1458,8 @@ def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
         if dmec[iStand]==None:
             continue
         
-        if (ba['BEC_ZONE_CODE'][iStand]==meta['LUT VRI']['BEC_ZONE_CODE']['CWH']) | (ba['BEC_ZONE_CODE'][iStand]==meta['LUT VRI']['BEC_ZONE_CODE']['ICH']):
-            ind=np.where(dmec[iStand]['ID_Type']!=meta['LUT Dist']['Slashpile Burn'])[0]
+        if (ba['BEC_ZONE_CODE'][iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | (ba['BEC_ZONE_CODE'][iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['ICH']):
+            ind=np.where(dmec[iStand]['ID_Type']!=meta['LUT']['Dist']['Slashpile Burn'])[0]
             if ind.size>0:
                 for key in dmec[iStand]:
                     if key=='ScnAffected':
@@ -1464,7 +1479,7 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity):
             #break
             r=np.random.randint(1700,2000)
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],r)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT Dist'][name_dist])
+            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist'][name_dist])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],np.array(severity,dtype='int16'))
             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
             for v in StringsToFill:
@@ -1476,17 +1491,17 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity):
 
 def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
 
-    ListOfTestedDist=[meta['LUT Dist']['Wildfire'],meta['LUT Dist']['Harvest'],
-            meta['LUT Dist']['Knockdown'],meta['LUT Dist']['Salvage Logging'],
-            meta['LUT Dist']['Beetles'],meta['LUT Dist']['IBM'],meta['LUT Dist']['IBB'],
-            meta['LUT Dist']['IBD'],meta['LUT Dist']['IBS']]
+    ListOfTestedDist=[meta['LUT']['Dist']['Wildfire'],meta['LUT']['Dist']['Harvest'],
+            meta['LUT']['Dist']['Knockdown'],meta['LUT']['Dist']['Salvage Logging'],
+            meta['LUT']['Dist']['Beetles'],meta['LUT']['Dist']['IBM'],meta['LUT']['Dist']['IBB'],
+            meta['LUT']['Dist']['IBD'],meta['LUT']['Dist']['IBS']]
     
     for iStand in range(meta['N Stand Full']):
         
         if dmec[iStand]==None:
             continue
     
-        iA=np.where( (dmec[iStand]['ID_Type']==meta['LUT Dist']['Fertilization Aerial']) )[0]
+        iA=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist']['Fertilization Aerial']) )[0]
         if iA.size==0: 
             continue
         
@@ -1499,7 +1514,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
             # Add harvest
             Year=dmec[iStand]['Year'][iA[0]]-AgeAtFert
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT Dist']['Harvest'])
+            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
             for v in StringsToFill:
@@ -1507,7 +1522,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
             
             # Add slashpile burn
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+0.1)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT Dist']['Slashpile Burn'])
+            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
             for v in StringsToFill:
@@ -1515,7 +1530,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
             
             # Add planting
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+0.2)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT Dist']['Planting'])
+            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Planting'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],0)
             for v in StringsToFill:
@@ -1543,7 +1558,7 @@ def IDW_Fix_Severity(meta,dmec,par):
             
                 # By default, apply mortality rate in the year of defoliation
                 sev1=dmec[iStand]['MortalityFactor'][iA]
-                sev_s1=cbu.lut_n2s(meta['LUT Pest']['PEST_SEVERITY_CODE'],sev1)[0]
+                sev_s1=cbu.lut_n2s(meta['LUT']['Pest']['PEST_SEVERITY_CODE'],sev1)[0]
                 ind=np.where( (par['DistBySC']['Name']=='IDW') & (par['DistBySC']['SeverityCD']==sev_s1) )[0]
                 Mortality1=par['DistBySV']['MortalityFactor'][ind]
 
@@ -1552,7 +1567,7 @@ def IDW_Fix_Severity(meta,dmec,par):
                     
                         # If it is back to back infestation, adjust mortality accordingly
                         sev0=Severity_Frozen[iA-1]
-                        sev_s0=cbu.lut_n2s(meta['LUT Pest']['PEST_SEVERITY_CODE'],sev0)[0]
+                        sev_s0=cbu.lut_n2s(meta['LUT']['Pest']['PEST_SEVERITY_CODE'],sev0)[0]
                         if (sev_s0=='M') & (sev_s1=='M'):
                             ind=np.where( (par['DistBySC']['Name']=='IDW') & (par['DistBySC']['SeverityCD']=='MM') )[0]
                             Mortality1=par['DistBySV']['MortalityFactor'][ind]
@@ -1594,7 +1609,7 @@ def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
                 flg==1
         if flg==1:
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],DOE)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT Dist']['Wildfire'])
+            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Wildfire'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],np.array(100,dtype='int16'))
             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
             for v in StringsToFill:
@@ -1621,8 +1636,8 @@ def Clean_Species_Composition(meta,dmec,vri,fcinv):
     for iStand in range(meta['N Stand Full']):   
         for iSpc in range(len(ListS)):       
             # Disturbance/management inventory
-            n0=meta['LUT PL']['SILV_TREE_SPECIES_CODE'][ListS[iSpc][0]]
-            n1=meta['LUT PL']['SILV_TREE_SPECIES_CODE'][ListS[iSpc][1]]
+            n0=meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'][ListS[iSpc][0]]
+            n1=meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'][ListS[iSpc][1]]
             for k in range(dmec[iStand]['PL_SPECIES_CD1'].size):
                 if dmec[iStand]['PL_SPECIES_CD1'][k]==n0: dmec[iStand]['PL_SPECIES_CD1'][k]=n1
                 if dmec[iStand]['PL_SPECIES_CD2'][k]==n0: dmec[iStand]['PL_SPECIES_CD2'][k]=n1
@@ -1634,8 +1649,8 @@ def Clean_Species_Composition(meta,dmec,vri,fcinv):
     for iStand in range(vri['SPECIES_CD_1'].size):       
         for iSpc in range(len(ListS)):    
             for k in range(6):
-                n0=meta['LUT VRI']['SPECIES_CD_' + str(k+1)][ListS[iSpc][0]];
-                n1=meta['LUT VRI']['SPECIES_CD_' + str(k+1)][ListS[iSpc][1]]        
+                n0=meta['LUT']['VRI']['SPECIES_CD_' + str(k+1)][ListS[iSpc][0]];
+                n1=meta['LUT']['VRI']['SPECIES_CD_' + str(k+1)][ListS[iSpc][1]]        
                 if vri['SPECIES_CD_' + str(k+1)][iStand]==n0: 
                     vri['SPECIES_CD_' + str(k+1)][iStand]=n1
         
@@ -1643,13 +1658,13 @@ def Clean_Species_Composition(meta,dmec,vri,fcinv):
     for iStand in range(fcinv['I_SPECIES_CODE_1'].size):       
         for iSpc in range(len(ListS)):         
             for k in range(5):
-                n0=meta['LUT FC_I']['I_SPECIES_CODE_' + str(k+1)][ListS[iSpc][0]]
-                n1=meta['LUT FC_I']['I_SPECIES_CODE_' + str(k+1)][ListS[iSpc][1]]        
+                n0=meta['LUT']['FC_I']['I_SPECIES_CODE_' + str(k+1)][ListS[iSpc][0]]
+                n1=meta['LUT']['FC_I']['I_SPECIES_CODE_' + str(k+1)][ListS[iSpc][1]]        
                 if fcinv['I_SPECIES_CODE_' + str(k+1)][iStand]==n0: 
                     fcinv['I_SPECIES_CODE_' + str(k+1)][iStand]=n1
                 
-                #n0=meta['LUT FC_S']['S_SPECIES_CODE_' + str(k+1)][ListS[j][0]]
-                #n1=meta['LUT FC_S']['S_SPECIES_CODE_' + str(k+1)][ListS[j][1]]        
+                #n0=meta['LUT']['FC_S']['S_SPECIES_CODE_' + str(k+1)][ListS[j][0]]
+                #n1=meta['LUT']['FC_S']['S_SPECIES_CODE_' + str(k+1)][ListS[j][1]]        
                 #if fcSd['S_SPECIES_CODE_' + str(k+1)][i]==n0: 
                 #    fcSd['S_SPECIES_CODE_' + str(k+1)][i]=n1
     
@@ -1664,8 +1679,8 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
     #--------------------------------------------------------------------------
     
     ba={} 
-    ba['FIZ']=meta['LUT TIPSY']['FIZ']['I']*np.ones(meta['N Stand'])
-    ba['BEC_ZONE_CODE']=meta['LUT VRI']['BEC_ZONE_CODE']['SBS']*np.ones(meta['N Stand'])
+    ba['FIZ']=meta['LUT']['TIPSY']['FIZ']['I']*np.ones(meta['N Stand'])
+    ba['BEC_ZONE_CODE']=meta['LUT']['VRI']['BEC_ZONE_CODE']['SBS']*np.ones(meta['N Stand'])
     ba['Spc_CD1']=-999*np.ones(meta['N Stand'])
     ba['Spc_CD2']=-999*np.ones(meta['N Stand'])
     ba['Spc_CD3']=-999*np.ones(meta['N Stand'])
@@ -1717,12 +1732,12 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
         
         ba['BEC_ZONE_CODE'][iStand0]=vri['BEC_ZONE_CODE'][ind0]        
         
-        if (vri['BEC_ZONE_CODE'][ind0]==meta['LUT VRI']['BEC_ZONE_CODE']['CWH']) | \
-            (vri['BEC_ZONE_CODE'][ind0]==meta['LUT VRI']['BEC_ZONE_CODE']['CDF']) | \
-            (vri['BEC_ZONE_CODE'][ind0]==meta['LUT VRI']['BEC_ZONE_CODE']['MH']):
-            ba['FIZ'][iStand0]=meta['LUT TIPSY']['FIZ']['C']
+        if (vri['BEC_ZONE_CODE'][ind0]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | \
+            (vri['BEC_ZONE_CODE'][ind0]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']) | \
+            (vri['BEC_ZONE_CODE'][ind0]==meta['LUT']['VRI']['BEC_ZONE_CODE']['MH']):
+            ba['FIZ'][iStand0]=meta['LUT']['TIPSY']['FIZ']['C']
         else:
-            ba['FIZ'][iStand0]=meta['LUT TIPSY']['FIZ']['I']
+            ba['FIZ'][iStand0]=meta['LUT']['TIPSY']['FIZ']['I']
     
     basp['BEC_ZONE_CODE']['From VRI']=N_tot/ba['SI'].size*100
     basp['FIZ']['From VRI']=N_tot/ba['SI'].size*100
@@ -1730,8 +1745,8 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
     # Fill with global assumption
     ind=np.where(ba['BEC_ZONE_CODE']<=0)[0]
     if ind.size>0:
-        ba['BEC_ZONE_CODE'][ind]=meta['LUT VRI']['BEC_ZONE_CODE']['SBS']
-        ba['FIZ'][ind]=meta['LUT TIPSY']['FIZ']['I']
+        ba['BEC_ZONE_CODE'][ind]=meta['LUT']['VRI']['BEC_ZONE_CODE']['SBS']
+        ba['FIZ'][ind]=meta['LUT']['TIPSY']['FIZ']['I']
     
         basp['BEC_ZONE_CODE']['From global gap filling assumption']=ind.size/ba['SI'].size*100
         basp['FIZ']['From global gap filling assumption']=ind.size/ba['SI'].size*100
@@ -1803,11 +1818,11 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
             # Already populated with FC inventory layer
             continue
         
-        if ba['FIZ'][iStand0]==meta['LUT TIPSY']['FIZ']['C']:
-            ba['Spc_CD1'][iStand0]=meta['LUT VRI']['SPECIES_CD_1']['FD']
+        if ba['FIZ'][iStand0]==meta['LUT']['TIPSY']['FIZ']['C']:
+            ba['Spc_CD1'][iStand0]=meta['LUT']['VRI']['SPECIES_CD_1']['FD']
             ba['Spc_Pct1'][iStand0]=100
         else:
-            ba['Spc_CD1'][iStand0]=meta['LUT VRI']['SPECIES_CD_1']['PL']
+            ba['Spc_CD1'][iStand0]=meta['LUT']['VRI']['SPECIES_CD_1']['PL']
             ba['Spc_Pct1'][iStand0]=100 
         
         N_tot=N_tot+1
@@ -1851,17 +1866,17 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
             else:
                 iStand=iStand0
         
-            if (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['FD']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['FDI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['FDC']):
+            if (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FD']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDI']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDC']):
                 if Site_Prod_Fd[iStand]>0: 
                     spl['SI_SPL'][iStand0]=Site_Prod_Fd[iStand]
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['PL']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['PLI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['PLC']):
+            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PL']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLI']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLC']):
                 if Site_Prod_Pl[iStand]>0: 
                     spl['SI_SPL'][iStand0]=Site_Prod_Pl[iStand]
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['SX']):
+            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['SX']):
                 if Site_Prod_Sx[iStand]>0: 
                     spl['SI_SPL'][iStand0]=Site_Prod_Sx[iStand]
     
@@ -1901,17 +1916,17 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
             ix=np.where(adx==np.min(adx))[0]
             iy=np.where(ady==np.min(ady))[0]
             ind=np.ix_(iy,ix)
-            if (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['FD']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['FDI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['FDC']):
+            if (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FD']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDI']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDC']):
                 if Site_Prod_Fd[ind][0][0]>0: 
                     spl['SI_SPL'][iStand0]=Site_Prod_Fd[ind][0][0]
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['PL']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['PLI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['PLC']):
+            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PL']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLI']) | \
+                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLC']):
                 if Site_Prod_Pl[ind][0][0]>0: 
                     spl['SI_SPL'][iStand0]=np.maximum(0,Site_Prod_Pl[ind][0][0])
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT VRI']['SPECIES_CD_1']['SX']):
+            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['SX']):
                 if Site_Prod_Sx[ind][0][0]>0: 
                     spl['SI_SPL'][iStand0]=np.maximum(0,Site_Prod_Sx[ind][0][0])
     
@@ -1993,12 +2008,12 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
 
     # Where there is nothing, populate with regional averages
     
-    iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT TIPSY']['FIZ']['I']) )[0]
-    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT TIPSY']['FIZ']['I']) )[0]
+    iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
+    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
     ba['SI'][iToFill1]=np.mean(ba['SI'][iGood])
     
-    iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT TIPSY']['FIZ']['C']) )[0]
-    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT TIPSY']['FIZ']['C']) )[0]
+    iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
+    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
     ba['SI'][iToFill2]=np.mean(ba['SI'][iGood])
     
     basp['SI']['From regional averages']=(iToFill1.size+iToFill2.size)/ba['SI'].size*100
@@ -2062,15 +2077,15 @@ def AdjustSpeciesSpecificMortality(meta,dmec,par,gc,iB):
         
             for iPest in range(len(Pest_List)):
         
-                if dmec[iStand]['ID_Type'][iYr]==meta['LUT Dist'][Pest_List[iPest]]:
+                if dmec[iStand]['ID_Type'][iYr]==meta['LUT']['Dist'][Pest_List[iPest]]:
             
                     ind_GC=int(dmec[iStand]['ID_GC'][iB][iYr]-1)
             
                     scd=[None]*4
-                    scd[0]=cbu.lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],gc[iStand][iB]['s1'][ind_GC])
-                    scd[1]=cbu.lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],gc[iStand][iB]['s2'][ind_GC])
-                    scd[2]=cbu.lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],gc[iStand][iB]['s3'][ind_GC])
-                    scd[3]=cbu.lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],gc[iStand][iB]['s4'][ind_GC])
+                    scd[0]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],gc[iStand][iB]['s1'][ind_GC])
+                    scd[1]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],gc[iStand][iB]['s2'][ind_GC])
+                    scd[2]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],gc[iStand][iB]['s3'][ind_GC])
+                    scd[3]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],gc[iStand][iB]['s4'][ind_GC])
             
                     spct=[None]*4
                     spct[0]=gc[iStand][iB]['p1'][ind_GC]
@@ -2106,16 +2121,16 @@ def ExportATLayerToSpreadsheet(meta,atu):
     df['OPENING_ID']=atu['OPENING_ID']
     df['SBC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
     for i in range(atu['Year'].size):
-        df['SBC'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][i])[0]
+        df['SBC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][i])[0]
     df['SMC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
     for i in range(atu['Year'].size):
-        df['SMC'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][i])[0]
+        df['SMC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][i])[0]
     df['STC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
     for i in range(atu['Year'].size):
-        df['STC'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]    
+        df['STC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]    
     df['SILV_FUND_SOURCE_CODE']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
     for i in range(atu['Year'].size):
-        df['SILV_FUND_SOURCE_CODE'][i]=cbu.lut_n2s(meta['LUT ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]    
+        df['SILV_FUND_SOURCE_CODE'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]    
     df['ACTUAL_TREATMENT_AREA']=atu['ACTUAL_TREATMENT_AREA']
     df['ACTUAL_PLANTED_NUMBER']=atu['ACTUAL_PLANTED_NUMBER']
     #df['Month']=atu['Month']

@@ -184,7 +184,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     
                     for iYr in range(Year.size):
                         iT=np.where(tv==Year[iYr])[0]
-                        ec['ID_Type'][iT,iS,0]=meta['LUT Dist'][meta['Spinup Disturbance Type']]
+                        ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Spinup Disturbance Type']]
                         ec['MortalityFactor'][iT,iS,0]=100
                         ec['GrowthFactor'][iT,iS,0]=0
                         ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
@@ -203,7 +203,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         Year=meta['Year'][it]                    
                         for iYr in range(Year.size):
                             iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT Dist'][meta['Scenario'][iScn]['Type1_Hist_DisFromSim']]
+                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Hist_DisFromSim']]
                             ec['MortalityFactor'][iT,iS,0]=100
                             ec['GrowthFactor'][iT,iS,0]=0
                             ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
@@ -218,7 +218,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         Year=meta['Year'][it]                    
                         for iYr in range(Year.size):
                             iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT Dist'][meta['Scenario'][iScn]['Type2_Hist_DisFromSim']]
+                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Hist_DisFromSim']]
                             ec['MortalityFactor'][iT,iS,0]=100
                             ec['GrowthFactor'][iT,iS,0]=0
                             ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
@@ -241,12 +241,12 @@ def BuildEventChronologyFromSpreadsheet(meta):
                                 dfParDistBySC=pd.read_excel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
                                 flg_i=1
                             indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
-                            ID_TypeN=meta['LUT Dist']['IDW']
+                            ID_TypeN=meta['LUT']['Dist']['IDW']
                             MF=dfParDistBySC.loc[indPar,'MortalityFactor']
                             GF=dfParDistBySC.loc[indPar,'GrowthFactor']
                         else:
                             ID_TypeS=meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
-                            ID_TypeN=meta['LUT Dist'][ID_TypeS]
+                            ID_TypeN=meta['LUT']['Dist'][ID_TypeS]
                             MF=meta['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
                             GF=0
             
@@ -274,7 +274,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         Year=meta['Year'][it]                    
                         for iYr in range(Year.size):
                             iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT Dist'][meta['Scenario'][iScn]['Type1_Fut_DisFromSim']]
+                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Fut_DisFromSim']]
                             ec['MortalityFactor'][iT,iS,0]=100
                             ec['GrowthFactor'][iT,iS,0]=0
                             ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
@@ -289,7 +289,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         Year=meta['Year'][it]                    
                         for iYr in range(Year.size):
                             iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT Dist'][meta['Scenario'][iScn]['Type2_Fut_DisFromSim']]
+                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Fut_DisFromSim']]
                             ec['MortalityFactor'][iT,iS,0]=100
                             ec['GrowthFactor'][iT,iS,0]=0
                             ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']    
@@ -304,7 +304,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         if ind.size==0:
                             continue
                         
-                        ID_Type=meta['LUT Dist']['Wildfire']*np.ones(ind.size)
+                        ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(ind.size)
                         Year=tv[ind]
                         MortF=wf_sim['Mortality'][ind,iS]
                         GrowthF=0*np.ones(ind.size)
@@ -380,10 +380,13 @@ def ImportProjectConfig(meta):
     # Import look-up tables
     #--------------------------------------------------------------------------
     
+    meta['LUT']={}
+    
     LUT_Dist,LUT_Spc,LUT_BGC_Zone=ImportLUTs(meta['Paths']['Model Code'])
-    meta['LUT Dist']=LUT_Dist
-    meta['LUT Spc']=LUT_Spc
-    meta['LUT BGC Zone']=LUT_BGC_Zone
+    
+    meta['LUT']['Dist']=LUT_Dist
+    meta['LUT']['Spc']=LUT_Spc
+    meta['LUT']['BGC Zone']=LUT_BGC_Zone
 
     #--------------------------------------------------------------------------
     # Define pool names
@@ -1512,13 +1515,13 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         # Regeneration type (N, C, P)   
         vnam='regeneration_method'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
-        cd=lut_n2s(meta['LUT TIPSY'][vnam],id)[0]
+        cd=lut_n2s(meta['LUT']['TIPSY'][vnam],id)[0]
         sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd      
     
         # Species 1
         vnam='s1'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
-        cd=lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],id)[0]
+        cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
         sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
     
         vnam='p1'
@@ -1539,7 +1542,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s2'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
         
             vnam='p2'
@@ -1556,7 +1559,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s3'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
         
             vnam='p3'
@@ -1573,7 +1576,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s4'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
         
             vnam='p4'
@@ -1590,7 +1593,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s5'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
         
             vnam='p5'
@@ -1626,13 +1629,13 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         # BEC zone
         vnam='bec_zone'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
-        cd=lut_n2s(meta['LUT VRI']['BEC_ZONE_CODE'],id)[0]    
+        cd=lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],id)[0]    
         sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
     
         # FIZ
         vnam='FIZ'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
-        cd=lut_n2s(meta['LUT TIPSY']['FIZ'],id)[0]
+        cd=lut_n2s(meta['LUT']['TIPSY']['FIZ'],id)[0]
         sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
     
         # Age at fertilization
@@ -1732,7 +1735,7 @@ def PrepareInventoryFromSpreadsheet(meta):
         
             # BEC zone
             inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype=np.int)
-            inv['ID_BECZ'][0,:]=meta['LUT BGC Zone'][meta['Scenario'][iScn]['BGC Zone Code']]
+            inv['ID_BECZ'][0,:]=meta['LUT']['BGC Zone'][meta['Scenario'][iScn]['BGC Zone Code']]
     
             # Timber harvesting landbase (1=yes, 0=no)
             inv['THLB']=1*np.ones((1,N_StandsInBatch))
@@ -1742,7 +1745,7 @@ def PrepareInventoryFromSpreadsheet(meta):
             inv['MAT']=4*np.ones((1,N_StandsInBatch))
             
             if meta['Biomass Module']=='Sawtooth':
-                inv['Srs1_ID']=meta['LUT Spc'][meta['Scenario'][iScn]['SRS1_CD']]*np.ones((1,N_StandsInBatch),dtype=np.int)
+                inv['Srs1_ID']=meta['LUT']['Spc'][meta['Scenario'][iScn]['SRS1_CD']]*np.ones((1,N_StandsInBatch),dtype=np.int)
             else:
                 inv['Srs1_ID']=9999*np.ones((1,N_StandsInBatch),dtype=np.int)
                 inv['Srs1_Pct']=100*np.ones((1,N_StandsInBatch),dtype=np.int)
@@ -1798,7 +1801,7 @@ def GetMortalityFrequencyDistribution(meta):
         M[iScn]={}
         M[iScn]['Ma']={}
         M[iScn]['Mr']={}
-        for k in meta['LUT Dist'].keys():
+        for k in meta['LUT']['Dist'].keys():
             M[iScn]['Ma'][k]=np.zeros((tv.size,meta['N Stand Full']))
             M[iScn]['Mr'][k]=np.zeros((tv.size,meta['N Stand Full']))
         M[iScn]['Ma']['Reg']=np.zeros((tv.size,meta['N Stand Full']))
@@ -1817,7 +1820,7 @@ def GetMortalityFrequencyDistribution(meta):
                     it=np.where(tv==int(dh[iStandInBat]['Year'][iYr]))[0]
                     if it.size==0:
                         continue
-                    nam=lut_n2s(meta['LUT Dist'],dh[iStandInBat]['ID_Type'][iYr])[0]                     
+                    nam=lut_n2s(meta['LUT']['Dist'],dh[iStandInBat]['ID_Type'][iYr])[0]                     
                     M[iScn]['Ma'][nam][it,iStand]=d1[0]['C_M_Dist'][it,iStandInBat]
                     M[iScn]['Mr'][nam][it,iStand]=d1[0]['C_M_Dist'][it,iStandInBat]/np.maximum(0.0001,d1[0]['Eco_Biomass'][it-1,iStandInBat])
                     M[iScn]['Ma']['Reg'][it,iStand]=d1[0]['C_M_Reg'][it,iStandInBat]
@@ -1885,7 +1888,7 @@ def MosByMultipolygon(meta,include_area):
             d['v2']['Sum'][nam2[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
         if include_area=='On':
             d['Area']={}
-            for k in meta['LUT Dist'].keys():
+            for k in meta['LUT']['Dist'].keys():
                 d['Area'][k]={}
                 d['Area'][k]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
                 #d['Area'][k]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
@@ -1944,7 +1947,7 @@ def MosByMultipolygon(meta,include_area):
                     for k in Data['Area'].keys():
                         Data0=np.zeros((tv_saving.size,indBat.size))
                         for iEY in range(meta['Max Events Per Year']):
-                            ind=np.where(ec['ID_Type'][it,:,iEY]==meta['LUT Dist'][k])[0]
+                            ind=np.where(ec['ID_Type'][it,:,iEY]==meta['LUT']['Dist'][k])[0]
                             Data0[ind]=Data0[ind]+1
                         Data['Area'][k][:,indBat]=Data0
                     
@@ -2073,7 +2076,7 @@ def ModelOutputStats(meta,flag_save):
             mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
         
         mos[iScn]['Area']={}
-        for k in meta['LUT Dist'].keys():
+        for k in meta['LUT']['Dist'].keys():
             mos[iScn]['Area'][k]={}
             mos[iScn]['Area'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
             mos[iScn]['Area'][k]['Ensemble Mean']=np.zeros(tv.size)
@@ -2145,7 +2148,7 @@ def ModelOutputStats(meta,flag_save):
                     for iU in range(u.size):
                         if u[iU]==0:
                             continue
-                        id=lut_n2s(meta['LUT Dist'],u[iU])[0]
+                        id=lut_n2s(meta['LUT']['Dist'],u[iU])[0]
                         ind=np.where(ID_Type0==u[iU])[0]
                         mos[iScn]['Area'][id]['Ensembles'][it,iEns]=mos[iScn]['Area'][id]['Ensembles'][it,iEns]+ind.size
                 del d1,d2,ec

@@ -276,7 +276,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_M_Reg']=np.zeros((m,n,o))
     vo['C_M_Dist']=np.zeros((m,n))
     vo['C_M_ByAgent']={}
-    for k in meta['LUT Dist']:
+    for k in meta['LUT']['Dist']:
         vo['C_M_ByAgent'][k]=np.zeros((m,1))        
     vo['C_LF']=np.zeros((m,n,o))    
     vo['C_RH']=np.zeros((m,n,o))    
@@ -500,7 +500,7 @@ def ImportParameters(meta,vi):
                 for k in meta['Harvest Custom'][int(iHC+1)].keys():
                     
                     if k[0:7]!='Removed':
-                        id=meta['LUT Dist']['Harvest Custom ' + str(int(iHC+1))]
+                        id=meta['LUT']['Dist']['Harvest Custom ' + str(int(iHC+1))]
                         psl['Dist'][id][k]=meta['Harvest Custom'][int(iHC+1)][k]/100 
                 
     #--------------------------------------------------------------------------
@@ -912,7 +912,7 @@ def SaveOutputToMOS(meta,iScn,iEns):
             mos[iScn]['v2']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
             
         mos[iScn]['Area']={}
-        for k in meta['LUT Dist'].keys():
+        for k in meta['LUT']['Dist'].keys():
             mos[iScn]['Area'][k]={}
             mos[iScn]['Area'][k]['Ensembles']=np.zeros((tv.size,meta['N Ensemble']))
         
@@ -960,7 +960,7 @@ def SaveOutputToMOS(meta,iScn,iEns):
             for iU in range(u.size):
                 if u[iU]==0:
                     continue
-                id=cbu.lut_n2s(meta['LUT Dist'],u[iU])[0]
+                id=cbu.lut_n2s(meta['LUT']['Dist'],u[iU])[0]
                 ind=np.where(ID_Type0==u[iU])[0]
                 mos[iScn]['Area'][id]['Ensembles'][it,iEns]=mos[iScn]['Area'][id]['Ensembles'][it,iEns]+ind.size
         del d1,d2,ec

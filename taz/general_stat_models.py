@@ -57,7 +57,7 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,Age):
             if iAvailable.size>0:
                 iE=iAvailable[0]+0
                 #iE=-1
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT Dist']['Mechanical']
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Mechanical']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
                 vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
     
@@ -65,16 +65,20 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,Age):
 
 #%% Simulate probability of harvesting on the fly
 
-def PredictHarvesting_OnTheFly(meta,vi,iT,flag_thlb,V_Merch):
+def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period):
+    
+    # Indicator of THLB (THLB=1, Non-THLB=0)
+    flag_thlb=vi['Inv']['THLB'][iT,:]
     
     # Deterministic component    
-    if meta['Year'][iT]<2020:
+    if Period=='Historical':
         #f1=0.0014*25**((meta['Year'][iT]-1900)/100)
         #f2=(1/(1+np.exp(0.12*(Year-1950))))
         f1=0.0011*35**((meta['Year'][iT]-1900)/100)
         f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
         beta0=f1*f2
     else:
+        # Future
         beta0=0.03
     
     beta=[beta0,-0.025,400]
@@ -95,15 +99,15 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,flag_thlb,V_Merch):
             iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]        
             if iAvailable.size>0:
                 iE=iAvailable[0]+0
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT Dist']['Harvest']
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Harvest']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
                 vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
-                iE=iAvailable[0]+1
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT Dist']['Slashpile Burn']
+                iE=iAvailable[0]+1 # changing this to zero will cause the harvest to be overwritten
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Slashpile Burn']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
                 vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
                 iE=iAvailable[0]+2
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT Dist']['Planting']
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Planting']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
                 vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
     
@@ -139,7 +143,7 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
         
         indZone=np.where(id_bgcz==uZone[iZone])[0]
             
-        namZone=cbu.lut_n2s(meta['LUT VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+        namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
             
         # Alternative model
         b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()

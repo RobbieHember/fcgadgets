@@ -39,7 +39,7 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
     
     for iZone in range(uZone.size):
         
-        namZone=cbu.lut_n2s(meta['LUT BGC Zone'],uZone[iZone])[0]
+        namZone=cbu.lut_n2s(meta['LUT']['BGC Zone'],uZone[iZone])[0]
         
         indZone=np.where(id_bgcz==uZone[iZone])[0]
         

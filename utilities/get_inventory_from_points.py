@@ -26,7 +26,7 @@ from fcgadgets.cbrunner import cbrun_utilities
 meta={}
 meta['Paths']={}
 meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20201203'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
 meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
@@ -97,35 +97,35 @@ tsa_boundaries.plot(ax=ax,facecolor='none',edgecolor=[0,0,0],linewidth=0.25)
 gdf_sxy.plot(ax=ax,markersize=1,facecolor=[0,0,0.75],edgecolor=None,linewidth=0.75,alpha=1)
 ax.grid(color='k',linestyle='-',linewidth=0.25)
 
-iP=2000
-for iD in range(len(nddat[iP])):
-    x,y=nddat[iP][iD]['Geometry'].exterior.xy
-    plt.plot(x,y,'r-')
+#iP=2000
+#for iD in range(len(nddat[iP])):
+#    x,y=nddat[iP][iD]['Geometry'].exterior.xy
+#    plt.plot(x,y,'r-')
 
 ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
 #plt.savefig(PathProject + '\\SparseGrid_Map.png',format='png',dpi=900)
 
-#%% Get N deposition time series for each sparse grid cell
-
-tv=np.arange(1971,2021,1)
-ndep=np.zeros((tv.size,len(gdf_sxy)))
-for iMP in range(len(nddat)):
-    print(iMP)
-    it=np.where(tv==nddat[iMP][0]['Year'])[0]
-    if it.size==0:
-        continue
-    FlagDone=np.zeros(len(gdf_sxy))
-    for iD in range(len(nddat[iMP])):
-        InPoly=gdf_sxy.within(nddat[iMP][iD]['Geometry'])
-        ind=np.where( (InPoly==True) & (FlagDone==0) )[0]
-        #gdf_sxy.loc[InPoly].plot(ax=ax,markersize=1,facecolor=[1,0,0.25],edgecolor=None,linewidth=0.75,alpha=1)
-        if ind.size>0:
-            ndep[it,ind]=ndep[it,ind]+nddat[iMP][iD]['N deposition']
-            FlagDone[ind]=1
-
-plt.plot(tv,np.prctile(ndep,axis=1),'-k.')
-
-gu.opickle(r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummaryNdep\Geospatial\ndep.pkl',ndep)
+##%% Get N deposition time series for each sparse grid cell
+#
+#tv=np.arange(1971,2021,1)
+#ndep=np.zeros((tv.size,len(gdf_sxy)))
+#for iMP in range(len(nddat)):
+#    print(iMP)
+#    it=np.where(tv==nddat[iMP][0]['Year'])[0]
+#    if it.size==0:
+#        continue
+#    FlagDone=np.zeros(len(gdf_sxy))
+#    for iD in range(len(nddat[iMP])):
+#        InPoly=gdf_sxy.within(nddat[iMP][iD]['Geometry'])
+#        ind=np.where( (InPoly==True) & (FlagDone==0) )[0]
+#        #gdf_sxy.loc[InPoly].plot(ax=ax,markersize=1,facecolor=[1,0,0.25],edgecolor=None,linewidth=0.75,alpha=1)
+#        if ind.size>0:
+#            ndep[it,ind]=ndep[it,ind]+nddat[iMP][iD]['N deposition']
+#            FlagDone[ind]=1
+#
+#plt.plot(tv,np.prctile(ndep,axis=1),'-k.')
+#
+#gu.opickle(r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummaryNdep\Geospatial\ndep.pkl',ndep)
 
 
 #%% Open crosswalk between missing AT geometries and opening geometries (if already exists)
@@ -213,7 +213,8 @@ for iLyr in range(len(InvLyrInfo)):
                             feat_fc=[]
                             for iMis in range(indMis.size):
                                 geo0=at_geo_from_fc[indMis[iMis]]
-                                if geo0!=None:
+                                # *** I wasn't expecting to need "(type(geo0)!=dict)" below - excluding it caused this to crash - needs improvement ***
+                                if (geo0!=None) & (type(geo0)!=dict):
                                     for i in range(len(geo0)):
                                         if type(geo0[i])==dict:
                                             geo1=geo0[i]['coordinates']
