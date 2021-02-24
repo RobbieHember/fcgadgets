@@ -111,31 +111,32 @@ The **utilities** subpackage contains custom scripts that compile information so
 	* ClimateNA base-period mean climate
 	* Growth and yield models
 
-### Look-up Tables
+### utilities_inventory.py
 The general workflow of **cbrunner** projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb.
 
 The purpose of adopting LUTs was to:
-1. Create a list of the subset of variables from each layer that are needed for modelling (**utilities_inventory.py.utilities_inventory.DefineInventoryLayersAndVariables**)
-
-2. Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase (**utilities_inventory.py.utilities_inventory.DefineInventoryLayersAndVariables**). 
-
+1. Create a list of the subset of variables from each layer that are needed for modelling (**DefineInventoryLayersAndVariables**)
+2. Assign unique numerical identifiers to each code found in the variables that are stored as strings in the geodatabase (**DefineInventoryLayersAndVariables**). 
 Filtering out unnecessary variables, and converting all retained variables to numeric data types, improves ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. 
 Species codes occur across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. 
 The LUTs for each inventory layer are stored as pickle files.
 
-### utilities_inventory.py
 * Use the **PrepDMEC** function to compile an initial version of the Disturbance and Management Event Chronology (DMEC) from forest inventory databases.
 * Use the **Remove_SlashpileBurns_From_Select_Zones** function to adjust the initial DMEC, which assumes slashpile burning always occurs following harvest, this function can be used to remove the slashpile burning events from the DMEC in certain BGC zones.
 * **Ensure_Fert_Preceded_By_Disturbance**: Aerial nutrient application events should be applied to stands with a known stand age. However, some treatment areas have no forest cover history. This function gap-fills the DMEC using simplified assumptions about the likely preceding disturbance events.
 * **AdjustSpeciesSpecificMortality** & **IDW_Fix_Severity**: Western spruce budworm only impacts certain species. Fix the initial growth and mortality impacts of IDW in the DMEC to reflect the actual species composition of the stand.
 * **Clean_Species_Composition**: There are frequent irregularities and species in the inventory that are not recognized by **BatchTIPSY.exe**. This function will clean the species inventory estimates identified by forest inventory layers.
-* **CreateBestAvailableInventory**: The script then compiled a “best available” version of many inventory variables that were used to parameterize BatchTIPSY.exe. Unrecognized species codes were all converted to those recognized by BatchTIPSY.exe. For baseline scenarios, the best-available species composition was compiled first from any previous planting information (generally absent), then from the forest cover silviculture layer, then from the forest cover inventory layer, then from VRI, and finally from regional assumptions. For project scenarios with planting, species composition was drawn from the planting layers. For non-planting project scenarios, selection rules followed that of the baseline scenario. In order of preference, best-available site index was created from:
-1)	Site Productivity Layer
-2)	Forest Cover Inventory layer
-3)	Vegetation Resource Inventory layer 
-Genetic worth and selection age were commonly provided for a large list of unique combinations of species and genetic worth than can be applied in BatchTIPSY.exe. Final estimates of genetic worth for up to five planted species were calculated by weighting each entry in the planting layer by the number of trees planted.
-
+* **CreateBestAvailableInventory**: The script then compiled a “best available” version of many inventory variables that were used to parameterize BatchTIPSY.exe. Unrecognized species codes were all converted to those recognized by BatchTIPSY.exe. For baseline scenarios, the best-available species composition was compiled first from any previous planting information (generally absent), then from the forest cover silviculture layer, then from the forest cover inventory layer, then from VRI, and finally from regional assumptions. For project scenarios with planting, species composition was drawn from the planting layers. For non-planting project scenarios, selection rules followed that of the baseline scenario. In order of preference, best-available site index was created from: (1) Site Productivity Layer; (2) Forest Cover Inventory layer; (3) Vegetation Resource Inventory layer. Genetic worth and selection age were commonly provided for a large list of unique combinations of species and genetic worth than can be applied in BatchTIPSY.exe. Final estimates of genetic worth for up to five planted species were calculated by weighting each entry in the planting layer by the number of trees planted.
 * **ExtractUniqueGrowthCurves**: Building growth curves for each grid cell is typically unnecessary when there is redundancy in species composition and other stand attributes. For example, although the FCI completed projects could include 33,000 grid cells, there may have only be 5,000 unique stand types. Unique stand types were identified and parameters for each stand type were exported to GrowthCurvesTIPSY_Parameters.xlsx. Then fcgadgets.cbrunner.cbrun_utilities.py.BuildTIPSYInputs was used to build the data input file readable by BatchTIPSY.exe. Then BatchTIPSY.exe was run. The inventory summaries are saved to pickle file. The DMECs were then saved to pickle file. At this point, FIZ was used to specify the disturbance return intervals of coastal and interior projects during spin up. Growth curves were then imported from the BatchTIPSY.exe output file and converted to the format required for fcgadgets.cbrunner, and then finally saved to pickle file. Finally, the script executed the function, fcgadgets.cbrunner.cbrun.py.RunProject, to simulate the results.
+
+### utilities_general.py
+This module contains general utilities for workflow in Python.
+
+### utilities_gis.py
+This module contains utilities for performing spatial analysis in Python.
+
+### utilities_tile.py
+This module contains utilities that are specific to running tiled projects with **cbrunner** (see section on tiled projects).
 
 ## TAZ
 Forest sector GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed 
