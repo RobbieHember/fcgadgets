@@ -157,8 +157,12 @@ Forest sector GHG balance simulations depend on realistic variation of natural d
 to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. The **fcgadgets.taz** subpackage was developed to improve representation of disturbances in carbon models. It consists of statistics and scenarios of disturbance that were developed using a combination of observed constraints and probabilistic models. Despite 
 high prediction uncertainty, using the pre-defined scenarios ensures that representation of natural disturbances is grounded by available observations and science-informed 
 scenarios, consistent across project studies, and supported by documentation.
-* Equations for simulating annual probability of various discrete events are outlined in **general_stat_models.py**
-* Equations for simualating annual probability of wildfire are outlined in **wildfire_stat_models.py**
+### taz.aspatial_stat_models.py 
+* Statistical models of breakup as a function of stand age
+* Statistical models of harvest as a function of standing merchantable volume 
+* Annual area of occurrence (AAO) models of wildfire and beetles 
+### taz.onset_spread_models.py
+* Spatially explicit simulations of events based on annual probability of onset and spread
 
 ## ACTIONS
 The **actions** module contains resources for representing effects of forest management on forest sector GHG balance.

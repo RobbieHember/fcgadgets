@@ -20,17 +20,17 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Project name
 
-project_name='FCI_RollupFCI_Inv'
+#project_name='FCI_RollupFCI_Inv'
 #project_name='SurveySummary'
 #project_name='FertilizationSummary'
-#project_name='ReforestationNonObSummary'
+project_name='ReforestationNonObSummary'
 
 #%% Define paths
 
 meta={}
 meta['Paths']={}
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
-meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
+meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
@@ -42,22 +42,22 @@ meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
 
 # Fert, reforestation
-#meta['subsampling_frequency']=0.05
+meta['subsampling_frequency']=0.05
 
 # FCI from inventory
-meta['subsampling_frequency']=0.25
+#meta['subsampling_frequency']=0.25
 
 #%% Save metadata
 
-gu.opickle(meta['Paths']['Project'] + '\\Inputs\\MetaData.pkl',meta)
+gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Metadata.pkl',meta)
 
 #%% Import FCI Admin Table
 #Notes:
 #FES recipients sometimes use the funding source code, "FES", for FCI-funded
 #projects. To include them in the query, import the FCI project list.
 
-flg=1
-if flg==1:
+if project_name=='FCI_RollupFCI_Inv':
+
     meta['Paths']['FCI DB File']='Z:\!Workgrp\Forest Carbon\Forest Carbon Initiative\Program\RollupProjects\Live Run\FCI_RollupProjects_01_Admin.xlsx'
     df_FCI=pd.read_excel(meta['Paths']['FCI DB File'],sheet_name='Sheet1')
 
@@ -155,6 +155,10 @@ with fiona.open(path,layer=lyr_nam) as source:
             
         # Extract attributes and geometry
         prp=feat['properties']
+        
+        #if (prp['OPENING_ID']==1462976) & (prp['SILV_BASE_CODE']=='PL'):
+        #    break
+        
         geom=feat['geometry']
         
         # In rare instances, there are no dates - add dummy numbers so that it 
@@ -176,22 +180,24 @@ with fiona.open(path,layer=lyr_nam) as source:
             
             Year=int(prp['ATU_COMPLETION_DATE'][0:4]) 
             
+            # Define which funding source codes are licensee vs. non-ob
+            ListOfNonObFSC=['FTL','FTM','RBM','RBL','FR','VG','FIL','FID','FIM','S', \
+                    'FRP','XXX','O','GFS','IR','FES','FCE','FCM']
+            ListOfLicenseeFSC=['BCT','LFP''IA','IR','VOI','SBF']
+            
+            # Only include certain years
             if Year<2011:
                 continue
             
+            # To get actual planting or direct seeding, exclude:
+            #   seedling protection ('SILV_TECHNIQUE_CODE'=='SE')
+            #   layout ('SILV_METHOD_CODE'=='LAYOT')
+            #   fertilization ('SILV_TECHNIQUE_CODE'=='CG')            
             flg=0
-            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & \
-                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & \
-                (prp['SILV_FUND_SOURCE_CODE']!='IA') &  (prp['SILV_FUND_SOURCE_CODE']!='VOI') & (prp['SILV_FUND_SOURCE_CODE']!='BCT') & \
-                (prp['SILV_FUND_SOURCE_CODE']!='SBF') & (prp['SILV_FUND_SOURCE_CODE']!='LFP') & (prp['SILV_FUND_SOURCE_CODE']!='IR'):
+            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (np.isin(prp['SILV_FUND_SOURCE_CODE'],ListOfNonObFSC)==True):
                 flg=1
-            elif (prp['SILV_BASE_CODE']=='DS') & \
-                (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & \
-                (prp['SILV_FUND_SOURCE_CODE']!='IA') & (prp['SILV_FUND_SOURCE_CODE']!='VOI') & (prp['SILV_FUND_SOURCE_CODE']!='BCT') & \
-                (prp['SILV_FUND_SOURCE_CODE']!='SBF') & (prp['SILV_FUND_SOURCE_CODE']!='LFP') & (prp['SILV_FUND_SOURCE_CODE']!='IR'):
+            if (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (np.isin(prp['SILV_FUND_SOURCE_CODE'],ListOfNonObFSC)==True):
                 flg=1
-            else:
-                flg=0
             
             if flg==0:
                 continue
@@ -225,9 +231,9 @@ with fiona.open(path,layer=lyr_nam) as source:
         # OPENING or FC layer where possible.
         flg_geom_from_op=0
         flg_geom_from_fc=0
-        if (geom==None):                                            
+        if (geom==None):               
                     
-            # check to see if the opening is listed in the AT missing dictionary
+            # Check to see if the opening is listed in the AT missing dictionary
             indMis=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
                     
             if indMis.size>0:
@@ -240,6 +246,7 @@ with fiona.open(path,layer=lyr_nam) as source:
                     feat_fc=[]
                     for iMis in range(indMis.size):
                         geo0=at_geo_from_fc[indMis[iMis]]
+                        print(geo0)
                         if geo0!=None:
                             for i in range(len(geo0)):
                                 if type(geo0[i])==dict:
@@ -263,7 +270,11 @@ with fiona.open(path,layer=lyr_nam) as source:
                         gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
                         plt.close('all')
                         fig,ax=plt.subplots(1)
-                        feat_op={}; feat_op['properties']=prp; feat_op['geometry']=at_geo_from_op[indMis[0]]
+                        feat_op={}; feat_op['properties']=prp; 
+                        for k in range(indMis.size):
+                            if at_geo_from_op[indMis[k]]!=None:
+                                feat_op['geometry']=at_geo_from_op[indMis[k]]
+                                break
                         gdf_op=gpd.GeoDataFrame.from_features([feat_op])
                         gdf_op.plot(ax=ax,facecolor='None',linewidth=4,edgecolor='k')
                         gdf_fc.plot(ax=ax,facecolor='None',linewidth=1.25,edgecolor='r',linestyle='--')
@@ -271,8 +282,16 @@ with fiona.open(path,layer=lyr_nam) as source:
                 else:
                             
                     # Not a planting, use spatial from opening
-                    geom=at_geo_from_op[indMis[0]]
+                    geom=at_geo_from_op[indMis[k]]
                     flg_geom_from_op=1
+                    
+                    #gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
+                    #plt.close('all')
+                    #fig,ax=plt.subplots(1)
+                    #feat_op={}; feat_op['properties']=prp; feat_op['geometry']=at_geo_from_op[indMis[0]]
+                    #gdf_op=gpd.GeoDataFrame.from_features([feat_op])
+                    #gdf_op.plot(ax=ax,facecolor='None',linewidth=4,edgecolor='k')
+                    #gdf_fc.plot(ax=ax,facecolor='None',linewidth=1.25,edgecolor='r',linestyle='--')
                     
             else:
                         
