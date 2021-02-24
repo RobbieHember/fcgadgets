@@ -27,10 +27,10 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Define strings that frequently need to be populated with zeros
 
-StringsToFill=['Month','Day','SILV_FUND_SOURCE_CODE','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
-               'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
-               'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
-               'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5']
+#StringsToFill=['Month','Day','SILV_FUND_SOURCE_CODE','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
+#               'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
+#               'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
+#               'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5']
 
 
 ''' 
@@ -1047,7 +1047,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 ind_dmec=np.where( (np.floor(dmec0['Year'])==uYear[iYear]) & 
                           (dmec0['ID_Type']==meta['LUT']['Dist']['Planting']) )[0]
         
-                # Populate q1 structure
+                # Populate structure
                 if cd1.size>0:
                     dmec0['PL_SPECIES_CD1'][ind_dmec]=cd1[0]
                     dmec0['PL_SPECIES_PCT1'][ind_dmec]=pct1[0]
@@ -1361,9 +1361,63 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
     
     return dmec
 
+#%% Is FCI funded in DMEC 
+    
+def IsFCIFunding(meta,dmec,uPP):
+    
+    # Convert list of unique FCI PP number codes to IDs - it could be done with codes
+    # but this is much faster
+    id_uPP=np.zeros(uPP.size)
+    for i in range(uPP.size):
+        try:
+            id_uPP[i]=meta['LUT']['ATU']['FIA_PROJECT_ID'][uPP[i]][0]
+        except:
+            pass
+    
+    for iS in range(len(dmec)):
+        dmec[iS]['FCI Funded']=np.zeros(dmec[iS]['Year'].size)
+        for iY in range(dmec[iS]['Year'].size):
+            if dmec[iS]['SILV_FUND_SOURCE_CODE'][iY]==meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE']['FCE']:
+                dmec[iS]['FCI Funded'][iY]=1
+                continue
+            if dmec[iS]['SILV_FUND_SOURCE_CODE'][iY]==meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE']['FCM']:
+                dmec[iS]['FCI Funded'][iY]=1            
+                continue
+            if np.isin(dmec[iS]['FIA_PROJECT_ID'][iY],id_uPP)==True:
+                dmec[iS]['FCI Funded'][iY]=1
+    
+    return dmec
+
 #%% LOAD Look-up-tables
 
 def Load_LUTs(meta):
+    
+    # Initialize LUTs dictionary
+    if 'LUT' not in meta:
+        meta['LUT']={}
+    
+    # Open connection to parameter database    
+    par=gu.ipickle(meta['Paths']['Model Code'] + '\\Parameters\\Parameters.pkl')
+    
+    # Import distubance type        
+    meta['LUT']['Dist']={}
+    for i in range(len(par['Disturbances']['Name'])):
+        meta['LUT']['Dist'][par['Disturbances']['Name'][i]]=par['Disturbances']['ID'][i]
+    
+    # BGC zone     
+    #LUT_BGC_Zone={}
+    #for i in range(len(par['BGC_ZONE']['CODE_BGC_ZONE'])):
+    #    LUT_BGC_Zone[par['BGC_ZONE']['CODE_BGC_ZONE'][i]]=par['BGC_ZONE']['ID_BGC_ZONE'][i]
+    
+    # Added this to accommodate jupyter notebook demos - will need updating periodically
+    if 'Results' not in meta['Paths']:
+        meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
+    if 'VRI' not in meta['Paths']:
+        meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'    
+    if 'Disturbances' not in meta['Paths']:
+        meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
+    if 'LandUse' not in meta['Paths']:
+        meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'    
     
     meta['LUT']['ATU']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_ACTIVITY_TREATMENT_SVW.pkl')
     meta['LUT']['OP']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_OPENING_SVW.pkl')
@@ -1382,9 +1436,16 @@ def Load_LUTs(meta):
         meta['LUT']['UWR']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_WCP_UNGULATE_WINTER_RANGE_SP.pkl')   
     except:
         pass
+    
+    
     meta['LUT']['TIPSY']={}
     meta['LUT']['TIPSY']['FIZ']={'C':np.array(1,dtype=int),'I':np.array(2,dtype=int)}
     meta['LUT']['TIPSY']['regeneration_method']={'C':np.array(1,dtype=int),'N':np.array(2,dtype=int),'P':np.array(3,dtype=int)}
+    
+    # Species (for Sawtooth)
+    meta['LUT']['SRS']={}
+    for i in range(len(par['SRS']['SRS_CD'])):
+        meta['LUT']['SRS'][par['SRS']['SRS_CD'][i]]=par['SRS']['SRS_ID'][i]
     
     return meta
 
@@ -1470,7 +1531,7 @@ def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
 
 #%% ENSURE EVERY STAND HAS A MODERN DISTURBANCE
 
-def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity):
+def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity,StringsToFill):
     for iStand in range(meta['N Stand Full']):
         if dmec[iStand]==None:
             continue
@@ -1489,7 +1550,7 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity):
 #%% ENSURE DISTURBANCE PRECEDES AERIAL FERTILIZATION
 # So that age at fert is specified.
 
-def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert):
+def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert,StringsToFill):
 
     ListOfTestedDist=[meta['LUT']['Dist']['Wildfire'],meta['LUT']['Dist']['Harvest'],
             meta['LUT']['Dist']['Knockdown'],meta['LUT']['Dist']['Salvage Logging'],
@@ -1592,7 +1653,7 @@ def IDW_Fix_Severity(meta,dmec,par):
     return dmec
 
 #%% ADD OLDEST KNOWN DISTURBANCE FROM VRI
-# This really doesn't work well.
+# This really doesn't work well. RETIRED!!
 
 def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
     
@@ -2114,30 +2175,263 @@ def PutEventsInOrder(dmec,meta):
 
 #%% Export AT Layer data to spreadhseet
     
-def ExportATLayerToSpreadsheet(meta,atu):
+def ExportSummaryByGridCell(meta,atu):
     
-    df=pd.DataFrame({'IdxToSXY':atu['IdxToSXY']})
-    df['Year']=atu['Year']
-    df['OPENING_ID']=atu['OPENING_ID']
-    df['SBC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size):
-        df['SBC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][i])[0]
-    df['SMC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size):
-        df['SMC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][i])[0]
-    df['STC']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size):
-        df['STC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]    
-    df['SILV_FUND_SOURCE_CODE']=np.array(['empty' for _ in range(atu['Year'].size)],dtype=object)
-    for i in range(atu['Year'].size):
-        df['SILV_FUND_SOURCE_CODE'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]    
-    df['ACTUAL_TREATMENT_AREA']=atu['ACTUAL_TREATMENT_AREA']
-    df['ACTUAL_PLANTED_NUMBER']=atu['ACTUAL_PLANTED_NUMBER']
-    #df['Month']=atu['Month']
-    #df['Day']=atu['Day']
-    df=df.sort_values(by=['IdxToSXY','Year','Month','Day'])    
+    n=atu['Year'].size+50000
+    fl=np.zeros(50000)
     
-    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\atu_Summary.xlsx',index=False)
+    d={}
+    d['IdxToSXY']=np.append(atu['IdxToSXY'],fl)
+    d['ID_Multipolygon']=np.append(atu['IdxToSXY'],fl)
+    d['Year']=np.append(atu['Year'],fl)
+    d['Month']=np.append(atu['Month'],fl)
+    d['OPENING_ID']=np.append(atu['OPENING_ID'],fl)
+    d['Activity_Type']=np.array(['empty' for _ in range(n)],dtype=object)  
+    
+    d['AEF_ATU']=np.zeros(n)    
+    for i in range(len(atu_multipolygons)):
+        ind1=np.where(sxy['ID_atu_multipolygons']==i)[0]
+        nxy=ind1.size
+        A=atu_multipolygons[i]['ACTUAL_TREATMENT_AREA']
+        for j in range(ind1.size):
+            ind2=np.where(atu['IdxToSXY']==ind1[j])[0]
+            d['AEF_ATU'][ind2]=np.round(A/nxy,3)
+            d['ID_Multipolygon'][ind2]=i
+    
+        
+    d['FIA_PROJECT_ID']=np.array(['empty' for _ in range(n)],dtype=object)    
+    u=np.unique(atu['FIA_PROJECT_ID'])
+    for i in range(u.size):
+        ind=np.where(atu['FIA_PROJECT_ID']==u[i])[0]
+        d['FIA_PROJECT_ID'][ind]=cbu.lut_n2s(meta['LUT']['ATU']['FIA_PROJECT_ID'],u[i])    
+    #d['FIA_PROJECT_ID']=np.array(['empty' for _ in range(n)],dtype=object)    
+    #for i in range(atu['Year'].size):
+    #    d['FIA_PROJECT_ID'][i]=cbu.lut_n2s(meta['LUT']['ATU']['FIA_PROJECT_ID'],atu['FIA_PROJECT_ID'][i])[0]   
+        
+    d['FSC']=np.array(['empty' for _ in range(n)],dtype=object)    
+    for i in range(atu['Year'].size):
+        d['FSC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]    
+    d['DistCD']=np.array(['empty' for _ in range(n)],dtype=object)    
+    for i in range(atu['Year'].size):
+        d['DistCD'][i]=cbu.lut_n2s(meta['LUT']['ATU']['DISTURBANCE_CODE'],atu['DISTURBANCE_CODE'][i])[0]    
+    d['SBC']=np.array(['empty' for _ in range(n)],dtype=object)
+    for i in range(atu['Year'].size):
+        d['SBC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][i])[0]
+    d['SMC']=np.array(['empty' for _ in range(n)],dtype=object)
+    for i in range(atu['Year'].size):
+        d['SMC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][i])[0]
+    d['STC']=np.array(['empty' for _ in range(n)],dtype=object)
+    for i in range(atu['Year'].size):
+        d['STC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]    
+    
+    d['BGCz']=np.array(['empty' for _ in range(n)],dtype=object)
+    d['BGCsz']=np.array(['empty' for _ in range(n)],dtype=object)
+    d['BGCv']=np.array(['empty' for _ in range(n)],dtype=object)
+    
+    d['SI_FCinv']=np.zeros(n)
+    d['I_SPH_FCinv']=np.zeros(n)
+    d['I_Spc1_CD']=np.array(['empty' for _ in range(n)],dtype=object)
+    d['I_Spc2_CD']=np.array(['empty' for _ in range(n)],dtype=object)
+    
+    d['Pl_SPH']=np.append(np.round(atu['ACTUAL_PLANTED_NUMBER']/atu['ACTUAL_TREATMENT_AREA']),fl)
+    ind=np.where( (d['SBC']!='PL') & (d['STC']!='PL') )[0]
+    d['Pl_SPH'][ind]=0    
+    
+    cnt=atu['Year'].size
+    for i in range(fcinv['IdxToSXY'].size):
+        ind=np.where( (d['IdxToSXY']==fcinv['IdxToSXY'][i]) & (d['OPENING_ID']==fcinv['OPENING_ID'][i]) & (d['Year']==fcinv['REFERENCE_YEAR'][i]) )[0]
+        if ind.size>0:
+            for j in range(ind.size):
+                d['I_SPH_FCinv'][ind[j]]=fcinv['I_TOTAL_STEMS_PER_HA'][i]
+                d['SI_FCinv'][ind[j]]=fcinv['SITE_INDEX'][i]
+                d['I_Spc1_CD'][ind[j]]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])
+                d['I_Spc2_CD'][ind[j]]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])
+        else:
+            d['IdxToSXY'][cnt]=fcinv['IdxToSXY'][i]
+            d['Year'][cnt]=fcinv['REFERENCE_YEAR'][i]
+            d['OPENING_ID'][cnt]=fcinv['OPENING_ID'][i]
+            d['I_SPH_FCinv'][cnt]=fcinv['I_TOTAL_STEMS_PER_HA'][i]
+            d['SI_FCinv'][cnt]=fcinv['SITE_INDEX'][i]
+            d['I_Spc1_CD'][cnt]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])
+            d['I_Spc2_CD'][cnt]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])
+            cnt=cnt+1
+    
+    # Get rid of empty values
+    for k in d.keys():
+        d[k]=d[k][0:cnt]
+      
+    # Add VRI
+    for i in range(d['IdxToSXY'].size):
+        ind=np.where(vri['IdxToSXY']==d['IdxToSXY'][i])[0]
+        d['BGCz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],vri['BEC_ZONE_CODE'][ind[0]])[0]
+        d['BGCsz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind[0]])[0]
+        d['BGCv'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind[0]])[0]    
+        
+    # Add planting info    
+    for i in range(20):
+        d['Pl_Spc' + str(i+1) + '_CD']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
+        d['Pl_Spc' + str(i+1) + '_Pct']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
+        d['Pl_Spc' + str(i+1) + '_NumTree']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
+        d['Pl_Spc' + str(i+1) + '_SeedLot']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
+    
+    for i in range(d['IdxToSXY'].size):
+        if (d['SBC'][i]!='PL') & (d['STC'][i]!='PL'):
+            continue        
+        ind=np.where( (pl['IdxToSXY']==d['IdxToSXY'][i]) & (pl['OPENING_ID']==d['OPENING_ID'][i]) & (pl['Year']==d['Year'][i]) )[0]
+        tot_pl=np.sum(pl['NUMBER_PLANTED'][ind])
+        if ind.size>0:
+            Ord=np.flip(np.argsort(pl['NUMBER_PLANTED'][ind]))
+            for j in range(ind.size):
+                if j>19:
+                    continue
+                ind0=ind[Ord[j]]
+                d['Pl_Spc' + str(j+1) + '_CD'][i]=cbu.lut_n2s(meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'],pl['SILV_TREE_SPECIES_CODE'][ind0])[0]
+                d['Pl_Spc' + str(j+1) + '_Pct'][i]=np.round(pl['NUMBER_PLANTED'][ind0]/tot_pl*100)
+                d['Pl_Spc' + str(j+1) + '_NumTree'][i]=pl['NUMBER_PLANTED'][ind0]
+                d['Pl_Spc' + str(j+1) + '_SeedLot'][i]=pl['SEEDLOT_NUMBER'][ind0]
+    
+    d['Activity_Type']=np.array(['No Match' for _ in range(d['IdxToSXY'].size)],dtype=object)  
+    u=np.unique(d['FIA_PROJECT_ID'])
+    for i in range(u.size):
+        ind1=np.where(d['FIA_PROJECT_ID']==u[i])[0]
+        if ind1.size==0:
+            continue
+        ind2=np.where(dAdmin['PP Number']==u[i])[0]
+        if ind2.size==0:
+            continue
+        u2=np.unique(d['IdxToSXY'][ind1])
+        for j in range(u2.size):
+            ind3=np.where(d['IdxToSXY']==u2[j])[0]
+            for k in range(ind3.size):
+                d['Activity_Type'][ind3[k]]=dAdmin['Project Type'][ind2[0]]
+        
+    df=pd.DataFrame.from_dict(d)    
+    df=df.sort_values(by=['IdxToSXY','Year','Month'])
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummarySiteAndEventsByGridCell.xlsx',index=False)
     
     return
 
+#%% Timber harvesting land base 
+
+def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
+    
+    #------------------------------------------------------------------------------
+    # Initialize THLB flags (THLB=1,Non-THLB=0)
+    #------------------------------------------------------------------------------
+
+    # Initially assume everything is in the THLB
+    thlb_flag_Actual=np.ones((meta['N Time'],meta['N Stand Full']))
+
+    # Define second THLB with areas that have been removed due to value diversification
+    thlb_flag_Baseline=thlb_flag_Actual.copy()
+
+    # Index to stands that are uneconomic
+    iUneconomic=np.where(ba['SI']<=5)[0]
+
+    # Remove uneconomic stands from THLB
+    thlb_flag_Actual[:,iUneconomic]=0
+    thlb_flag_Baseline[:,iUneconomic]=0
+
+    # Idenify stands that have been harvested
+    has_been_harvested=np.zeros(meta['N Stand Full'])
+    for i in range(len(dmec)):
+        ind=np.where(dmec[i]['ID_Type']==meta['LUT']['Dist']['Harvest'])[0]
+        if ind.size>0:
+            has_been_harvested[i]=1
+
+    # Index to stands that have not been harvested
+    iNoHarv=np.where( (has_been_harvested==0) & (ba['SI']>5) )[0]
+
+    # Use the ratio of THLB to non-THLB as an indicator of what will be harvested
+    # among remaining primary forest
+    ratio_thlb=22/55 # ratio of THLB to total forest (SOF)
+
+    corr=iUneconomic.size/meta['N Stand Full']
+
+    # Probability of evading harvest
+    if iNoHarv.size>0:
+        p_evade=(1-ratio_thlb-corr)*(meta['N Stand Full']/iNoHarv.size)
+    else:
+        p_evade=(1-ratio_thlb-corr)
+
+    # Random prediction of whether it will evade harvesting
+    iRem=np.where(np.random.random(iNoHarv.size)<p_evade)[0]
+    thlb_flag_Actual[:,iNoHarv[iRem]]=0
+    thlb_flag_Baseline[:,iNoHarv[iRem]]=0
+
+    # np.sum(thlb_flag_Actual[0,:])/meta['N Stand Full']
+
+    #------------------------------------------------------------------------------
+    # Define the year of transition from THLB to non-THLB for specific LU types
+    #------------------------------------------------------------------------------
+
+    # Look at abundance of each LUL type
+    d=meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].copy()
+    for k in meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].keys():
+        ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][k]) )[0]
+        d[k]=ind.size
+    ds={k: v for k,v in sorted(d.items(), key=lambda item: item[1])}
+
+    # List of legal land use plan types that transition to conservatoin (this needs to be vetted by experts)
+    ListCon=['Visually Sensitive Areas','Connectivity Corridors','Scenic Areas','Caribou Winter Habitat Zones',
+      'Tourism Areas','Visual Quality','High Value Grizzly Bear Habitat','No Timber Harvesting Areas','Landscape Corridors',
+      'Critical Deer Winter Range','Sensitive Watershed','Water Management Units','High Value Wetlands for Moose','Telkwa Caribou Recovery Area',
+      'SRMZ3:Caribou Migration Corridor Sub-Zone','Caribou Migration Corridor','High Biodiversity Emphasis Areas','Scenic Corridors']
+
+    # Calculate area that will transition to non-THLB
+    A=0
+    
+    # Add regional land use plans    
+    for i in range(len(ListCon)):
+        ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][ListCon[i]]) )[0]
+        A=A+ind.size
+    
+    # Add parks
+    A=A+park['IdxToSXY'].size
+    
+    # Add legal OGMAs
+    A=A+ogmal['IdxToSXY'].size
+    
+    #print(A)
+    print(str(A/meta['N Stand Full']*100) + '% of the sample transitioned to non-THLB.')
+
+    # Look at reserves
+    N={}
+    for k in meta['LUT']['FC_R']['SILV_RESERVE_CODE'].keys():
+        ind=np.where(fcres['SILV_RESERVE_CODE']==meta['LUT']['FC_R']['SILV_RESERVE_CODE'][k])[0]
+        N[k]=ind.size
+
+    # Initialize year of transition
+    thlb_YearTransitionOut=np.zeros(meta['N Stand Full'])
+
+    # Define year of transition from legal land use plan objectives
+    for i in range(len(ListCon)):
+        ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][ListCon[i]]) )[0]
+        thlb_YearTransitionOut[lul['IdxToSXY'][ind]]=2010
+
+    # Define year of transition from parks
+    thlb_YearTransitionOut[park['IdxToSXY']]=1995
+
+    # Define year of transition from legal old-growth OGMAs
+    thlb_YearTransitionOut[ogmal['IdxToSXY']]=2010
+
+    # Apply transition to actual THLB
+    for j in range(thlb_YearTransitionOut.size):
+        if thlb_YearTransitionOut[j]>0:
+            it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
+            thlb_flag_Actual[it,j]=0
+
+    # Adjust the baseline so that simulated harvesting between 1995 and 2020 only
+    # occurs in areas where the THLB was affected by value diversification
+    for year in range(1990,2021,1):
+        iT=np.where(meta['Year']==year)[0]
+        iS=np.where( (thlb_flag_Baseline[iT,:]==1) & (thlb_flag_Actual[iT,:]==1) )[1]
+        thlb_flag_Baseline[iT,iS]=0
+
+    flg=0
+    if flg==1:
+        plt.figure(2)
+        plt.plot(np.sum(thlb_flag_Actual,axis=1)/meta['N Stand Full'])
+        plt.plot(np.sum(thlb_flag_Baseline,axis=1)/meta['N Stand Full'],'--')
+        
+    return thlb_flag_Actual,thlb_flag_Baseline

@@ -4,7 +4,7 @@
 import numpy as np
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 from fcgadgets.actions.nutrient_application import update_nutrient_status 
-from fcgadgets.taz import general_stat_models as gensm
+from fcgadgets.taz import aspatial_stat_models as asm
 
 #%% Define class objects
 
@@ -1161,7 +1161,7 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
     
     # Predict stand breakup (on the fly)
     if meta['Simulate breakup on the fly']=='On':
-        vi=gensm.PredictStandBreakup_OnTheFly(meta,vi,iT,vo['A'][iT,:])    
+        vi=asm.PredictStandBreakup_OnTheFly(meta,vi,iT,vo['A'][iT,:])    
     
     # Predict historical harvesting (on the fly)
     if (meta['Simulate harvesting on the fly (historical)']=='On'):
@@ -1169,15 +1169,15 @@ def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
             if vi['tv'][iT]<=meta['Year Project']:
                 Period='Historical'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period)
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period)
     
     # Predict future harvesting (on the fly)        
     if (meta['Simulate harvesting on the fly (future)']=='On'):
         if meta['Scenario Switch']['Dist on Fly']['Harvesting (future)'][meta['iScn']]==1:
-            if vi['tv'][iT]>meta['Year Project']:
+            if vi['tv'][iT]>=meta['Scenario Switch']['Dist on Fly']['Harvesting (future) Year Start'][meta['iScn']]:
                 Period='Future'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=gensm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period)        
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period)        
     
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta['N Stand'])

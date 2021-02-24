@@ -29,7 +29,8 @@ project_name='FCI_RollupFCI_Inv'
 
 meta={}
 meta['Paths']={}
-meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
@@ -40,7 +41,11 @@ meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 #%% Define subsampling frequency
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
 
-meta['subsampling_frequency']=0.05
+# Fert, reforestation
+#meta['subsampling_frequency']=0.05
+
+# FCI from inventory
+meta['subsampling_frequency']=0.25
 
 #%% Save metadata
 
@@ -51,7 +56,7 @@ gu.opickle(meta['Paths']['Project'] + '\\Inputs\\MetaData.pkl',meta)
 #FES recipients sometimes use the funding source code, "FES", for FCI-funded
 #projects. To include them in the query, import the FCI project list.
 
-flg=0
+flg=1
 if flg==1:
     meta['Paths']['FCI DB File']='Z:\!Workgrp\Forest Carbon\Forest Carbon Initiative\Program\RollupProjects\Live Run\FCI_RollupProjects_01_Admin.xlsx'
     df_FCI=pd.read_excel(meta['Paths']['FCI DB File'],sheet_name='Sheet1')

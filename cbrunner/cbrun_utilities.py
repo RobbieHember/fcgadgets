@@ -8,7 +8,7 @@ import gc as garc
 import time
 from fcgadgets.utilities import utilities_general as gu
 from fcgadgets.utilities import utilities_inventory as invu
-from fcgadgets.taz import wildfire_stat_models as wfsm
+from fcgadgets.taz import aspatial_stat_models as asm
 
 #%% CONVERT LUT NUMBER TO STRING NAME
 
@@ -164,7 +164,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     # Normally, this would be run here, but this approach assumes
                     # that stands have been swapped with ensembles (when running
                     # from spreadsheet). Instead, it is being re-run for each stand
-                    wf_sim=wfsm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'],method_occ)  
+                    wf_sim=asm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'],method_occ)  
             
                 for iS in range(N_StandsInBatch): 
                     
@@ -340,29 +340,29 @@ def FixFileNum(ind):
         indStrFixed='0' + indStrFixed
     return indStrFixed
 
-#%% Import look-up tables
-
-def ImportLUTs(pthin):
-    
-    # Open connection to parameter database    
-    par=gu.ipickle(pthin + '\\Parameters\\Parameters.pkl')
-    
-    # Import distubance type        
-    LUT_Dist={}
-    for i in range(len(par['Disturbances']['Name'])):
-        LUT_Dist[par['Disturbances']['Name'][i]]=par['Disturbances']['ID'][i]
-    
-    # BGC zone     
-    LUT_BGC_Zone={}
-    for i in range(len(par['BGC_ZONE']['CODE_BGC_ZONE'])):
-        LUT_BGC_Zone[par['BGC_ZONE']['CODE_BGC_ZONE'][i]]=par['BGC_ZONE']['ID_BGC_ZONE'][i]
-    
-    # Species
-    LUT_Spc={}
-    for i in range(len(par['SRS']['SRS_CD'])):
-        LUT_Spc[par['SRS']['SRS_CD'][i]]=par['SRS']['SRS_ID'][i]
-    
-    return LUT_Dist,LUT_Spc,LUT_BGC_Zone
+##%% Import look-up tables
+#
+#def ImportLUTs(pthin):
+#    
+#    # Open connection to parameter database    
+#    par=gu.ipickle(pthin + '\\Parameters\\Parameters.pkl')
+#    
+#    # Import distubance type        
+#    LUT_Dist={}
+#    for i in range(len(par['Disturbances']['Name'])):
+#        LUT_Dist[par['Disturbances']['Name'][i]]=par['Disturbances']['ID'][i]
+#    
+#    # BGC zone     
+#    LUT_BGC_Zone={}
+#    for i in range(len(par['BGC_ZONE']['CODE_BGC_ZONE'])):
+#        LUT_BGC_Zone[par['BGC_ZONE']['CODE_BGC_ZONE'][i]]=par['BGC_ZONE']['ID_BGC_ZONE'][i]
+#    
+#    # Species
+#    LUT_Spc={}
+#    for i in range(len(par['SRS']['SRS_CD'])):
+#        LUT_Spc[par['SRS']['SRS_CD'][i]]=par['SRS']['SRS_ID'][i]
+#    
+#    return LUT_Dist,LUT_Spc,LUT_BGC_Zone
 
 #%% Configure project
 
@@ -380,13 +380,15 @@ def ImportProjectConfig(meta):
     # Import look-up tables
     #--------------------------------------------------------------------------
     
-    meta['LUT']={}
+    meta=invu.Load_LUTs(meta)
     
-    LUT_Dist,LUT_Spc,LUT_BGC_Zone=ImportLUTs(meta['Paths']['Model Code'])
-    
-    meta['LUT']['Dist']=LUT_Dist
-    meta['LUT']['Spc']=LUT_Spc
-    meta['LUT']['BGC Zone']=LUT_BGC_Zone
+#    meta['LUT']={}
+#    
+#    LUT_Dist,LUT_Spc,LUT_BGC_Zone=ImportLUTs(meta['Paths']['Model Code'])
+#    
+#    meta['LUT']['Dist']=LUT_Dist
+#    meta['LUT']['Spc']=LUT_Spc
+#    meta['LUT']['BGC Zone']=LUT_BGC_Zone
 
     #--------------------------------------------------------------------------
     # Define pool names
@@ -1735,7 +1737,7 @@ def PrepareInventoryFromSpreadsheet(meta):
         
             # BEC zone
             inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype=np.int)
-            inv['ID_BECZ'][0,:]=meta['LUT']['BGC Zone'][meta['Scenario'][iScn]['BGC Zone Code']]
+            inv['ID_BECZ'][0,:]=meta['LUT']['VRI']['BEC_ZONE_CODE'][meta['Scenario'][iScn]['BGC Zone Code']]
     
             # Timber harvesting landbase (1=yes, 0=no)
             inv['THLB']=1*np.ones((1,N_StandsInBatch))

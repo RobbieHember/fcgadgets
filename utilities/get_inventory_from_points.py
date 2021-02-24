@@ -52,6 +52,7 @@ sfreq=100
 # Extract subgrid
 zTSA['X']=zTSA['X'][0::sfreq,0::sfreq]
 zTSA['Y']=zTSA['Y'][0::sfreq,0::sfreq]
+zTSA['m'],zTSA['n']=zTSA['X'].shape
 zTSA['Data']=zTSA['Data'][0::sfreq,0::sfreq]
 zLC2['Data']=zLC2['Data'][0::sfreq,0::sfreq]
 
@@ -63,6 +64,15 @@ iIreg=np.where( (zLC2['Data']==4) )
 # Treed, Williams Lake TSA only
 #iTSA=lut_tsa.loc[lut_tsa.Name=='Williams Lake TSA','VALUE'].values
 #ind=np.where( (zLC2.Data==4) & (zTSA.Data==iTSA) )
+
+# Save grid
+z=zTSA.copy()
+z['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
+z['Data'][iIreg]=1 # Treed = 1
+gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\GridSXY.tiff')
+plt.matshow(z['Data'])
+
+#%%
 
 # Apply filters to BC1ha grid 
 sxy={}
