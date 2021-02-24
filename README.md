@@ -23,31 +23,31 @@ The annual net flux of GHGs between the forest sector and the atmosphere is esti
 the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and nutrient applications. 
 ![image info](./images/fcgadgets_annual_processes.png)
 
-The model achieves this with a set of plug-and-play functions, currently consisting of:
-### cbrun_annproc.py.Biomass_FromTIPSYorTASS: 
+The model achieves this with a set of plug-and-play functions fund in **cbrun_annproc.py**:
+### Biomass_FromTIPSYorTASS: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling).
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 * Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period will match that originally predicted by the GY model.
-### cbrun_annproc.py.Biomass_FromSawtooth:
+### Biomass_FromSawtooth:
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
 * Driven by equations of annual aboveground biomass growth, annual probability of recruitment, and annual probability of mortality
 * Equations are fitted against species/region samples
-### cbrun_annproc.py.DOM_FromCBM08: 
+### DOM_FromCBM08: 
 * Simulates cycling of organic carbon through:
 	* Dead wood (snags and coarse woody debris);
 	* Litter (organic soil horizon); 
 	* Soil (mineral soil horizon);
 	* Felled & piled materials
 * Loosely based on methods described by Kurz et al. (2009)
-### cbrun_annproc.py.DisturbanceAndManagement: 
+### Events_FromTaz: 
 * This method imposes changes caused by natural disturbances and management events
 * All events are defined by an event ID, decimal year, mortality factor, growth factor, and the ID of the growth curve that represents the new stand
 * It is driven by the event chronology, which has two potential sources:
 	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 
-### cbrun_annproc.py.HWP_FromDymond12: 
+### HWP_FromDymond12: 
 * Representation of teh annual GHG balance for fibre that is removed from forest ecosystems 
 * This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
@@ -72,9 +72,6 @@ therefore built around running and comparing multiple scenarios.
 The **cbrunner** model adopts a probabilistic framework to accommodate processes with both deterministic and random components, as well as uncertainty analysis. Multiple ensembles
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
-
-### Identify Event Types from RESULTS Codes
-The **cbrunner** model relies on distinct event types to represent harvesting and silviculture. The crosswalk between **cbrunner** event types and RESULTS silviculture codes is given in **cbrun_utilities.py.QueryResultsActivity**.
 
 ### Working with Growth & Yield Models
 The **cbrunner** model can be driven with output from TASS/TIPSY growth and yield (GY) modelling applications.
@@ -128,6 +125,7 @@ The LUTs for each inventory layer are stored as pickle files.
 * **Clean_Species_Composition**: There are frequent irregularities and species in the inventory that are not recognized by **BatchTIPSY.exe**. This function will clean the species inventory estimates identified by forest inventory layers.
 * **CreateBestAvailableInventory**: The script then compiled a “best available” version of many inventory variables that were used to parameterize BatchTIPSY.exe. Unrecognized species codes were all converted to those recognized by BatchTIPSY.exe. For baseline scenarios, the best-available species composition was compiled first from any previous planting information (generally absent), then from the forest cover silviculture layer, then from the forest cover inventory layer, then from VRI, and finally from regional assumptions. For project scenarios with planting, species composition was drawn from the planting layers. For non-planting project scenarios, selection rules followed that of the baseline scenario. In order of preference, best-available site index was created from: (1) Site Productivity Layer; (2) Forest Cover Inventory layer; (3) Vegetation Resource Inventory layer. Genetic worth and selection age were commonly provided for a large list of unique combinations of species and genetic worth than can be applied in BatchTIPSY.exe. Final estimates of genetic worth for up to five planted species were calculated by weighting each entry in the planting layer by the number of trees planted.
 * **ExtractUniqueGrowthCurves**: Building growth curves for each grid cell is typically unnecessary when there is redundancy in species composition and other stand attributes. For example, although the FCI completed projects could include 33,000 grid cells, there may have only be 5,000 unique stand types. Unique stand types were identified and parameters for each stand type were exported to GrowthCurvesTIPSY_Parameters.xlsx. Then fcgadgets.cbrunner.cbrun_utilities.py.BuildTIPSYInputs was used to build the data input file readable by BatchTIPSY.exe. Then BatchTIPSY.exe was run. The inventory summaries are saved to pickle file. The DMECs were then saved to pickle file. At this point, FIZ was used to specify the disturbance return intervals of coastal and interior projects during spin up. Growth curves were then imported from the BatchTIPSY.exe output file and converted to the format required for fcgadgets.cbrunner, and then finally saved to pickle file. Finally, the script executed the function, fcgadgets.cbrunner.cbrun.py.RunProject, to simulate the results.
+* Use **QueryResultsActivit** to identify Event Types from RESULTS codes. The **cbrunner** model relies on distinct event types to represent harvesting and silviculture. The crosswalk between **cbrunner** event types and RESULTS silviculture codes is given in **cbrun_utilities.py.y**.
 
 ### utilities_general.py
 This module contains general utilities for workflow in Python.

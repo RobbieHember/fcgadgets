@@ -1155,9 +1155,9 @@ def DOM_like_CBM08(iT,vi,vo,psl,iEP,meta):
     
     return vo
 
-#%% Disturbance and management events
+#%% Disturbance and management events (from TAZ)
 
-def DisturbanceAndManagementEvents(iT,vi,vo,psl,meta,iEP):
+def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
     
     # Predict stand breakup (on the fly)
     if meta['Simulate breakup on the fly']=='On':
