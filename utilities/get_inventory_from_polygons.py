@@ -154,7 +154,7 @@ with fiona.open(path,layer=lyr_nam) as source:
     for feat in source:
             
         # Extract attributes and geometry
-        prp=feat['properties']
+        prp=feat['properties'].copy()
         
         #if (prp['OPENING_ID']==1462976) & (prp['SILV_BASE_CODE']=='PL'):
         #    break
@@ -234,57 +234,67 @@ with fiona.open(path,layer=lyr_nam) as source:
         if (geom==None):               
                     
             # Check to see if the opening is listed in the AT missing dictionary
-            indMis=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
+            indMis=np.where( (atu_mis['OPENING_ID']==prp['OPENING_ID']) & (atu_mis['SpatialMissing']==1) & (atu_mis['Flag Included']==1) )[0]
                     
             if indMis.size>0:
-                     
-                if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']=='PL') & (prp['SILV_METHOD_CODE']=='CTAIN'):
-                            
-                    # Convert features to fiona-like dictionary and combine multipolygons
-                    geom={}
-                    geom['coordinates']=[]
+                
+                geom={}
+                geom['coordinates']=[]
+                
+                if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_METHOD_CODE']=='CTAIN'):
+                
                     feat_fc=[]
                     for iMis in range(indMis.size):
                         geo0=at_geo_from_fc[indMis[iMis]]
-                        print(geo0)
                         if geo0!=None:
                             for i in range(len(geo0)):
                                 if type(geo0[i])==dict:
                                     geo1=geo0[i]['coordinates']
                                     geom['coordinates'].append(geo1[0])
-                                    feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
-                                    feat_fc.append(feat0)
+                                    # Convert features to fiona-like dictionary and combine multipolygons 
+                                    #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
+                                    #feat_fc.append(feat0)
                                 else:
                                     if geo0[i]==None:
                                         continue
                                     for j in range(len(geo0[i])):
                                         geo1=geo0[i][j]['coordinates']
                                         geom['coordinates'].append(geo1[0])
-                                        feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
-                                        feat_fc.append(feat0)
+                                        #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
+                                        #feat_fc.append(feat0)
                     flg_geom_from_fc=1
-                        
-                    # Plot
+                    
+                    # Plot (not working)
                     flg=0
-                    if flg==1:
-                        gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
+                    if flg==1:                        
                         plt.close('all')
                         fig,ax=plt.subplots(1)
-                        feat_op={}; feat_op['properties']=prp; 
-                        for k in range(indMis.size):
-                            if at_geo_from_op[indMis[k]]!=None:
-                                feat_op['geometry']=at_geo_from_op[indMis[k]]
-                                break
-                        gdf_op=gpd.GeoDataFrame.from_features([feat_op])
-                        gdf_op.plot(ax=ax,facecolor='None',linewidth=4,edgecolor='k')
-                        gdf_fc.plot(ax=ax,facecolor='None',linewidth=1.25,edgecolor='r',linestyle='--')
+                        gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
+                        gdf_fc.plot(ax=ax,facecolor='None',linewidth=1.25,edgecolor='r',linestyle='--')          
                 
                 else:
-                            
-                    # Not a planting, use spatial from opening
-                    geom=at_geo_from_op[indMis[k]]
-                    flg_geom_from_op=1
                     
+                    feat_op=[]
+                    for iMis in range(indMis.size):
+                        geo0=at_geo_from_op[indMis[iMis]]
+                        if geo0!=None:
+                            for i in range(len(geo0)):
+                                if type(geo0[i])==dict:
+                                    geo1=geo0[i]['coordinates']
+                                    geom['coordinates'].append(geo1[0])
+                                    #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
+                                    #feat_op.append(feat0)
+                                else:
+                                    if geo0[i]==None:
+                                        continue
+                                    for j in range(len(geo0[i])):
+                                        geo1=geo0[i][j]['coordinates']
+                                        geom['coordinates'].append(geo1[0])
+                                        #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
+                                        #feat_op.append(feat0)
+                    flg_geom_from_op=1                    
+                    
+                    # Plot (not working)
                     #gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
                     #plt.close('all')
                     #fig,ax=plt.subplots(1)
@@ -379,6 +389,9 @@ with fiona.open(path,layer=lyr_nam) as source:
             
         # Add polygon info to atu query polygon list
         prp['polys']=polys
+        
+        #for i in range(len(polys)):
+        #    plt.plot(polys[i]['x'],polys[i]['y'],'b--')
         
         # Extract grid cells that intersect the AT polygons
         for iPoly in range(len(polys)):
@@ -626,19 +639,83 @@ for iLyr in range(len(InvLyrInfo)):
             prp=feat['properties']
             geom=feat['geometry']
             
-            # Fill missing AT spatial with OP spatial            
-            if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):
+            # Populate missing ATU layer geometry with geometry from 
+            # OPENING or FC layer where possible.
+            flg_geom_from_op=0
+            flg_geom_from_fc=0
+            if (geom==None) & (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):
+                    
+                # Check to see if the opening is listed in the AT missing dictionary
+                indMis=np.where( (atu_mis['OPENING_ID']==prp['OPENING_ID']) & (atu_mis['SpatialMissing']==1) & (atu_mis['Flag Included']==1) )[0]
+                    
+                if indMis.size>0:
                 
-                # Populate missing ATU layer geometry with geometry from 
-                # OPENING layer where possible.
-                flg_geom_from_op=0
-                if (geom==None):
-                    ind=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
-                    if ind.size>0:
-                        geom=at_geo_from_op[ind[0]]
-                        flg_geom_from_op=1
+                    geom={}
+                    geom['coordinates']=[]
+                
+                    if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_METHOD_CODE']=='CTAIN'):
+                
+                        feat_fc=[]
+                        for iMis in range(indMis.size):
+                            geo0=at_geo_from_fc[indMis[iMis]]
+                            if geo0!=None:
+                                for i in range(len(geo0)):
+                                    if type(geo0[i])==dict:
+                                        geo1=geo0[i]['coordinates']
+                                        geom['coordinates'].append(geo1[0])
+                                        # Convert features to fiona-like dictionary and combine multipolygons 
+                                        #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
+                                        #feat_fc.append(feat0)
+                                    else:
+                                        if geo0[i]==None:
+                                            continue
+                                        for j in range(len(geo0[i])):
+                                            geo1=geo0[i][j]['coordinates']
+                                            geom['coordinates'].append(geo1[0])
+                                            #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
+                                            #feat_fc.append(feat0)
+                        flg_geom_from_fc=1
+                
                     else:
-                        print('Checked for opening spatial, but no match')
+                    
+                        feat_op=[]
+                        for iMis in range(indMis.size):
+                            geo0=at_geo_from_op[indMis[iMis]]
+                            if geo0!=None:
+                                for i in range(len(geo0)):
+                                    if type(geo0[i])==dict:
+                                        geo1=geo0[i]['coordinates']
+                                        geom['coordinates'].append(geo1[0])
+                                        #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
+                                        #feat_op.append(feat0)
+                                    else:
+                                        if geo0[i]==None:
+                                            continue
+                                        for j in range(len(geo0[i])):
+                                            geo1=geo0[i][j]['coordinates']
+                                            geom['coordinates'].append(geo1[0])
+                                            #feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
+                                            #feat_op.append(feat0)
+                        flg_geom_from_op=1
+                    
+                else:
+                        
+                    print('Missing spatial could not be recovered')
+            
+            # OLD:
+            # Fill missing AT spatial with OP spatial            
+#            if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):
+#                
+#                # Populate missing ATU layer geometry with geometry from 
+#                # OPENING layer where possible.
+#                flg_geom_from_op=0
+#                if (geom==None):
+#                    ind=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
+#                    if ind.size>0:
+#                        geom=at_geo_from_op[ind[0]]
+#                        flg_geom_from_op=1
+#                    else:
+#                        print('Checked for opening spatial, but no match')
             
             # Only continue if spatial info exists
             if (geom==None) | (geom==[]):

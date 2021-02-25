@@ -73,7 +73,7 @@ The **cbrunner** model adopts a probabilistic framework to accommodate processes
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
-### Working with Growth & Yield Models
+### Working with Growth & Yield models
 The **cbrunner** model can be driven with output from TASS/TIPSY growth and yield (GY) modelling applications.
 * Prepare input parameters that are required to run BatchTIPSY.exe in a spreadsheet with **cbrun_utilities.py.Write_BatchTIPSY_Input_Spreadsheet**
 * Convert the spreadsheet of input parameters to the format expected by BatchTIPSY.exe using **cbrun_utilities.py.Write_BatchTIPSY_Input_File**
@@ -81,7 +81,7 @@ The **cbrunner** model can be driven with output from TASS/TIPSY growth and yiel
 * Convert the output from TASS for use in cbrunner with **cbrun_utilities.py.GetTASSCurves**
 * Import GY curves into a work session with **cbrun_utilities.py.Import_BatchTIPSY_Output**
 
-### Analyze Model Output Statistics
+### Analyze model output statistics
 Once simulations are complete, use a series of functions to summarize the outputs.
 * Import simulation output variables for a given scenario, ensemble, and batch using **cbrun_utilities.py.LoadSingleOutputFile**
 * Import simulation output variables for a given scenario using **cbrun_utilities.py.LoadScenarioResults**
