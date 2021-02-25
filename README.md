@@ -96,9 +96,9 @@ The **cbrunner** model achieves comprehensive, granular representation of proces
 ## UTILITIES
 The **utilities** subpackage contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
-	* Sample of points (get_inventory_from_points.py)
-	* Sample of polygons (get_inventory_from_polygons.py)
-	* Tile or multi-tile project (get_inventory_for_tile.py)
+	* Sample of points
+	* Sample of polygons
+	* Tile or multi-tile project
 * Methods for processing spatial information from: 
 	* Vegetation Resource Inventory (VRI)
 	* Reporting Silviculture Updates and Land Status Tracking System (RESULTS)
@@ -175,10 +175,10 @@ Project workflow entails:
 11. Calculate GHG balance variables, including net sector greenhouse gas balance by calling the method CalculateGHGBalance.
 
 ## BIG PROJECTS
-Big projects are all run in a spatially explicit framework with the standard spatial reference system used for BC. The framework draws on vector geometry sources to simulate at:
-* Irregular point sample ("inventory from points"), or 
-* Sparse regular grid ("inventory from polygons"), or 
-* Continuous regular grid ("inventory for tile")
+Big projects are all run in a spatially explicit framework with the standard spatial reference system used for BC. The framework draws on vector geometry sources using modules from the **utilities** subpackage:
+* Use **get_inventory_from_points.py** to simulate the GHG balance for a sample of irreglularly distributed coordinates.
+* Use **get_inventory_from_polygons.py** to simulate the GHG balance over a sparse regular grid that has been draped over a list of polygons (e.g., treatment areas from RESULTS).
+* Use **get_inventory_for_tiles.py** to simuate the GHG balance over a continuous regular grid.
 
 All three approaches rely on an automated set of invenotry pre-processing scripts. 
 
