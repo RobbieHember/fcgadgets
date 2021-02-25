@@ -152,7 +152,7 @@ The **macgyver** module contains resources for representing effects of forest ma
 
 ## PROJECT WORKFLOW
 There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
-![image info](./images/fcgadgets_runoptions.png)
+![image info](./images/fcgadgets_project_types.png)
 
 ## SMALL PROJECTS (WITH JUPYTER NOTEBOOKS)
 Run in 30 minutes or its free! When projects consist of fewer than 20 stands, or 20 scenarios for one stand, **cbrunner** can be controlled by spreadsheet and run within Jupyter Notebooks. Assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
