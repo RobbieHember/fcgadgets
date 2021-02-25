@@ -74,20 +74,20 @@ occur when project configuration specifies a stochastic component to simulations
 probability of tree mortality or annual probability of tree recruitment. 
 
 ### Working with Growth & Yield models
-The **cbrunner** model can be driven with output from TASS/TIPSY growth and yield (GY) modelling applications.
-* Prepare input parameters that are required to run BatchTIPSY.exe in a spreadsheet with **cbrun_utilities.py.Write_BatchTIPSY_Input_Spreadsheet**
-* Convert the spreadsheet of input parameters to the format expected by BatchTIPSY.exe using **cbrun_utilities.py.Write_BatchTIPSY_Input_File**
-* Convert the output from BatchTIPSY.exe to pickle files that will be read by cbrunner using **cbrun_utilities.py.PostProcessBatchTIPSY**
-* Convert the output from TASS for use in cbrunner with **cbrun_utilities.py.GetTASSCurves**
-* Import GY curves into a work session with **cbrun_utilities.py.Import_BatchTIPSY_Output**
+The **cbrunner** model can be driven with output from TASS/TIPSY growth and yield (GY) modelling applications using automated functions in **cbrun_utilities.py**.
+* Prepare input parameters that are required to run BatchTIPSY.exe in a spreadsheet with **Write_BatchTIPSY_Input_Spreadsheet**
+* Convert the spreadsheet of input parameters to the format expected by BatchTIPSY.exe using **Write_BatchTIPSY_Input_File**
+* Convert the output from BatchTIPSY.exe to pickle files that will be read by cbrunner using **PostProcessBatchTIPSY**
+* Convert the output from TASS for use in cbrunner with **GetTASSCurves**
+* Import GY curves into a work session with **Import_BatchTIPSY_Output**
 
 ### Analyze model output statistics
-Once simulations are complete, use a series of functions to summarize the outputs.
-* Import simulation output variables for a given scenario, ensemble, and batch using **cbrun_utilities.py.LoadSingleOutputFile**
-* Import simulation output variables for a given scenario using **cbrun_utilities.py.LoadScenarioResults**
-* Calculate net forest sector greenhouse gas balance from simulation outputs using **cbrun_utilities.py.CalculateGHGBalance**
-* Calculate the mean and variance of ensemble simulations using **cbrun_utilities.py.ModelOutputStats**
-* When projects have been run for multi-polygon openings from RESULTS, model outputs can be summarized while preserving the exact treatment area that is specified for each multi-polygon using **cbrun_utilities.py.MosByMultipolygon**
+Once simulations are complete, use a series of functions in **cbrun_utilities.py** to summarize model output statistics (MOS).
+* Import simulation output variables for a given scenario, ensemble, and batch using **LoadSingleOutputFile**
+* Import simulation output variables for a given scenario using **LoadScenarioResults**
+* Calculate net forest sector greenhouse gas balance from simulation outputs using **CalculateGHGBalance**
+* Calculate the mean and variance of ensemble simulations using **ModelOutputStats**
+* When projects have been run for multi-polygon openings from RESULTS, model outputs can be summarized while preserving the exact treatment area that is specified for each multi-polygon using **MosByMultipolygon**
 
 ### Plug-and-play modularity
 The **cbrunner** model achieves comprehensive, granular representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.

@@ -1038,7 +1038,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],atu['FIA_PROJECT_ID'][iA])
                 dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],np.maximum(1,atu['ACTUAL_TREATMENT_AREA'][iA]))
                 dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],atu['ACTUAL_PLANTED_NUMBER'][iA])
-                dmec0=AddPlantingWithNoData(dmec0)                    
+                dmec0=AddPlantingWithNoData(dmec0)
     
         #--------------------------------------------------------------------------
         # Planting layer
@@ -2499,3 +2499,23 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
         plt.plot(np.sum(thlb_flag_Baseline,axis=1)/meta['N Stand Full'],'--')
         
     return thlb_flag_Actual,thlb_flag_Baseline
+
+#%% Load sparse geospatiatial inputs
+
+def LoadSparseGeospatialInputs(meta):
+    
+    sxy=gu.ipickle(meta['Paths']['Geospatial'] + '\\sxy.pkl')
+    atu=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
+    op=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_OPENING_SVW.pkl')
+    burnsev=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_BURN_SEVERITY_SP.pkl')
+    vri=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_COMP_LYR_R1_POLY.pkl')
+    fcinv=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_FOREST_COVER_INV_SVW.pkl')
+    pl=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl')
+    fire=gu.ipickle(meta['Paths']['Geospatial'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP.pkl')
+    pest=gu.ipickle(meta['Paths']['Geospatial'] + '\\PEST_INFESTATION_POLY.pkl')
+    cut=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP.pkl')
+    lul=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_PLAN_LEGAL_POLY_SVW.pkl')
+    park=gu.ipickle(meta['Paths']['Geospatial'] + '\\TA_PARK_ECORES_PA_SVW.pkl')
+    ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
+
+    return sxy,atu,op,burnsev,vri,fcinv,pl,fire,pest,cut,lul,park,ogmal
