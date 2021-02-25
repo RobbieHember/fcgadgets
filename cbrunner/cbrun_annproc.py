@@ -3,7 +3,7 @@
 
 import numpy as np
 from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcgadgets.actions.nutrient_application import update_nutrient_status 
+from fcgadgets.macgyver.nutrient_application import update_nutrient_status 
 from fcgadgets.taz import aspatial_stat_models as asm
 
 #%% Define class objects
