@@ -389,8 +389,8 @@ def DefineInventoryLayersAndVariables():
 def BuildForestInventoryLUTs(LayerInfo):
 
     t0=time.time()
-    for iLyr in range(2,4):
-    #for iLyr in range(len(LayerInfo)):    
+    #for iLyr in range(2,4):
+    for iLyr in range(len(LayerInfo)):    
 
         # Start counting time
         t_start=time.time()
@@ -708,13 +708,21 @@ def RecoverMissingATUGeometries(meta):
     atu_full['OPENING_ID']=np.zeros(L)
     atu_full['SpatialMissing']=np.zeros(L)
     atu_full['Flag Included']=np.zeros(L)
+    atu_full['Year']=np.zeros(L)
+    atu_full['ACTUAL_TREATMENT_AREA']=np.zeros(L)
+    atu_full['ACTIVITY_TREATMENT_UNIT_ID']=np.zeros(L)    
+    atu_full['SBC']=np.array(['empty' for _ in range(L)],dtype=object)
+    atu_full['SMC']=np.array(['empty' for _ in range(L)],dtype=object)
+    atu_full['STC']=np.array(['empty' for _ in range(L)],dtype=object)
     cnt=0
     with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
         for feat in source:
             
             prp=feat['properties']
             
+            # Opening ID
             atu_full['OPENING_ID'][cnt]=prp['OPENING_ID']
+            atu_full['ACTIVITY_TREATMENT_UNIT_ID'][cnt]=prp['ACTIVITY_TREATMENT_UNIT_ID']
             
             if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') | \
                 (prp['SILV_BASE_CODE']=='DS') & (prp['RESULTS_IND']=='Y') | \
@@ -722,209 +730,355 @@ def RecoverMissingATUGeometries(meta):
                 (prp['SILV_BASE_CODE']=='PC') & (prp['RESULTS_IND']=='Y'):
                 atu_full['Flag Included'][cnt]=1
             
+            # Is spatial missing
             if feat['geometry']==None:
                 atu_full['SpatialMissing'][cnt]=1      
             
-            cnt=cnt+1
-    
-    # Index to missing AT geometries
-    iMisAT=np.where(atu_full['SpatialMissing']==1)[0]
-    
-    print((time.time()-t0)/60)
-    
-#    #--------------------------------------------------------------------------
-#    # Get missing AT geometries from opening layer
-#    # 38 min
-#    # OLD SLOW
-#    #--------------------------------------------------------------------------
-#    
-#    t0=time.time()
-#    at_geo_from_op=[None]*atu_full['OPENING_ID'].size
-#    cnt=0
-#    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
-#        for feat in source:
-#            ind0=np.where( (atu_full['OPENING_ID']==feat['properties']['OPENING_ID']) & (atu_full['Flag Included']==1) & (atu_full['SpatialMissing']==1) )[0]
-#            for i in range(ind0.size):
-#                at_geo_from_op[ind0[i]]=feat['geometry']
-#            cnt=cnt+1
-#    print((time.time()-t0)/60)
-#    
-#    at_geo_from_op_bk=at_geo_from_op.copy()
-    
-    #--------------------------------------------------------------------------
-    # Get missing AT geometries from opening layer
-    # 17 min
-    #--------------------------------------------------------------------------
-    
-    t0=time.time()
-    
-    # Import a complete list of openings from the OPENING layer
-    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW')
-    L=len(lyr)
-    op_full={}
-    op_full['OPENING_ID']=np.zeros(L)
-    cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
-        for feat in source:
-            op_full['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
-            cnt=cnt+1
-
-    # Define indices to missing AT spatial openings and the same openings
-    # in the OPENING layer
-    # *** There are a small number of AT openings that are missing from the OP 
-    # layer ***
-    iMisOp=np.zeros(iMisAT.size)
-    mis=0
-    for i in range(iMisAT.size):
-        ind0=np.where(op_full['OPENING_ID']==atu_full['OPENING_ID'][iMisAT[i]])[0]
-        if ind0.size==0:
-            mis=mis+1
-            continue
-        iMisOp[i]=ind0
-
-    # Create a list that will contain the opening-layer geometries for the missing AT rows
-    at_geo_from_op=[None]*atu_full['OPENING_ID'].size
-    cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
-        for feat in source:
+            # SBC
+            atu_full['SBC'][cnt]=prp['SILV_BASE_CODE']
+            atu_full['STC'][cnt]=prp['SILV_TECHNIQUE_CODE']
+            atu_full['SMC'][cnt]=prp['SILV_METHOD_CODE']
             
-            ind0=np.where(iMisOp==cnt)[0]
+            # Area
+            if prp['ACTUAL_TREATMENT_AREA']!=None:
+                atu_full['ACTUAL_TREATMENT_AREA'][cnt]=prp['ACTUAL_TREATMENT_AREA']
             
-            if ind0.size==0:
-                continue
-            
-            #at_geo_from_op[iMisAT[ind0[0]]]=feat['geometry']
-            
-            for i in range(ind0.size):
-                if at_geo_from_op[ind0[i]]==None:
-                    at_geo_from_op[ind0[i]]=[feat['geometry']]
-                else:
-                    at_geo_from_op[ind0[i]].append(feat['geometry'])            
+            # Add year
+            Year=0
+            if prp['ATU_COMPLETION_DATE']!=None:
+                Year=int(prp['ATU_COMPLETION_DATE'][0:4])
+            atu_full['Year'][cnt]=Year
             
             # Update counter
             cnt=cnt+1
     
+    #--------------------------------------------------------------------------
+    # Extract missing AT geometries
+    #--------------------------------------------------------------------------
+    
+    # Index to missing and included entries
+    iMisAT=np.where( (atu_full['SpatialMissing']==1) & (atu_full['Flag Included']==1) )[0]
+    
+    atu_mis=atu_full.copy()
+    for k in atu_mis.keys():
+        atu_mis[k]=atu_mis[k][iMisAT]
+    
+    # Save
+    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl',atu_mis)
+    
     print((time.time()-t0)/60)
     
     #--------------------------------------------------------------------------
-    # Forest cover (only saving geometries for artificial status)
-    # Too big if you save all geometries
-    # Takes 71 min
-    # OLD
+    # Get missing AT geometries from opening layer
+    # 3 min
     #--------------------------------------------------------------------------
     
     t0=time.time()
     
-    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
-    L=len(lyr)    
-    at_geo_from_fc=[None]*atu_full['OPENING_ID'].size    
-    cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+    u=np.unique(atu_mis['OPENING_ID'])    
+    op_mis={}
+    for i in range(u.size):
+        op_mis[int(u[i])]=[]
+        
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
         for feat in source:
             
-            #if (feat['properties']['OPENING_ID']==1462976):
-            #    break
-            
-            #(feat['properties']['STOCKING_STATUS_CODE']!='IMM') | 
-            if (feat['properties']['STOCKING_TYPE_CODE']!='ART'):
+            if (feat['geometry']==None):
                 continue
             
-            ind0=np.where( (atu_full['OPENING_ID']==feat['properties']['OPENING_ID']) & (atu_full['Flag Included']==1) & (atu_full['SpatialMissing']==1) )[0]
-            if ind0.size==0:
+            id=int(feat['properties']['OPENING_ID'])
+            
+            # Index to AT entries that correspond to this feature and have missing geometries
+            indMis=np.where( (atu_mis['OPENING_ID']==id) )[0]
+            if indMis.size==0:
                 continue
             
-            for i in range(ind0.size):
-                if at_geo_from_fc[ind0[i]]==None:
-                    
-                    at_geo_from_fc[ind0[i]]=[feat['geometry']]
-                    
-                    if (feat['properties']['OPENING_ID']==1462976) & (feat['geometry']!=None):
-                        print('Worked!')
-                
-                else:
-                    at_geo_from_fc[ind0[i]].append(feat['geometry'])
-            cnt=cnt+1
-            
+            if id in op_mis:
+                op_mis[id].append(feat['geometry'])
+    
+    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_op_geos.pkl',op_mis)
+    
     print((time.time()-t0)/60)
     
-    # *** I CAN"T FIGURE OUT WHY I WROTE ALL THIS - THE ABOVE CODE SEEMS FINE AND IT IS 3% FASTER ***
-#    #--------------------------------------------------------------------------
-#    # Query FOREST_COVER_INV layer for corresponding openings
-#    #--------------------------------------------------------------------------
-#
 #    t0=time.time()
-#
-#    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
-#    L=len(lyr)
-#    fcinv_full={}
-#    fcinv_full['OPENING_ID']=np.zeros(L)
-#    fcinv_full['Flag ART']=np.zeros(L)
-#    cnt=0
-#    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
-#        for feat in source:
-#        
-#            fcinv_full['OPENING_ID'][cnt]=feat['properties']['OPENING_ID']
-#            # (feat['properties']['STOCKING_STATUS_CODE']=='IMM') & 
-#            if (feat['properties']['STOCKING_TYPE_CODE']=='ART'):
-#                fcinv_full['Flag ART'][cnt]=1
-#            cnt=cnt+1
-#
-#    # Define indices to missing AT spatial openings and the same openings
-#    # in the forest cover inventory layer (assuming the FC layer features are
-#    # artificial)
-#    
-#    #iMisFC=[None]*iMisAT.size
-#    iMisFC={}
-#    iMisFC['iAT']=np.ones(5*iMisAT.size)
-#    iMisFC['iFC']=np.ones(5*iMisAT.size)
-#    cnt=0
-#    mis=0
-#    for i in range(iMisAT.size):
-#        ind0=np.where( (fcinv_full['OPENING_ID']==atu_full['OPENING_ID'][iMisAT[i]]) & (fcinv_full['Flag ART']==1) )[0]
-#        if ind0.size==0:
-#            mis=mis+1
-#            continue
-#        #iMisFC[i]=ind0
-#        for j in range(ind0.size):
-#            iMisFC['iAT'][cnt]=i
-#            iMisFC['iFC'][cnt]=ind0[j]
-#            cnt=cnt+1
-#    # Truncate
-#    iMisFC['iAT']=iMisFC['iAT'][0:cnt-1]
-#    iMisFC['iFC']=iMisFC['iFC'][0:cnt-1]
-#    
-#    # Populate final structure
-#    at_geo_from_fc=[None]*atu_full['OPENING_ID'].size
-#    cnt=-1
-#    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+#    at_geo_from_op=[None]*atu_mis['OPENING_ID'].size
+#    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
 #        for feat in source:
 #            
-#            cnt=cnt+1
+#            # Index to AT entries with missing spatial that matches the spatial of this feature from the the opening layer
+#            ind0=np.where( (atu_mis['OPENING_ID']==feat['properties']['OPENING_ID']) )[0]
 #            
-#            if feat['geometry']==None:
+#            if ind0.size==0:
 #                continue
 #            
-#            indFC=np.where(iMisFC['iFC']==cnt)[0]            
-#            if indFC.size==0:                
-#                continue
-#            
-#            print(cnt)
-#            
-#            indAT=iMisAT[np.array(iMisFC['iAT'][indFC],dtype=int)]
-#            for i in range(indAT.size):
-#                at_geo_from_fc[i]=feat['geometry']
-#     
+#            # There are not multiple instances of openings so you do not need to
+#            # accumulate hits in a list
+#            for i in range(ind0.size):
+#                at_geo_from_op[ind0[i]]=feat['geometry']
+#    
+#    # Save
+#    gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl',at_geo_from_op)
+#    
 #    print((time.time()-t0)/60)
         
     #--------------------------------------------------------------------------
-    # Save
+    # Forest cover (only saving geometries for artificial status)
+    # Too big if you save all geometries
+    # Takes 5 min
     #--------------------------------------------------------------------------
     
-    gu.opickle(meta['Paths']['Results'] + '\\atu_mis.pkl',atu_full)
-    gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl',at_geo_from_op)
-    gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_fcinv.pkl',at_geo_from_fc)
-  
-    # atu_full=gu.ipickle(meta['Paths']['Results'] + '\\atu_mis.pkl')
+#    t0=time.time()
+#    
+#    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
+#    L=len(lyr)    
+#    
+#    at_geo_from_fc=[None]*atu_mis['OPENING_ID'].size
+#    ref_year_fc=[None]*atu_mis['OPENING_ID'].size   
+#    year_updated_fc=[None]*atu_mis['OPENING_ID'].size   
+#
+#    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+#        for feat in source:
+#            
+#            if (feat['geometry']==None):
+#                continue
+#            
+#            if (feat['properties']['STOCKING_TYPE_CODE']!='ART'):
+#                continue
+#            
+#            # Index to AT entries that correspond to this feature and have missing geometries
+#            ind0=np.where( (atu_mis['OPENING_ID']==feat['properties']['OPENING_ID']) )[0]
+#            
+#            if ind0.size==0:
+#                continue
+#            
+#            YearUpdated=0
+#            if feat['properties']['FOREST_COVER_WHEN_UPDATED']!=None:
+#                YearUpdated=int(feat['properties']['FOREST_COVER_WHEN_UPDATED'][0:4]) 
+#            
+#            for i in range(ind0.size):
+#                
+#                # There can be multiple instances so accumulate hits in a list
+#                if at_geo_from_fc[ind0[i]]==None:                    
+#                    #at_geo_from_fc[ind0[i]]=feat['geometry']
+#                    at_geo_from_fc[ind0[i]]=[feat['geometry']]
+#                    ref_year_fc[ind0[i]]=[feat['properties']['REFERENCE_YEAR']]
+#                    year_updated_fc[ind0[i]]=[YearUpdated]
+#                else:
+#                    at_geo_from_fc[ind0[i]].append(feat['geometry'])
+#                    ref_year_fc[ind0[i]].append(feat['properties']['REFERENCE_YEAR'])
+#                    year_updated_fc[ind0[i]].append(YearUpdated)
+#    
+#    # Save
+#    gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_fcinv.pkl',at_geo_from_fc)
+#    gu.opickle(meta['Paths']['Results'] + '\\ref_year_fc.pkl',ref_year_fc)
+#    gu.opickle(meta['Paths']['Results'] + '\\year_updated_fc.pkl',year_updated_fc)
+#            
+#    print((time.time()-t0)/60)    
+    
+    #--------------------------------------------------------------------------
+    # Forest cover by OPENING_ID (only saving geometries for artificial status)
+    # Takes 5 min
+    #--------------------------------------------------------------------------
+    
+    t0=time.time()
+    
+    u=np.unique(atu_mis['OPENING_ID'])    
+    fc_mis={}
+    for i in range(u.size):
+        fc_mis[u[i]]=[]
+        
+    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+        for feat in source:
+            
+            if (feat['geometry']==None):
+                continue
+            
+            if (feat['properties']['STOCKING_TYPE_CODE']!='ART'):
+                continue
+            
+            id=feat['properties']['OPENING_ID']
+            
+            # Index to AT entries that correspond to this feature and have missing geometries
+            indMis=np.where( (atu_mis['OPENING_ID']==id) )[0]
+            if indMis.size==0:
+                continue
+            
+            if id in fc_mis:
+                fc_mis[id].append(feat['geometry'])
+    
+    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_fc_geos.pkl',fc_mis)
+    
+    print((time.time()-t0)/60)    
+
+    
+    #--------------------------------------------------------------------------
+    # Find matching FC geometries for each AT entry with missing spatial
+    # Takes 5 min
+    #--------------------------------------------------------------------------
+    
+    atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl')
+    fc_mis=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_fc_geos.pkl')
+    
+    t0=time.time()
+    
+    atu_mis['IdxToFC']=[None]*atu_mis['OPENING_ID'].size
+    FlgAgreement=np.zeros(atu_mis['OPENING_ID'].size)
+    IsDone=np.zeros(atu_mis['OPENING_ID'].size)
+    
+    for i in range(atu_mis['OPENING_ID'].size):
+    
+        if IsDone[i]==1:
+            continue
+        if len(fc_mis[atu_mis['OPENING_ID'][i]])==0:
+            continue
+    
+        ind_atu=np.where( (atu_mis['OPENING_ID']==atu_mis['OPENING_ID'][i]) )[0]
+            
+        A_at=atu_mis['ACTUAL_TREATMENT_AREA'][ind_atu]  
+    
+        L=len(fc_mis[atu_mis['OPENING_ID'][i]])
+        A_fc=np.zeros(L)
+        for j in range(L):
+            feat_fc={}; feat_fc['properties']={}; feat_fc['geometry']=fc_mis[atu_mis['OPENING_ID'][i]][j]
+            gdf_fc=gpd.GeoDataFrame.from_features([feat_fc])
+            A_fc[j]=np.round(gdf_fc.area.values[0]/10000)
+        
+        # Find best matches
+        dist=np.abs(A_at[:, np.newaxis]-A_fc)
+        Closest=dist.argmin(axis=1)
+        A_fc_BestMatch=A_fc[Closest]
+        E=A_at-A_fc_BestMatch
+
+        iMatch=np.where( (np.abs(E)<=2) )[0]
+        if iMatch.size>0:
+            for j in range(iMatch.size):
+                atu_mis['IdxToFC'][ind_atu[iMatch[j]]]=[ Closest[iMatch[j]] ]
+            FlgAgreement[ind_atu[iMatch]]=1
+        
+        iNoMatch=np.where( (np.abs(E)>2) )[0]
+        if iNoMatch.size>0:    
+            idx=np.arange(0,L)
+            idx=idx[~np.isin(idx,Closest[iMatch])]
+            for j in range(iNoMatch.size):            
+                atu_mis['IdxToFC'][ind_atu[iNoMatch[j]]]=list(idx)
+
+        # Update progress tracker
+        IsDone[ind_atu]=1
+    
+        #print(i)
+
+    print((time.time()-t0)/60)    
+
+    # Success rate
+    ind=np.where(FlgAgreement==1)[0]
+    ind.size/atu_mis['OPENING_ID'].size*100
+
+    # Eliminate none values
+    for i in range(len(atu_mis['IdxToFC'])):
+        if atu_mis['IdxToFC'][i]==None:
+            atu_mis['IdxToFC'][i]=[]
+            
+    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl',atu_mis)
+
+##%% Scraps from toubleshooting missing geometries:
+#    
+#    #%% Analyze missing planting spatial
+#
+#c=[0,1,0,1]; #c=[0,1,2,3,0,1,2,3,0,1,2,3]
+#r=[0,0,1,1]; #r=[0,0,0,0,1,1,1,1,2,2,2,2]
+#
+## Import ATU data
+#atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\atu_mis.pkl')
+#
+#at_geo_from_op=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl')
+#
+#garc.collect()
+#
+#
+## 5 percent where opening spatial cannot be found for AT entries
+#N=0 
+#for i in range(len(at_geo_from_op)):
+#    if at_geo_from_op[i]==None:
+#        N=N+1
+#N/atu_mis['OPENING_ID'].size
+#
+#
+## i=150 # Easy
+## i=2300 # Easy
+#
+#for i in range(atu_mis['OPENING_ID'].size):
+#
+#    if at_geo_from_op[i]==None:
+#        continue
+#    
+#    # i=2300
+#
+#    #print(atu_mis['OPENING_ID'][i])
+#    
+#    feat_op={}; feat_op['properties']=prp; feat_op['geometry']=at_geo_from_op[i]
+#    gdf_op=gpd.GeoDataFrame.from_features([feat_op])
+#    A_op=np.round(gdf_op.area.values[0]/1000)
+#    
+#    ind_atu=np.where( (atu_mis['OPENING_ID']==atu_mis['OPENING_ID'][i]) & (atu_mis['SBC']=='PL') )[0]
+#    atu_mis['SBC'][ind_atu]
+#    atu_mis['Year'][ind_atu]
+#    A_at=atu_mis['ACTUAL_TREATMENT_AREA'][ind_atu]        
+#
+#    if at_geo_from_fc[i]==None:
+#        continue
+#
+#    A_fc=np.zeros(len(at_geo_from_fc[i]))
+#    Year_fc=np.zeros(len(at_geo_from_fc[i]))
+#    for j in range(len(at_geo_from_fc[i])):
+#        feat_fc={}; feat_fc['properties']=prp; feat_fc['geometry']=at_geo_from_fc[i][j]
+#        gdf_fc=gpd.GeoDataFrame.from_features([feat_fc])
+#        A_fc[j]=np.round(gdf_fc.area.values[0]/10000)
+#        Year_fc[j]=ref_year_fc[i][j]
+#
+#    if ind_atu.size==A_fc.size:
+#        dist=np.abs(A_at[:, np.newaxis]-A_fc)
+#        potentialClosest=dist.argmin(axis=1)
+#        sD[i]=np.sum(A_at-A_fc[potentialClosest])
+#
+#
+#    idx=-999*np.ones(ind_atu.size)
+#    for j in range(ind_atu.size):
+#        if (atu_mis['SBC'][ind_atu[j]]=='PL'):
+#            ind1=np.where(A_fc==atu_mis['ACTUAL_TREATMENT_AREA'][ind_atu[j]])[0]
+#            if ind1.size>0:
+#                idx[j]=ind1
+#
+#
+#    plt.close('all')
+#    fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,9))
+#    gdf_op.plot(ax=ax,facecolor='None',linewidth=3,edgecolor='k',linestyle='-')
+#    for j in range(len(at_geo_from_fc[i])):
+#        gdf_op.plot(ax=ax,facecolor='None',linewidth=3,edgecolor='k',linestyle='-') 
+#        feat_fc={}; feat_fc['properties']=prp; feat_fc['geometry']=at_geo_from_fc[i][j]
+#        gdf_fc=gpd.GeoDataFrame.from_features([feat_fc])
+#        gdf_fc.plot(ax=ax,facecolor='g',edgecolor='y',linewidth=1,linestyle='-') 
+#          
+#
+#    plt.close('all')
+#    fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(12,9))
+#    for j in range(4):
+#        gdf_op.plot(ax=ax[r[j],c[j]],facecolor='None',linewidth=3,edgecolor='k',linestyle='-')
+#        ax[r[j],c[j]].set_yticklabels(''); ax[r[j],c[j]].set_xticklabels('')
+#    if at_geo_from_fc[i]!=None:
+#        Atot_fc=0
+#        for j in range(4):
+#            if j+1>len(at_geo_from_fc[i]):
+#                continue
+#            gdf_op.plot(ax=ax[r[j],c[j]],facecolor='None',linewidth=3,edgecolor='k',linestyle='-') 
+#            feat_fc={}; feat_fc['properties']=prp; feat_fc['geometry']=at_geo_from_fc[i][j]
+#            gdf_fc=gpd.GeoDataFrame.from_features([feat_fc])
+#            gdf_fc.plot(ax=ax[r[j],c[j]],facecolor='None',edgecolor='c',linewidth=2,linestyle='-') 
+#            ax[r[j],c[j]].set_title('Year: ' + str(ref_year_fc[i][j]) + ', Area: ' + str(np.round(gdf_fc.area.values[0]/10000)) + ' ha',fontsize=7)
+#            ax[r[j],c[j]].set_xticks([]); ax[r[j],c[j]].set_yticks([])
+#            Atot_fc=Atot_fc+gdf_fc.area.values[0]/10000
+#    plt.tight_layout()
+#    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Planting\ReconMissingGeom_Eg1','png',900)
+
     
 #%% ADD PLANTING INFO TO DMEC
 
@@ -2344,7 +2498,7 @@ def ExportSummaryByGridCell(meta,atu):
     
     # Activity type
     #flg_source='FCI'
-    flg_source='ReforestatoinNonOb'
+    flg_source='ReforestationNonOb'
     
     if flg_source=='FCI':
         
@@ -2510,6 +2664,7 @@ def LoadSparseGeospatialInputs(meta):
     burnsev=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_BURN_SEVERITY_SP.pkl')
     vri=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_COMP_LYR_R1_POLY.pkl')
     fcinv=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_FOREST_COVER_INV_SVW.pkl')
+    fcres=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_FOREST_COVER_RESERVE_SVW.pkl')
     pl=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl')
     fire=gu.ipickle(meta['Paths']['Geospatial'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP.pkl')
     pest=gu.ipickle(meta['Paths']['Geospatial'] + '\\PEST_INFESTATION_POLY.pkl')
@@ -2518,4 +2673,4 @@ def LoadSparseGeospatialInputs(meta):
     park=gu.ipickle(meta['Paths']['Geospatial'] + '\\TA_PARK_ECORES_PA_SVW.pkl')
     ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
 
-    return sxy,atu,op,burnsev,vri,fcinv,pl,fire,pest,cut,lul,park,ogmal
+    return sxy,atu,op,burnsev,vri,fcinv,fcres,pl,fire,pest,cut,lul,park,ogmal

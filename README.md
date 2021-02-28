@@ -183,15 +183,15 @@ Big projects are all run in a spatially explicit framework with the standard spa
 All three approaches rely on an automated set of invenotry pre-processing scripts. 
 
 1. Download inventory layers (this is the only manual step)
-2. Define a subset of variables that will be retained from each source geodatabase (**utilities_inventory.py.DefineInventoryLayersAndVariables**); 
-3. Build LUTs for each categorical variable (see section on LUTs) (**utilities_inventory.py.BuildForestInventoryLUTs**);
-4. Prepare a set of gap-filled geometries for instances where no geometry is listed for activities (**utilities_inventory.py.RecoverMissingATUGeometries**); 
+2. Define a subset of variables that will be retained from each source geodatabase (**DefineInventoryLayersAndVariables**); 
+3. Build LUTs for each categorical variable (see section on LUTs) (**BuildForestInventoryLUTs**);
+4. Prepare a set of gap-filled geometries for instances where no geometry is listed for activities (**RecoverMissingATUGeometries**); 
 5. Identify which type of 'big project' best matches your project needs and run that script after specifying the project path:
-	* **utilites.get_inventory_from_points.py**
-	* **utilites.get_inventory_from_polygons.py**
-	* **utilites.get_inventory_for_tile.py**
+	* **get_inventory_from_points.py**
+	* **get_inventory_from_polygons.py**
+	* **get_inventory_for_tile.py**
 6. Prepare project configuration and input variables for **cbrunner** by adopting a script from pre-existing projects.
-7. Run the simulation (**cbrunner.cbrun.py.MeepMeep**)
+7. Run the simulation (**cbrun.py.MeepMeep**)
 8. Explore results with a post-processing project script.
 
 Steps 1-4 are shared among projects. That is, you can have multiple different projects all working from the same set of inventory sources. As such, steps 1-4 only need to be repeated for the purpose of getting the most up-to-date forest inventories.

@@ -253,10 +253,10 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
                 if meta['Scenario Source']=='Spreadsheet':
                     # When run from spreadsheet, stands are swapped for ensembles so
                     # generate different records for each stand
-                    wf_sim['Occurrence'][iT,:]=gensm.GenerateDisturbancesFromPareto(1,indZone.size,b0)
+                    wf_sim['Occurrence'][iT,:]=GenerateDisturbancesFromPareto(1,indZone.size,b0)
                 else:
                     # All stands get populated with the same prediction
-                    wf_sim['Occurrence'][iT,indZone]=gensm.GenerateDisturbancesFromPareto(1,indZone.size,b0)        
+                    wf_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0)        
     
         elif method_occ=='PreRun':
             # Using this will ensure consistency across tiles
