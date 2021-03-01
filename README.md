@@ -25,7 +25,7 @@ the decay and physical transformation of dead organic matter, the impact of natu
 
 The model achieves this with a set of plug-and-play functions fund in **cbrun_annproc.py**:
 ### Biomass_FromTIPSYorTASS: 
-* Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the TASS/TIPSY growth and yield software application (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling).
+* Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the [TASS/TIPSY growth and yield software application](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling).
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 * Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period will match that originally predicted by the GY model.
 ### Biomass_FromSawtooth:
