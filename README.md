@@ -95,7 +95,7 @@ The **cbrunner** model achieves comprehensive, granular representation of proces
 ![image info](./images/fcgadgets_constellation.png)
 
 ## UTILITIES
-The **utilities** subpackage contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
+The **fcgadgets.utilities** subpackage contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Sample of points
 	* Sample of polygons
@@ -147,7 +147,7 @@ scenarios, consistent across project studies, and supported by documentation.
 * Spatially explicit simulations of events based on annual probability of onset and spread
 
 ## MACGYVER
-The **macgyver** module contains resources for representing effects of forest management on forest sector GHG balance.
+The **fcgadgets.macgyver** module contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_application.py:
 * Representation of GHG balance responses to aerial applications of Urea
 
