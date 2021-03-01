@@ -75,7 +75,7 @@ probability of tree mortality or annual probability of tree recruitment.
 
 ### Working with Growth & Yield models
 
-The **cbrunner** model can be driven with output from <a href=”https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling”>TASS/TIPSY growth and yield (GY) modelling applications</a> using automated functions in **cbrun_utilities.py**.
+The **cbrunner** model can be driven with output from [TASS/TIPSY growth and yield (GY) modelling applications](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling) using automated functions in **cbrun_utilities.py**.
 * Prepare input parameters that are required to run BatchTIPSY.exe in a spreadsheet with **Write_BatchTIPSY_Input_Spreadsheet**
 * Convert the spreadsheet of input parameters to the format expected by BatchTIPSY.exe using **Write_BatchTIPSY_Input_File**
 * Convert the output from BatchTIPSY.exe to pickle files that will be read by cbrunner using **PostProcessBatchTIPSY**
