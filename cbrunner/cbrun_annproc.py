@@ -1161,7 +1161,8 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
     
     # Predict stand breakup (on the fly)
     if meta['Simulate breakup on the fly']=='On':
-        vi=asm.PredictStandBreakup_OnTheFly(meta,vi,iT,vo['A'][iT,:])    
+        if meta['Scenario Switch']['Dist on Fly']['Breakup'][meta['iScn']]==1:
+            vi=asm.PredictStandBreakup_OnTheFly(meta,vi,iT,vo['A'][iT,:])    
     
     # Predict historical harvesting (on the fly)
     if (meta['Simulate harvesting on the fly (historical)']=='On'):

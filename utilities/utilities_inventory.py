@@ -2445,13 +2445,16 @@ def ExportSummaryByGridCell(meta,atu):
         
         ind=np.where( (d['IdxToSXY']==fcinv['IdxToSXY'][i]) & (d['OPENING_ID']==fcinv['OPENING_ID'][i]) & (d['Year']==fcinv['REFERENCE_YEAR'][i]) )[0]
         if ind.size>0:
+            
             for j in range(ind.size):
                 d['I_SPH_FCinv'][ind[j]]=fcinv['I_TOTAL_STEMS_PER_HA'][i]
                 d['SI_FCinv'][ind[j]]=fcinv['SITE_INDEX'][i]
                 d['I_Spc1_CD'][ind[j]]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])
                 d['I_Spc2_CD'][ind[j]]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])
         else:
+            ind=np.where( (d['IdxToSXY']==fcinv['IdxToSXY'][i]) )[0]
             d['IdxToSXY'][cnt]=fcinv['IdxToSXY'][i]
+            d['ID_Multipolygon'][cnt]=d['ID_Multipolygon'][ind[0]]
             d['Year'][cnt]=fcinv['REFERENCE_YEAR'][i]
             d['OPENING_ID'][cnt]=fcinv['OPENING_ID'][i]
             d['I_SPH_FCinv'][cnt]=fcinv['I_TOTAL_STEMS_PER_HA'][i]
@@ -2674,3 +2677,23 @@ def LoadSparseGeospatialInputs(meta):
     ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
 
     return sxy,atu,op,burnsev,vri,fcinv,fcres,pl,fire,pest,cut,lul,park,ogmal
+
+#%% Load index to sparse grid
+    
+def LoadSparseGridIndex(meta):
+    
+    idx={}
+    idx['atu']=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_ACTIVITY_TREATMENT_SVW_IdxToInv.pkl')
+    idx['pl']=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl')
+    idx['op']=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_OPENING_SVW_IdxToInv.pkl')
+    idx['burnsev']=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_BURN_SEVERITY_SP_IdxToInv.pkl')
+    idx['vri']=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_COMP_LYR_R1_POLY_IdxToInv.pkl')
+    idx['fcinv']=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_FOREST_COVER_INV_SVW_IdxToInv.pkl')
+    idx['fire']=gu.ipickle(meta['Paths']['Geospatial'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP_IdxToInv.pkl')
+    idx['pest']=gu.ipickle(meta['Paths']['Geospatial'] + '\\PEST_INFESTATION_POLY_IdxToInv.pkl')
+    idx['cut']=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP_IdxToInv.pkl')
+    idx['lul']=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_PLAN_NON_LEGAL_POLY_SVW_IdxToInv.pkl')
+    idx['park']=gu.ipickle(meta['Paths']['Geospatial'] + '\\TA_PARK_ECORES_PA_SVW_IdxToInv.pkl')
+    idx['ogmal']=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW_IdxToInv.pkl')
+    
+    return idx

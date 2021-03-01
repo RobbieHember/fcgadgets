@@ -1,7 +1,7 @@
 
 import numpy as np
 import pandas as pd
-import pickle
+import matplotlib.pyplot as plt
 import os
 import openpyxl
 import gc as garc
@@ -615,9 +615,6 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
 # the function will retun the average.
 
 def LoadScenarioResults(meta,scn):
-
-    # Open connection to parameter database   
-    #meta=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Metadata.pkl')
     
     # Initialize list that will contain scenarios
     v=[]
@@ -677,7 +674,7 @@ def LoadScenarioResults(meta,scn):
         
         v.append(BunchDictionary(data_sum2ave))
         
-    return v,meta
+    return v
 
 #%% Calculate GHG balance
 
@@ -2286,3 +2283,113 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         A['Management'][i]['Data']=gu.BlockMean(A['Management'][i]['Data'],ivlT)        
     
     return A
+
+#%% Area affected by individual multipolygon
+    
+def AreaAffectedInSingleMultipolygon(meta,iScn,ivlT,tv,MosByMP,iMP):
+    
+    A={}
+    # Ensemble mean (currently not equipped to give individual ensembles)
+    A['Nat Dist']=[None]*10; 
+    c=-1
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Wildfire']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain Pine beetle'; A['Nat Dist'][c]['Color']=[0,0.8,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBM']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.6,1,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBD']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.25,1,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBS']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBB']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Beetles']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IDW']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Rust'; A['Nat Dist'][c]['Color']=[0.75,0.5,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Rust Onset']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Dwarf Mistletoe'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Dwarf Mistletoe Onset']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mechanical'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Mechanical']['Ensemble Mean'][:,iMP]
+    A['Nat Dist']=A['Nat Dist'][0:c+1]
+
+    A['Management']=[None]*10; 
+    c=-1
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Harvest']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Salvage Logging']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Slashpile Burn']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Salvage Logging']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Knockdown']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Thinning']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Disc Trenching']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Ripping']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Prescribed Burn']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Dwarf Mistletoe Control']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Planting']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Direct Seeding']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['IDW Btk Spray']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.65,0,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Fertilization Aerial']['Ensemble Mean'][:,iMP]
+    A['Management']=A['Management'][0:c+1]  
+        
+    # Convert to x-year intervals
+    A['tv']=gu.BlockMean(tv,ivlT)
+    for i in range(len(A['Nat Dist'])):
+        A['Nat Dist'][i]['Data']=gu.BlockMean(A['Nat Dist'][i]['Data'],ivlT)
+    for i in range(len(A['Management'])):
+        A['Management'][i]['Data']=gu.BlockMean(A['Management'][i]['Data'],ivlT)        
+    
+    return A
+
+#%% QA plot
+    
+def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP):
+    
+    for iMP in range(0,uMP.size,ivlMP):
+    
+        # Get area affected for multipolygon    
+        A=cbu.AreaAffectedInSingleMultipolygon(meta,iScnForArea,ivlT,tv,MosByMP,iMP)
+    
+        #atu_multipolygons[uMP[iMP]]
+    
+        lw1=1; cle1=[0,0,1]; cle2=[1,0,0]; ms=3;
+        xlim=[tv[it[0]],tv[it[-1]]]; xticks=np.arange(1500,2200,10);
+    
+        plt.close('all'); fig,ax=plt.subplots(4,2,figsize=gu.cm2inch(28,20))
+   
+        pl_d=[None]*len(A['Nat Dist']); nams_d=[None]*len(A['Nat Dist']);
+        for i in range(len(A['Nat Dist'])):
+            bottom=0; 
+            if i!=0:
+                for j in range(i):
+                    bottom=bottom+A['Nat Dist'][j]['Data']
+            pl_d[i]=ax[0,0].bar(A['tv'],A['Nat Dist'][i]['Data'],ivlT,color=A['Nat Dist'][i]['Color'],bottom=bottom)
+            nams_d[i]=A['Nat Dist'][i]['Name']
+        ax[0,0].legend(pl_d,nams_d,loc='upper left',bbox_to_anchor=(0.05,0.99),labelspacing=0.12,facecolor=[1,1,1],frameon=False)
+        ax[0,0].set(position=[0.04,0.77,0.44,0.22],xlim=xlim,xticks=xticks,ylabel='Area affected (ha)');
+
+        pl_m=[None]*len(A['Management']); nams_m=[None]*len(A['Management']);
+        for i in range(len(A['Management'])):
+            bottom=0; 
+            if i!=0:
+                for j in range(i):
+                    bottom=bottom+A['Management'][j]['Data']
+            pl_m[i]=ax[0,1].bar(A['tv'],A['Management'][i]['Data'],ivlT,color=A['Management'][i]['Color'],bottom=bottom)
+            nams_m[i]=A['Management'][i]['Name']
+        ax[0,1].legend(pl_m,nams_m,loc='upper left',bbox_to_anchor=(0.05,0.99),labelspacing=0.12,facecolor=[1,1,1],frameon=False)
+        ax[0,1].set(position=[0.54,0.77,0.44,0.22],xlim=xlim,xlabel='',ylabel='Area affected (ha)');
+
+        ax[1,0].plot(tv,MosByMP[iB]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,0].plot(tv,MosByMP[iP]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,0].set(position=[0.04,0.53,0.44,0.22],xlim=xlim,xlabel='',ylabel='Age, years')
+    
+        ax[1,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,1].set(position=[0.54,0.53,0.44,0.22],xlim=xlim,xlabel='',ylabel='Biomass (MgC/ha)')
+    
+        ax[2,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[2,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[2,0].set(position=[0.04,0.285,0.44,0.22],xlim=xlim,xlabel='',ylabel='Dead wood (MgC/ha)')
+    
+        ax[2,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms)
+        ax[2,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[2,1].set(position=[0.54,0.285,0.44,0.22],xlim=xlim,xlabel='',ylabel='Wildfire emissions (MgC/ha)')
+    
+        ax[3,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms)
+        ax[3,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[3,0].set(position=[0.04,0.04,0.44,0.22],xlim=xlim,xlabel='',ylabel='Removals (MgC/ha)')
+    
+        ax[3,1].plot(tv,MosByMP[iB]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[3,1].plot(tv,MosByMP[iP]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[3,1].set(position=[0.54,0.04,0.44,0.22],xlim=xlim,xlabel='',ylabel='Sector GHG balance (MgC/ha)')
+    
+        gu.axletters(ax,plt,0.01,0.91)
+        pt=meta['LUT']['ProjectType'][meta['ProjectType'][iMP]]
+        gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(iMP) + '_' + pt,'png',200)
+    
+    return
