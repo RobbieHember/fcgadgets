@@ -49,7 +49,7 @@ The model achieves this with a set of plug-and-play functions fund in **cbrun_an
 
 ### HWP_FromDymond12: 
 * Representation of teh annual GHG balance for fibre that is removed from forest ecosystems 
-* This module aims to capture the dynamics described by the BC Harvested Wood Products model version 1 (Dymond, 2012) (https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
+* This module aims to capture the dynamics described by the [BC Harvested Wood Products model version 1 (Dymond, 2012)](https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
 
 ### Organizational structure of cbrunner
