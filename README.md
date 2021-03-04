@@ -1,9 +1,10 @@
 # fcgadgets
 ## INTRODUCTION
-The **fcgadgets** package supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. 
-The package is written in the Python 3/Jupyter environment, benefiting from stable integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). 
+The **fcgadgets** repository supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. 
+The repo is written in the Python 3/Jupyter environment, benefitting from Python's stable integrated libraries for simulation modelling, 
+geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
-The **fcgadgets** package was developed to: 
+The **fcgadgets** repo was developed to: 
 * Consolidate source code used by BC's Forest Carbon Initiative (FCI)
 * Share knowledge, methods and limitations
 * Streamline project setup and integration with BC information systems
@@ -12,11 +13,8 @@ The **fcgadgets** package was developed to:
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
 ## FEATURES
-* Simulate forest sector greenhouse gas (GHG) balance for treatment areas, point locations, or hypothetical stands
-* Explore the effects of aerial Urea application on the annual GHG balance of a forest stand
-* Explore the effects of underplanting on the annual GHG balance of a forest stand
-* Explore the effects of salvage logging on the annual GHG balance of a forest stand
-* Simulate high-resolution, wall-to-wall coverage of a watershed or timber supply area
+* Simulate forest sector greenhouse gas (GHG) balance for point locations, openings, continuous regular grids, or hypothetical stands
+* Calculate the GHG benefit (i.e., GHG emission reductions) that result from land use and management decisions
 
 ## CBRUNNER
 The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and wood products.
