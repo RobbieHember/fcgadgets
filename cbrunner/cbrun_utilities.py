@@ -470,7 +470,7 @@ def ImportProjectConfig(meta):
     if meta['Scenario Source']=='Spreadsheet':
         
         # Import from spreadsheet
-        df_s=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Inputs',skiprows=1,usecols='D:AN')
+        df_s=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Inputs',skiprows=1,usecols='D:OM')
         df_s=df_s.iloc[:,df_s.iloc[0,:].isnull().values==False] 
         meta['Scenario']=list()
         for i in range(1,df_s.shape[1]):
@@ -2362,7 +2362,7 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
             pl_m[i]=ax[0,1].bar(A['tv'],A['Management'][i]['Data'],ivlT,color=A['Management'][i]['Color'],bottom=bottom)
             nams_m[i]=A['Management'][i]['Name']
         ax[0,1].legend(pl_m,nams_m,loc='upper left',bbox_to_anchor=(0.05,0.99),labelspacing=0.12,facecolor=[1,1,1],frameon=False)
-        ax[0,1].set(position=[0.54,0.77,0.44,0.22],xlim=xlim,xlabel='',ylabel='Area affected (ha)');
+        ax[0,1].set(position=[0.54,0.77,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Area affected (ha)');
 
         ax[1,0].plot(tv,MosByMP[iB]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
         ax[1,0].plot(tv,MosByMP[iP]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
@@ -2391,7 +2391,8 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
         ax[3,1].set(position=[0.54,0.04,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Sector GHG balance (MgC/ha)')
     
         gu.axletters(ax,plt,0.01,0.91)
-        pt=meta['LUT']['ProjectType'][meta['ProjectType'][iMP]]
+        
+        pt=meta['LUT']['ProjectType'][meta['ProjectTypeByMP'][uMP[iMP]]]
         gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(iMP) + '_' + pt,'png',200)
     
     return

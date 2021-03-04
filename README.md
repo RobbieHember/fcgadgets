@@ -48,9 +48,13 @@ The model achieves this with a set of plug-and-play functions fund in **cbrun_an
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 
 ### HWP_FromDymond12: 
-* Representation of teh annual GHG balance for fibre that is removed from forest ecosystems 
+* Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems 
 * This module aims to capture the dynamics described by the [BC Harvested Wood Products model version 1 (Dymond, 2012)](https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
-* Driven by default (province-wide) parameters or user-specified rates of utilization and product profiles
+* Driven by province-wide default parameters or user-specified proportions of fibre that is:
+	* burned
+	* left on site, 
+	* or utilized 
+* Driven by province-wide default parameters or user-specified product profiles
 
 ### Organizational structure of cbrunner
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
