@@ -1535,8 +1535,8 @@ def HWP_From_Dymond12(iT,vi,vo,psl,meta):
     
     #--------------------------------------------------------------------------
     # If custom harvests occur, revise parameters
-    # *** This is going to be slow, but thus far, custom harvests have only been
-    # used in small projects. It will require reworking if applied in big 
+    # *** This is slow, but thus far, custom harvests have only been used in
+    # small projects. It will require improvements for speed if applied in big 
     # projects. ***
     #--------------------------------------------------------------------------
     
