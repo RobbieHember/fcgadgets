@@ -13,8 +13,9 @@ The **fcgadgets** repo was developed to:
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
 ## FEATURES
-* Simulate forest sector greenhouse gas (GHG) balance for point locations, openings, continuous regular grids, or hypothetical stands
+* Simulate forest sector GHG balance at point locations, over forest openings, or hypothetical stands
 * Calculate the GHG benefit (i.e., GHG emission reductions) that result from land use and management decisions
+* Map carbon stocks over continuous regular grids
 
 ## CBRUNNER
 The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and wood products.
