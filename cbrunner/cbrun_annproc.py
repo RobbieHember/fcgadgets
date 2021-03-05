@@ -1531,7 +1531,7 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
 
 #%% Harvested wood products sector (from Dymond 2012)
 
-def HWP_From_Dymond12(iT,vi,vo,psl,meta):
+def HWP_From_BCHWP12(iT,vi,vo,psl,meta):
     
     #--------------------------------------------------------------------------
     # If custom harvests occur, revise parameters

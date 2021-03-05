@@ -2337,10 +2337,10 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
     
         #atu_multipolygons[uMP[iMP]]
     
-        lw1=1; cle1=[0,0,1]; cle2=[1,0,0]; ms=3;
+        lw1=1; cle1=[0,0,1]; cle2=[1,0,0]; ms=3; aw=0.28; ah=0.22;
         xlim=[tv[it[0]],tv[it[-1]]]; xticks=np.arange(1500,2200,20);
     
-        plt.close('all'); fig,ax=plt.subplots(4,2,figsize=gu.cm2inch(28,20))
+        plt.close('all'); fig,ax=plt.subplots(4,3,figsize=gu.cm2inch(28,20))
    
         pl_d=[None]*len(A['Nat Dist']); nams_d=[None]*len(A['Nat Dist']);
         for i in range(len(A['Nat Dist'])):
@@ -2351,7 +2351,7 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
             pl_d[i]=ax[0,0].bar(A['tv'],A['Nat Dist'][i]['Data'],ivlT,color=A['Nat Dist'][i]['Color'],bottom=bottom)
             nams_d[i]=A['Nat Dist'][i]['Name']
         ax[0,0].legend(pl_d,nams_d,loc='upper left',bbox_to_anchor=(0.05,0.99),labelspacing=0.12,facecolor=[1,1,1],frameon=False)
-        ax[0,0].set(position=[0.04,0.77,0.44,0.22],xlim=xlim,xticks=xticks,ylabel='Area affected (ha)');
+        ax[0,0].set(position=[0.04,0.77,aw,ah],xlim=xlim,xticks=xticks,ylabel='Area affected (ha)');
 
         pl_m=[None]*len(A['Management']); nams_m=[None]*len(A['Management']);
         for i in range(len(A['Management'])):
@@ -2362,35 +2362,49 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
             pl_m[i]=ax[0,1].bar(A['tv'],A['Management'][i]['Data'],ivlT,color=A['Management'][i]['Color'],bottom=bottom)
             nams_m[i]=A['Management'][i]['Name']
         ax[0,1].legend(pl_m,nams_m,loc='upper left',bbox_to_anchor=(0.05,0.99),labelspacing=0.12,facecolor=[1,1,1],frameon=False)
-        ax[0,1].set(position=[0.54,0.77,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Area affected (ha)');
+        ax[0,1].set(position=[0.37,0.77,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Area affected (ha)');
 
-        ax[1,0].plot(tv,MosByMP[iB]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
-        ax[1,0].plot(tv,MosByMP[iP]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
-        ax[1,0].set(position=[0.04,0.53,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Age, years')
+        ax[0,2].plot(tv,MosByMP[iB]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[0,2].plot(tv,MosByMP[iP]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[0,2].set(position=[0.71,0.77,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Age, years')
     
-        ax[1,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
-        ax[1,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
-        ax[1,1].set(position=[0.54,0.53,0.44,0.22],xlim=xlim,xlabel='',ylabel='Biomass (MgC/ha)')
+        ax[1,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,0].set(position=[0.04,0.53,aw,ah],xlim=xlim,xlabel='',ylabel='Biomass (MgC/ha)')
     
-        ax[2,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
-        ax[2,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
-        ax[2,0].set(position=[0.04,0.285,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Dead wood (MgC/ha)')
+        ax[1,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,1].set(position=[0.37,0.53,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Dead wood (MgC/ha)')
+        
+        ax[1,2].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_RH']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,2].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_RH']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,2].set(position=[0.71,0.53,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='RH (MgC/ha/yr)')
     
-        ax[2,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms)
-        ax[2,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
-        ax[2,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'d-',color=cle1,linewidth=lw1,markersize=ms)
-        ax[2,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'^--',color=cle2,linewidth=lw1,markersize=ms)
-        ax[2,1].set(position=[0.54,0.285,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Wildfire emissions (MgC/ha)')
+        ax[2,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
+        ax[2,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[2,0].set(position=[0.04,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Wildfire emissions (MgC/ha)')
     
-        ax[3,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms)
+        ax[2,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
+        ax[2,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[2,1].set(position=[0.37,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Open burning emissions (MgC/ha/yr)')
+        
+        ax[2,2].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
+        ax[2,2].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[2,2].set(position=[0.71,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Removals (MgC/ha/yr)')
+    
+        ax[3,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
         ax[3,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
-        ax[3,0].set(position=[0.04,0.04,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Removals (MgC/ha)')
+        ax[3,0].set(position=[0.04,0.04,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Removals (MgC/ha)')
+        
+        ax[3,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
+        ax[3,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[3,1].set(position=[0.37,0.04,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Removals (MgC/ha)')
     
-        ax[3,1].plot(tv,MosByMP[iB]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
-        ax[3,1].plot(tv,MosByMP[iP]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
-        ax[3,1].set(position=[0.54,0.04,0.44,0.22],xlim=xlim,xticks=xticks,xlabel='',ylabel='Sector GHG balance (MgC/ha)')
+        ax[3,2].plot(tv,MosByMP[iB]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[3,2].plot(tv,MosByMP[iP]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[3,2].set(position=[0.71,0.04,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Sector GHG balance (MgC/ha)')
     
-        gu.axletters(ax,plt,0.01,0.91)
+        #gu.axletters(ax,plt,0.01,0.91)
         
         pt=meta['LUT']['ProjectType'][meta['ProjectTypeByMP'][uMP[iMP]]]
         gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(iMP) + '_' + pt,'png',200)

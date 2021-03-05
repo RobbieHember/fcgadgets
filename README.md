@@ -13,21 +13,25 @@ The **fcgadgets** repo was developed to:
 * Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
 
 ## FEATURES
-* Simulate forest sector GHG balance at point locations, over forest openings, or hypothetical stands
-* Calculate the GHG benefit (i.e., GHG emission reductions) that result from land use and management decisions
-* Map carbon stocks over continuous regular grids
+* Simulate forest sector GHG balance at point locations, over forest openings, or for hypothetical stands
+* Calculate the GHG benefit (i.e., GHG emission reductions) that results from land use and management decisions
+* Map carbon stocks over continuous, high-resolution grids
 
 ## CBRUNNER
-The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and wood products.
-The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the biomass dynamics of trees,
-the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and nutrient applications. 
+The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
+wood products. The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the 
+biomass dynamics of trees, the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and 
+nutrient applications. 
 ![image info](./images/fcgadgets_annual_processes.png)
 
 The model achieves this with a set of plug-and-play functions fund in **cbrun_annproc.py**:
 ### Biomass_FromTIPSYorTASS: 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the [TASS/TIPSY growth and yield software application](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling).
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
-* Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period will match that originally predicted by the GY model.
+* Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using 
+allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced 
+with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period 
+will match that originally predicted by the GY model.
 ### Biomass_FromSawtooth:
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
@@ -47,7 +51,7 @@ The model achieves this with a set of plug-and-play functions fund in **cbrun_an
 	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 
-### HWP_FromDymond12: 
+### HWP_From_BCHWP12: 
 * Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems 
 * This module aims to capture the dynamics described by the [BC Harvested Wood Products model version 1 (Dymond, 2012)](https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by province-wide default parameters or user-specified parameters indicating product profiles

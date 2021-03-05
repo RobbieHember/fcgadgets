@@ -99,7 +99,7 @@ def MeepMeep(meta):
                     if meta['Year'][iT]>=meta['HWP Year Start']:
                         
                         # No need to run this before a certain date
-                        vo=annproc.HWP_From_Dymond12(iT,vi,vo,psl,meta)
+                        vo=annproc.HWP_From_BCHWP12(iT,vi,vo,psl,meta)
                 
                 # Export simulation results to file
                 ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP)
