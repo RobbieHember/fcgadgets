@@ -2374,18 +2374,49 @@ def PutEventsInOrder(dmec,meta):
     
 def ExportSummaryByGridCell(meta,atu):
     
-    n=atu['Year'].size+50000
-    fl=np.zeros(50000)
+    def AddActivityType(flg_source,d,meta,dAdmin):
+        
+        # Activity type
+        #flg_source='FCI'
+        #flg_source='ReforestationNonOb'
+    
+        if flg_source=='FCI':
+        
+            u=np.unique(d['FIA_PROJECT_ID'])
+            for i in range(u.size):
+                ind1=np.where(d['FIA_PROJECT_ID']==u[i])[0]
+                if ind1.size==0:
+                    continue
+                ind2=np.where(dAdmin['PP Number']==u[i])[0]
+                if ind2.size==0:
+                    continue
+                u2=np.unique(d['IdxToSXY'][ind1])
+                for j in range(u2.size):
+                    ind3=np.where(d['IdxToSXY']==u2[j])[0]
+                    for k in range(ind3.size):
+                        d['Activity_Type'][ind3[k]]=dAdmin['Project Type'][ind2[0]]
+    
+        elif flg_source=='ReforestationNonOb':
+        
+            nam=['No Planting','SL','KD','UNDER','Unclassified']
+            for i in range(d['IdxToSXY'].size):
+                d['Activity_Type'][i]=nam[int(meta['ProjectType'][int(d['IdxToSXY'][i])])]
+        
+        return d
+    
+    #--------------------------------------------------------------------------
+    # ATU
+    #--------------------------------------------------------------------------
     
     d={}
-    d['IdxToSXY']=np.append(atu['IdxToSXY'],fl)
-    d['ID_Multipolygon']=np.append(atu['IdxToSXY'],fl)
-    d['Year']=np.append(atu['Year'],fl)
-    d['Month']=np.append(atu['Month'],fl)
-    d['OPENING_ID']=np.append(atu['OPENING_ID'],fl)
-    d['Activity_Type']=np.array(['empty' for _ in range(n)],dtype=object)  
+    d['IdxToSXY']=atu['IdxToSXY'].copy()
+    d['ID_Multipolygon']=atu['IdxToSXY'].copy()
+    d['Year']=atu['Year'].copy()
+    d['Month']=atu['Month'].copy()
+    d['OPENING_ID']=atu['OPENING_ID'].copy()
+    d['Activity_Type']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)  
     
-    d['AEF_ATU']=np.zeros(n)    
+    d['AEF_ATU']=np.zeros(atu['IdxToSXY'].size)    
     for i in range(len(atu_multipolygons)):
         ind1=np.where(sxy['ID_atu_multipolygons']==i)[0]
         nxy=ind1.size
@@ -2397,77 +2428,32 @@ def ExportSummaryByGridCell(meta,atu):
             d['AEF_ATU'][ind2]=np.round(A/nxy,3)
             d['ID_Multipolygon'][ind2]=i    
         
-    d['FIA_PROJECT_ID']=np.array(['empty' for _ in range(n)],dtype=object)    
+    d['FIA_PROJECT_ID']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)    
     u=np.unique(atu['FIA_PROJECT_ID'])
     for i in range(u.size):
         ind=np.where(atu['FIA_PROJECT_ID']==u[i])[0]
-        d['FIA_PROJECT_ID'][ind]=cbu.lut_n2s(meta['LUT']['ATU']['FIA_PROJECT_ID'],u[i])    
-    #d['FIA_PROJECT_ID']=np.array(['empty' for _ in range(n)],dtype=object)    
-    #for i in range(atu['Year'].size):
-    #    d['FIA_PROJECT_ID'][i]=cbu.lut_n2s(meta['LUT']['ATU']['FIA_PROJECT_ID'],atu['FIA_PROJECT_ID'][i])[0]   
+        d['FIA_PROJECT_ID'][ind]=cbu.lut_n2s(meta['LUT']['ATU']['FIA_PROJECT_ID'],u[i])
         
-    d['FSC']=np.array(['empty' for _ in range(n)],dtype=object)    
+    d['FSC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)    
     for i in range(atu['Year'].size):
         d['FSC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]    
-    d['DistCD']=np.array(['empty' for _ in range(n)],dtype=object)    
+    d['DistCD']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)    
     for i in range(atu['Year'].size):
         d['DistCD'][i]=cbu.lut_n2s(meta['LUT']['ATU']['DISTURBANCE_CODE'],atu['DISTURBANCE_CODE'][i])[0]    
-    d['SBC']=np.array(['empty' for _ in range(n)],dtype=object)
+    d['SBC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
     for i in range(atu['Year'].size):
         d['SBC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][i])[0]
-    d['SMC']=np.array(['empty' for _ in range(n)],dtype=object)
+    d['SMC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
     for i in range(atu['Year'].size):
         d['SMC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][i])[0]
-    d['STC']=np.array(['empty' for _ in range(n)],dtype=object)
+    d['STC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
     for i in range(atu['Year'].size):
         d['STC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]
     
-    d['BGCz']=np.array(['empty' for _ in range(n)],dtype=object)
-    d['BGCsz']=np.array(['empty' for _ in range(n)],dtype=object)
-    d['BGCv']=np.array(['empty' for _ in range(n)],dtype=object)
-    
-    d['SI_FCinv']=np.zeros(n)
-    d['I_SPH_FCinv']=np.zeros(n)
-    d['I_Spc1_CD']=np.array(['empty' for _ in range(n)],dtype=object)
-    d['I_Spc2_CD']=np.array(['empty' for _ in range(n)],dtype=object)
-    
-    d['Pl_SPH']=np.append(np.round(atu['ACTUAL_PLANTED_NUMBER']/atu['ACTUAL_TREATMENT_AREA']),fl)
-    ind=np.where( (d['SBC']!='PL') & (d['STC']!='PL') )[0]
-    d['Pl_SPH'][ind]=0
-    
-    cnt=atu['Year'].size
-    for i in range(fcinv['IdxToSXY'].size):
-        ind=np.where( (d['IdxToSXY']==fcinv['IdxToSXY'][i]) )[0]
-        if ind.size==0:
-            # Don't add forest cover where there is no ATU info for that grid cell 
-            # *** I have no idea why this happens!! ***
-            continue
-        
-        ind=np.where( (d['IdxToSXY']==fcinv['IdxToSXY'][i]) & (d['OPENING_ID']==fcinv['OPENING_ID'][i]) & (d['Year']==fcinv['REFERENCE_YEAR'][i]) )[0]
-        if ind.size>0:
-            
-            for j in range(ind.size):
-                d['I_SPH_FCinv'][ind[j]]=fcinv['I_TOTAL_STEMS_PER_HA'][i]
-                d['SI_FCinv'][ind[j]]=fcinv['SITE_INDEX'][i]
-                d['I_Spc1_CD'][ind[j]]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])
-                d['I_Spc2_CD'][ind[j]]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])
-        else:
-            ind=np.where( (d['IdxToSXY']==fcinv['IdxToSXY'][i]) )[0]
-            d['IdxToSXY'][cnt]=fcinv['IdxToSXY'][i]
-            d['ID_Multipolygon'][cnt]=d['ID_Multipolygon'][ind[0]]
-            d['Year'][cnt]=fcinv['REFERENCE_YEAR'][i]
-            d['OPENING_ID'][cnt]=fcinv['OPENING_ID'][i]
-            d['I_SPH_FCinv'][cnt]=fcinv['I_TOTAL_STEMS_PER_HA'][i]
-            d['SI_FCinv'][cnt]=fcinv['SITE_INDEX'][i]
-            d['I_Spc1_CD'][cnt]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])
-            d['I_Spc2_CD'][cnt]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])
-            cnt=cnt+1
-    
-    # Get rid of empty values
-    for k in d.keys():
-        d[k]=d[k][0:cnt]
-      
     # Add VRI
+    d['BGCz']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+    d['BGCsz']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+    d['BGCv']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
     for i in range(d['IdxToSXY'].size):
         ind=np.where(vri['IdxToSXY']==d['IdxToSXY'][i])[0]
         if ind.size==0:
@@ -2475,7 +2461,69 @@ def ExportSummaryByGridCell(meta,atu):
         d['BGCz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],vri['BEC_ZONE_CODE'][ind[0]])[0]
         d['BGCsz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind[0]])[0]
         d['BGCv'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind[0]])[0]    
-        
+    
+    # Add activity type
+    d=AddActivityType('ReforestationNonOb',d,meta,[])
+    
+    df_atu=pd.DataFrame.from_dict(d)
+    
+    #--------------------------------------------------------------------------
+    # FC inventory
+    #--------------------------------------------------------------------------
+    
+    d={}
+    d['IdxToSXY']=fcinv['IdxToSXY'].copy()
+    d['ID_Multipolygon']=np.zeros(fcinv['IdxToSXY'].size)    
+    for i in range(len(atu_multipolygons)):
+        ind1=np.where(sxy['ID_atu_multipolygons']==i)[0]
+        for j in range(ind1.size):
+            ind2=np.where(fcinv['IdxToSXY']==ind1[j])[0]
+            d['ID_Multipolygon'][ind2]=i 
+    d['Year']=fcinv['REFERENCE_YEAR'].copy()
+    d['Activity_Type']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)  
+    d['SI']=fcinv['SITE_INDEX'].copy()
+    d['I_SPH']=fcinv['I_TOTAL_STEMS_PER_HA'].copy()
+    d['I_Spc1_CD']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
+    d['I_Spc2_CD']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
+    for i in range(fcinv['IdxToSXY'].size):
+        d['I_Spc1_CD'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])[0]
+        d['I_Spc2_CD'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])[0]
+
+    # Add VRI
+    d['BGCz']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
+    d['BGCsz']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
+    d['BGCv']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
+    for i in range(d['IdxToSXY'].size):
+        ind=np.where(vri['IdxToSXY']==d['IdxToSXY'][i])[0]
+        if ind.size==0:
+            continue
+        d['BGCz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],vri['BEC_ZONE_CODE'][ind[0]])[0]
+        d['BGCsz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind[0]])[0]
+        d['BGCv'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind[0]])[0]  
+
+    # Add activity type
+    d=AddActivityType('ReforestationNonOb',d,meta,[])
+
+    df_fcinv=pd.DataFrame.from_dict(d)
+    
+    #--------------------------------------------------------------------------
+    # Merge
+    #--------------------------------------------------------------------------
+    
+    df=df_atu.merge(df_fcinv,how='outer',on=('IdxToSXY','Year','ID_Multipolygon'))
+    df=df.sort_values(by=['IdxToSXY','Year','Month'])
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummarySiteAndEventsByGridCell2.xlsx',index=False)
+    
+    
+    
+    
+
+    
+    
+    d['Pl_SPH']=np.append(np.round(atu['ACTUAL_PLANTED_NUMBER']/atu['ACTUAL_TREATMENT_AREA']),fl)
+    ind=np.where( (d['SBC']!='PL') & (d['STC']!='PL') )[0]
+    d['Pl_SPH'][ind]=0
+    
     # Add planting info    
     for i in range(20):
         d['Pl_Spc' + str(i+1) + '_CD']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
@@ -2499,37 +2547,8 @@ def ExportSummaryByGridCell(meta,atu):
                 d['Pl_Spc' + str(j+1) + '_NumTree'][i]=pl['NUMBER_PLANTED'][ind0]
                 d['Pl_Spc' + str(j+1) + '_SeedLot'][i]=pl['SEEDLOT_NUMBER'][ind0]
     
-    # Activity type
-    #flg_source='FCI'
-    flg_source='ReforestationNonOb'
     
-    if flg_source=='FCI':
-        
-        u=np.unique(d['FIA_PROJECT_ID'])
-        for i in range(u.size):
-            ind1=np.where(d['FIA_PROJECT_ID']==u[i])[0]
-            if ind1.size==0:
-                continue
-            ind2=np.where(dAdmin['PP Number']==u[i])[0]
-            if ind2.size==0:
-                continue
-            u2=np.unique(d['IdxToSXY'][ind1])
-            for j in range(u2.size):
-                ind3=np.where(d['IdxToSXY']==u2[j])[0]
-                for k in range(ind3.size):
-                    d['Activity_Type'][ind3[k]]=dAdmin['Project Type'][ind2[0]]
-    
-    elif flg_source=='ReforestationNonOb':
-        
-        nam=['No Planting','SL','KD','UNDER','Unidentified']
-        for i in range(d['IdxToSXY'].size):
-            d['Activity_Type'][i]=nam[int(meta['ProjectType'][int(d['IdxToSXY'][i])])]
-       
-    # Save
-    df=pd.DataFrame.from_dict(d)    
-    df=df.sort_values(by=['IdxToSXY','Year','Month'])
-    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummarySiteAndEventsByGridCell.xlsx',index=False)
-    
+
     return
 
 #%% Timber harvesting land base 

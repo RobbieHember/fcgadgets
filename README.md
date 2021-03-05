@@ -14,7 +14,7 @@ The **fcgadgets** repo was developed to:
 
 ## FEATURES
 * Simulate forest sector GHG balance at point locations, over forest openings, or for hypothetical stands
-* Calculate the GHG benefit (i.e., GHG emission reductions) that results from land use and management decisions
+* Calculate the GHG benefit (i.e., GHG emission reductions) associated with land use and forest management decisions
 * Map carbon stocks over continuous, high-resolution grids
 
 ## CBRUNNER
@@ -43,7 +43,7 @@ will match that originally predicted by the GY model.
 	* Litter (organic soil horizon); 
 	* Soil (mineral soil horizon);
 	* Felled & piled materials
-* Loosely based on methods described by Kurz et al. (2009)
+* Based on methods described by Kurz et al. (2009) and Shaw et al. (2014)
 ### Events_FromTaz: 
 * This method imposes changes caused by natural disturbances and management events
 * All events are defined by an event ID, decimal year, mortality factor, growth factor, and the ID of the growth curve that represents the new stand
@@ -228,6 +228,7 @@ Hember, R.A., Kurz, W.A., Girardin, M.P., 2019. Tree Ring Reconstructions of Ste
 
 Kurz, W.A., Dymond, C.C., White, T.M., Stinson, G., Shaw, C.H., Rampley, G.J., Smyth, C., Simpson, B.N., Neilson, E.T., Trofymow, J.A., Metsaranta, J., Apps, M.J., 2009. CBM-CFS3: A model of carbon-dynamics in forestry and land-use change implementing IPCC standards. Ecological Modelling 220, 480–504. https://doi.org/10.1016/j.ecolmodel.2008.10.018 
 
+Shaw, C.H., Hilger, A.B., Metsaranta, J., Kurz, W.A., Russo, G., Eichel, F., Stinson, G., Smyth, C., Filiatrault, M., 2014. Evaluation of simulated estimates of forest ecosystem carbon stocks using ground plot data from Canada’s National Forest Inventory. Ecological Modelling 272, 323–347.
 
 ## License
 
