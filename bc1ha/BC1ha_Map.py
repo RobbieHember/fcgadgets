@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors
 import geopandas as gpd
 import pandas as pd
+import fiona
 from shapely.geometry import Polygon,Point
 
 # Import custom modules

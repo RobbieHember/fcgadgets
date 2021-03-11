@@ -150,7 +150,12 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
     # Exclude inventory period
     if par['IBM']['Exclude simulations during modern era']=='On':
         ind=np.where( (meta['Year']>=1951) & (meta['Year']<=meta['Year Project']) )[0]
-        ibm_sim['Occurrence'][ind,:]=0    
+        ibm_sim['Occurrence'][ind,:]=0 
+        
+    # Exclude historical period
+    if par['IBM']['Exclude simulations during historical period']=='On':
+        ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
+        ibm_sim['Occurrence'][ind,:]=0     
         
     #--------------------------------------------------------------------------
     # Severity / mortality
@@ -239,6 +244,10 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
         
             for iT in range(meta['Year'].size):
             
+                if par['WF']['Exclude simulations during historical period']=='On':
+                    if meta['Year'][iT]<=meta['Year Project']:
+                        continue
+                
                 # Adjust shape parameter to match specified annual probability of 
                 # occurrence from the deterministic component
                 ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
@@ -263,6 +272,11 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
             
             Po=wfss[namZone]['PctOcc_DetPlusRand_WF_Scn' + str(int(par['WF']['Scenario ID']))]/100
             for iT in range(meta['Year'].size):
+                
+                if par['WF']['Exclude simulations during historical period']=='On':
+                    if meta['Year'][iT]<=meta['Year Project']:
+                        continue
+                
                 rn=np.random.random(indZone.size)
                 ind_wfss=np.where(tv_wfss==meta['Year'][iT])[0]
                 indMort=np.where(rn<Po[ind_wfss])[0]
@@ -272,6 +286,11 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
     if par['WF']['Exclude simulations during modern era']=='On':
         ind=np.where( (meta['Year']>=1920) & (meta['Year']<=meta['Year Project']) )[0]
         wf_sim['Occurrence'][ind,:]=0
+        
+    # Exclude inventory period
+    if par['WF']['Exclude simulations during historical period']=='On':
+        ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
+        wf_sim['Occurrence'][ind,:]=0    
     
     #--------------------------------------------------------------------------
     # Get mortality from probability of burn severity rating

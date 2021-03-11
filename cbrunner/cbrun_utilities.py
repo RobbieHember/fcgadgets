@@ -900,6 +900,10 @@ def PostProcessBatchTIPSY(meta):
     G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
     G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
     
+    # Fix growth of year zero
+    G_StemMerch[0,:]=G_StemMerch[1,:]
+    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
+    
     # Add negative nonmerch to merch 
     ind=np.where(G_StemNonMerch<0)
     G_StemMerch[ind]=G_StemMerch[ind]+G_StemNonMerch[ind]
@@ -959,8 +963,7 @@ def PostProcessBatchTIPSY(meta):
                             (dfPar['ID_Stand']==indBat[iS]+1) & 
                             (dfPar['ID_Scenario']==iScn+1) &
                             (dfPar['ID_GC']==int(iGC+1)))[0]
-                        # dh[iS].ID_GrowthCurve[indDH][0]
-                        
+                        # dh[iS].ID_GrowthCurve[indDH][0]     
                     
                     if indTIPSY.size==0:
                         # This can happen if only some stands have a third GC, for example
@@ -1859,7 +1862,7 @@ def MosByMultipolygon(meta,include_area):
     
     # Variables to save
     nam1=['V_StemMerch','C_Ecosystem', 'C_InUse', 'C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem']
-    nam2=['A','Eco_Biomass','Eco_DeadWood','Eco_Litter','Eco_Total','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Eco_NGHGB','Sec_NGHGB']
+    nam2=['A','Eco_Biomass','Eco_DeadWood','Eco_Litter','Eco_Total','Eco_NPP','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Eco_NGHGB','Sec_NGHGB']
 
     # Initialize data by multipolygon structure    
     MosByMP=[None]*meta['N Scenario']
@@ -2376,21 +2379,21 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
         ax[1,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
         ax[1,1].set(position=[0.37,0.53,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Dead wood (MgC/ha)')
         
-        ax[1,2].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_RH']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
-        ax[1,2].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_RH']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
-        ax[1,2].set(position=[0.71,0.53,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='RH (MgC/ha/yr)')
+        ax[1,2].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_NPP']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,2].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_NPP']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,2].set(position=[0.71,0.53,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='NPP (MgC/ha/yr)')
     
-        ax[2,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
-        ax[2,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
-        ax[2,0].set(position=[0.04,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Wildfire emissions (MgC/ha)')
+        ax[2,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_RH']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1,markersize=ms+1)
+        ax[2,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_RH']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[2,0].set(position=[0.04,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='RH (MgC/ha/yr)')
     
-        ax[2,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
-        ax[2,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
-        ax[2,1].set(position=[0.37,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Open burning emissions (MgC/ha/yr)')
+        ax[2,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
+        ax[2,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[2,1].set(position=[0.37,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Wildfire emissions (MgC/ha/yr)')
         
-        ax[2,2].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
-        ax[2,2].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
-        ax[2,2].set(position=[0.71,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Removals (MgC/ha/yr)')
+        ax[2,2].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
+        ax[2,2].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_E_OpenBurning']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
+        ax[2,2].set(position=[0.71,0.285,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Open burning emissions (MgC/ha/yr)')
     
         ax[3,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
         ax[3,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
@@ -2407,7 +2410,7 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
         #gu.axletters(ax,plt,0.01,0.91)
         
         pt=meta['LUT']['ProjectType'][meta['ProjectTypeByMP'][uMP[iMP]]]
-        gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(iMP) + '_' + pt,'png',200)
+        gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(uMP[iMP]) + '_' + pt,'png',200)
     
     return
 
@@ -2459,6 +2462,13 @@ def PrepGrowthCurvesForCBR(meta,ugc):
     G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
     G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
     G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
+
+    # Fix growth of year zero
+    G_StemMerch[0,:]=G_StemMerch[1,:]
+    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
+    G_Foliage[0,:]=G_Foliage[1,:]
+    G_Branch[0,:]=G_Branch[1,:]
+    G_Bark[0,:]=G_Bark[1,:]
 
     del C_Stem,C_StemMerch,C_StemNonMerch,C_Foliage,C_Branch,C_Bark,fMerch,fNonMerch
 
@@ -2615,6 +2625,10 @@ def PrepGrowthCurvesForCBR_WithEarlyCorrection(meta,ugc):
     C_StemNonMerch=fNonMerch*C_Stem
     G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
     G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
+    
+    # Fix growth of year zero
+    G_StemMerch[0,:]=G_StemMerch[1,:]
+    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
     
     # Add negative nonmerch to merch 
     ind=np.where(G_StemNonMerch<0)

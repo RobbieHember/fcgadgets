@@ -25,7 +25,8 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 meta={}
 meta['Paths']={}
-meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
+#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
+meta['Paths']['Project']=r'D:\Data\FCI_Projects\SparseGrid_HighRes'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
@@ -34,7 +35,7 @@ meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
 # Save
-gu.opickle(meta['Paths']['Project'] + '\\Inputs\\MetaData.pkl',meta)
+gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Metadata.pkl',meta)
 
 #%% Define sparse grid sample
 
@@ -47,7 +48,7 @@ tsa_boundaries=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundarie
 zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 
 # Define regular grid sampling frequency
-sfreq=100
+sfreq=20
 
 # Extract subgrid
 zTSA['X']=zTSA['X'][0::sfreq,0::sfreq]
@@ -66,13 +67,15 @@ iIreg=np.where( (zLC2['Data']==4) )
 #ind=np.where( (zLC2.Data==4) & (zTSA.Data==iTSA) )
 
 # Save grid
-z=zTSA.copy()
-z['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
-z['Data'][iIreg]=1 # Treed = 1
-gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\GridSXY.tiff')
-plt.matshow(z['Data'])
+flg=0
+if flg==1:
+    z=zTSA.copy()
+    z['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
+    z['Data'][iIreg]=1 # Treed = 1
+    gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\GridSXY.tiff')
+    plt.matshow(z['Data'])
 
-#%%
+#%% Generate sparse grid
 
 # Apply filters to BC1ha grid 
 sxy={}
@@ -138,11 +141,12 @@ ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
 #gu.opickle(r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummaryNdep\Geospatial\ndep.pkl',ndep)
 
 
-#%% Open crosswalk between missing AT geometries and opening geometries (if already exists)
+#%% Open crosswalk between missing AT geometries and opening geometries
+# If this doesn't work, you need to run the script that creates the crosswalk
 
-atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\atu_mis.pkl')
-at_geo_from_op=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl')
-at_geo_from_fc=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_fcinv.pkl')
+missing_geo_atu_list=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl')
+missing_geo_op_geos=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_op_geos.pkl')
+missing_geo_fc_geos=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_fc_geos.pkl')
 
 #%% Import inventory layer information (names, variables, LUTs)
 
@@ -201,66 +205,71 @@ for iLyr in range(len(InvLyrInfo)):
             if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):
                 
                 # No need to record surveys
-                if prp['SILV_BASE_CODE']=='SU':
-                    continue
+                #if prp['SILV_BASE_CODE']=='SU':
+                #    continue
                 
                 # Populate missing ATU layer geometry with geometry from 
                 # OPENING or FC layer where possible.
                 flg_geom_from_op=0
                 flg_geom_from_fc=0
-                if (geom==None):                                            
+                if (geom==None):               
                     
-                    # check to see if the opening is listed in the AT missing dictionary
-                    indMis=np.where(atu_mis['OPENING_ID']==prp['OPENING_ID'])[0]
-                    
+                    # Check to see if the opening is listed in the AT missing dictionary
+                    indMis=np.where( (missing_geo_atu_list['ACTIVITY_TREATMENT_UNIT_ID']==prp['ACTIVITY_TREATMENT_UNIT_ID']) )[0]
+            
                     if indMis.size>0:
-                     
-                        if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']=='PL') & (prp['SILV_METHOD_CODE']=='CTAIN'):
-                            
-                            # Convert features to fiona-like dictionary and combine multipolygons
+                
+                        idx2fc=missing_geo_atu_list['IdxToFC'][indMis[0]]
+                
+                        if len(idx2fc)>0:
+
+                            # Use forest cover geometries
+                
                             geom={}
                             geom['coordinates']=[]
-                            feat_fc=[]
-                            for iMis in range(indMis.size):
-                                geo0=at_geo_from_fc[indMis[iMis]]
-                                # *** I wasn't expecting to need "(type(geo0)!=dict)" below - excluding it caused this to crash - needs improvement ***
-                                if (geo0!=None) & (type(geo0)!=dict):
-                                    for i in range(len(geo0)):
-                                        if type(geo0[i])==dict:
-                                            geo1=geo0[i]['coordinates']
-                                            geom['coordinates'].append(geo1[0])
-                                            feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i]
-                                            feat_fc.append(feat0)
-                                        else:
-                                            if geo0[i]==None:
-                                                continue
-                                            for j in range(len(geo0[i])):
-                                                geo1=geo0[i][j]['coordinates']
-                                                geom['coordinates'].append(geo1[0])
-                                                feat0={}; feat0['properties']=prp; feat0['geometry']=geo0[i][j]
-                                                feat_fc.append(feat0)
+                            for i in range(len(idx2fc)):
+                                geo0=missing_geo_fc_geos[prp['OPENING_ID']][idx2fc[i]]
+                                if type(geo0)==dict:
+                                    geo1=geo0['coordinates']
+                                    geom['coordinates'].append(geo1[0])
+                                else:
+                                    for j in range(len(geo0)):
+                                        geo1=geo0[j]['coordinates']
+                                        geom['coordinates'].append(geo1[0])
+                    
                             flg_geom_from_fc=1
-                        
-                            # Plot
-                            flg=0
-                            if flg==1:
-                                gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
-                                plt.close('all')
-                                fig,ax=plt.subplots(1)
-                                feat_op={}; feat_op['properties']=prp; feat_op['geometry']=at_geo_from_op[indMis[0]]
-                                gdf_op=gpd.GeoDataFrame.from_features([feat_op])
-                                gdf_op.plot(ax=ax,facecolor='None',linewidth=4,edgecolor='k')
-                                gdf_fc.plot(ax=ax,facecolor='None',linewidth=1.25,edgecolor='r',linestyle='--')
+                    
+                            # Plot (not working)
+                            #flg=0
+                            #if flg==1:                        
+                            #    plt.close('all')
+                            #    fig,ax=plt.subplots(1)
+                            #    gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
+                            #    gdf_fc.plot(ax=ax,facecolor='None',edgecolor='r',linewidth=1.25,linestyle='--')          
+                
+                        if prp['OPENING_ID'] in missing_geo_op_geos:
+                            
+                            if len(missing_geo_op_geos[prp['OPENING_ID']])>0:
+                    
+                                # Use opening geometry
+                                
+                                geom={}
+                                geom['coordinates']=[]
+                                geo0=missing_geo_op_geos[prp['OPENING_ID']]
+                                if type(geo0)==dict:
+                                    geo1=geo0['coordinates']
+                                    geom['coordinates'].append(geo1[0])
+                                else:
+                                    for j in range(len(geo0)):
+                                        geo1=geo0[j]['coordinates']
+                                        geom['coordinates'].append(geo1[0])
+
+                                flg_geom_from_op=1
                     
                         else:
-                            
-                            # Not a planting, use spatial from opening
-                            geom=at_geo_from_op[indMis[0]]
-                            flg_geom_from_op=1
-                    
-                    else:
-                        
-                        print('Missing spatial could not be recovered')
+                
+                            # Could not use either FC or openign layer
+                            print('Missing spatial could not be recovered')
                         
             # Only continue if spatial info exists
             if (geom==None) | (geom==[]):
@@ -386,7 +395,7 @@ for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
     key_pl.append(fnam)
             
 # Open AT sparse grid
-atu=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Geospatial\\' + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
+atu=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
 
 pl_code=InvLyrInfo[0]['LUT']['SILV_BASE_CODE']['PL']
     

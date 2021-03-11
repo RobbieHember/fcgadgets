@@ -124,7 +124,7 @@ cnt_atu_multipolygons=0
 #%% Initialize a geodataframe that will store each polygon
 
 cnt_atu_polygons=0
-cn_atu_polygons=['ID_atu_polygons','ID_atu_multipolygons','OPENING_ID','FIA_PROJECT_ID','SILV_BASE_CODE','ACTUAL_TREATMENT_AREA','Year','geometry']
+cn_atu_polygons=['ID_atu_polygons','ID_atu_multipolygons','MissStatus','Year','geometry']
 list_atu_polygons=[None]*5000000
     
 #%% Initialize sparse grid coordinate dictionary
@@ -186,7 +186,9 @@ with fiona.open(path,layer=lyr_nam) as source:
             ListOfLicenseeFSC=['BCT','LFP''IA','IR','VOI','SBF']
             
             # Only include certain years
-            if Year<2011:
+            #tStart=2011
+            tStart=1990
+            if Year<tStart:
                 continue
             
             # To get actual planting or direct seeding, exclude:
@@ -335,10 +337,16 @@ with fiona.open(path,layer=lyr_nam) as source:
             dp0['ID_atu_polygons']=cnt_atu_polygons
             dp0['ID_atu_multipolygons']=cnt_atu_multipolygons            
             dp0['OPENING_ID']=prp['OPENING_ID']
-            dp0['FIA_PROJECT_ID']=prp['FIA_PROJECT_ID']            
-            dp0['SILV_BASE_CODE']=prp['SILV_BASE_CODE']
-            dp0['ACTUAL_TREATMENT_AREA']=prp['ACTUAL_TREATMENT_AREA']            
-            dp0['Year']=prp['Year']
+            #dp0['FIA_PROJECT_ID']=prp['FIA_PROJECT_ID']            
+            #dp0['SILV_BASE_CODE']=prp['SILV_BASE_CODE']
+            dp0['MissStatus']=0
+            if prp['GeomFromFcLyr']==1:
+                dp0['MissStatus']=1
+            if prp['GeomFromOpLyr']==1:
+                dp0['MissStatus']=2    
+            
+            #dp0['ACTUAL_TREATMENT_AREA']=prp['ACTUAL_TREATMENT_AREA']            
+            #dp0['Year']=prp['Year']
             
             gdf_outer=gpd.GeoDataFrame(crs=gdf_bm.crs)
             gdf_outer.loc[0,'geometry']=Polygon(coords1[0])

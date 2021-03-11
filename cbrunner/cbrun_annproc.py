@@ -1380,30 +1380,26 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
         # Update stand age
         #----------------------------------------------------------------------
             
-        if meta['Biomass Module']!='Sawtooth':
+        if (meta['Biomass Module']!='Sawtooth') & (meta['Partial Mortality Affects Age']=='On'):
             
             # List of exception event types (that will remain at the same age)
             Exceptions_to_Partial_Mortality=[  ]
             #v2[iB1]['A']
-            
-            if (meta['Partial Mortality Affects Age']=='On'):
+
+            # Index to types where age will change
+            ind=np.where( (np.isin(ID_Type,Exceptions_to_Partial_Mortality)==False) )[0]
                 
-                # Index to types where age will change
-                ind=np.where( (np.isin(ID_Type,Exceptions_to_Partial_Mortality)==False) )[0]
-                
-                # Assume oldest trees were most affected, reduce age in prportion
-                # with mortality rate
-                # Not always realistic, but see how net growth is affected.
-                vo['A'][iT,ind]=vo['A'][iT,ind]*(1-MortalityFactor)
-                        
-            else:
-                        
-                # Assume no change
-                vo['A'][iT,:]=vo['A'][iT,:]
-                
+            # Assume oldest trees were most affected, reduce age in prportion
+            # with mortality rate
+            # Not always realistic, but see how net growth is affected.
+            vo['A'][iT,ind]=vo['A'][iT,ind]*(1-MortalityFactor)
+        
+        # Ensure stand-replacing events reset stand age to 0
+        vo['A'][iT,(MortalityFactor==1)]=0
+        
         # Ensure planting resets to age 0                
         vo['A'][iT,(ID_Type==meta['LUT']['Dist']['Planting']) | (ID_Type==meta['LUT']['Dist']['Direct Seeding'])]=0
-                    
+            
         #----------------------------------------------------------------------
         # Transition to new growth curve
         #----------------------------------------------------------------------

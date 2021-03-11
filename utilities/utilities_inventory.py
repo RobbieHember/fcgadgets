@@ -2372,15 +2372,19 @@ def PutEventsInOrder(dmec,meta):
 
 #%% Export AT Layer data to spreadhseet
     
-def ExportSummaryByGridCell(meta,atu):
+def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,include_planting,project_name):
     
-    def AddActivityType(flg_source,d,meta,dAdmin):
+    #--------------------------------------------------------------------------
+    # function written to add activity type 
+    #--------------------------------------------------------------------------
+    
+    def AddActivityType(project_name,d,meta,dAdmin):
         
         # Activity type
-        #flg_source='FCI'
-        #flg_source='ReforestationNonOb'
+        #project_name='FCI'
+        #project_name='ReforestationNonOb'
     
-        if flg_source=='FCI':
+        if project_name=='FCI':
         
             u=np.unique(d['FIA_PROJECT_ID'])
             for i in range(u.size):
@@ -2396,7 +2400,7 @@ def ExportSummaryByGridCell(meta,atu):
                     for k in range(ind3.size):
                         d['Activity_Type'][ind3[k]]=dAdmin['Project Type'][ind2[0]]
     
-        elif flg_source=='ReforestationNonOb':
+        elif project_name=='ReforestationNonOb':
         
             nam=['No Planting','SL','KD','UNDER','Unclassified']
             for i in range(d['IdxToSXY'].size):
@@ -2449,6 +2453,9 @@ def ExportSummaryByGridCell(meta,atu):
     d['STC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
     for i in range(atu['Year'].size):
         d['STC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]
+    d['SilvObjectiveCode1']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+    for i in range(atu['Year'].size):
+        d['SilvObjectiveCode1'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_OBJECTIVE_CODE_1'],atu['SILV_OBJECTIVE_CODE_1'][i])[0]    
     
     # Add VRI
     d['BGCz']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
@@ -2462,8 +2469,48 @@ def ExportSummaryByGridCell(meta,atu):
         d['BGCsz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind[0]])[0]
         d['BGCv'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind[0]])[0]    
     
+    # Add opening variables
+    d['District']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+    for i in range(d['IdxToSXY'].size):
+        ind=np.where(op['IdxToSXY']==d['IdxToSXY'][i])[0]
+        if ind.size==0:
+            continue
+        d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
+    
     # Add activity type
     d=AddActivityType('ReforestationNonOb',d,meta,[])
+    
+    # Add Planting
+    
+    if include_planting=='On':
+    
+        d['Pl_SPH']=np.round(atu['ACTUAL_PLANTED_NUMBER']/atu['ACTUAL_TREATMENT_AREA'])
+        ind=np.where( (d['SBC']!='PL') & (d['STC']!='PL') )[0]
+        d['Pl_SPH'][ind]=0
+    
+        # Add planting info
+        num_of_spc=10
+        for i in range(num_of_spc):
+            d['Pl_Spc' + str(i+1) + '_CD']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+            d['Pl_Spc' + str(i+1) + '_Pct']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+            #d['Pl_Spc' + str(i+1) + '_NumTree']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+            d['Pl_Spc' + str(i+1) + '_SeedLot']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
+    
+        for i in range(atu['IdxToSXY'].size):
+            if (d['SBC'][i]!='PL') & (d['STC'][i]!='PL'):
+                continue        
+            ind=np.where( (pl['IdxToSXY']==d['IdxToSXY'][i]) & (pl['OPENING_ID']==d['OPENING_ID'][i]) & (pl['Year']==d['Year'][i]) )[0]
+            tot_pl=np.sum(pl['NUMBER_PLANTED'][ind])
+            if ind.size>0:
+                Ord=np.flip(np.argsort(pl['NUMBER_PLANTED'][ind]))
+                for j in range(ind.size):
+                    if j>num_of_spc-1:
+                        continue
+                    ind0=ind[Ord[j]]
+                    d['Pl_Spc' + str(j+1) + '_CD'][i]=cbu.lut_n2s(meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'],pl['SILV_TREE_SPECIES_CODE'][ind0])[0]
+                    d['Pl_Spc' + str(j+1) + '_Pct'][i]=np.round(pl['NUMBER_PLANTED'][ind0]/tot_pl*100)
+                    #d['Pl_Spc' + str(j+1) + '_NumTree'][i]=pl['NUMBER_PLANTED'][ind0]
+                    d['Pl_Spc' + str(j+1) + '_SeedLot'][i]=pl['SEEDLOT_NUMBER'][ind0]
     
     df_atu=pd.DataFrame.from_dict(d)
     
@@ -2501,53 +2548,32 @@ def ExportSummaryByGridCell(meta,atu):
         d['BGCsz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind[0]])[0]
         d['BGCv'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind[0]])[0]  
 
+    # Add opening variables
+    d['District']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
+    for i in range(d['IdxToSXY'].size):
+        ind=np.where(op['IdxToSXY']==d['IdxToSXY'][i])[0]
+        if ind.size==0:
+            continue
+        #Natural Resource District
+        d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
+
     # Add activity type
     d=AddActivityType('ReforestationNonOb',d,meta,[])
 
     df_fcinv=pd.DataFrame.from_dict(d)
     
     #--------------------------------------------------------------------------
-    # Merge
+    # Merge ATU and FCI
     #--------------------------------------------------------------------------
     
-    df=df_atu.merge(df_fcinv,how='outer',on=('IdxToSXY','Year','ID_Multipolygon'))
+    df=df_atu.merge(df_fcinv,how='outer',on=('IdxToSXY','Year','ID_Multipolygon','Activity_Type','BGCz','BGCsz','BGCv','District'))
+    
+    #--------------------------------------------------------------------------
+    # Save
+    #--------------------------------------------------------------------------
+    
     df=df.sort_values(by=['IdxToSXY','Year','Month'])
-    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummarySiteAndEventsByGridCell2.xlsx',index=False)
-    
-    
-    
-    
-
-    
-    
-    d['Pl_SPH']=np.append(np.round(atu['ACTUAL_PLANTED_NUMBER']/atu['ACTUAL_TREATMENT_AREA']),fl)
-    ind=np.where( (d['SBC']!='PL') & (d['STC']!='PL') )[0]
-    d['Pl_SPH'][ind]=0
-    
-    # Add planting info    
-    for i in range(20):
-        d['Pl_Spc' + str(i+1) + '_CD']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
-        d['Pl_Spc' + str(i+1) + '_Pct']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
-        d['Pl_Spc' + str(i+1) + '_NumTree']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
-        d['Pl_Spc' + str(i+1) + '_SeedLot']=np.array([' ' for _ in range(d['IdxToSXY'].size)],dtype=object)
-    
-    for i in range(d['IdxToSXY'].size):
-        if (d['SBC'][i]!='PL') & (d['STC'][i]!='PL'):
-            continue        
-        ind=np.where( (pl['IdxToSXY']==d['IdxToSXY'][i]) & (pl['OPENING_ID']==d['OPENING_ID'][i]) & (pl['Year']==d['Year'][i]) )[0]
-        tot_pl=np.sum(pl['NUMBER_PLANTED'][ind])
-        if ind.size>0:
-            Ord=np.flip(np.argsort(pl['NUMBER_PLANTED'][ind]))
-            for j in range(ind.size):
-                if j>19:
-                    continue
-                ind0=ind[Ord[j]]
-                d['Pl_Spc' + str(j+1) + '_CD'][i]=cbu.lut_n2s(meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'],pl['SILV_TREE_SPECIES_CODE'][ind0])[0]
-                d['Pl_Spc' + str(j+1) + '_Pct'][i]=np.round(pl['NUMBER_PLANTED'][ind0]/tot_pl*100)
-                d['Pl_Spc' + str(j+1) + '_NumTree'][i]=pl['NUMBER_PLANTED'][ind0]
-                d['Pl_Spc' + str(j+1) + '_SeedLot'][i]=pl['SEEDLOT_NUMBER'][ind0]
-    
-    
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummarySiteAndEventsByGridCell.xlsx',index=False)   
 
     return
 
