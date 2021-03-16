@@ -1862,7 +1862,7 @@ def MosByMultipolygon(meta,include_area):
     
     # Variables to save
     nam1=['V_StemMerch','C_Ecosystem', 'C_InUse', 'C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem']
-    nam2=['A','Eco_Biomass','Eco_DeadWood','Eco_Litter','Eco_Total','Eco_NPP','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Eco_NGHGB','Sec_NGHGB']
+    nam2=['A','Eco_NPP','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Pro_Emissions','Eco_NGHGB','Sec_NGHGB']
 
     # Initialize data by multipolygon structure    
     MosByMP=[None]*meta['N Scenario']
@@ -2414,110 +2414,9 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
     
     return
 
-
-#%% Prepare growth curves
+#%% Prepare growth curves (with early correction)
 
 def PrepGrowthCurvesForCBR(meta,ugc):
-
-    # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
-    # conversion factor.
-    dm2c=0.5
-
-    # Growth curve parameters and TIPSY outputs
-    #dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
-    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
-
-    # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
-
-    del txtDat
-    
-    # Define age vector (must be consistent with how TIPSY was set up)
-    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
-
-    # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
-    N_Age=Age.size
-    N_GC=int(dfDat.shape[0]/N_Age)
-    
-    # Define the fraction of merchantable stemwood
-    fMerch=np.nan_to_num(np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')/np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F'))
-    fNonMerch=1-fMerch
-
-    # Merchantable stemwood volume
-    V_StemMerch=np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')
-    G_VStemMerch=np.append(np.zeros((1,N_GC)),np.diff(V_StemMerch,axis=0),axis=0)
-
-    # Extract age responses for each biomass pool
-    C_Stem=dm2c*np.reshape(dfDat['ODT_Stem'].values,(N_Age,N_GC),order='F')
-    C_StemMerch=fMerch*C_Stem
-    C_StemNonMerch=fNonMerch*C_Stem
-    C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
-    C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
-    C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
-
-    # Calculate growth
-    z=np.zeros((1,N_GC))
-    G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
-    G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
-    G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
-    G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
-    G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
-
-    # Fix growth of year zero
-    G_StemMerch[0,:]=G_StemMerch[1,:]
-    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
-    G_Foliage[0,:]=G_Foliage[1,:]
-    G_Branch[0,:]=G_Branch[1,:]
-    G_Bark[0,:]=G_Bark[1,:]
-
-    del C_Stem,C_StemMerch,C_StemNonMerch,C_Foliage,C_Branch,C_Bark,fMerch,fNonMerch
-
-    for iScn in range(meta['N Scenario']):    
-        for iGC in range(meta['GC']['N Growth Curves']):
-            
-            # Index to the full set of growth curves for scenario iScn and growth curve iGC
-            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC'][iGC]) )[0]
-        
-            # Extract the unique growth curve ID for scenario iScn and growth curve iGC
-            ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
-        
-            # Extract the inverse index for scenario iScn and growth curve iGC
-            Inverse_ugc_ScnAndGc=ugc['Inverse'][ind_ugc_ScnAndGc]
-        
-            for iBat in range(0,meta['N Batch']):
-            
-                # Index to batch
-                indBat=IndexToBatch(meta,iBat)
-            
-                # Intersect
-                c,inda,indb=np.intersect1d(ID_ugc_ScnAndGc,indBat,return_indices=True)
-            
-                Inverse_ugc_ScnAndGcAndBat=Inverse_ugc_ScnAndGc[inda]
-            
-                # Initialize array of growth data
-                G=np.zeros((N_Age,indBat.size,6),dtype=np.int16)
-            
-                for i in range(inda.size):
-                    
-                    iStand=indb[i]
-                    iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
-            
-                    G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,4]=G_Foliage[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-        
-                # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
-
-    return
-
-
-#%% Prepare growth curves
-
-def PrepGrowthCurvesForCBR_WithEarlyCorrection(meta,ugc):
 
     # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
     # conversion factor.
@@ -2679,6 +2578,105 @@ def PrepGrowthCurvesForCBR_WithEarlyCorrection(meta,ugc):
             
                 for i in range(inda.size):
                 
+                    iStand=indb[i]
+                    iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
+            
+                    G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    G[:,iStand,4]=G_Foliage[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+        
+                # Save data to file in input variables folder of project
+                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
+
+    return
+
+#%% Prepare growth curves (without early correction)
+
+def PrepGrowthCurvesForCBR_WithoutEarlyCorrection(meta,ugc):
+
+    # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
+    # conversion factor.
+    dm2c=0.5
+
+    # Growth curve parameters and TIPSY outputs
+    #dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+
+    # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
+    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+
+    del txtDat
+    
+    # Define age vector (must be consistent with how TIPSY was set up)
+    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+
+    # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
+    N_Age=Age.size
+    N_GC=int(dfDat.shape[0]/N_Age)
+    
+    # Define the fraction of merchantable stemwood
+    fMerch=np.nan_to_num(np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')/np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F'))
+    fNonMerch=1-fMerch
+
+    # Merchantable stemwood volume
+    V_StemMerch=np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')
+    G_VStemMerch=np.append(np.zeros((1,N_GC)),np.diff(V_StemMerch,axis=0),axis=0)
+
+    # Extract age responses for each biomass pool
+    C_Stem=dm2c*np.reshape(dfDat['ODT_Stem'].values,(N_Age,N_GC),order='F')
+    C_StemMerch=fMerch*C_Stem
+    C_StemNonMerch=fNonMerch*C_Stem
+    C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
+    C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
+    C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
+
+    # Calculate growth
+    z=np.zeros((1,N_GC))
+    G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
+    G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
+    G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
+    G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
+    G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
+
+    # Fix growth of year zero
+    G_StemMerch[0,:]=G_StemMerch[1,:]
+    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
+    G_Foliage[0,:]=G_Foliage[1,:]
+    G_Branch[0,:]=G_Branch[1,:]
+    G_Bark[0,:]=G_Bark[1,:]
+
+    del C_Stem,C_StemMerch,C_StemNonMerch,C_Foliage,C_Branch,C_Bark,fMerch,fNonMerch
+
+    for iScn in range(meta['N Scenario']):    
+        for iGC in range(meta['GC']['N Growth Curves']):
+            
+            # Index to the full set of growth curves for scenario iScn and growth curve iGC
+            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC'][iGC]) )[0]
+        
+            # Extract the unique growth curve ID for scenario iScn and growth curve iGC
+            ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
+        
+            # Extract the inverse index for scenario iScn and growth curve iGC
+            Inverse_ugc_ScnAndGc=ugc['Inverse'][ind_ugc_ScnAndGc]
+        
+            for iBat in range(0,meta['N Batch']):
+            
+                # Index to batch
+                indBat=IndexToBatch(meta,iBat)
+            
+                # Intersect
+                c,inda,indb=np.intersect1d(ID_ugc_ScnAndGc,indBat,return_indices=True)
+            
+                Inverse_ugc_ScnAndGcAndBat=Inverse_ugc_ScnAndGc[inda]
+            
+                # Initialize array of growth data
+                G=np.zeros((N_Age,indBat.size,6),dtype=np.int16)
+            
+                for i in range(inda.size):
+                    
                     iStand=indb[i]
                     iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
             

@@ -1533,7 +1533,7 @@ def HWP_From_BCHWP12(iT,vi,vo,psl,meta):
     # If custom harvests occur, revise parameters
     # *** This is slow, but thus far, custom harvests have only been used in
     # small projects. It will require improvements for speed if applied in big 
-    # projects. ***
+    # projects. It doesn't need to be in the annual loop, for starters! ***
     #--------------------------------------------------------------------------
     
     if 'Harvest Custom' in meta:

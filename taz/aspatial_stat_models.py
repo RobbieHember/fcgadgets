@@ -37,11 +37,17 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,Age):
 
     beta=[-0.05,300]
     
-    # Take a look at function:
-    #Age=np.arange(1,500)
-    #Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
-    #plt.close('all')
-    #plt.plot(Age,Po*100,'b-')        
+    # Plot function:
+    flg=0
+    if flg==1:
+        Age=np.arange(1,500)
+        Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
+        
+        fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+        ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
+        ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)',ylabel='Annual probability of harvest')
+        ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
+        ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
     
     Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
 
@@ -83,6 +89,22 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period):
     #Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
     #plt.close('all')
     #plt.plot(V_Merch,Po*100,'b-')
+    
+    # Plot function:
+    flg=0
+    if flg==1:
+        beta=[0.03,-0.025,400]
+        V_Merch=np.arange(1,1200)
+        Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
+        
+        plt.close('all')
+        fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+        ax.plot(V_Merch,Po*100,'k-',linewidth=0.75,label='Harvest on-the-fly model 1')
+        ax.set(position=[0.1,0.12,0.87,0.86],xlim=[0,800],xticks=np.arange(0,1300,100),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)', \
+               ylim=[0,5],ylabel='Annual probability of harvest (%)')
+        ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
+        ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+        gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\taz_ann_prob_harvest','png',500)
         
     Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
     rn=np.random.random(V_Merch.size)
