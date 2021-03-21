@@ -101,7 +101,7 @@ def QueryResultsActivity(d):
             Name.append('Mulching')
             
         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='HARV'):
-            Name.append('Salvage Logging')
+            Name.append('Harvest Salvage')
             
         elif (d['SILV_BASE_CODE'][i]=='LB') & (d['SILV_TECHNIQUE_CODE'][i]=='GR'):
             Name.append('LB-GR')
@@ -1861,7 +1861,7 @@ def MosByMultipolygon(meta,include_area):
     it=np.where( (tv_full>=tv_saving[0]) & (tv_full<=tv_saving[-1]) )[0]
     
     # Variables to save
-    nam1=['V_StemMerch','C_Ecosystem', 'C_InUse', 'C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem']
+    nam1=['V_StemMerch','C_Ecosystem','C_Biomass','C_DeadWood','C_Litter','C_Soil','C_InUse','C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem']
     nam2=['A','Eco_NPP','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Pro_Emissions','Eco_NGHGB','Sec_NGHGB']
 
     # Initialize data by multipolygon structure    
@@ -2234,8 +2234,8 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         A['Nat Dist']=A['Nat Dist'][0:c+1]
 
         A['Management']=[None]*10; c=-1
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensembles'][:,iEns]+mos[iScn]['Area']['Salvage Logging']['Ensembles'][:,iEns]
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensembles'][:,iEns]+mos[iScn]['Area']['Salvage Logging']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensembles'][:,iEns]+mos[iScn]['Area']['Harvest Salvage']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensembles'][:,iEns]+mos[iScn]['Area']['Harvest Salvage']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Knockdown']['Ensembles'][:,iEns]+mos[iScn]['Area']['Thinning']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensembles'][:,iEns]+mos[iScn]['Area']['Ripping']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Prescribed Burn']['Ensembles'][:,iEns]
@@ -2261,8 +2261,8 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         A['Nat Dist']=A['Nat Dist'][0:c+1]
 
         A['Management']=[None]*10; c=-1
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensemble Mean']+mos[iScn]['Area']['Salvage Logging']['Ensemble Mean']
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensemble Mean']+mos[iScn]['Area']['Salvage Logging']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Harvest']['Ensemble Mean']+mos[iScn]['Area']['Harvest Salvage']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Slashpile Burn']['Ensemble Mean']+mos[iScn]['Area']['Harvest Salvage']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Knockdown']['Ensemble Mean']+mos[iScn]['Area']['Thinning']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=mos[iScn]['Area']['Disc Trenching']['Ensemble Mean']+mos[iScn]['Area']['Ripping']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Prescribed Burn']['Ensemble Mean']
@@ -2309,8 +2309,8 @@ def AreaAffectedInSingleMultipolygon(meta,iScn,ivlT,tv,MosByMP,iMP):
 
     A['Management']=[None]*10; 
     c=-1
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Harvest']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Salvage Logging']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Slashpile Burn']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Salvage Logging']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Harvest']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Harvest Salvage']['Ensemble Mean'][:,iMP]
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Slashpile Burn']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Harvest Salvage']['Ensemble Mean'][:,iMP]
     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Knockdown']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Thinning']['Ensemble Mean'][:,iMP]
     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Disc Trenching']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Ripping']['Ensemble Mean'][:,iMP]
     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Prescribed Burn']['Ensemble Mean'][:,iMP]
@@ -2371,12 +2371,12 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
         ax[0,2].plot(tv,MosByMP[iP]['v2']['Mean']['A']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
         ax[0,2].set(position=[0.71,0.77,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Age, years')
     
-        ax[1,0].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
-        ax[1,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Biomass']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,0].plot(tv,MosByMP[iB]['v1']['Mean']['C_Biomass']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,0].plot(tv,MosByMP[iP]['v1']['Mean']['C_Biomass']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
         ax[1,0].set(position=[0.04,0.53,aw,ah],xlim=xlim,xlabel='',ylabel='Biomass (MgC/ha)')
     
-        ax[1,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
-        ax[1,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_DeadWood']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[1,1].plot(tv,MosByMP[iB]['v1']['Mean']['C_DeadWood']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[1,1].plot(tv,MosByMP[iP]['v1']['Mean']['C_DeadWood']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
         ax[1,1].set(position=[0.37,0.53,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Dead wood (MgC/ha)')
         
         ax[1,2].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_NPP']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
@@ -2399,9 +2399,9 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
         ax[3,0].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
         ax[3,0].set(position=[0.04,0.04,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Removals (MgC/ha)')
         
-        ax[3,1].plot(tv,MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'o-',color=cle1,linewidth=lw1,markersize=ms+1)
-        ax[3,1].plot(tv,MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,iMP],'s--',color=cle2,linewidth=lw1,markersize=ms)
-        ax[3,1].set(position=[0.37,0.04,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Removals (MgC/ha)')
+        ax[3,1].plot(tv,MosByMP[iB]['v2']['Mean']['Pro_Emissions']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
+        ax[3,1].plot(tv,MosByMP[iP]['v2']['Mean']['Pro_Emissions']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
+        ax[3,1].set(position=[0.37,0.04,aw,ah],xlim=xlim,xticks=xticks,xlabel='',ylabel='Product emissions (MgC/ha)')
     
         ax[3,2].plot(tv,MosByMP[iB]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'-',color=cle1,linewidth=lw1)
         ax[3,2].plot(tv,MosByMP[iP]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP],'--',color=cle2,linewidth=lw1)
@@ -2418,6 +2418,9 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
 
 def PrepGrowthCurvesForCBR(meta,ugc):
 
+    # *** This adjusts early net growth so that it is not zero. There is a
+    # second version of this function that excludes the correction. ***
+    
     # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
     # conversion factor.
     dm2c=0.5

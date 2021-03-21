@@ -23,7 +23,8 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Conservation.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706\LandUse.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208\Results.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320\Results.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430\Disturbances.gdb')
 
 #%% Define strings that frequently need to be populated with zeros
 
@@ -55,7 +56,7 @@ Update forest inventory data
 def DefineInventoryLayersAndVariables():
 
     # Define paths to geodatabase files
-    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
+    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320'
     PathInDisturbancesFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
     PathInVRIFull=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
     PathInLUPFull=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
@@ -691,7 +692,9 @@ def ExtractDateStringsFromRESULTS(lyr_nam,data):
 def RecoverMissingATUGeometries(meta):
     
     # Prepare meta['Paths']
-    
+    meta={}
+    meta['Paths']={}
+    meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320'
     # fiona.listlayers(meta['Paths']['Results'] + '\\Results.gdb')
     
     #--------------------------------------------------------------------------
@@ -1750,7 +1753,7 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity,Strin
 def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert,StringsToFill):
 
     ListOfTestedDist=[meta['LUT']['Dist']['Wildfire'],meta['LUT']['Dist']['Harvest'],
-            meta['LUT']['Dist']['Knockdown'],meta['LUT']['Dist']['Salvage Logging'],
+            meta['LUT']['Dist']['Knockdown'],meta['LUT']['Dist']['Harvest Salvage'],
             meta['LUT']['Dist']['Beetles'],meta['LUT']['Dist']['IBM'],meta['LUT']['Dist']['IBB'],
             meta['LUT']['Dist']['IBD'],meta['LUT']['Dist']['IBS']]
     
@@ -2402,7 +2405,7 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,inclu
     
         elif project_name=='ReforestationNonOb':
         
-            nam=['No Planting','SL','KD','UNDER','Unclassified']
+            nam=['No Planting','SL','KD','UNDER','NSR Backlog','Unclassified']
             for i in range(d['IdxToSXY'].size):
                 d['Activity_Type'][i]=nam[int(meta['ProjectType'][int(d['IdxToSXY'][i])])]
         

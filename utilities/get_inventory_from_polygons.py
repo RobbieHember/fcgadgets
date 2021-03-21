@@ -22,8 +22,8 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #project_name='FCI_RollupFCI_Inv'
 #project_name='SurveySummary'
-#project_name='FertilizationSummary'
-project_name='ReforestationNonObSummary'
+project_name='NutrientManagementSummary'
+#project_name='ReforestationNonObSummary'
 
 #%% Define paths
 
@@ -37,6 +37,17 @@ meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
 meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
+
+#%%
+
+if project_name=='NutrientManagementSummary':
+    
+    # Subsample multipolygons
+    atu_id_to_sample=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\atu_id_to_sample.pkl')
+    
+    # Cutblocks for gap-filling missing spatial
+    cut_tv=np.arange(1950,2021,1)
+    cut_mis=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\CutblocksForGapFilling.pkl')
 
 #%% Define subsampling frequency
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
@@ -121,6 +132,10 @@ print(lyr_nam)
 atu_multipolygons=[None]*5000000
 cnt_atu_multipolygons=0
 
+# Track those that with no spatial as well
+atu_mp_miss=[None]*5000000
+cnt_atu_mp_miss=0
+
 #%% Initialize a geodataframe that will store each polygon
 
 cnt_atu_polygons=0
@@ -167,18 +182,27 @@ with fiona.open(path,layer=lyr_nam) as source:
         if prp['ATU_COMPLETION_DATE']==None:
             prp['ATU_COMPLETION_DATE']='99990000'
         
+        Year=int(prp['ATU_COMPLETION_DATE'][0:4]) 
+        
         #----------------------------------------------------------------------
         # Project-specific query
         #----------------------------------------------------------------------
         
-        if project_name=='FertilizationSummary':
+        if project_name=='NutrientManagementSummary':
             
-            if (prp['SILV_BASE_CODE']!='FE') | (prp['SILV_TECHNIQUE_CODE']!='CA') | (prp['RESULTS_IND']!='Y'):
+            if (prp['SILV_BASE_CODE']!='FE') & (prp['SILV_TECHNIQUE_CODE']!='CA'):
                 continue
+            if (prp['RESULTS_IND']!='Y'):
+                continue
+            if np.isin(prp['ACTIVITY_TREATMENT_UNIT_ID'],atu_id_to_sample)==False:
+                continue
+        
+        elif project_name=='FESBC':
+            
+            if (prp['RESULTS_IND']!='Y') | (prp['SILV_FUND_SOURCE_CODE']!='FES') | (prp['SILV_BASE_CODE']=='SU'):
+                continue            
             
         elif project_name=='ReforestationNonObSummary':
-            
-            Year=int(prp['ATU_COMPLETION_DATE'][0:4]) 
             
             # Define which funding source codes are licensee vs. non-ob
             ListOfNonObFSC=['FTL','FTM','RBM','RBL','FR','VG','FIL','FID','FIM','S', \
@@ -268,31 +292,59 @@ with fiona.open(path,layer=lyr_nam) as source:
                     #    gdf_fc=gpd.GeoDataFrame.from_features(feat_fc)
                     #    gdf_fc.plot(ax=ax,facecolor='None',edgecolor='r',linewidth=1.25,linestyle='--')          
                 
-            elif len(missing_geo_op_geos[prp['OPENING_ID']])>0:
+                elif len(missing_geo_op_geos[prp['OPENING_ID']])>0:
                     
-                # Use opening geometry
+                    # Use opening geometry
                 
-                geom={}
-                geom['coordinates']=[]
-                geo0=missing_geo_op_geos[prp['OPENING_ID']]
-                if type(geo0)==dict:
-                    geo1=geo0['coordinates']
-                    geom['coordinates'].append(geo1[0])
-                else:
-                    for j in range(len(geo0)):
-                        geo1=geo0[j]['coordinates']
+                    geom={}
+                    geom['coordinates']=[]
+                    geo0=missing_geo_op_geos[prp['OPENING_ID']]
+                    if type(geo0)==dict:
+                        geo1=geo0['coordinates']
                         geom['coordinates'].append(geo1[0])
-
-                flg_geom_from_op=1
+                    else:
+                        for j in range(len(geo0)):
+                            geo1=geo0[j]['coordinates']
+                            geom['coordinates'].append(geo1[0])
+                            
+                    flg_geom_from_op=1
                     
             else:
                 
-                # Could not use either FC or openign layer
-                print('Missing spatial could not be recovered')
+                if project_name=='NutrientManagementSummary':
+                    
+                    # If it is nutrient management, randomly assign a cutblock geometry
+                    # of the approximate age 35
+                    it=np.where(cut_tv==Year-35)[0]
+                    if it.size>0:
+                        it=it[0]
+                        yr=cut_tv[it]
+                    else:
+                        it=0
+                        yr=1950
+                        
+                    for iCutYr in range(len(cut_mis[it])):
+                        if cut_mis[it][iCutYr]['properties']['Used Yet']==0:
+                            geom=cut_mis[it][iCutYr]['geometry']
+                            # Don't use it twice!
+                            cut_mis[it][iCutYr]['properties']['Used Yet']=1                            
+                            print('Recovering spatial from a cutblock!')
+                            break
+                else:
+                    
+                    # Could not use either FC or opening layer
+                    print('Missing spatial could not be recovered')
             
         # Don't conitnue if no spatial data
         if (geom==None): 
+            
             N_Missing_Spatial=N_Missing_Spatial+1
+            
+            # Update counter for missing multipolygon
+            prp['Year']=int(prp['ATU_COMPLETION_DATE'][0:4])
+            atu_mp_miss[cnt_atu_mp_miss]=prp
+            cnt_atu_mp_miss=cnt_atu_mp_miss+1
+            
             continue
         
         prp['ID_atu_multipolygons']=cnt_atu_multipolygons

@@ -1418,6 +1418,17 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
                     vi['GC']['Active'][:,ind,:]=vi['GC'][meta['GC']['ID GC'][iGC]][:,ind,:]
                     vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC'][iGC])
     
+        #----------------------------------------------------------------------
+        # Impose regen failure
+        #----------------------------------------------------------------------
+            
+        # Only applies to BatchTIPSY
+        if meta['Biomass Module']=='BatchTIPSY':
+            iFailure=np.where(ID_Type==meta['LUT']['Dist']['Regen Failure'])[0]
+            if iFailure.size>0:
+                vi['GC']['Active'][:,iFailure,:]=0
+                vi['GC'][1][:,iFailure,:]=0
+    
         #------------------------------------------------------------------
         # Update net growth (in response to lethal events)
         #
