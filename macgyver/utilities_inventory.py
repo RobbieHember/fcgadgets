@@ -14,8 +14,8 @@ import fiona
 import gdal
 import time
 import gc as garc
-from fcgadgets.utilities import utilities_gis as gis
-from fcgadgets.utilities import utilities_general as gu
+from fcgadgets.macgyver import utilities_gis as gis
+from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Look at contents of geodatabase
