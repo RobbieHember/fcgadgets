@@ -98,8 +98,8 @@ Once simulations are complete, use a series of functions in **cbrun_utilities.py
 The **cbrunner** model achieves comprehensive, granular representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
 ![image info](./images/fcgadgets_constellation.png)
 
-## UTILITIES
-The **fcgadgets.utilities** subpackage contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
+## MACGYVER
+The **fcgadgets.macgyver** subpackage contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Sample of points
 	* Sample of polygons
@@ -116,7 +116,7 @@ The **fcgadgets.utilities** subpackage contains custom scripts that compile info
 ### utilities_inventory.py
 The general workflow of **cbrunner** projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb.
 
-The purpose of adopting LUTs was to:
+The standard workflow goes like this:
 * Use the **DefineInventoryLayersAndVariables** function to create a list of the subset of variables from each layer that are needed for modelling.
 * Use the **BuildForestInventoryLUTs** function to assign unique numerical identifiers to each value of variables that originally come as string codes in source geodatabases. Filtering out unnecessary variables, and converting all retained variables to numeric data types, improves ease of subsequent programming, memory requirement, and storage space. One exception included variables that were stored as date strings within the various inventory layers. Date string variables were converted to a numeric data type upon later compilation of each inventory layer. Species codes occur across multiple inventory layers. As coherence among the lists of unique species codes from each layer could not be guaranteed, the script tallied all unique species codes across layers and repopulated the LUT for species codes for each layer with a complete, global set of species codes. The LUTs for each inventory layer are stored as pickle files.
 * Use the **PrepDMEC** function to compile an initial version of the Disturbance and Management Event Chronology (DMEC) from forest inventory databases.
@@ -150,8 +150,8 @@ scenarios, consistent across project studies, and supported by documentation.
 ### onset_spread_models.py
 * Spatially explicit simulations of events based on annual probability of onset and spread
 
-## MACGYVER
-The **fcgadgets.macgyver** module contains resources for representing effects of forest management on forest sector GHG balance.
+## SILVICULTURE
+The **fcgadgets.silviculture** module contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_application.py:
 * Representation of GHG balance responses to aerial applications of Urea
 

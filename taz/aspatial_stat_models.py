@@ -109,7 +109,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period,psl):
     flg=0
     if flg==1:
         
-        beta=[0.03,-0.025,400]
+        beta=[0.03,-0.025,1200]
         V_Merch=np.arange(1,1200)
         Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
         
