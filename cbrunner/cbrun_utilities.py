@@ -6,8 +6,8 @@ import os
 import openpyxl
 import gc as garc
 import time
-from fcgadgets.utilities import utilities_general as gu
-from fcgadgets.utilities import utilities_inventory as invu
+from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import utilities_inventory as invu
 from fcgadgets.taz import aspatial_stat_models as asm
 
 #%% CONVERT LUT NUMBER TO STRING NAME
@@ -1265,6 +1265,15 @@ def UpdateParamaters(pthin):
 
     pHWP={'Name':Name,'Value':Value}
 
+    #--------------------------------------------------------------------------
+    # On the fly models
+    #--------------------------------------------------------------------------
+    
+    df=pd.read_excel(pthin + "\Parameters_OnTheFly.xlsx",sheet_name='Sheet1')
+    m,n=df.shape
+    
+    pOnTheFly=df.to_dict()
+
     #------------------------------------------------------------------------------
     # Biogeoclimatic Zone
     #------------------------------------------------------------------------------
@@ -1392,9 +1401,10 @@ def UpdateParamaters(pthin):
          'Decomposition':pDecomp, \
          'Disturbances':pDistFull, \
          'Dist':pDist, \
+         'HWP':pHWP, \
+         'OnTheFly':pOnTheFly, \
          'BGC_ZONE':pBGC_ZONE, \
          'SpeciesVRI':pSpeciesVRI, \
-         'HWP':pHWP, \
          'SRS':pSRS, \
          'TreeAllometry':pTreeAllometry, \
          'R_Def1':pR_Def1, \
@@ -1404,79 +1414,6 @@ def UpdateParamaters(pthin):
 
     # Save to file
     gu.opickle(pthin + '\Parameters.pkl',pts)
-    
-#%% Write BatchTIPSY input file
-# Notes:
-#    if the input spreadsheet has nan's, all data will be converted to float
-
-def Write_BatchTIPSY_Input_File(meta):
-    
-    # Import format info (number of designated positions per variable)
-    fin=meta['Paths']['Model Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
-    df_frmt=pd.read_excel(fin,sheet_name='Sheet1')
-
-    # Format array
-    nfrmt=df_frmt.iloc[1,4:53]
-
-    # Import input data   
-    df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
-
-    # Convert to dictionary
-    Data=df.to_dict('list')
-    for k in Data.keys():
-        Data[k]=np.array(Data[k])
-    
-    varnams=list(df.columns[4:53])
-    
-    # Change to list
-    DataList=[None]*Data['ID'].size
-    for i in range(len(DataList)):
-        d={}
-        for k in Data.keys():
-            d[k]=Data[k][i]
-        DataList[i]=d      
-        
-    # Create a spacer
-    Spacer=" "
-    
-    # Open file
-    fid=open(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_InputVariables.dat','w')    
-    
-    # Loop through rows of table
-    for iStand in range(len(DataList)):
-        
-        LineString=""
-        
-        for iV in range(len(varnams)):
-              
-            s0=str(DataList[iStand][varnams[iV]])
-    
-            # Make sure NANs are blank for TIPSY
-            if s0=='nan': s0=''
-            if s0=='NA': s0=''
-            if s0=='NaN': s0=''
-            if s0=='': s0=''
-    
-            n=nfrmt[iV]
-            if len(s0)==n: 
-                s1=s0
-            else: 
-                s1=s0
-                d=n-len(s0)
-                for k in range(d): 
-                    s1=s1 + Spacer
-                
-            # Add individual column variables
-            LineString=LineString + s1 + Spacer
-                
-        # Add end of line
-        LineString=LineString + '\n'
-
-        # Save    
-        fid.write(LineString)
-    
-    # Close
-    fid.close() 
 
 #%% WRITE SPREADSHEET OF BatchTIPSY PARAMTERS
 
@@ -1497,7 +1434,9 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
     N_headers=7
 
     # Overwrite existing data entries with empty cells
-    for i in range(22000):
+    # *** This is really important - failing to wipe it clean first will lead to 
+    # weird parameters ***
+    for i in range(100000):
         for j in range(len(gy_labels)):
             sheet.cell(row=i+1+N_headers,column=j+1).value=''
 
@@ -1654,6 +1593,79 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
     #------------------------------------------------------------------------------
     
     xfile.save(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx')
+    
+#%% Write BatchTIPSY input file
+# Notes:
+#    if the input spreadsheet has nan's, all data will be converted to float
+
+def Write_BatchTIPSY_Input_File(meta):
+    
+    # Import format info (number of designated positions per variable)
+    fin=meta['Paths']['Model Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
+    df_frmt=pd.read_excel(fin,sheet_name='Sheet1')
+
+    # Format array
+    nfrmt=df_frmt.iloc[1,4:53]
+
+    # Import input data   
+    df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
+
+    # Convert to dictionary
+    Data=df.to_dict('list')
+    for k in Data.keys():
+        Data[k]=np.array(Data[k])
+    
+    varnams=list(df.columns[4:53])
+    
+    # Change to list
+    DataList=[None]*Data['ID'].size
+    for i in range(len(DataList)):
+        d={}
+        for k in Data.keys():
+            d[k]=Data[k][i]
+        DataList[i]=d      
+        
+    # Create a spacer
+    Spacer=" "
+    
+    # Open file
+    fid=open(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_InputVariables.dat','w')    
+    
+    # Loop through rows of table
+    for iStand in range(len(DataList)):
+        
+        LineString=""
+        
+        for iV in range(len(varnams)):
+              
+            s0=str(DataList[iStand][varnams[iV]])
+    
+            # Make sure NANs are blank for TIPSY
+            if s0=='nan': s0=''
+            if s0=='NA': s0=''
+            if s0=='NaN': s0=''
+            if s0=='': s0=''
+    
+            n=nfrmt[iV]
+            if len(s0)==n: 
+                s1=s0
+            else: 
+                s1=s0
+                d=n-len(s0)
+                for k in range(d): 
+                    s1=s1 + Spacer
+                
+            # Add individual column variables
+            LineString=LineString + s1 + Spacer
+                
+        # Add end of line
+        LineString=LineString + '\n'
+
+        # Save    
+        fid.write(LineString)
+    
+    # Close
+    fid.close() 
 
 #%% IMPORT DISTURBANCE HISTORY
 
@@ -1846,6 +1858,7 @@ def MosByMultipolygon(meta,include_area):
     # Import sxy
     sxy=gu.ipickle(meta['Paths']['Geospatial'] + '\\sxy.pkl')
 
+    # Unique MPs
     uMP=np.unique(sxy['ID_atu_multipolygons'])
 
     # Create listed index (faster than indexing on the fly)
@@ -1905,8 +1918,6 @@ def MosByMultipolygon(meta,include_area):
         for iEns in range(meta['N Ensemble']):
             
             # Initialize temporary data structure for full simulation
-            # Give each variable two columns for instances where areas overlap multiple batches.
-            # Values for areas with data from multiple batches will be averaged.        
             Data={}
             Data['v1']={}
             for iV in range(len(nam1)):
@@ -2242,7 +2253,7 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Control']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=mos[iScn]['Area']['Planting']['Ensembles'][:,iEns]+mos[iScn]['Area']['Direct Seeding']['Ensembles'][:,iEns]
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=mos[iScn]['Area']['IDW Btk Spray']['Ensembles'][:,iEns]
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.65,0,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Fertilization Aerial']['Ensembles'][:,iEns]
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.75,0.55,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Fertilization Aerial']['Ensembles'][:,iEns]
         A['Management']=A['Management'][0:c+1]
         
     else:
@@ -2269,7 +2280,7 @@ def SummarizeAreaAffected(meta,iScn,iEns,AEF,ivlT,tv,mos):
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[iScn]['Area']['Dwarf Mistletoe Control']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=mos[iScn]['Area']['Planting']['Ensemble Mean']+mos[iScn]['Area']['Direct Seeding']['Ensemble Mean']
         c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=mos[iScn]['Area']['IDW Btk Spray']['Ensemble Mean']
-        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.65,0,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Fertilization Aerial']['Ensemble Mean']
+        c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.75,0.55,1]; A['Management'][c]['Data']=mos[iScn]['Area']['Fertilization Aerial']['Ensemble Mean']
         A['Management']=A['Management'][0:c+1]
 
     # Apply area expansion factor
@@ -2409,8 +2420,11 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
     
         #gu.axletters(ax,plt,0.01,0.91)
         
-        pt=meta['LUT']['ProjectType'][meta['ProjectTypeByMP'][uMP[iMP]]]
-        gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(uMP[iMP]) + '_' + pt,'png',200)
+        try:
+            pt=meta['LUT']['ProjectType'][meta['ProjectTypeByMP'][uMP[iMP]]]
+            gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(uMP[iMP]) + '_' + pt,'png',200)
+        except:
+            gu.PrintFig(meta['Paths']['Figures'] + '\\BySparseGridSample\\MP' + str(uMP[iMP]),'png',200)
     
     return
 

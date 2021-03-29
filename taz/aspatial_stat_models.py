@@ -7,7 +7,7 @@ Aspatial Statistical Models of Disturbance Events
 
 import numpy as np
 import scipy.stats as stats
-from fcgadgets.utilities import utilities_general as gu
+from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Generate disturbances from Pareto distribution
@@ -68,31 +68,47 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,Age):
 
 #%% Simulate probability of harvesting on the fly
 
-def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period):
+def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period,psl):
     
     # Indicator of THLB (THLB=1, Non-THLB=0)
     flag_thlb=vi['Inv']['THLB'][iT,:]
     
-    # Deterministic component    
+    # Saturating annual probability of harvest
     if Period=='Historical':
+        
+        # Historical
+        
         #f1=0.0014*25**((meta['Year'][iT]-1900)/100)
         #f2=(1/(1+np.exp(0.12*(Year-1950))))
         f1=0.0011*35**((meta['Year'][iT]-1900)/100)
         f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
-        beta0=f1*f2
-    else:
-        # Future
-        beta0=0.03
+        Pa_H_Sat=f1*f2
     
-    beta=[beta0,-0.025,400]
-    #V_Merch=np.arange(1,1200)
-    #Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
-    #plt.close('all')
-    #plt.plot(V_Merch,Po*100,'b-')
+    else:
+        
+        # Future
+        if 'Override OTF Pa Harvest Sat' in meta:
+            # Check to see if defaults have been overridden
+            Pa_H_Sat=meta['Override OTF Pa Harvest Sat']
+        else:
+            # Use default
+            Pa_H_Sat=psl['bOTF_Pa_Harvest_Sat']
+    
+    # Inflection point
+    if 'Override OTF_Pa Harvest Inf' in meta:
+        # Check to see if defaults have been overridden
+        Pa_H_Inf=meta['Override OTF Pa Harvest Inf']
+    else:
+        # Use default
+        Pa_H_Inf=psl['bOTF_Pa_Harvest_Inflection']
+    
+    # Shape parameter
+    Pa_H_Shape=psl['bOTF_Pa_Harvest_Shape']
     
     # Plot function:
     flg=0
     if flg==1:
+        
         beta=[0.03,-0.025,400]
         V_Merch=np.arange(1,1200)
         Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
@@ -105,12 +121,17 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period):
         ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
         ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
         gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\taz_ann_prob_harvest','png',500)
-        
-    Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
+    
+    # Annual probability of occurrence    
+    Po=Pa_H_Sat*(1/(1+np.exp(Pa_H_Shape*(V_Merch-Pa_H_Inf))))
+    
+    # Random number
     rn=np.random.random(V_Merch.size)
     
+    # Occurrence
     Oc=flag_thlb*np.floor(np.minimum(1,Po/rn))
     
+    # Index to occurrence
     indS=np.where(Oc==1)[0]    
     
     if indS.size>0:
@@ -124,11 +145,11 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period):
                 iE=iAvailable[0]+1 # changing this to zero will cause the harvest to be overwritten
                 vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Slashpile Burn']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
-                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
+                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
                 iE=iAvailable[0]+2
                 vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Planting']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
-                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
+                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
     
     return vi
 
@@ -177,7 +198,12 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
     # Exclude historical period
     if par['IBM']['Exclude simulations during historical period']=='On':
         ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
-        ibm_sim['Occurrence'][ind,:]=0     
+        ibm_sim['Occurrence'][ind,:]=0
+    
+    # Exclude future period
+    if par['IBM']['Exclude simulations during future period']=='On':
+        ind=np.where( (meta['Year']>meta['Year Project']) )[0]
+        ibm_sim['Occurrence'][ind,:]=0       
         
     #--------------------------------------------------------------------------
     # Severity / mortality
@@ -309,10 +335,15 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
         ind=np.where( (meta['Year']>=1920) & (meta['Year']<=meta['Year Project']) )[0]
         wf_sim['Occurrence'][ind,:]=0
         
-    # Exclude inventory period
+    # Exclude historical period
     if par['WF']['Exclude simulations during historical period']=='On':
         ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
-        wf_sim['Occurrence'][ind,:]=0    
+        wf_sim['Occurrence'][ind,:]=0
+    
+    # Exclude future period
+    if par['WF']['Exclude simulations during future period']=='On':
+        ind=np.where( (meta['Year']>meta['Year Project']) )[0]
+        wf_sim['Occurrence'][ind,:]=0      
     
     #--------------------------------------------------------------------------
     # Get mortality from probability of burn severity rating

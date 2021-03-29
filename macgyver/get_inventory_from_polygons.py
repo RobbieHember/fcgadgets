@@ -32,22 +32,17 @@ meta['Paths']={}
 meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 #meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
 meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
-#%%
+#%% Cutblocks for gap-filling missing spatial
 
 if project_name=='NutrientManagementSummary':
-    
-    # Subsample multipolygons
-    atu_id_to_sample=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\atu_id_to_sample.pkl')
-    
-    # Cutblocks for gap-filling missing spatial
-    cut_tv=np.arange(1950,2021,1)
-    cut_mis=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\CutblocksForGapFilling.pkl')
+    ail=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\AnnualImplementationLevel.pkl')
+    #cut_mis=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\CutblocksForGapFilling.pkl')
 
 #%% Define subsampling frequency
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
@@ -169,7 +164,7 @@ with fiona.open(path,layer=lyr_nam) as source:
     for feat in source:
             
         # Extract attributes and geometry
-        prp=feat['properties'].copy()
+        prp=feat['properties']
         
         #if (prp['OPENING_ID']==1462976) & (prp['SILV_BASE_CODE']=='PL'):
         #    break
@@ -190,11 +185,15 @@ with fiona.open(path,layer=lyr_nam) as source:
         
         if project_name=='NutrientManagementSummary':
             
-            if (prp['SILV_BASE_CODE']!='FE') & (prp['SILV_TECHNIQUE_CODE']!='CA'):
+            flg_stop=1
+            if (prp['SILV_BASE_CODE']=='FE') & (prp['SILV_TECHNIQUE_CODE']=='CA') & (prp['SILV_METHOD_CODE']=='HELI') & (prp['RESULTS_IND']=='Y') & (prp['ACTUAL_TREATMENT_AREA']!=None) & (prp['ATU_COMPLETION_DATE']!=None) & (prp['SILV_FUND_SOURCE_CODE']!=None):
+                flg_stop=0
+            
+            if flg_stop==1:
                 continue
-            if (prp['RESULTS_IND']!='Y'):
-                continue
-            if np.isin(prp['ACTIVITY_TREATMENT_UNIT_ID'],atu_id_to_sample)==False:
+            
+            # Do subsampling to save time
+            if np.isin(prp['ACTIVITY_TREATMENT_UNIT_ID'],ail['id_atu_subsample'])==False:
                 continue
         
         elif project_name=='FESBC':
@@ -257,6 +256,7 @@ with fiona.open(path,layer=lyr_nam) as source:
         # OPENING or FC layer where possible.
         flg_geom_from_op=0
         flg_geom_from_fc=0
+        flg_geom_from_cut=0
         if (geom==None):               
                     
             # Check to see if the opening is listed in the AT missing dictionary
@@ -283,6 +283,7 @@ with fiona.open(path,layer=lyr_nam) as source:
                                 geom['coordinates'].append(geo1[0])
                     
                     flg_geom_from_fc=1
+                    print('Missing spatial recovered from forest cover layer')
                     
                     # Plot (not working)
                     #flg=0
@@ -308,32 +309,34 @@ with fiona.open(path,layer=lyr_nam) as source:
                             geom['coordinates'].append(geo1[0])
                             
                     flg_geom_from_op=1
+                    print('Missing spatial recovered from opening layer')
                     
             else:
                 
-                if project_name=='NutrientManagementSummary':
+#                if project_name=='NutrientManagementSummary':
+#                    
+#                    # If it is nutrient management, randomly assign a cutblock geometry
+#                    # of the approximate age 35
+#                    it=np.where(cut_mis['Year']==Year-35)[0]
+#                    if it.size>0:
+#                        it=it[0]
+#                        yr=cut_mis['Year'][it]
+#                    else:
+#                        it=0
+#                        yr=1950
+#                        
+#                    for iCutYr in range(len(cut_mis['feat'][it])):
+#                        if cut_mis['feat'][it][iCutYr]['properties']['Used Yet']==0:
+#                            geom=cut_mis['feat'][it][iCutYr]['geometry']
+#                            # Don't use it twice!
+#                            cut_mis['feat'][it][iCutYr]['properties']['Used Yet']=1                            
+#                            flg_geom_from_cut=1
+#                            print('Recovering spatial from a cutblock!')                            
+#                            break
+#                else:
                     
-                    # If it is nutrient management, randomly assign a cutblock geometry
-                    # of the approximate age 35
-                    it=np.where(cut_tv==Year-35)[0]
-                    if it.size>0:
-                        it=it[0]
-                        yr=cut_tv[it]
-                    else:
-                        it=0
-                        yr=1950
-                        
-                    for iCutYr in range(len(cut_mis[it])):
-                        if cut_mis[it][iCutYr]['properties']['Used Yet']==0:
-                            geom=cut_mis[it][iCutYr]['geometry']
-                            # Don't use it twice!
-                            cut_mis[it][iCutYr]['properties']['Used Yet']=1                            
-                            print('Recovering spatial from a cutblock!')
-                            break
-                else:
-                    
-                    # Could not use either FC or opening layer
-                    print('Missing spatial could not be recovered')
+                # Could not use either FC or opening layer
+                print('Missing spatial could not be recovered')
             
         # Don't conitnue if no spatial data
         if (geom==None): 
@@ -352,6 +355,7 @@ with fiona.open(path,layer=lyr_nam) as source:
         prp['geometry']=geom
         prp['GeomFromOpLyr']=flg_geom_from_op
         prp['GeomFromFcLyr']=flg_geom_from_fc
+        prp['GeomFromCutLyr']=flg_geom_from_cut
         
         # Extract vector geometries and store as a list of dictionaries.
         # The list contains each polygon ("block"). Within each block, a
@@ -716,9 +720,9 @@ for iLyr in range(len(InvLyrInfo)):
                     
                         flg_geom_from_fc=1
                     
-                elif prp['OPENING_ID'] in missing_geo_op_geos==True:
+                    #elif prp['OPENING_ID'] in missing_geo_op_geos==True:
                     
-                    if len(missing_geo_op_geos[prp['OPENING_ID']])>0:
+                    elif len(missing_geo_op_geos[prp['OPENING_ID']])>0:
                     
                         # Use opening geometry
                 
@@ -872,7 +876,6 @@ path=InvLyrInfo[iLyr]['Path'] + '\\' + InvLyrInfo[iLyr]['File Name']
 lyr_nam=InvLyrInfo[iLyr]['Layer Name']
 gdf_pl=gpd.read_file(path,layer=lyr_nam)        
 d_pl=gu.DataFrameToDict(gdf_pl.drop(columns='geometry'))
-        
 
 # Get keys for planting layer
 key_pl=[]

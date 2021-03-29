@@ -1170,7 +1170,7 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
             if vi['tv'][iT]<=meta['Year Project']:
                 Period='Historical'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period)
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period,psl)
     
     # Predict future harvesting (on the fly)        
     if (meta['Simulate harvesting on the fly (future)']=='On'):
@@ -1178,7 +1178,7 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
             if vi['tv'][iT]>=meta['Scenario Switch']['Dist on Fly']['Harvesting (future) Year Start'][meta['iScn']]:
                 Period='Future'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period)        
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period,psl)        
     
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta['N Stand'])

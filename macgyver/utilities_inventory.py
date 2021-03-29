@@ -691,12 +691,6 @@ def ExtractDateStringsFromRESULTS(lyr_nam,data):
 
 def RecoverMissingATUGeometries(meta):
     
-    # Prepare meta['Paths']
-    meta={}
-    meta['Paths']={}
-    meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320'
-    # fiona.listlayers(meta['Paths']['Results'] + '\\Results.gdb')
-    
     #--------------------------------------------------------------------------
     # Query AT layer for features with missing spatial information
     # Only consider planting, direct seeding, site prep and pest control
@@ -705,7 +699,7 @@ def RecoverMissingATUGeometries(meta):
 
     t0=time.time()
     
-    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW')
+    lyr=fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW')
     L=len(lyr)
     atu_full={}
     atu_full['OPENING_ID']=np.zeros(L)
@@ -730,7 +724,8 @@ def RecoverMissingATUGeometries(meta):
             if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') | \
                 (prp['SILV_BASE_CODE']=='DS') & (prp['RESULTS_IND']=='Y') | \
                 (prp['SILV_BASE_CODE']=='SP') & (prp['RESULTS_IND']=='Y') | \
-                (prp['SILV_BASE_CODE']=='PC') & (prp['RESULTS_IND']=='Y'):
+                (prp['SILV_BASE_CODE']=='PC') & (prp['RESULTS_IND']=='Y') | \
+                (prp['SILV_BASE_CODE']=='FE') & (prp['SILV_TECHNIQUE_CODE']=='CA') & (prp['SILV_METHOD_CODE']=='HELI') & (prp['RESULTS_IND']=='Y') & (prp['ACTUAL_TREATMENT_AREA']!=None) & (prp['ATU_COMPLETION_DATE']!=None) & (prp['SILV_FUND_SOURCE_CODE']!=None):
                 atu_full['Flag Included'][cnt]=1
             
             # Is spatial missing
@@ -767,7 +762,7 @@ def RecoverMissingATUGeometries(meta):
         atu_mis[k]=atu_mis[k][iMisAT]
     
     # Save
-    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl',atu_mis)
+    gu.opickle(PathInResultsFull + '\\missing_geo_atu_list.pkl',atu_mis)
     
     print((time.time()-t0)/60)
     
@@ -799,7 +794,7 @@ def RecoverMissingATUGeometries(meta):
             if id in op_mis:
                 op_mis[id].append(feat['geometry'])
     
-    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_op_geos.pkl',op_mis)
+    gu.opickle(PathInResultsFull + '\\missing_geo_op_geos.pkl',op_mis)
     
     print((time.time()-t0)/60)
     
@@ -909,7 +904,7 @@ def RecoverMissingATUGeometries(meta):
             if id in fc_mis:
                 fc_mis[id].append(feat['geometry'])
     
-    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_fc_geos.pkl',fc_mis)
+    gu.opickle(PathInResultsFull + '\\missing_geo_fc_geos.pkl',fc_mis)
     
     print((time.time()-t0)/60)    
 
@@ -981,7 +976,7 @@ def RecoverMissingATUGeometries(meta):
         if atu_mis['IdxToFC'][i]==None:
             atu_mis['IdxToFC'][i]=[]
             
-    gu.opickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl',atu_mis)
+    gu.opickle(PathInResultsFull + '\\missing_geo_atu_list.pkl',atu_mis)
 
 ##%% Scraps from toubleshooting missing geometries:
 #    
@@ -1769,11 +1764,15 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert,Str
         # Index to events prior to first fertilization with 100% mortality
         ind=np.where( (dmec[iStand]['Year']<=dmec[iStand]['Year'][iA[0]]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
         
+        # Add random component to age at fert
+        AgeAtFertPlusRandom=AgeAtFert+np.random.randint(-6,high=6)
+        
         #dYear=dmec[iStand]['Year'][iA[0]]-dmec[iStand]['Year'][ind[-1]]
         if (ind.size==0):
             
+            Year=dmec[iStand]['Year'][iA[0]]-AgeAtFertPlusRandom
+            
             # Add harvest
-            Year=dmec[iStand]['Year'][iA[0]]-AgeAtFert
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
             dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
@@ -2481,7 +2480,7 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,inclu
         d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
     
     # Add activity type
-    d=AddActivityType('ReforestationNonOb',d,meta,[])
+    d=AddActivityType(project_name,d,meta,[])
     
     # Add Planting
     
@@ -2561,7 +2560,7 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,inclu
         d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
 
     # Add activity type
-    d=AddActivityType('ReforestationNonOb',d,meta,[])
+    d=AddActivityType(project_name,d,meta,[])
 
     df_fcinv=pd.DataFrame.from_dict(d)
     

@@ -5,7 +5,7 @@ import pandas as pd
 import gc as garc
 import time
 import datetime
-from fcgadgets.utilities import utilities_general as gu
+from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 from fcgadgets.cbrunner import cbrun_annproc as annproc
 
@@ -382,7 +382,16 @@ def ImportParameters(meta,vi):
     psl={}
     ptl={}
     #ptl=Parameter
-         
+     
+    #--------------------------------------------------------------------------
+    # On the fly events
+    #--------------------------------------------------------------------------
+    
+    # Find index to species/BGC combination
+    d=par['OnTheFly']
+    for i in range(len(d['Name'])):
+        psl['b' + d['Name'][i]]=d['Value'][i]
+    
     #--------------------------------------------------------------------------
     # Biomass allometry paramaters (stand level)
     #--------------------------------------------------------------------------
