@@ -13,17 +13,17 @@ import numpy.matlib as ml
 from shapely.geometry import Polygon,Point
 import time
 import gc as garc
-from fcgadgets.utilities import utilities_general as gu
-from fcgadgets.utilities import utilities_gis as gis
-from fcgadgets.utilities import utilities_inventory as invu
+from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import utilities_gis as gis
+from fcgadgets.macgyver import utilities_inventory as invu
 from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Project name
 
 #project_name='FCI_RollupFCI_Inv'
+#project_name='NutrientManagementSummary'
+project_name='ReforestationNonObSummary'
 #project_name='SurveySummary'
-project_name='NutrientManagementSummary'
-#project_name='ReforestationNonObSummary'
 
 #%% Define paths
 
@@ -32,43 +32,41 @@ meta['Paths']={}
 meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 #meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320'
-meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
-meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
-meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210401'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
-
-#%% Cutblocks for gap-filling missing spatial
-
-if project_name=='NutrientManagementSummary':
-    ail=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\AnnualImplementationLevel.pkl')
-    #cut_mis=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\CutblocksForGapFilling.pkl')
 
 #%% Define subsampling frequency
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
 
-# Fert, reforestation
-meta['subsampling_frequency']=0.05
+if project_name=='FCI_RollupFCI_Inv':    
+    
+    meta['subsampling_frequency']=0.25
+    
+    #FES recipients sometimes use the funding source code, "FES", for FCI-funded
+    #projects. To include them in the query, import the FCI project list.    
+    meta['Paths']['FCI DB File']='Z:\!Workgrp\Forest Carbon\Forest Carbon Initiative\Program\RollupProjects\Live Run\FCI_RollupProjects_01_Admin.xlsx'
+    dAdmin=gu.ReadExcel(meta['Paths']['FCI DB File'])
 
-# FCI from inventory
-#meta['subsampling_frequency']=0.25
+    # Unique PP numbers in the database
+    uPP=np.unique(dAdmin['PP Number'])
+    
+elif project_name=='NutrientManagementSummary':    
+    
+    meta['subsampling_frequency']=0.05
+    
+    # Import AIL- used to subsample certain multipolygons
+    ail=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\AnnualImplementationLevel.pkl')
+    
+else:    
+    
+    meta['subsampling_frequency']=0.05
 
 #%% Save metadata
 
 gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Metadata.pkl',meta)
-
-#%% Import FCI Admin Table
-#Notes:
-#FES recipients sometimes use the funding source code, "FES", for FCI-funded
-#projects. To include them in the query, import the FCI project list.
-
-if project_name=='FCI_RollupFCI_Inv':
-
-    meta['Paths']['FCI DB File']='Z:\!Workgrp\Forest Carbon\Forest Carbon Initiative\Program\RollupProjects\Live Run\FCI_RollupProjects_01_Admin.xlsx'
-    df_FCI=pd.read_excel(meta['Paths']['FCI DB File'],sheet_name='Sheet1')
-
-    # Unique PP numbers in the database
-    uPP=df_FCI['PP Number'].unique()
 
 #%% Define sparse grid based on geotiff from BC1ha database
 
@@ -393,14 +391,21 @@ with fiona.open(path,layer=lyr_nam) as source:
             dp0['ID_atu_polygons']=cnt_atu_polygons
             dp0['ID_atu_multipolygons']=cnt_atu_multipolygons            
             dp0['OPENING_ID']=prp['OPENING_ID']
-            #dp0['FIA_PROJECT_ID']=prp['FIA_PROJECT_ID']            
-            #dp0['SILV_BASE_CODE']=prp['SILV_BASE_CODE']
-            dp0['MissStatus']=0
-            if prp['GeomFromFcLyr']==1:
-                dp0['MissStatus']=1
-            if prp['GeomFromOpLyr']==1:
-                dp0['MissStatus']=2    
-            
+            dp0['ACTIVITY_TREATMENT_UNIT_ID']=prp['ACTIVITY_TREATMENT_UNIT_ID']
+            dp0['Year']=prp['Year']
+            dp0['SILV_FUND_SOURCE_CODE']=prp['SILV_FUND_SOURCE_CODE']
+            dp0['FIA_PROJECT_ID']=prp['FIA_PROJECT_ID'] 
+            dp0['SILV_BASE_CODE']=prp['SILV_BASE_CODE']
+            dp0['SILV_TECHNIQUE_CODE']=prp['SILV_TECHNIQUE_CODE']
+            dp0['SILV_METHOD_CODE']=prp['SILV_METHOD_CODE']
+            dp0['GeomFromOpLyr']=prp['GeomFromOpLyr']
+            dp0['GeomFromFcLyr']=prp['GeomFromFcLyr']
+            dp0['GeomFromCutLyr']=prp['GeomFromCutLyr']
+#            dp0['MissStatus']=0
+#            if prp['GeomFromFcLyr']==1:
+#                dp0['MissStatus']=1
+#            if prp['GeomFromOpLyr']==1:
+#                dp0['MissStatus']=2    
             #dp0['ACTUAL_TREATMENT_AREA']=prp['ACTUAL_TREATMENT_AREA']            
             #dp0['Year']=prp['Year']
             
@@ -547,11 +552,6 @@ list_atu_polygons=list_atu_polygons[0:cnt_atu_polygons]
 for k in sxy.keys():
     sxy[k]=sxy[k][0:cnt_sxy]
 
-#%% Convert list of atu polygons to gdf
-
-gdf_atu_polygons=gpd.GeoDataFrame(list_atu_polygons,columns=cn_atu_polygons,crs=gdf_bm.crs)
-gdf_atu_polygons=gdf_atu_polygons.set_geometry('geometry')
-
 #%% Remove duplicate cells
 # Notes: This means that some values of ID_atu_multipolygons may not exist in
 # the sxy dictionaries - they were only retained for one of the IDs of the 
@@ -605,16 +605,41 @@ for i in range(sxy['x'].size):
 
 #ind=np.where(lut_tsa['Name']=='Okanagan TSA')[0]
 
-#%% Save to file
+#%% Save multipolygon to file
     
 # Save multipolygon file
 gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\atu_multipolygons.pkl',atu_multipolygons)
 
+## Save multipolygon to geojson (this crashes - hard to fix)
+##atu_multipolygons=gu.ipickle(meta['Paths']['Geospatial'] + '\\atu_multipolygons.pkl')
+#
+#List=[None]*len(atu_multipolygons)
+#for i in range(len(atu_multipolygons)):
+#    if atu_multipolygons[i]==None:
+#        continue
+#    d={}
+#    d['geometry']=atu_multipolygons[i]['geometry']
+#    prp={}
+#    for k in atu_multipolygons[i].keys():
+#        if k!='geometry':
+#            prp[k]=atu_multipolygons[i][k]
+#    d['properties']=prp
+#    List[i]=d
+#
+#gdf=gpd.GeoDataFrame.from_features(List,crs=gdf_bm.crs)
+#gdf=gdf.set_geometry('geometry')
+
+#%% Save polygons to file
+
+gdf_atu_polygons=gpd.GeoDataFrame(list_atu_polygons,crs=gdf_bm.crs)
+gdf_atu_polygons=gdf_atu_polygons.set_geometry('geometry')
+#gdf_atu_polygons=gdf_atu_polygons.to_crs({'init':'epsg:4326'})
+gdf_atu_polygons.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\atu_polygons.geojson',driver='GeoJSON')
+
+#%% Save sparse grid sample to file
+
 # Save sparse sample file
 gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\sxy.pkl',sxy)
-
-# Save geodataframe of polygons to shape file
-gdf_atu_polygons.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\atu_polygons.shp',driver="ESRI Shapefile")
 
 # Save sparse grid as shapefile
 flg=1

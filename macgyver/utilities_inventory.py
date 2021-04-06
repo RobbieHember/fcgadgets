@@ -22,9 +22,10 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Conservation.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706\LandUse.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320\Results.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430\Disturbances.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210401\LandUse.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401\VRI.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb')
 
 #%% Define strings that frequently need to be populated with zeros
 
@@ -56,10 +57,10 @@ Update forest inventory data
 def DefineInventoryLayersAndVariables():
 
     # Define paths to geodatabase files
-    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210320'
-    PathInDisturbancesFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
-    PathInVRIFull=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
-    PathInLUPFull=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
+    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401'
+    PathInDisturbancesFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401'
+    PathInVRIFull=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401'
+    PathInLUPFull=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210401'
 
     # Initialize a list of layer information
     LayerInfo=[]
@@ -391,7 +392,7 @@ def BuildForestInventoryLUTs(LayerInfo):
 
     t0=time.time()
     #for iLyr in range(2,4):
-    for iLyr in range(len(LayerInfo)):    
+    for iLyr in range(len(LayerInfo)):
 
         # Start counting time
         t_start=time.time()
@@ -402,7 +403,7 @@ def BuildForestInventoryLUTs(LayerInfo):
         with fiona.open(LayerInfo[iLyr]['Path'] + '\\' + LayerInfo[iLyr]['File Name'],layer=LayerInfo[iLyr]['Layer Name']) as source:    
             
             for feat in source:
-                
+   
                 for fnam,flag,dtype in LayerInfo[iLyr]['Field List']: 
                 
                     # Only continue if it is a string variable
@@ -712,7 +713,7 @@ def RecoverMissingATUGeometries(meta):
     atu_full['SMC']=np.array(['empty' for _ in range(L)],dtype=object)
     atu_full['STC']=np.array(['empty' for _ in range(L)],dtype=object)
     cnt=0
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
+    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
         for feat in source:
             
             prp=feat['properties']
@@ -778,7 +779,7 @@ def RecoverMissingATUGeometries(meta):
     for i in range(u.size):
         op_mis[int(u[i])]=[]
         
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
+    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
         for feat in source:
             
             if (feat['geometry']==None):
@@ -800,7 +801,7 @@ def RecoverMissingATUGeometries(meta):
     
 #    t0=time.time()
 #    at_geo_from_op=[None]*atu_mis['OPENING_ID'].size
-#    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
+#    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
 #        for feat in source:
 #            
 #            # Index to AT entries with missing spatial that matches the spatial of this feature from the the opening layer
@@ -815,7 +816,7 @@ def RecoverMissingATUGeometries(meta):
 #                at_geo_from_op[ind0[i]]=feat['geometry']
 #    
 #    # Save
-#    gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl',at_geo_from_op)
+#    gu.opickle(PathInResultsFull + '\\at_geo_from_op.pkl',at_geo_from_op)
 #    
 #    print((time.time()-t0)/60)
         
@@ -827,14 +828,14 @@ def RecoverMissingATUGeometries(meta):
     
 #    t0=time.time()
 #    
-#    lyr=fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
+#    lyr=fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
 #    L=len(lyr)    
 #    
 #    at_geo_from_fc=[None]*atu_mis['OPENING_ID'].size
 #    ref_year_fc=[None]*atu_mis['OPENING_ID'].size   
 #    year_updated_fc=[None]*atu_mis['OPENING_ID'].size   
 #
-#    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+#    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
 #        for feat in source:
 #            
 #            if (feat['geometry']==None):
@@ -867,9 +868,9 @@ def RecoverMissingATUGeometries(meta):
 #                    year_updated_fc[ind0[i]].append(YearUpdated)
 #    
 #    # Save
-#    gu.opickle(meta['Paths']['Results'] + '\\at_geo_from_fcinv.pkl',at_geo_from_fc)
-#    gu.opickle(meta['Paths']['Results'] + '\\ref_year_fc.pkl',ref_year_fc)
-#    gu.opickle(meta['Paths']['Results'] + '\\year_updated_fc.pkl',year_updated_fc)
+#    gu.opickle(PathInResultsFull + '\\at_geo_from_fcinv.pkl',at_geo_from_fc)
+#    gu.opickle(PathInResultsFull + '\\ref_year_fc.pkl',ref_year_fc)
+#    gu.opickle(PathInResultsFull + '\\year_updated_fc.pkl',year_updated_fc)
 #            
 #    print((time.time()-t0)/60)    
     
@@ -885,7 +886,7 @@ def RecoverMissingATUGeometries(meta):
     for i in range(u.size):
         fc_mis[u[i]]=[]
         
-    with fiona.open(meta['Paths']['Results'] + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
+    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
         for feat in source:
             
             if (feat['geometry']==None):
@@ -914,8 +915,8 @@ def RecoverMissingATUGeometries(meta):
     # Takes 5 min
     #--------------------------------------------------------------------------
     
-    atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl')
-    fc_mis=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_fc_geos.pkl')
+    atu_mis=gu.ipickle(PathInResultsFull + '\\missing_geo_atu_list.pkl')
+    fc_mis=gu.ipickle(PathInResultsFull + '\\missing_geo_fc_geos.pkl')
     
     t0=time.time()
     
@@ -986,9 +987,9 @@ def RecoverMissingATUGeometries(meta):
 #r=[0,0,1,1]; #r=[0,0,0,0,1,1,1,1,2,2,2,2]
 #
 ## Import ATU data
-#atu_mis=gu.ipickle(meta['Paths']['Results'] + '\\atu_mis.pkl')
+#atu_mis=gu.ipickle(PathInResultsFull + '\\atu_mis.pkl')
 #
-#at_geo_from_op=gu.ipickle(meta['Paths']['Results'] + '\\at_geo_from_op.pkl')
+#at_geo_from_op=gu.ipickle(PathInResultsFull + '\\at_geo_from_op.pkl')
 #
 #garc.collect()
 #
@@ -1606,13 +1607,13 @@ def Load_LUTs(meta):
     
     # Added this to accommodate jupyter notebook demos - will need updating periodically
     if 'Results' not in meta['Paths']:
-        meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
+        meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401'
     if 'VRI' not in meta['Paths']:
-        meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'    
+        meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401'
     if 'Disturbances' not in meta['Paths']:
-        meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
+        meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401'
     if 'LandUse' not in meta['Paths']:
-        meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'    
+        meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210401'
     
     meta['LUT']['ATU']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_ACTIVITY_TREATMENT_SVW.pkl')
     meta['LUT']['OP']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_OPENING_SVW.pkl')
@@ -2374,41 +2375,7 @@ def PutEventsInOrder(dmec,meta):
 
 #%% Export AT Layer data to spreadhseet
     
-def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,include_planting,project_name):
-    
-    #--------------------------------------------------------------------------
-    # function written to add activity type 
-    #--------------------------------------------------------------------------
-    
-    def AddActivityType(project_name,d,meta,dAdmin):
-        
-        # Activity type
-        #project_name='FCI'
-        #project_name='ReforestationNonOb'
-    
-        if project_name=='FCI':
-        
-            u=np.unique(d['FIA_PROJECT_ID'])
-            for i in range(u.size):
-                ind1=np.where(d['FIA_PROJECT_ID']==u[i])[0]
-                if ind1.size==0:
-                    continue
-                ind2=np.where(dAdmin['PP Number']==u[i])[0]
-                if ind2.size==0:
-                    continue
-                u2=np.unique(d['IdxToSXY'][ind1])
-                for j in range(u2.size):
-                    ind3=np.where(d['IdxToSXY']==u2[j])[0]
-                    for k in range(ind3.size):
-                        d['Activity_Type'][ind3[k]]=dAdmin['Project Type'][ind2[0]]
-    
-        elif project_name=='ReforestationNonOb':
-        
-            nam=['No Planting','SL','KD','UNDER','NSR Backlog','Unclassified']
-            for i in range(d['IdxToSXY'].size):
-                d['Activity_Type'][i]=nam[int(meta['ProjectType'][int(d['IdxToSXY'][i])])]
-        
-        return d
+def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,op,include_planting,project_name):
     
     #--------------------------------------------------------------------------
     # ATU
@@ -2480,7 +2447,27 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,inclu
         d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
     
     # Add activity type
-    d=AddActivityType(project_name,d,meta,[])
+    if project_name=='FCI':
+        
+        u=np.unique(d['FIA_PROJECT_ID'])
+        for i in range(u.size):
+            ind1=np.where(d['FIA_PROJECT_ID']==u[i])[0]
+            if ind1.size==0:
+                continue
+            ind2=np.where( (dAdmin['PP Number']==u[i]) & (dAdmin['Removed']!='Removed') )[0]
+            if ind2.size==0:
+                continue
+            u2=np.unique(d['IdxToSXY'][ind1])
+            for j in range(u2.size):
+                ind3=np.where(d['IdxToSXY']==u2[j])[0]
+                for k in range(ind3.size):
+                    d['Activity_Type'][ind3[k]]=dAdmin['Project Type'][ind2[0]]
+    
+    elif project_name=='ReforestationNonOb':
+    
+        nam=['No Planting','SL','KD','UNDER','NSR Backlog','Unclassified']
+        for i in range(d['IdxToSXY'].size):
+            d['Activity_Type'][i]=nam[int(meta['ProjectType'][int(d['IdxToSXY'][i])])]
     
     # Add Planting
     
@@ -2514,6 +2501,7 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,inclu
                     #d['Pl_Spc' + str(j+1) + '_NumTree'][i]=pl['NUMBER_PLANTED'][ind0]
                     d['Pl_Spc' + str(j+1) + '_SeedLot'][i]=pl['SEEDLOT_NUMBER'][ind0]
     
+    # Convert to dataframe
     df_atu=pd.DataFrame.from_dict(d)
     
     #--------------------------------------------------------------------------
@@ -2559,8 +2547,6 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,sxy,atu,fcinv,vri,pl,op,inclu
         #Natural Resource District
         d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
 
-    # Add activity type
-    d=AddActivityType(project_name,d,meta,[])
 
     df_fcinv=pd.DataFrame.from_dict(d)
     
@@ -2644,7 +2630,7 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     ListCon=['Visually Sensitive Areas','Connectivity Corridors','Scenic Areas','Caribou Winter Habitat Zones',
       'Tourism Areas','Visual Quality','High Value Grizzly Bear Habitat','No Timber Harvesting Areas','Landscape Corridors',
       'Critical Deer Winter Range','Sensitive Watershed','Water Management Units','High Value Wetlands for Moose','Telkwa Caribou Recovery Area',
-      'SRMZ3:Caribou Migration Corridor Sub-Zone','Caribou Migration Corridor','High Biodiversity Emphasis Areas','Scenic Corridors']
+      'Caribou Migration Corridor','High Biodiversity Emphasis Areas','Scenic Corridors']
 
     # Calculate area that will transition to non-THLB
     A=0

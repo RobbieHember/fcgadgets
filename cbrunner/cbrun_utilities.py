@@ -156,7 +156,9 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     # Import fcgadgets parameters
                     par=invu.Load_Params(meta)
                     par['WF']['Scenario ID']=meta['Scenario'][iScn]['AAO Wildfire Scenario ID']
-                    par['WF']['Exclude simulations during modern era']='On'
+                    par['WF']['Exclude simulations during modern period']='On'
+                    par['WF']['Exclude simulations during historical period']='Off'
+                    par['WF']['Exclude simulations during future period']='Off'
                     
                     # Think about moving this into the par dictionary
                     method_occ='DirectFromParetoDraw'
@@ -518,7 +520,9 @@ def ImportProjectConfig(meta):
     
     # *** Scale factor for saving results (this needs to be 100, 10 does not 
     # capture carbon fluxes and it will affect GHG benefit estimates) ***
-    meta['Scale Factor Export']=0.01
+    # One variable ('CO2e_E_Products') requires the big one
+    meta['Scale Factor Export Small']=0.001
+    meta['Scale Factor Export Big']=0.001
     
     #--------------------------------------------------------------------------
     # Disturbance information
@@ -541,7 +545,7 @@ def ImportProjectConfig(meta):
     
     # Scale factor for growth curves
     # Note: Do not change this to 0.1 - aerial fertilization response will not work properly at 0.1
-    meta['GC']['Scale Factor']=0.01
+    meta['GC']['Scale Factor']=0.001
     
     #--------------------------------------------------------------------------
     # Initialize scenario switches
@@ -599,7 +603,11 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
             continue
         
         data[k]=data[k].astype(float)
-        data[k]=data[k]*meta['Scale Factor Export']
+        
+        if k=='CO2e_E_Products':
+            data[k]=data[k]*meta['Scale Factor Export Big']
+        else:
+            data[k]=data[k]*meta['Scale Factor Export Small']
     
     # Mortality summary by agent
     for k in data['C_M_ByAgent'].keys():
@@ -634,7 +642,11 @@ def LoadScenarioResults(meta,scn):
                         continue                      
                     
                     data_bat[k]=data_bat[k].astype(float)
-                    data_bat[k]=data_bat[k]*meta['Scale Factor Export']
+                    
+                    if k=='CO2e_E_Products':
+                        data_bat[k]=data_bat[k]*meta['Scale Factor Export Big']
+                    else:
+                        data_bat[k]=data_bat[k]*meta['Scale Factor Export Small']
                 
                 # Accumulate data in each batch
                 key=list(data_bat.keys())
@@ -693,12 +705,12 @@ def CalculateGHGBalance(v1,meta):
     
     # CO not recognized as GHG in BC Reg 193/2014, so using most recent
     #gwp_co=3.3
-    gwp_co=meta['psl']['bGWP_CO_AR5']
+    #gwp_co=meta['psl']['bGWP_CO_AR5']
     
     # Global warming potential for CH4 -> using IPCC 2007 (AR4) values to be 
     # consistent with Greenhouse Gas Reduction Targets Act Carbon Neutral Government Regulation (B.C. Reg. 193/2014)
     #gwp_n2o=298
-    gwp_n2o=meta['psl']['bGWP_N2O_AR5']
+    #gwp_n2o=meta['psl']['bGWP_N2O_AR5']
        
     v2=[]
     for i in range(len(v1)):
@@ -744,17 +756,18 @@ def CalculateGHGBalance(v1,meta):
     
         if meta['Save Biomass Pools']=='On':
             Eco_Biomass=meta['psl']['bRatio_CO2_to_C']*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['BiomassTotal']].copy(),axis=2)       
-            Eco_BiomassAG=meta['psl']['bRatio_CO2_to_C']*np.nansum(v1[i].C_Eco_Pools[:,:,meta['iEP']['BiomassAboveground']].copy(),axis=2)
+            #Eco_BiomassAG=meta['psl']['bRatio_CO2_to_C']*np.nansum(v1[i].C_Eco_Pools[:,:,meta['iEP']['BiomassAboveground']].copy(),axis=2)
             Eco_Felled=meta['psl']['bRatio_CO2_to_C']*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['Felled']].copy(),axis=2)
             Eco_Litter=meta['psl']['bRatio_CO2_to_C']*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['Litter']].copy(),axis=2)
             Eco_DeadWood=meta['psl']['bRatio_CO2_to_C']*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['DeadWood']].copy(),axis=2)
             Eco_Soil=meta['psl']['bRatio_CO2_to_C']*np.sum(v1[i].C_Eco_Pools[:,:,meta['iEP']['Soil']].copy(),axis=2)
             Pro_InUse=meta['psl']['bRatio_CO2_to_C']*np.sum(v1[i].C_Pro_Pools[:,:,0:10].copy(),axis=2)
             Pro_DumpLandfill=meta['psl']['bRatio_CO2_to_C']*np.sum(v1[i].C_Pro_Pools[:,:,10:17].copy(),axis=2)
-            Pro_Emissions=gwp_co2*meta['psl']['bRatio_CO2_to_C']*v1[i].C_Pro_Pools[:,:,17].copy()+gwp_ch4*meta['psl']['bRatio_CO2_to_C']*v1[i].C_Pro_Pools[:,:,18].copy()                 
+            #Pro_Emissions=gwp_co2*meta['psl']['bRatio_CO2_to_C']*v1[i].C_Pro_Pools[:,:,17].copy()+gwp_ch4*meta['psl']['bRatio_CO2_to_C']*v1[i].C_Pro_Pools[:,:,18].copy()
+            Pro_Emissions=v1[i].CO2e_E_Products.copy() # Already converted to CO2e
         else: 
             Eco_Biomass=meta['psl']['bRatio_CO2_to_C']*v1[i].C_Biomass.copy()
-            Eco_BiomassAG=meta['psl']['bRatio_CO2_to_C']*v1[i].C_BiomassAG.copy()
+            #Eco_BiomassAG=meta['psl']['bRatio_CO2_to_C']*v1[i].C_BiomassAG.copy()
             Eco_Felled=meta['psl']['bRatio_CO2_to_C']*v1[i].C_Felled.copy()
             Eco_Litter=meta['psl']['bRatio_CO2_to_C']*v1[i].C_Litter.copy()
             Eco_DeadWood=meta['psl']['bRatio_CO2_to_C']*v1[i].C_DeadWood.copy()
@@ -820,166 +833,6 @@ def CalculateGHGBalance(v1,meta):
     
     return v2,meta
 
-#%% Post process BatchTIPSY output
-
-def PostProcessBatchTIPSY(meta):
-
-    # Function used to smooth curves
-    def smooth(y, box_pts):
-        box = np.ones(box_pts)/box_pts
-        y_smooth = np.convolve(y, box, mode='same')
-        return y_smooth
-    
-    # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr - create conversion factor
-    dm2c=0.5
-
-    # Growth curve parameters and TIPSY outputs
-    dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
-    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
-
-    # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
-
-    # Define age vector (must be consistent with how TIPSY was set up)
-    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
-
-    # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
-    N_Age=Age.size
-    N_GC=int(dfDat.shape[0]/N_Age)
-
-    # Stemwood
-
-    # Merchantable stemwood volume
-    V_StemMerch=np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')
-    V_StemTot=np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F')
-    G_VStemMerch=np.append(np.zeros((1,N_GC)),np.diff(V_StemMerch,axis=0),axis=0)
-
-    # Extract age responses for each biomass pool
-    C_Stem=dm2c*np.reshape(dfDat['ODT_Stem'].values,(N_Age,N_GC),order='F')
-
-    #import matplotlib.pyplot as plt
-    #plt.close('all')
-    #plt.plot(C_Stem[:,0])
-
-    # Apply smoothing - it messes up the last ten years so don't smooth that part
-    for j in range(C_Stem.shape[1]):
-        a=smooth(C_Stem[:,j],10)
-        C_Stem[:-10,j]=a[:-10]
-        a=smooth(V_StemMerch[:,j],10)
-        V_StemMerch[:-10,j]=a[:-10]
-        a=smooth(V_StemTot[:,j],10)
-        V_StemTot[:-10,j]=a[:-10]
-    #plt.plot(C_Stem[:,0],'--')
-    
-    # Define the fraction of merchantable stemwood
-    fMerch=np.nan_to_num(V_StemMerch/V_StemTot)
-    fNonMerch=1-fMerch  
-
-    # Calculate growth
-    z=np.zeros((1,N_GC))
-    G_Stem=np.append(z,np.diff(C_Stem,axis=0),axis=0)
-
-    # Adjust early net growth, but don't change the total stock change
-    A_th=30
-    ind=np.where(Age<=A_th)[0]
-    bin=np.arange(0.005,0.15,0.005)
-    x=np.arange(0,A_th+1,1)
-    for j in range(N_GC):
-        Gtot=C_Stem[ind[-1],j]
-        y_th=G_Stem[ind[-1],j]
-        Gtot_hat=1000*np.ones(bin.size)
-        for k in range(bin.size):
-            Gtot_hat[k]=np.sum(y_th*np.exp(bin[k]*(x-A_th)))
-        ind1=np.where(np.abs(Gtot_hat-Gtot)==np.min(np.abs(Gtot_hat-Gtot)))[0]
-        G_Stem[ind,j]=y_th*np.exp(bin[ind1[0]]*(x-A_th))
-
-    # Update merch and nonmerch growth
-    C_Stem=np.cumsum(G_Stem,axis=0)
-    C_StemMerch=fMerch*C_Stem
-    C_StemNonMerch=fNonMerch*C_Stem
-    G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
-    G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
-    
-    # Fix growth of year zero
-    G_StemMerch[0,:]=G_StemMerch[1,:]
-    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
-    
-    # Add negative nonmerch to merch 
-    ind=np.where(G_StemNonMerch<0)
-    G_StemMerch[ind]=G_StemMerch[ind]+G_StemNonMerch[ind]
-    G_StemNonMerch[ind]=0    
-    
-    #import matplotlib.pyplot as plt
-    #plt.close('all')
-    #plt.plot(np.maximum(-1,G_Stem[:,0]))
-    #plt.plot(np.maximum(-1,G_StemMerch[:,0]),'--')
-    #plt.plot(np.maximum(-1,G_StemNonMerch[:,0]),'-.')
-
-    # Other pools   
-
-    # Foliage biomass is very low, revise
-    bF1=0.579
-    bF2=0.602
-    C_Foliage=np.maximum(0,bF1*C_Stem**bF2)   
-    #C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
-    
-    C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
-    C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
-
-    G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
-    G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
-    G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
-
-    for iScn in range(meta['N Scenario']):
-    
-        # Define growth curves (from TIPSY output)
-        for iBat in range(meta['N Batch']):
-                
-            # Index to batch
-            indBat=IndexToBatch(meta,iBat)
-                
-            # Import event chronology
-            #ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(0) + '_Bat' + FixFileNum(iBat) + '.pkl')
-            
-            for iGC in range(3):
-                
-                # Initialize age response of net growth
-                G=np.zeros((N_Age,indBat.size,6),dtype=np.int32)
-    
-                # Populate the growth curve
-                for iS in range(indBat.size):
-               
-                    #u=np.unique(ec['ID_GrowthCurve'][:,iS,:])
-                    
-                    if meta['Scenario Source']=='Spreadsheet':
-                        
-                        indTIPSY=np.where(
-                                (dfPar['ID_Scenario']==iScn+1) &
-                                (dfPar['ID_GC']==int(meta['GC']['ID GC'][iGC])) )[0]                    
-                    
-                    elif meta['Scenario Source']=='Script':                        
-                        
-                        indTIPSY=np.where(
-                            (dfPar['ID_Stand']==indBat[iS]+1) & 
-                            (dfPar['ID_Scenario']==iScn+1) &
-                            (dfPar['ID_GC']==int(iGC+1)))[0]
-                        # dh[iS].ID_GrowthCurve[indDH][0]     
-                    
-                    if indTIPSY.size==0:
-                        # This can happen if only some stands have a third GC, for example
-                        continue
-                    
-                    G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,2]=G_Bark[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']                  
-                    
-                # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
-                    
-    return
 
 #%% GET TASS GROWTH CURVES
 
@@ -1156,10 +1009,7 @@ def UpdateParamaters(pthin):
     # Biomass allometry (stand level)
     #--------------------------------------------------------------------------
     
-    df=pd.read_excel(pthin + "\Parameters_BiomassAllometrySL.xlsx",sheet_name='Sheet1')
-    m,n=df.shape
-    
-    pBiomassAllomSL=df.to_dict()
+    pBiomassAllomSL=gu.ReadExcel(pthin + '\Parameters_BiomassAllometrySL.xlsx')
     
     #------------------------------------------------------------------------------
     # Biomass Turnover Rates (from Kurz et al. 2009)
@@ -2125,7 +1975,7 @@ def ModelOutputStats(meta,flag_save):
                     if iBat==0:
                         C_M_ByAgent[k]=d1['C_M_ByAgent'][k].flatten()
                     else:
-                        C_M_ByAgent[k]=C_M_ByAgent[k]+d1['C_M_ByAgent'][k].flatten()
+                        C_M_ByAgent[k]=C_M_ByAgent[k]+d1['C_M_ByAgent'][k].flatten()                            
                 
                 # CO2e fluxes and pools
                 d2=CalculateGHGBalance(d1,meta)
@@ -2428,9 +2278,168 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
     
     return
 
+#%% Post process BatchTIPSY output
+
+def PrepGrowthCurvesForCBR(meta):
+
+    # Function used to smooth curves
+    def smooth(y, box_pts):
+        box = np.ones(box_pts)/box_pts
+        y_smooth = np.convolve(y, box, mode='same')
+        return y_smooth
+    
+    # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr - create conversion factor
+    dm2c=0.5
+
+    # Growth curve parameters and TIPSY outputs
+    dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
+    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+
+    # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
+    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+
+    # Define age vector (must be consistent with how TIPSY was set up)
+    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+
+    # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
+    N_Age=Age.size
+    N_GC=int(dfDat.shape[0]/N_Age)
+
+    # Stemwood
+
+    # Merchantable stemwood volume
+    V_StemMerch=np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')
+    V_StemTot=np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F')
+    G_VStemMerch=np.append(np.zeros((1,N_GC)),np.diff(V_StemMerch,axis=0),axis=0)
+
+    # Extract age responses for each biomass pool
+    C_Stem=dm2c*np.reshape(dfDat['ODT_Stem'].values,(N_Age,N_GC),order='F')
+
+    #import matplotlib.pyplot as plt
+    #plt.close('all')
+    #plt.plot(C_Stem[:,0])
+
+    # Apply smoothing - it messes up the last ten years so don't smooth that part
+    for j in range(C_Stem.shape[1]):
+        a=smooth(C_Stem[:,j],10)
+        C_Stem[:-10,j]=a[:-10]
+        a=smooth(V_StemMerch[:,j],10)
+        V_StemMerch[:-10,j]=a[:-10]
+        a=smooth(V_StemTot[:,j],10)
+        V_StemTot[:-10,j]=a[:-10]
+    #plt.plot(C_Stem[:,0],'--')
+    
+    # Define the fraction of merchantable stemwood
+    fMerch=np.nan_to_num(V_StemMerch/V_StemTot)
+    fNonMerch=1-fMerch  
+
+    # Calculate growth
+    z=np.zeros((1,N_GC))
+    G_Stem=np.append(z,np.diff(C_Stem,axis=0),axis=0)
+
+    # Adjust early net growth, but don't change the total stock change
+    A_th=30
+    ind=np.where(Age<=A_th)[0]
+    bin=np.arange(0.005,0.15,0.005)
+    x=np.arange(0,A_th+1,1)
+    for j in range(N_GC):
+        Gtot=C_Stem[ind[-1],j]
+        y_th=G_Stem[ind[-1],j]
+        Gtot_hat=1000*np.ones(bin.size)
+        for k in range(bin.size):
+            Gtot_hat[k]=np.sum(y_th*np.exp(bin[k]*(x-A_th)))
+        ind1=np.where(np.abs(Gtot_hat-Gtot)==np.min(np.abs(Gtot_hat-Gtot)))[0]
+        G_Stem[ind,j]=y_th*np.exp(bin[ind1[0]]*(x-A_th))
+
+    # Update merch and nonmerch growth
+    C_Stem=np.cumsum(G_Stem,axis=0)
+    C_StemMerch=fMerch*C_Stem
+    C_StemNonMerch=fNonMerch*C_Stem
+    
+    G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
+    G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
+    
+    # Fix growth of year zero
+    G_StemMerch[0,:]=G_StemMerch[1,:]
+    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
+    
+    # Add negative nonmerch to merch 
+    ind=np.where(G_StemNonMerch<0)
+    G_StemMerch[ind]=G_StemMerch[ind]+G_StemNonMerch[ind]
+    G_StemNonMerch[ind]=0    
+    
+    #plt.close('all')
+    #plt.plot(np.maximum(-1,G_Stem[:,1]))
+    #plt.plot(np.maximum(-1,G_StemMerch[:,1]),'--')
+    #plt.plot(np.maximum(-1,G_StemNonMerch[:,1]),'-.')
+
+    # Other pools - these are no longer being used. Net growth of non-stemwood
+    # biomass is simulated in the annual loop based on allometric reatlionships
+    # with stemwood net growth and stand age.
+
+    # Foliage biomass is very low, revise
+    #bF1=0.579
+    #bF2=0.602
+    #C_Foliage=np.maximum(0,bF1*C_Stem**bF2)
+    
+    C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')    
+    C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')    
+    C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
+
+    G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
+    G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
+    G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
+
+    for iScn in range(meta['N Scenario']):
+    
+        # Define growth curves (from TIPSY output)
+        for iBat in range(meta['N Batch']):
+                
+            # Index to batch
+            indBat=IndexToBatch(meta,iBat)
+                  
+            for iGC in range(3):
+                
+                # Initialize age response of net growth
+                G=np.zeros((N_Age,indBat.size,6),dtype=np.int32)
+    
+                # Populate the growth curve
+                for iS in range(indBat.size):
+               
+                    #u=np.unique(ec['ID_GrowthCurve'][:,iS,:])
+                    
+                    if meta['Scenario Source']=='Spreadsheet':
+                        
+                        indTIPSY=np.where(
+                                (dfPar['ID_Scenario']==iScn+1) &
+                                (dfPar['ID_GC']==int(meta['GC']['ID GC'][iGC])) )[0]                    
+                    
+                    elif meta['Scenario Source']=='Script':                        
+                        
+                        indTIPSY=np.where(
+                            (dfPar['ID_Stand']==indBat[iS]+1) & 
+                            (dfPar['ID_Scenario']==iScn+1) &
+                            (dfPar['ID_GC']==int(iGC+1)))[0]  
+                    
+                    if indTIPSY.size==0:
+                        # This can happen if only some stands have a third GC, for example
+                        continue
+                    
+                    G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+                    G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+                    G[:,iS,2]=G_Bark[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+                    G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+                    G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+                    G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+                
+                # Save data to file in input variables folder of project
+                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
+                    
+    return
+
 #%% Prepare growth curves (with early correction)
 
-def PrepGrowthCurvesForCBR(meta,ugc):
+def PrepGrowthCurvesUniqueForCBR(meta,ugc):
 
     # *** This adjusts early net growth so that it is not zero. There is a
     # second version of this function that excludes the correction. ***
@@ -2551,14 +2560,16 @@ def PrepGrowthCurvesForCBR(meta,ugc):
     G_StemMerch[ind]=G_StemMerch[ind]+G_StemNonMerch[ind]
     G_StemNonMerch[ind]=0
 
-    # Other pools   
+    # Other pools - these are no longer being used. Net growth of non-stemwood
+    # biomass is simulated in the annual loop based on allometric reatlionships
+    # with stemwood net growth and stand age.
 
     # Foliage biomass is very low, revise
-    bF1=0.579
-    bF2=0.602
-    C_Foliage=np.maximum(0,bF1*C_Stem**bF2)   
-    #C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
+    #bF1=0.579
+    #bF2=0.602
+    #C_Foliage=np.maximum(0,bF1*C_Stem**bF2)   
     
+    C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')    
     C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
     C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
 
@@ -2612,7 +2623,7 @@ def PrepGrowthCurvesForCBR(meta,ugc):
 
 #%% Prepare growth curves (without early correction)
 
-def PrepGrowthCurvesForCBR_WithoutEarlyCorrection(meta,ugc):
+def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
 
     # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
     # conversion factor.

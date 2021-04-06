@@ -45,7 +45,7 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,Age):
         
         fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
         ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
-        ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)',ylabel='Annual probability of harvest')
+        ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)',ylabel='Annual probability of breakup')
         ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
         ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
     
@@ -109,7 +109,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period,psl):
     flg=0
     if flg==1:
         
-        beta=[0.03,-0.025,500]
+        beta=[0.03,-0.025,450]
         V_Merch=np.arange(1,1200)
         Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
         
@@ -191,7 +191,7 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
             ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0)
         
     # Exclude inventory period
-    if par['IBM']['Exclude simulations during modern era']=='On':
+    if par['IBM']['Exclude simulations during modern period']=='On':
         ind=np.where( (meta['Year']>=1951) & (meta['Year']<=meta['Year Project']) )[0]
         ibm_sim['Occurrence'][ind,:]=0 
         
@@ -331,7 +331,7 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
                 wf_sim['Occurrence'][iT,indZone[indMort]]=1    
     
     # Exclude inventory period
-    if par['WF']['Exclude simulations during modern era']=='On':
+    if par['WF']['Exclude simulations during modern period']=='On':
         ind=np.where( (meta['Year']>=1920) & (meta['Year']<=meta['Year Project']) )[0]
         wf_sim['Occurrence'][ind,:]=0
         

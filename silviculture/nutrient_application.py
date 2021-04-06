@@ -22,9 +22,6 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         # This is used to specify duration of the stimulus 
         meta['NM']['ResponseCounter'][meta['NM']['iApplication']]=meta['NM']['ResponseCounter'][meta['NM']['iApplication']]+1
         
-        # Duration
-        Duration=int(psl['bNA_ResponseDuration'])
-        
         # Response ratio of stemwood (before wood density effect)
         rrS=psl['bNA_r_Stemwood']
         
@@ -48,32 +45,30 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         rr=np.append(rr,rrS)
         
         # Get age vector for GC's
-        A=np.arange(1,meta['GC']['BatchTIPSY Maximum Age'],1)
+        A_gc=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
         
         # Extract active growth curves, apply scale factor
         GCA_SP=vi['GC']['Active'][:,meta['NM']['iApplication'],:].copy().astype(float)*meta['GC']['Scale Factor']
-        
-        for iA in range(meta['NM']['iApplication'].size):
+
+        for iStand in range(meta['NM']['iApplication'].size):
             
-            # Fix age -> there appear to be fertilizations at age zero, which will
-            # cause a crash because GC age response starts at 1
-            Ac=np.maximum(1,vo['A'][iT,meta['NM']['iApplication'][iA]])
+            A_app=int(vo['A'][iT,meta['NM']['iApplication'][iStand]])
             
             # Index to the response period that will be alterred
-            iResponse=np.where( (A>=Ac) & (A<Ac+Duration) )[0]
-        
+            iResponse=np.where( (A_gc>=A_app) & (A_gc<A_app+psl['bNA_ResponseDuration']) )[0]
+            
             # This will crash if an application occurs within 10 years of the maximum
             # TIPSY age curve (eg 200 years) -> adjust response period so that it
             # does not crash
-            if iResponse.size==Duration:
-            
+            if iResponse.size==int(psl['bNA_ResponseDuration']):
+                
                 for iRR in range(rr.size):
-                    GCA_SP[iResponse,iA,iRR]=rr[iRR]*GCA_SP[iResponse,iA,iRR]
+                    GCA_SP[iResponse,iStand,iRR]=rr[iRR]*GCA_SP[iResponse,iStand,iRR]
         
             else:
-                
                 em='Error: Nutrient application not implemented - stand age exceeds max age of growth curves.'
                 print(em)
+                print(A_app)
                 
         # Re-applly scalefactor
         GCA_SP=GCA_SP/meta['GC']['Scale Factor']
@@ -125,7 +120,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         # Stop stimulation counter when it passes the response duration
         #----------------------------------------------------------------------
     
-        iStop=np.where( meta['NM']['ResponseCounter']>10 )[0]
+        iStop=np.where( meta['NM']['ResponseCounter']>psl['bNA_ResponseDuration'] )[0]
         if iStop.size>0:
             meta['NM']['ResponseCounter'][iStop]=0
         
@@ -165,8 +160,7 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         DoseN=psl['bNA_Ratio_N_to_Urea']*DoseUrea
             
         # Emissions from production of ammonia (tCO2e/ha)
-        Ratio_UreaToAmmonia=psl['bNA_MolecularWeight_Urea']/psl['bNA_MolecularWeight_NH3']
-        E_ProdNH3_per_t=psl['bNA_EmissionFromAmmoniaProduction_NRCAN']/Ratio_UreaToAmmonia
+        E_ProdNH3_per_t=psl['bNA_EmissionFromAmmoniaProduction_NRCAN']*psl['bNA_TonneNH3PerTonneUrea']
         E_ProdNH3=E_ProdNH3_per_t*(DoseUrea/1000)
             
         # Emissions from production of Urea from ammonia (tCO2e/ha)    
@@ -175,13 +169,15 @@ def update_nutrient_status(vi,vo,iT,meta,psl,comp):
         E_ProdUrea=psl['bNA_EmissionFromUreaProduction_per_therm']*therm_per_app
             
         # Emissions from operations (tCO2e/ha)
-        E_Ops=psl['bNA_EmissionFromLogisticsPreApplication_SP10']+ \
-        psl['bNA_EmissionFromLogisticsApplication_SP10']
+        E_Ops=psl['bNA_EmissionFromRailBargeTruck_Workbook']+ \
+            psl['bNA_EmissionFromHelicopter_SP10']
 
         # Volatilization: CO2 emissions following application, Tier 1 
         # approach, IPCC 2006, 11.4.1 (tCO2e/ha)
         # 0.2*(430/1000)*(1/0.27) = 0.32 tCO2e/ha
-        E_Vol=psl['bNA_Ratio_C_to_Urea']*(DoseUrea/1000)*(1/psl['bRatio_C_to_CO2'])
+        #E_Vol=psl['bNA_Ratio_C_to_Urea']*(DoseUrea/1000)*(1/psl['bRatio_C_to_CO2'])
+        # Assume sequestration and volatilization of CO2 cancel out 
+        E_Vol=0
 
         # Denitrification: N2O emissions following application, Tier 1 
         # approach, IPCC 2006, 11.4.1 (tCO2e/ha)

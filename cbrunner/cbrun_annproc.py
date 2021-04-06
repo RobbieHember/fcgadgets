@@ -33,18 +33,22 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,psl,meta,iEP):
     # Extract net growth from growth curves
     NetGrowth=np.zeros((meta['N Stand'],6))
     for iS in range(meta['N Stand']):
-        NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:]
+        NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:].copy().astype(float)
     
-    NetGrowth=meta['GC']['Scale Factor']*NetGrowth.astype(float)
+    # Apply growth factor
+    NetGrowth=meta['GC']['Scale Factor']*NetGrowth
     
     # Net growth of total stemwood
     Gnet_Stem=NetGrowth[:,iEP['StemMerch']]+NetGrowth[:,iEP['StemNonMerch']]
     
     # Net growth of foliage    
-    NetGrowth[:,iEP['Foliage']]=Gnet_Stem*(0.02+(3-0.02)*np.exp(-0.1*vo['A'][iT,:]))
+    NetGrowth[:,iEP['Foliage']]=Gnet_Stem*(psl['bAlloSL_Gf1']+(psl['bAlloSL_Gf2']-psl['bAlloSL_Gf1'])*np.exp(-psl['bAlloSL_Gf3']*vo['A'][iT,:]))
     
     # Net growth of branches
-    NetGrowth[:,iEP['Branch']]=Gnet_Stem*(0.1+(1.5-0.1)*np.exp(-0.1*vo['A'][iT,:]))
+    NetGrowth[:,iEP['Branch']]=Gnet_Stem*(psl['bAlloSL_Gbr1']+(psl['bAlloSL_Gbr2']-psl['bAlloSL_Gbr1'])*np.exp(-psl['bAlloSL_Gbr3']*vo['A'][iT,:]))
+    
+    # Net growth of bark
+    NetGrowth[:,iEP['Bark']]=Gnet_Stem*(psl['bAlloSL_Gbk1']+(psl['bAlloSL_Gbk2']-psl['bAlloSL_Gbk1'])*np.exp(-psl['bAlloSL_Gbk3']*vo['A'][iT,:]))
     
     # Add net growth to output variable structure 
     # Oddly, using meta['iEP']['BiomassAboveground'] will invert the dimensions 
@@ -1210,7 +1214,14 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
                     continue
                 bU[iU]=psl['Dist'][u[iU]][k]
             b[k]=bU[inv]
-            
+        
+#        # *** Adjust utilization of merch stemwood on coast to reflect FPB study ***
+#        ind=np.where( (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | \
+#                (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']) )[0]
+#        if ind.size>0:
+#            b['BiomassMerch_Removed'][ind]=0.88
+#            b['BiomassMerch_LeftOnSite'][ind]=0.12
+        
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
         #----------------------------------------------------------------------
@@ -1229,8 +1240,8 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
         Affected_RootFine=BiomassNonMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
                         
         # Partition bark into merch and non-merch components
-        Affected_BarkMerch=psl['bASL_MerchBarkFrac']*Affected_Bark
-        Affected_BarkNonMerch=(1-psl['bASL_MerchBarkFrac'])*Affected_Bark
+        Affected_BarkMerch=0.85*Affected_Bark
+        Affected_BarkNonMerch=(1-0.85)*Affected_Bark
             
         # Sum up total affected non-merchantable biomass
         Affected_TotNonMerch=Affected_StemNonMerch+Affected_Branch+Affected_BarkNonMerch

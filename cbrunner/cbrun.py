@@ -79,7 +79,11 @@ def MeepMeep(meta):
                 if meta['Biomass Module']=='Sawtooth':                    
                     for iS in range(meta['N Stand']):                        
                         vo=annproc.BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP)
-                                
+                
+                #import matplotlib.pyplot as plt
+                #plt.close('all')
+                #plt.plot(vi['GC'][2][:,0,1])
+                
                 # Loop through time intervals (start in second time step)
                 for iT in range(1,meta['N Time']):
                     
@@ -396,16 +400,19 @@ def ImportParameters(meta,vi):
     # Biomass allometry paramaters (stand level)
     #--------------------------------------------------------------------------
     
-    # Find index to species/BGC combination
-    d=par['BiomassAllomSL']
-    for i in range(len(d['Code_Spc1_PSP'].values())):
-        spc=d['Code_Spc1_PSP'][i]
-        bgc=d['Code_BGC_PSP'][i]
-        if (spc=='All') & (bgc=='SBS'):
-            break    
-    psl['bASL_StemToF1']=d['B_F1'][i]    
-    psl['bASL_StemToF2']=d['B_F2'][i]
-    psl['bASL_MerchBarkFrac']=d['MerchBarkFrac'][i]
+    u=np.unique(vi['Inv']['ID_BECZ'].flatten())
+    CoastList=['CDF','CWH','ICH']
+    d=par['BiomassAllomSL'] 
+    for k in d.keys():
+        if k!='Region':
+            psl[k]=np.zeros(meta['N Stand'])
+            for iU in range(u.size):
+                bgc_cd=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])
+                ind=np.where(vi['Inv']['ID_BECZ'].flatten()==u[iU])[0]
+                if np.isin(bgc_cd,CoastList)==True:
+                    psl[k][ind]=d[k][0]
+                else:
+                    psl[k][ind]=d[k][1]
     
     #--------------------------------------------------------------------------
     # Biomass turnover paramaters
@@ -661,15 +668,23 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
     #--------------------------------------------------------------------------
     
     it=np.where(meta['Year']>=meta['Year Start Saving'])[0]    
+    
+    # Main output variables
     for k in vo:
+        
         # Skip mortality summary
         if k=='C_M_ByAgent':
             continue
+        
         vo[k]=vo[k][it,:]
     
     # Mortality summaries
     for k in vo['C_M_ByAgent']:
         vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k][it,:]
+    
+    #if iScn==0:
+    #    import matplotlib.pyplot as plt
+    #    plt.plot(vo['C_G_Net'][-200:,0,1],'-')
     
     #--------------------------------------------------------------------------
     # Convert emissions to CO2e
@@ -724,7 +739,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
     vo['CO2e_E_Products']=gwp_co2*co2_to_c*f_co2+gwp_ch4*co2_to_c*f_ch4
     
     #--------------------------------------------------------------------------
-    # Sum pools if saving turned off
+    # Sum pools if "Save Biomass Pools" is Off
     #--------------------------------------------------------------------------    
     
     if meta['Save Biomass Pools']!='On':        
@@ -748,7 +763,11 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP):
         if k=='C_M_ByAgent':
             continue
         
-        vo[k]=vo[k]/meta['Scale Factor Export']
+        # This one variable needs a larger scale factor
+        if (k=='CO2e_E_Products'):
+            vo[k]=vo[k]/meta['Scale Factor Export Big']
+        else:
+            vo[k]=vo[k]/meta['Scale Factor Export Small']
         
         if np.max(vo[k])<32767:
             vo[k]=vo[k].astype('int16')
