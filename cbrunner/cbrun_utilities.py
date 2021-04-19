@@ -384,14 +384,6 @@ def ImportProjectConfig(meta):
     
     meta=invu.Load_LUTs(meta)
     
-#    meta['LUT']={}
-#    
-#    LUT_Dist,LUT_Spc,LUT_BGC_Zone=ImportLUTs(meta['Paths']['Model Code'])
-#    
-#    meta['LUT']['Dist']=LUT_Dist
-#    meta['LUT']['Spc']=LUT_Spc
-#    meta['LUT']['BGC Zone']=LUT_BGC_Zone
-
     #--------------------------------------------------------------------------
     # Define pool names
     #--------------------------------------------------------------------------
@@ -454,10 +446,15 @@ def ImportProjectConfig(meta):
     # Number of stands 
     if meta['Scenario Source']=='Spreadsheet' and meta['N Ensemble']==1:
         meta['N Stand']=1    
+    
     elif meta['Scenario Source']=='Spreadsheet' and meta['N Ensemble']>1:
         # If running ensembles from spreadsheet, it is faster to run them as stands
         meta['N Stand']=meta['N Ensemble']
         meta['N Ensemble']=1
+    
+    elif meta['Scenario Source']=='Portfolio':
+        # Already defined in portfolio import function
+        pass
     
     # Number of batches
     meta['N Batch']=np.ceil(meta['N Stand']/meta['Batch Interval']).astype(int)
@@ -567,6 +564,13 @@ def ImportProjectConfig(meta):
         #meta['Scenario Switch'][iScn]['Status Net Growth Factor']='Off'
         #meta['Scenario'][iScn]['Status Mortality Factor']='Off'
     
+    if meta['Scenario Source']=='Spreadsheet':
+        if (meta['Simulate harvesting on the fly (future)']=='On'):
+            meta['Scenario Switch']={}
+            meta['Scenario Switch']['Dist on Fly']={}
+            meta['Scenario Switch']['Dist on Fly']['Harvesting (future)']=np.ones(meta['N Scenario'],dtype=int) 
+            meta['Scenario Switch']['Dist on Fly']['Harvesting (future) Year Start']=(meta['Year Project']+1)*np.ones(meta['N Scenario']) 
+    
     #--------------------------------------------------------------------------
     # Harvested wood product information
     #--------------------------------------------------------------------------
@@ -585,6 +589,20 @@ def ImportProjectConfig(meta):
     
     # Nutrient addition response yearly counter
     meta['NM']['ResponseCounter']=np.zeros(meta['N Stand'])
+    
+    #--------------------------------------------------------------------------
+    # Generate random numbers that can be used for simulating harvest on the fly
+    # The annual numbers will be the same among scenarios, but vary by ensemble
+    #--------------------------------------------------------------------------
+    
+    meta['On the Fly']={}
+    meta['On the Fly']['Random Numbers']={}
+    
+    if (meta['Simulate harvesting on the fly (historical)']=='On') | (meta['Simulate harvesting on the fly (future)']=='On'):
+        meta['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta['N Time'],meta['N Ensemble']))    
+    
+    if meta['Simulate breakup on the fly']=='On':
+        meta['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['N Time'],meta['N Ensemble']))            
     
     return meta
 
@@ -1602,8 +1620,7 @@ def PrepareInventoryFromSpreadsheet(meta):
             inv['ID_BECZ'][0,:]=meta['LUT']['VRI']['BEC_ZONE_CODE'][meta['Scenario'][iScn]['BGC Zone Code']]
     
             # Timber harvesting landbase (1=yes, 0=no)
-            inv['THLB']=1*np.ones((1,N_StandsInBatch))
-            inv['THLB'][0,:]=meta['Scenario'][iScn]['THLB Status']
+            inv['THLB']=meta['Scenario'][iScn]['THLB Status']*np.ones((meta['Year'].size,N_StandsInBatch))
         
             # Temperature will be updated automatically
             inv['MAT']=4*np.ones((1,N_StandsInBatch))
@@ -1760,7 +1777,7 @@ def MosByMultipolygon(meta,include_area):
         MosByMP[iScn]=d
     
     # Scale factor used to temporarily store data
-    ScaleFactor=0.01
+    ScaleFactor=0.001
     
     # Loop through scenarios
     for iScn in range(meta['N Scenario']):
@@ -2408,7 +2425,7 @@ def PrepGrowthCurvesForCBR(meta):
                
                     #u=np.unique(ec['ID_GrowthCurve'][:,iS,:])
                     
-                    if meta['Scenario Source']=='Spreadsheet':
+                    if (meta['Scenario Source']=='Spreadsheet') | (meta['Scenario Source']=='Portfolio'):
                         
                         indTIPSY=np.where(
                                 (dfPar['ID_Scenario']==iScn+1) &

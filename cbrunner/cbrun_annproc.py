@@ -1161,12 +1161,12 @@ def DOM_like_CBM08(iT,vi,vo,psl,iEP,meta):
 
 #%% Disturbance and management events (from TAZ)
 
-def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
+def Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP):
     
     # Predict stand breakup (on the fly)
     if meta['Simulate breakup on the fly']=='On':
         if meta['Scenario Switch']['Dist on Fly']['Breakup'][meta['iScn']]==1:
-            vi=asm.PredictStandBreakup_OnTheFly(meta,vi,iT,vo['A'][iT,:])    
+            vi=asm.PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,vo['A'][iT,:])    
     
     # Predict historical harvesting (on the fly)
     if (meta['Simulate harvesting on the fly (historical)']=='On'):
@@ -1174,7 +1174,7 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
             if vi['tv'][iT]<=meta['Year Project']:
                 Period='Historical'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period,psl)
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iEns,Volume,Period,psl)
     
     # Predict future harvesting (on the fly)        
     if (meta['Simulate harvesting on the fly (future)']=='On'):
@@ -1182,7 +1182,7 @@ def Events_FromTaz(iT,vi,vo,psl,meta,iEP):
             if vi['tv'][iT]>=meta['Scenario Switch']['Dist on Fly']['Harvesting (future) Year Start'][meta['iScn']]:
                 Period='Future'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,Volume,Period,psl)        
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iEns,Volume,Period,psl)        
     
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta['N Stand'])

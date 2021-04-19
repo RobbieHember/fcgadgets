@@ -63,6 +63,8 @@ def ReadExcel(*args):
     elif len(args)==3:
         df=pd.read_excel(args[0],skiprows=args[2])
     
+    #df=df.where(pd.notnull(df),None)
+    
     d=df.to_dict('list')
     for k in d.keys():
         d[k]=np.array(d[k])

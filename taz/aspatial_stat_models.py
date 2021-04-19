@@ -12,7 +12,7 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Generate disturbances from Pareto distribution
 
-def GenerateDisturbancesFromPareto(N_t,N_s,beta):
+def GenerateDisturbancesFromPareto(N_t,N_s,beta,rn):
 
     # Initialize occurrence array
     oc=np.zeros((N_t,N_s),dtype='int8')
@@ -23,7 +23,7 @@ def GenerateDisturbancesFromPareto(N_t,N_s,beta):
     po=np.tile(po,N_s)
     
     # Loop through time steps
-    rn=np.random.random((N_t,N_s))
+    #rn=np.random.random((N_t,N_s))
     
     # Populate occurrence
     ind=np.where(rn<po)    
@@ -31,131 +31,9 @@ def GenerateDisturbancesFromPareto(N_t,N_s,beta):
     
     return oc
 
-#%% Simulate probability of stand breakup based on age
-
-def PredictStandBreakup_OnTheFly(meta,vi,iT,Age):
-
-    beta=[-0.05,300]
-    
-    # Plot function:
-    flg=0
-    if flg==1:
-        Age=np.arange(1,500)
-        Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
-        
-        fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
-        ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
-        ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)',ylabel='Annual probability of breakup')
-        ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
-        ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
-    
-    Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
-
-    rn=np.random.random(Age.size)
-    
-    indS=np.where(rn<Po)[0]
-    if indS.size>0:
-        for i in range(indS.size):
-            iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]
-            if iAvailable.size>0:
-                iE=iAvailable[0]+0
-                #iE=-1
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Mechanical']
-                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
-                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
-    
-    return vi
-
-#%% Simulate probability of harvesting on the fly
-
-def PredictHarvesting_OnTheFly(meta,vi,iT,V_Merch,Period,psl):
-    
-    # Indicator of THLB (THLB=1, Non-THLB=0)
-    flag_thlb=vi['Inv']['THLB'][iT,:]
-    
-    # Saturating annual probability of harvest
-    if Period=='Historical':
-        
-        # Historical
-        
-        #f1=0.0014*25**((meta['Year'][iT]-1900)/100)
-        #f2=(1/(1+np.exp(0.12*(Year-1950))))
-        f1=0.0011*35**((meta['Year'][iT]-1900)/100)
-        f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
-        Pa_H_Sat=f1*f2
-    
-    else:
-        
-        # Future
-        if 'Override OTF Pa Harvest Sat' in meta:
-            # Check to see if defaults have been overridden
-            Pa_H_Sat=meta['Override OTF Pa Harvest Sat']
-        else:
-            # Use default
-            Pa_H_Sat=psl['bOTF_Pa_Harvest_Sat']
-    
-    # Inflection point
-    if 'Override OTF_Pa Harvest Inf' in meta:
-        # Check to see if defaults have been overridden
-        Pa_H_Inf=meta['Override OTF Pa Harvest Inf']
-    else:
-        # Use default
-        Pa_H_Inf=psl['bOTF_Pa_Harvest_Inflection']
-    
-    # Shape parameter
-    Pa_H_Shape=psl['bOTF_Pa_Harvest_Shape']
-    
-    # Plot function:
-    flg=0
-    if flg==1:
-        
-        beta=[0.03,-0.025,450]
-        V_Merch=np.arange(1,1200)
-        Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
-        
-        plt.close('all')
-        fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
-        ax.plot(V_Merch,Po*100,'k-',linewidth=0.75,label='Harvest on-the-fly model 1')
-        ax.set(position=[0.1,0.12,0.87,0.86],xlim=[0,800],xticks=np.arange(0,1300,100),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)', \
-               ylim=[0,5],ylabel='Annual probability of harvest (%)')
-        ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
-        ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
-        gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\taz_ann_prob_harvest','png',500)
-    
-    # Annual probability of occurrence    
-    Po=Pa_H_Sat*(1/(1+np.exp(Pa_H_Shape*(V_Merch-Pa_H_Inf))))
-    
-    # Random number
-    rn=np.random.random(V_Merch.size)
-    
-    # Occurrence
-    Oc=flag_thlb*np.floor(np.minimum(1,Po/rn))
-    
-    # Index to occurrence
-    indS=np.where(Oc==1)[0]    
-    
-    if indS.size>0:
-        for i in range(indS.size):
-            iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]        
-            if iAvailable.size>0:
-                iE=iAvailable[0]+0
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Harvest']
-                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
-                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
-                iE=iAvailable[0]+1 # changing this to zero will cause the harvest to be overwritten
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Slashpile Burn']
-                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
-                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
-                iE=iAvailable[0]+2
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Planting']
-                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
-                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
-    
-    return vi
-
 #%% Generate disturbance ensembles with AAO models
 
-def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
+def GenerateIBMEnsembleFromAAO(meta,rn,par,id_bgcz):
     
     # Import IBM stats    
     ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
@@ -188,7 +66,7 @@ def GenerateIBMEnsembleFromAAO(meta,par,id_bgcz):
         # Alternative model
         b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
         for iT in range(meta['Year'].size):
-            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0)
+            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])
         
     # Exclude inventory period
     if par['IBM']['Exclude simulations during modern period']=='On':
@@ -257,7 +135,7 @@ def GetMortalityFromIBMSeverity(n,beta):
 
 #%% Generate disturbance ensembles with AAO models
 
-def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
+def GenerateWildfireEnsembleFromAAO(meta,rn,par,id_bgcz,method_occ):
     
     # Import wildfire stats (by BGC zone)  
     wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')    
@@ -310,10 +188,10 @@ def GenerateWildfireEnsembleFromAAO(meta,par,id_bgcz,method_occ):
                 if meta['Scenario Source']=='Spreadsheet':
                     # When run from spreadsheet, stands are swapped for ensembles so
                     # generate different records for each stand
-                    wf_sim['Occurrence'][iT,:]=GenerateDisturbancesFromPareto(1,indZone.size,b0)
+                    wf_sim['Occurrence'][iT,:]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT,1])
                 else:
                     # All stands get populated with the same prediction
-                    wf_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0)        
+                    wf_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])        
     
         elif method_occ=='PreRun':
             # Using this will ensure consistency across tiles
@@ -384,3 +262,127 @@ def GetMortalityFromBurnSeverityRating(n,beta):
             y[i]=100
         
     return y
+
+#%% Simulate probability of stand breakup based on age
+
+def PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,Age):
+
+    beta=[-0.05,300]
+    
+    # Plot function:
+    flg=0
+    if flg==1:
+        Age=np.arange(1,500)
+        Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
+        
+        fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+        ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
+        ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)',ylabel='Annual probability of breakup')
+        ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
+        ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+    
+    Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
+
+    #rn=np.random.random(Age.size)
+    rn=meta['On the Fly']['Random Numbers']['Breakup'][iT,iEns]
+    
+    indS=np.where(rn<Po)[0]
+    if indS.size>0:
+        for i in range(indS.size):
+            iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]
+            if iAvailable.size>0:
+                iE=iAvailable[0]+0
+                #iE=-1
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Mechanical']
+                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
+                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
+    
+    return vi
+
+#%% Simulate probability of harvesting on the fly
+
+def PredictHarvesting_OnTheFly(meta,vi,iT,iEns,V_Merch,Period,psl):
+    
+    # Indicator of THLB (THLB=1, Non-THLB=0)
+    flag_thlb=vi['Inv']['THLB'][iT,:]
+    
+    # Saturating annual probability of harvest
+    if Period=='Historical':
+        
+        # Historical
+        
+        #f1=0.0014*25**((meta['Year'][iT]-1900)/100)
+        #f2=(1/(1+np.exp(0.12*(Year-1950))))
+        f1=0.0011*35**((meta['Year'][iT]-1900)/100)
+        f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
+        Pa_H_Sat=f1*f2
+    
+    else:
+        
+        # Future
+        if 'Override OTF Pa Harvest Sat' in meta:
+            # Check to see if defaults have been overridden
+            Pa_H_Sat=meta['Override OTF Pa Harvest Sat']
+        else:
+            # Use default
+            Pa_H_Sat=psl['bOTF_Pa_Harvest_Sat']
+    
+    # Inflection point
+    if 'Override OTF_Pa Harvest Inf' in meta:
+        # Check to see if defaults have been overridden
+        Pa_H_Inf=meta['Override OTF Pa Harvest Inf']
+    else:
+        # Use default
+        Pa_H_Inf=psl['bOTF_Pa_Harvest_Inflection']
+    
+    # Shape parameter
+    Pa_H_Shape=psl['bOTF_Pa_Harvest_Shape']
+    
+    # Plot function:
+    flg=0
+    if flg==1:
+        
+        beta=[0.03,-0.025,450]
+        V_Merch=np.arange(1,1200)
+        Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
+        
+        plt.close('all')
+        fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+        ax.plot(V_Merch,Po*100,'k-',linewidth=0.75,label='Harvest on-the-fly model 1')
+        ax.set(position=[0.1,0.12,0.87,0.86],xlim=[0,800],xticks=np.arange(0,1300,100),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)', \
+               ylim=[0,5],ylabel='Annual probability of harvest (%)')
+        ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
+        ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+        gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\taz_ann_prob_harvest','png',500)
+    
+    # Annual probability of occurrence    
+    Po=Pa_H_Sat*(1/(1+np.exp(Pa_H_Shape*(V_Merch-Pa_H_Inf))))
+    
+    # Random number
+    #rn=np.random.random(V_Merch.size)
+    rn=meta['On the Fly']['Random Numbers']['Harvest'][iT,iEns]
+    
+    # Occurrence
+    Oc=flag_thlb*np.floor(np.minimum(1,Po/rn))
+    
+    # Index to occurrence
+    indS=np.where(Oc==1)[0]    
+    
+    if indS.size>0:
+        for i in range(indS.size):
+            iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]        
+            if iAvailable.size>0:
+                iE=iAvailable[0]+0
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Harvest']
+                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
+                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=1
+                iE=iAvailable[0]+1 # changing this to zero will cause the harvest to be overwritten
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Slashpile Burn']
+                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
+                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
+                iE=iAvailable[0]+2
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Planting']
+                vi['EC']['MortalityFactor'][iT,indS[i],iE]=1
+                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
+    
+    return vi

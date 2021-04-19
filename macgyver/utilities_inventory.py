@@ -1728,9 +1728,12 @@ def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
 #%% ENSURE EVERY STAND HAS A MODERN DISTURBANCE
 
 def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity,StringsToFill):
+    
     for iStand in range(meta['N Stand Full']):
+        
         if dmec[iStand]==None:
             continue
+        
         if dmec[iStand]['Year'].size==0:
             #print(iStand)
             #break
@@ -1741,6 +1744,7 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity,Strin
             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
             for v in StringsToFill:
                 dmec[iStand][v]=np.append(dmec[iStand][v],-999)
+                
     return dmec
 
 #%% ENSURE DISTURBANCE PRECEDES AERIAL FERTILIZATION

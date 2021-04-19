@@ -97,7 +97,7 @@ def MeepMeep(meta):
                     vo=annproc.DOM_like_CBM08(iT,vi,vo,psl,iEP,meta)
                     
                     # Calculate effects of disturbance and management                    
-                    vo,vi=annproc.Events_FromTaz(iT,vi,vo,psl,meta,iEP)
+                    vo,vi=annproc.Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP)
                     
                     # Calculate products sector                    
                     if meta['Year'][iT]>=meta['HWP Year Start']:
