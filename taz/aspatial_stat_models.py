@@ -10,34 +10,145 @@ import scipy.stats as stats
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 
-#%% Generate disturbances from Pareto distribution
+#%% Generate wildfire occurrence and severity from Annual area of occurrence models
 
-def GenerateDisturbancesFromPareto(N_t,N_s,beta,rn):
+def GenerateWildfireFromAAO(meta,par,ba):
 
-    # Initialize occurrence array
-    oc=np.zeros((N_t,N_s),dtype='int8')
-    
-    # Draw a probability of area disturbed per time step
-    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
-    po=np.reshape(po,(-1,1))
-    po=np.tile(po,N_s)
-    
-    # Loop through time steps
-    #rn=np.random.random((N_t,N_s))
-    
-    # Populate occurrence
-    ind=np.where(rn<po)    
-    oc[ind[0],ind[1]]=1
-    
-    return oc
+    # Import wildfire stats (by BGC zone)  
+    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')    
+    tv_wfss=np.arange(-2000,2201,1)
 
-#%% Generate disturbance ensembles with AAO models
+    # Prepare mortality probability coefficients
+    beta_pi=np.cumsum([par['WF']['p_Unburned_pi'],par['WF']['p_Low_pi'],par['WF']['p_Medium_pi'],par['WF']['p_High_pi']])
+    beta_obs=np.cumsum([par['WF']['p_Unburned_obs'],par['WF']['p_Low_obs'],par['WF']['p_Medium_obs'],par['WF']['p_High_obs']])
 
-def GenerateIBMEnsembleFromAAO(meta,rn,par,id_bgcz):
+    for iEns in range(meta['N Ensemble']):
+        
+        # Generate random numbers (the same among scenarios, different by ensemble)
+        rn_oc=np.random.random((meta['N Time'],meta['N Stand Full']))
+        rn_sev=np.random.random((meta['N Time'],meta['N Stand Full']))
+        
+        for iScn in range(meta['N Scenario']):
+
+            # Initialize annual probability of occurrence (final with deterministic and
+            # random components)
+            wf_sim={}
+            wf_sim['Occurrence']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int8')
+            wf_sim['Mortality']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int8')
+
+            #--------------------------------------------------------------------------
+            # Occurrence (by BGC zone)
+            #--------------------------------------------------------------------------
+            
+            # Get unique BGC zones
+            uZone=np.unique(ba['BEC_ZONE_CODE'])
+            
+            for iZone in range(uZone.size):
+                
+                namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]        
+                indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
+                Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(par['WF']['Scenario ID']))]
+        
+                for iT in range(meta['Year'].size):
+                    
+                    # Exclude inventory period
+                    if par['WF']['Exclude simulations during modern period']=='On':
+                        if (meta['Year'][iT]>=1920) & (meta['Year'][iT]<=meta['Year Project']):
+                            continue
+        
+                    # Exclude historical period
+                    if par['WF']['Exclude simulations during historical period']=='On':
+                        if (meta['Year'][iT]<=1920):
+                            continue
     
-    # Import IBM stats    
+                    # Exclude future period
+                    if par['WF']['Exclude simulations during future period']=='On':
+                        if (meta['Year'][iT]>meta['Year Project']):
+                            continue
+             
+                    # Adjust shape parameter to match specified annual probability of 
+                    # occurrence from the deterministic component
+                    ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
+                    #b0=wfss[namZone]['Beta_Pareto'].copy()
+                    #b_shape=wfss[namZone]['Pareto_shape_for_Po'].copy()
+                    #b0[0]=np.exp(b_shape[1]*np.log(Po_Det[ind_scn])+b_shape[0])
+                    beta=wfss[namZone]['Beta_Pareto_Cal'].copy()
+                    Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
+                    beta[1]=-Scale
+                    beta[2]=Scale
+            
+                    if meta['Scenario Source']=='Spreadsheet':
+                        # When run from spreadsheet, stands are swapped for ensembles so
+                        # generate different records for each stand
+                        #wf_sim['Occurrence'][iT,:]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT,1])
+                        pass
+                    else:
+                        # All stands get populated with the same prediction
+                        #wf_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])
+                        #def GenerateDisturbancesFromPareto(N_t,N_s,beta,rn)
+    
+                        # Draw a probability of area disturbed per time step
+                        N_t=1
+                        po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+                        po=np.tile(po,indZone.size)
+    
+                        # Populate occurrence
+                        iOc=np.where(rn_oc[iT,indZone].flatten()<po)[0]
+                        wf_sim['Occurrence'][iT,indZone[iOc]]=1
+
+            # Severity            
+            for iT in range(meta['Year'].size):
+                
+                indOc=np.where( (wf_sim['Occurrence'][iT,:]>0) )[0]
+                if indOc.size==0:
+                    continue
+                
+                if meta['Year'][iT]<1920:
+                    beta=beta_pi
+                else:
+                    beta=beta_obs
+                
+                # Unburned
+                ind=np.where(rn_sev[iT,indOc]<beta[0])[0]
+                if ind.size>0:
+                    wf_sim['Mortality'][iT,indOc[ind]]=5
+                    
+                # Low severity
+                ind=np.where( (rn_sev[iT,indOc]>=beta[0]) & (rn_sev[iT,indOc]<beta[1]) )[0]
+                if ind.size>0:
+                    wf_sim['Mortality'][iT,indOc[ind]]=50
+                
+                # Medium severity
+                ind=np.where( (rn_sev[iT,indOc]>=beta[1]) & (rn_sev[iT,indOc]<beta[2]) )[0]
+                if ind.size>0:
+                    wf_sim['Mortality'][iT,indOc[ind]]=90
+                    
+                # High severity
+                ind=np.where( (rn_sev[iT,indOc]<beta[2]) )[0]
+                if ind.size>0:
+                    wf_sim['Mortality'][iT,indOc[ind]]=100
+    
+            if meta['Scenario Source']=='Spreadsheet':
+                
+                return wf_sim
+    
+            else:
+                
+                # Compress to sparse vectors
+                wf_sim_sparse={}
+                wf_sim_sparse['idx']=np.where(wf_sim['Occurrence']>0)
+                wf_sim_sparse['Occurrence']=wf_sim['Occurrence'][wf_sim_sparse['idx']]
+                wf_sim_sparse['Mortality']=wf_sim['Mortality'][wf_sim_sparse['idx']]
+            
+                # Save
+                fout=meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl'
+                gu.opickle(fout,wf_sim_sparse)
+
+
+def GenerateIBMFromAAO(meta,par,ba):
+
+     # Import IBM stats    
     ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
-    tv_scn=np.arange(-2000,2201,1)
     
     # Prepare mortality probability coefficients
     beta_obs=np.cumsum([par['IBM']['p_Trace_obs'],
@@ -46,74 +157,201 @@ def GenerateIBMEnsembleFromAAO(meta,rn,par,id_bgcz):
                        par['IBM']['p_Severe_obs'],
                        par['IBM']['p_VerySevere_obs']])
     
-    ibm_sim={}
+    for iEns in range(meta['N Ensemble']):
+        
+        # Generate random numbers (the same among scenarios, different by ensemble)
+        rn_oc=np.random.random((meta['N Time'],meta['N Stand Full']))
+        rn_sev=np.random.random((meta['N Time'],meta['N Stand Full']))
+        
+        for iScn in range(meta['N Scenario']):
+        
+            # Initialize
+            ibm_sim={}
     
-    #--------------------------------------------------------------------------
-    # Occurrence
-    #--------------------------------------------------------------------------
+            #--------------------------------------------------------------------------
+            # Occurrence
+            #--------------------------------------------------------------------------
 
-    # Initialize annual probability of occurrence 
-    ibm_sim['Occurrence']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')
+            # Initialize annual probability of occurrence 
+            ibm_sim['Occurrence']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')
 
-    uZone=np.unique(id_bgcz)
+            uZone=np.unique(ba['BEC_ZONE_CODE'])
     
-    for iZone in range(uZone.size):
-        
-        indZone=np.where(id_bgcz==uZone[iZone])[0]
+            for iZone in range(uZone.size):
+                
+                indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
             
-        namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+                namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
             
-        # Alternative model
-        b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
-        for iT in range(meta['Year'].size):
-            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])
-        
-    # Exclude inventory period
-    if par['IBM']['Exclude simulations during modern period']=='On':
-        ind=np.where( (meta['Year']>=1951) & (meta['Year']<=meta['Year Project']) )[0]
-        ibm_sim['Occurrence'][ind,:]=0 
-        
-    # Exclude historical period
-    if par['IBM']['Exclude simulations during historical period']=='On':
-        ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
-        ibm_sim['Occurrence'][ind,:]=0
+                # Alternative model
+                beta=ibmss[namZone]['Beta_Pareto_Alt'].copy()
+                
+                for iT in range(meta['Year'].size):
+
+                    N_t=1
+                    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+                    po=np.tile(po,indZone.size)
     
-    # Exclude future period
-    if par['IBM']['Exclude simulations during future period']=='On':
-        ind=np.where( (meta['Year']>meta['Year Project']) )[0]
-        ibm_sim['Occurrence'][ind,:]=0       
+                    # Populate occurrence
+                    iOc=np.where(rn_oc[iT,indZone].flatten()<po)[0]
+                    ibm_sim['Occurrence'][iT,indZone[iOc]]=1
         
-    #--------------------------------------------------------------------------
-    # Severity / mortality
-    #--------------------------------------------------------------------------
+            # Exclude inventory period
+            if par['IBM']['Exclude simulations during modern period']=='On':
+                ind=np.where( (meta['Year']>=1951) & (meta['Year']<=meta['Year Project']) )[0]
+                ibm_sim['Occurrence'][ind,:]=0 
         
-    # Get mortality from probability of burn severity rating
-    ibm_sim['Mortality']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')
-    ind=np.where( (ibm_sim['Occurrence']>0) )
+            # Exclude historical period
+            if par['IBM']['Exclude simulations during historical period']=='On':
+                ind=np.where( (meta['Year']<=1951) )[0]
+                ibm_sim['Occurrence'][ind,:]=0
     
-    # Add pre-inventory severity
-    Mort=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')    
-    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
-    it=np.where(meta['Year']<1920)[0]
-    ibm_sim['Mortality'][it,:]=Mort[it,:]
+            # Exclude future period
+            if par['IBM']['Exclude simulations during future period']=='On':
+                ind=np.where( (meta['Year']>meta['Year Project']) )[0]
+                ibm_sim['Occurrence'][ind,:]=0
+        
+            #--------------------------------------------------------------------------
+            # Severity / mortality
+            #--------------------------------------------------------------------------
+        
+            # Get mortality from probability of burn severity rating
+            ibm_sim['Mortality']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')
+            
+            # Index to occurrence
+            iOcc=np.where( (ibm_sim['Occurrence']>0) )
     
-    # Add post-inventory severity
-    Mort=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')    
-    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
-    it=np.where(meta['Year']>meta['Year Project'])[0]
-    ibm_sim['Mortality'][it,:]=Mort[it,:]
+            # Add pre-inventory severity
+            Mort=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')    
+            Mort[iOcc[0],iOcc[1]]=GetMortalityFromIBMSeverity(rn_sev[iOcc],beta_obs)
+            it=np.where(meta['Year']<1951)[0]
+            ibm_sim['Mortality'][it,:]=Mort[it,:]
     
-    return ibm_sim
+            # Add post-inventory severity
+            Mort=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')    
+            Mort[iOcc[0],iOcc[1]]=GetMortalityFromIBMSeverity(rn_sev[iOcc],beta_obs)
+            it=np.where(meta['Year']>meta['Year Project'])[0]
+            ibm_sim['Mortality'][it,:]=Mort[it,:]
+    
+            if meta['Scenario Source']=='Spreadsheet':
+                
+                return ibm_sim
+    
+            else:
+    
+                # Compress to sparse vectors
+                ibm_sim_sparse={}
+                ibm_sim_sparse['idx']=np.where(ibm_sim['Occurrence']>0)
+                ibm_sim_sparse['Occurrence']=ibm_sim['Occurrence'][ibm_sim_sparse['idx']]
+                ibm_sim_sparse['Mortality']=ibm_sim['Mortality'][ibm_sim_sparse['idx']]
+            
+                # Save
+                fout=meta['Paths']['Project'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl'
+                gu.opickle(fout,ibm_sim_sparse)
+
+##%% Generate disturbances from Pareto distribution
+#
+#def GenerateDisturbancesFromPareto(N_t,N_s,beta,rn):
+#
+#    # Initialize occurrence array
+#    oc=np.zeros((N_t,N_s),dtype='int8')
+#    
+#    # Draw a probability of area disturbed per time step
+#    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+#    po=np.reshape(po,(-1,1))
+#    po=np.tile(po,N_s)
+#    
+#    # Loop through time steps
+#    #rn=np.random.random((N_t,N_s))
+#    
+#    # Populate occurrence
+#    ind=np.where(rn<po)    
+#    oc[ind[0],ind[1]]=1
+#    
+#    return oc
+#
+##%% Generate disturbance ensembles with AAO models
+#
+#def GenerateIBMEnsembleFromAAO(meta,rn,par,id_bgcz):
+#    
+#    # Import IBM stats    
+#    ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
+#    tv_scn=np.arange(-2000,2201,1)
+#    
+#    # Prepare mortality probability coefficients
+#    beta_obs=np.cumsum([par['IBM']['p_Trace_obs'],
+#                       par['IBM']['p_Low_obs'],
+#                       par['IBM']['p_Medium_obs'],
+#                       par['IBM']['p_Severe_obs'],
+#                       par['IBM']['p_VerySevere_obs']])
+#    
+#    ibm_sim={}
+#    
+#    #--------------------------------------------------------------------------
+#    # Occurrence
+#    #--------------------------------------------------------------------------
+#
+#    # Initialize annual probability of occurrence 
+#    ibm_sim['Occurrence']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')
+#
+#    uZone=np.unique(id_bgcz)
+#    
+#    for iZone in range(uZone.size):
+#        
+#        indZone=np.where(id_bgcz==uZone[iZone])[0]
+#            
+#        namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+#            
+#        # Alternative model
+#        b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
+#        for iT in range(meta['Year'].size):
+#            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])
+#        
+#    # Exclude inventory period
+#    if par['IBM']['Exclude simulations during modern period']=='On':
+#        ind=np.where( (meta['Year']>=1951) & (meta['Year']<=meta['Year Project']) )[0]
+#        ibm_sim['Occurrence'][ind,:]=0 
+#        
+#    # Exclude historical period
+#    if par['IBM']['Exclude simulations during historical period']=='On':
+#        ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
+#        ibm_sim['Occurrence'][ind,:]=0
+#    
+#    # Exclude future period
+#    if par['IBM']['Exclude simulations during future period']=='On':
+#        ind=np.where( (meta['Year']>meta['Year Project']) )[0]
+#        ibm_sim['Occurrence'][ind,:]=0       
+#        
+#    #--------------------------------------------------------------------------
+#    # Severity / mortality
+#    #--------------------------------------------------------------------------
+#        
+#    # Get mortality from probability of burn severity rating
+#    ibm_sim['Mortality']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')
+#    ind=np.where( (ibm_sim['Occurrence']>0) )
+#    
+#    # Add pre-inventory severity
+#    Mort=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')    
+#    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
+#    it=np.where(meta['Year']<1920)[0]
+#    ibm_sim['Mortality'][it,:]=Mort[it,:]
+#    
+#    # Add post-inventory severity
+#    Mort=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int16')    
+#    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
+#    it=np.where(meta['Year']>meta['Year Project'])[0]
+#    ibm_sim['Mortality'][it,:]=Mort[it,:]
+#    
+#    return ibm_sim
 
 #%% Mortality from burn severity rating
 # Mortality numbers come from DisturbanceBySeverityClass spreadsheet
 
-def GetMortalityFromIBMSeverity(n,beta):
+def GetMortalityFromIBMSeverity(rn,beta):
     
-    rn=np.random.random(n)
     y=np.zeros(rn.size)
     
-    for i in range(n):
+    for i in range(rn.size):
         
         if rn[i]<beta[0]:
             # Trace
@@ -129,139 +367,139 @@ def GetMortalityFromIBMSeverity(n,beta):
             y[i]=50
         elif (rn[i]>=beta[3]): 
             # Severe
-            y[i]=75    
+            y[i]=75
         
     return y
 
-#%% Generate disturbance ensembles with AAO models
-
-def GenerateWildfireEnsembleFromAAO(meta,rn,par,id_bgcz,method_occ):
-    
-    # Import wildfire stats (by BGC zone)  
-    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')    
-    tv_wfss=np.arange(-2000,2201,1)
-    
-    # Prepare mortality probability coefficients
-    beta_pi=np.cumsum([par['WF']['p_Unburned_pi'],par['WF']['p_Low_pi'],par['WF']['p_Medium_pi'],par['WF']['p_High_pi']])
-    beta_obs=np.cumsum([par['WF']['p_Unburned_obs'],par['WF']['p_Low_obs'],par['WF']['p_Medium_obs'],par['WF']['p_High_obs']])
-    
-    wf_sim={}
-
-    #--------------------------------------------------------------------------
-    # Occurrence
-    #--------------------------------------------------------------------------
-
-    # Initialize annual probability of occurrence (final with deterministic and
-    # random components)
-    wf_sim['Occurrence']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int8')
-    
-    # Get unique BGC zones
-    uZone=np.unique(id_bgcz)
-    
-    for iZone in range(uZone.size):
-        
-        namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
-        
-        indZone=np.where(id_bgcz==uZone[iZone])[0]
-        
-        if method_occ=='DirectFromParetoDraw':
-            
-            Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(par['WF']['Scenario ID']))]
-        
-            for iT in range(meta['Year'].size):
-            
-                if par['WF']['Exclude simulations during historical period']=='On':
-                    if meta['Year'][iT]<=meta['Year Project']:
-                        continue
-                
-                # Adjust shape parameter to match specified annual probability of 
-                # occurrence from the deterministic component
-                ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
-                #b0=wfss[namZone]['Beta_Pareto'].copy()
-                #b_shape=wfss[namZone]['Pareto_shape_for_Po'].copy()
-                #b0[0]=np.exp(b_shape[1]*np.log(Po_Det[ind_scn])+b_shape[0])
-                b0=wfss[namZone]['Beta_Pareto_Cal'].copy()
-                Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
-                b0[1]=-Scale
-                b0[2]=Scale
-            
-                if meta['Scenario Source']=='Spreadsheet':
-                    # When run from spreadsheet, stands are swapped for ensembles so
-                    # generate different records for each stand
-                    wf_sim['Occurrence'][iT,:]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT,1])
-                else:
-                    # All stands get populated with the same prediction
-                    wf_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])        
-    
-        elif method_occ=='PreRun':
-            # Using this will ensure consistency across tiles
-            
-            Po=wfss[namZone]['PctOcc_DetPlusRand_WF_Scn' + str(int(par['WF']['Scenario ID']))]/100
-            for iT in range(meta['Year'].size):
-                
-                if par['WF']['Exclude simulations during historical period']=='On':
-                    if meta['Year'][iT]<=meta['Year Project']:
-                        continue
-                
-                rn=np.random.random(indZone.size)
-                ind_wfss=np.where(tv_wfss==meta['Year'][iT])[0]
-                indMort=np.where(rn<Po[ind_wfss])[0]
-                wf_sim['Occurrence'][iT,indZone[indMort]]=1    
-    
-    # Exclude inventory period
-    if par['WF']['Exclude simulations during modern period']=='On':
-        ind=np.where( (meta['Year']>=1920) & (meta['Year']<=meta['Year Project']) )[0]
-        wf_sim['Occurrence'][ind,:]=0
-        
-    # Exclude historical period
-    if par['WF']['Exclude simulations during historical period']=='On':
-        ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
-        wf_sim['Occurrence'][ind,:]=0
-    
-    # Exclude future period
-    if par['WF']['Exclude simulations during future period']=='On':
-        ind=np.where( (meta['Year']>meta['Year Project']) )[0]
-        wf_sim['Occurrence'][ind,:]=0      
-    
-    #--------------------------------------------------------------------------
-    # Get mortality from probability of burn severity rating
-    #--------------------------------------------------------------------------
-
-    wf_sim['Mortality']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int8')
-    
-    for iT in range(meta['Year'].size):
-        ind=np.where( (wf_sim['Occurrence'][iT,:]>0) )[0]
-        if meta['Year'][iT]<1920:
-            Mort=GetMortalityFromBurnSeverityRating(ind.size,beta_pi)
-        else:
-            Mort=GetMortalityFromBurnSeverityRating(ind.size,beta_obs)
-        wf_sim['Mortality'][iT,ind]=Mort
-        
-    return wf_sim
-
-#%% Mortality from burn severity rating
-
-def GetMortalityFromBurnSeverityRating(n,beta):
-    
-    rn=np.random.random(n)
-    y=np.zeros(rn.size)
-    
-    for i in range(n):
-        
-        if rn[i]<beta[0]:
-            # Unburned
-            y[i]=5
-        elif (rn[i]>=beta[0]) & (rn[i]<beta[1]):
-            # Low
-            y[i]=50
-        elif (rn[i]>=beta[1]) & (rn[i]<beta[2]): 
-            # Medium
-            y[i]=90
-        elif (rn[i]>=beta[2]): 
-            # High
-            y[i]=100
-        
-    return y
+##%% Generate disturbance ensembles with AAO models
+#
+#def GenerateWildfireEnsembleFromAAO(meta,rn,par,id_bgcz,method_occ):
+#    
+#    # Import wildfire stats (by BGC zone)  
+#    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')    
+#    tv_wfss=np.arange(-2000,2201,1)
+#    
+#    # Prepare mortality probability coefficients
+#    beta_pi=np.cumsum([par['WF']['p_Unburned_pi'],par['WF']['p_Low_pi'],par['WF']['p_Medium_pi'],par['WF']['p_High_pi']])
+#    beta_obs=np.cumsum([par['WF']['p_Unburned_obs'],par['WF']['p_Low_obs'],par['WF']['p_Medium_obs'],par['WF']['p_High_obs']])
+#    
+#    wf_sim={}
+#
+#    #--------------------------------------------------------------------------
+#    # Occurrence
+#    #--------------------------------------------------------------------------
+#
+#    # Initialize annual probability of occurrence (final with deterministic and
+#    # random components)
+#    wf_sim['Occurrence']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int8')
+#    
+#    # Get unique BGC zones
+#    uZone=np.unique(id_bgcz)
+#    
+#    for iZone in range(uZone.size):
+#        
+#        namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+#        
+#        indZone=np.where(id_bgcz==uZone[iZone])[0]
+#        
+#        if method_occ=='DirectFromParetoDraw':
+#            
+#            Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(par['WF']['Scenario ID']))]
+#        
+#            for iT in range(meta['Year'].size):
+#            
+#                if par['WF']['Exclude simulations during historical period']=='On':
+#                    if meta['Year'][iT]<=meta['Year Project']:
+#                        continue
+#                
+#                # Adjust shape parameter to match specified annual probability of 
+#                # occurrence from the deterministic component
+#                ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
+#                #b0=wfss[namZone]['Beta_Pareto'].copy()
+#                #b_shape=wfss[namZone]['Pareto_shape_for_Po'].copy()
+#                #b0[0]=np.exp(b_shape[1]*np.log(Po_Det[ind_scn])+b_shape[0])
+#                b0=wfss[namZone]['Beta_Pareto_Cal'].copy()
+#                Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
+#                b0[1]=-Scale
+#                b0[2]=Scale
+#            
+#                if meta['Scenario Source']=='Spreadsheet':
+#                    # When run from spreadsheet, stands are swapped for ensembles so
+#                    # generate different records for each stand
+#                    wf_sim['Occurrence'][iT,:]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT,1])
+#                else:
+#                    # All stands get populated with the same prediction
+#                    wf_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])        
+#    
+#        elif method_occ=='PreRun':
+#            # Using this will ensure consistency across tiles
+#            
+#            Po=wfss[namZone]['PctOcc_DetPlusRand_WF_Scn' + str(int(par['WF']['Scenario ID']))]/100
+#            for iT in range(meta['Year'].size):
+#                
+#                if par['WF']['Exclude simulations during historical period']=='On':
+#                    if meta['Year'][iT]<=meta['Year Project']:
+#                        continue
+#                
+#                rn=np.random.random(indZone.size)
+#                ind_wfss=np.where(tv_wfss==meta['Year'][iT])[0]
+#                indMort=np.where(rn<Po[ind_wfss])[0]
+#                wf_sim['Occurrence'][iT,indZone[indMort]]=1    
+#    
+#    # Exclude inventory period
+#    if par['WF']['Exclude simulations during modern period']=='On':
+#        ind=np.where( (meta['Year']>=1920) & (meta['Year']<=meta['Year Project']) )[0]
+#        wf_sim['Occurrence'][ind,:]=0
+#        
+#    # Exclude historical period
+#    if par['WF']['Exclude simulations during historical period']=='On':
+#        ind=np.where( (meta['Year']<=meta['Year Project']) )[0]
+#        wf_sim['Occurrence'][ind,:]=0
+#    
+#    # Exclude future period
+#    if par['WF']['Exclude simulations during future period']=='On':
+#        ind=np.where( (meta['Year']>meta['Year Project']) )[0]
+#        wf_sim['Occurrence'][ind,:]=0      
+#    
+#    #--------------------------------------------------------------------------
+#    # Get mortality from probability of burn severity rating
+#    #--------------------------------------------------------------------------
+#
+#    wf_sim['Mortality']=np.zeros((meta['Year'].size,meta['N Stand Full']),dtype='int8')
+#    
+#    for iT in range(meta['Year'].size):
+#        ind=np.where( (wf_sim['Occurrence'][iT,:]>0) )[0]
+#        if meta['Year'][iT]<1920:
+#            Mort=GetMortalityFromBurnSeverityRating(ind.size,beta_pi)
+#        else:
+#            Mort=GetMortalityFromBurnSeverityRating(ind.size,beta_obs)
+#        wf_sim['Mortality'][iT,ind]=Mort
+#        
+#    return wf_sim
+#
+##%% Mortality from burn severity rating
+#
+#def GetMortalityFromBurnSeverityRating(n,beta):
+#    
+#    rn=np.random.random(n)
+#    y=np.zeros(rn.size)
+#    
+#    for i in range(n):
+#        
+#        if rn[i]<beta[0]:
+#            # Unburned
+#            y[i]=5
+#        elif (rn[i]>=beta[0]) & (rn[i]<beta[1]):
+#            # Low
+#            y[i]=50
+#        elif (rn[i]>=beta[1]) & (rn[i]<beta[2]): 
+#            # Medium
+#            y[i]=90
+#        elif (rn[i]>=beta[2]): 
+#            # High
+#            y[i]=100
+#        
+#    return y
 
 #%% Simulate probability of stand breakup based on age
 
@@ -366,7 +604,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iEns,V_Merch,Period,psl):
     Oc=flag_thlb*np.floor(np.minimum(1,Po/rn))
     
     # Index to occurrence
-    indS=np.where(Oc==1)[0]    
+    indS=np.where(Oc==1)[0]
     
     if indS.size>0:
         for i in range(indS.size):

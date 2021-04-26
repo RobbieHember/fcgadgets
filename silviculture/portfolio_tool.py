@@ -330,6 +330,61 @@ def PrepareInventory(meta):
 
 def PrepareEventChronology(meta):
     
+    #--------------------------------------------------------------------------
+    # Import custom harvest inputs
+    #--------------------------------------------------------------------------
+    
+    meta['Harvest Custom']={}
+    for i in range(meta['Portfolio']['N AT']):
+        
+        iA=meta['Portfolio']['Indices']['Activity'][i]
+        
+        d={}
+        d['BiomassMerch_Affected']=meta['Portfolio']['Activities']['% of overstory that is felled'][iA]
+        d['BiomassMerch_Removed']=meta['Portfolio']['Activities']['% removed (merch biomass)'][iA]
+        d['BiomassMerch_Burned']=meta['Portfolio']['Activities']['% burned on site (merch biomass)'][iA]
+        d['BiomassMerch_LeftOnSite']=meta['Portfolio']['Activities']['% left to decay on site (merch biomass)'][iA]
+        d['BiomassNonMerch_Affected']=meta['Portfolio']['Activities']['% of overstory that is felled'][iA]
+        d['BiomassNonMerch_Removed']=meta['Portfolio']['Activities']['% removed (non merch biomass)'][iA]
+        d['BiomassNonMerch_Burned']=meta['Portfolio']['Activities']['% burned on site (non merch biomass)'][iA]
+        d['BiomassNonMerch_LeftOnSite']=meta['Portfolio']['Activities']['% left to decay on site (non merch biomass)'][iA]
+        d['Snags_Affected']=meta['Portfolio']['Activities']['% of overstory that is felled'][iA]
+        d['Snags_Removed']=meta['Portfolio']['Activities']['% removed (snags)'][iA]
+        d['Snags_Burned']=meta['Portfolio']['Activities']['% burned on site (snags)'][iA]
+        d['Snags_LeftOnSite']=meta['Portfolio']['Activities']['% left to decay on site (snags)'][iA]
+        
+        d['RemovedMerchToPulp']=5
+        d['RemovedMerchToFuel']=5
+        d['RemovedMerchToLumber']=5
+        d['RemovedMerchToPlywood']=5
+        d['RemovedMerchToOSB']=5
+        d['RemovedMerchToMDF']=5
+        d['RemovedMerchToCants']=5
+        d['RemovedMerchToFirewood']=5
+        d['RemovedNonMerchToFuel']=5
+        d['RemovedNonMerchToLumber']=5
+        d['RemovedNonMerchToPlywood']=5
+        d['RemovedNonMerchToOSB']=5
+        d['RemovedNonMerchToMDF']=5
+        d['RemovedNonMerchToPulp']=5
+        d['RemovedNonMerchToCants']=5
+        d['RemovedNonMerchToFirewood']=5
+        d['RemovedSnagStemToFuel']=5
+        d['RemovedSnagStemToLumber']=5
+        d['RemovedSnagStemToPlywood']=5
+        d['RemovedSnagStemToOSB']=5
+        d['RemovedSnagStemToMDF']=5
+        d['RemovedSnagStemToPulp']=5
+        d['RemovedSnagStemToCants']=5
+        d['RemovedSnagStemToFirewood']=5
+    
+        # Populate custom harvest event
+        meta['Harvest Custom'][int(i+1)]=d
+    
+    #--------------------------------------------------------------------------
+    # Generate event chronology
+    #--------------------------------------------------------------------------    
+    
     for iScn in range(meta['N Scenario']):
         
         for iEns in range(meta['N Ensemble']):        
@@ -349,31 +404,6 @@ def PrepareEventChronology(meta):
                 ec['GrowthFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Max Events Per Year']),dtype='int16')
                 ec['ID_GrowthCurve']=np.zeros((meta['Year'].size,indBat.size,meta['Max Events Per Year']),dtype='int16')
             
-                #--------------------------------------------------------------
-                # Simulate wildfire occurrence and severity from Taz
-                #--------------------------------------------------------------
-                    
-#                if meta['Scenario'][iScn]['AAO Wildfire Status']=='On':
-#                        
-#                    # Import inventory to get BGC zone
-#                    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
-#                        
-#                    # Prepare required parameters dictionary
-#                    # Import fcgadgets parameters
-#                    par=invu.Load_Params(meta)
-#                    par['WF']['Scenario ID']=meta['Scenario'][iScn]['AAO Wildfire Scenario ID']
-#                    par['WF']['Exclude simulations during modern period']='On'
-#                    par['WF']['Exclude simulations during historical period']='Off'
-#                    par['WF']['Exclude simulations during future period']='Off'
-#                    
-#                    # Think about moving this into the par dictionary
-#                    method_occ='DirectFromParetoDraw'
-#                    
-#                    # Normally, this would be run here, but this approach assumes
-#                    # that stands have been swapped with ensembles (when running
-#                    # from spreadsheet). Instead, it is being re-run for each stand
-#                    wf_sim=asm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'],method_occ)  
-            
                 for iS in range(N_StandsInBatch): 
                     
                     # Index to portfolio tables
@@ -385,8 +415,8 @@ def PrepareEventChronology(meta):
                     #----------------------------------------------------------
                     
                     ivl_spin=meta['Spinup Disturbance Return Inverval']                
-                    YearRef=meta['Portfolio']['Year'][iY]
-                    AgeRef=meta['Portfolio']['Activity']['Mean stand age at time of inciting disturbance (years)'][iA]
+                    YearRef=meta['Portfolio']['AIL']['Year'][iY]
+                    AgeRef=meta['Portfolio']['Activities']['Mean stand age at time of inciting disturbance (years)'][iA]
                     if AgeRef>=0:
                         Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)        
                     else:
@@ -402,137 +432,16 @@ def PrepareEventChronology(meta):
                         ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
                     
                     #----------------------------------------------------------
-                    # Add simulated constant disturbances
-                    #----------------------------------------------------------
-               
-                    # Historical disturbance from simulation 1
-                    ri=meta['Scenario'][iScn]['ReturnInterval1_Hist_DisFromSim']
-                    if (ri!=0) & (np.isnan(ri)==False):
-                    
-                        p_Dist=1/ri
-                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Spinup Year End']) & (meta['Year']<meta['Year Project']))[0]
-                        Year=meta['Year'][it]                    
-                        for iYr in range(Year.size):
-                            iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Hist_DisFromSim']]
-                            ec['MortalityFactor'][iT,iS,0]=100
-                            ec['GrowthFactor'][iT,iS,0]=0
-                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
-                    
-                    # Historical disturbance from simulation 2
-                    ri=meta['Scenario'][iScn]['ReturnInterval2_Hist_DisFromSim']
-                    if (ri!=0) & (np.isnan(ri)==False):
-                    
-                        p_Dist=1/ri
-                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Spinup Year End']) & (meta['Year']<meta['Year Project']))[0]
-                        Year=meta['Year'][it]                    
-                        for iYr in range(Year.size):
-                            iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Hist_DisFromSim']]
-                            ec['MortalityFactor'][iT,iS,0]=100
-                            ec['GrowthFactor'][iT,iS,0]=0
-                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
-      
-                    #----------------------------------------------------------
-                    # Add events from inventory
+                    # Add prescribed modern events
                     #----------------------------------------------------------
                     
-                    for iYr in range(1,7):
-                        
-                        if np.isnan(meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
-                            continue
-            
-                        # If IDW, convert IDW class to growth and mortality factor
-                        sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
-                        flg_i=0
-                        indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
-                        if indSc.size!=0:
-                            if flg_i==0:
-                                dfParDistBySC=pd.read_excel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
-                                flg_i=1
-                            indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
-                            ID_TypeN=meta['LUT']['Dist']['IDW']
-                            MF=dfParDistBySC.loc[indPar,'MortalityFactor']
-                            GF=dfParDistBySC.loc[indPar,'GrowthFactor']
-                        else:
-                            ID_TypeS=meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
-                            ID_TypeN=meta['LUT']['Dist'][ID_TypeS]
-                            MF=meta['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
-                            GF=0
-            
-                        Year=meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
-                        iT=np.where(tv==Year)[0]
-                        
-                        iE=np.where(ec['ID_Type'][iT,iS,:]==0)[1]
-
-                        ec['ID_Type'][iT,iS,iE[0]]=ID_TypeN
-                        ec['MortalityFactor'][iT,iS,iE[0]]=MF
-                        ec['GrowthFactor'][iT,iS,iE[0]]=GF
-                        ec['ID_GrowthCurve'][iT,iS,iE[0]]=meta['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
-
-                    #----------------------------------------------------------
-                    # Add simulated constant future disturbances
-                    #----------------------------------------------------------
-               
-                    # Future disturbance from simulation 1
-                    ri=meta['Scenario'][iScn]['ReturnInterval1_Fut_DisFromSim']
-                    if (ri!=0) & (np.isnan(ri)==False):
-                    
-                        p_Dist=1/ri
-                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Year Project']))[0]
-                        Year=meta['Year'][it]                    
-                        for iYr in range(Year.size):
-                            iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Fut_DisFromSim']]
-                            ec['MortalityFactor'][iT,iS,0]=100
-                            ec['GrowthFactor'][iT,iS,0]=0
-                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
-                    
-                    # Future disturbance from simulation 2
-                    ri=meta['Scenario'][iScn]['ReturnInterval2_Fut_DisFromSim']
-                    if (ri!=0) & (np.isnan(ri)==False):
-                    
-                        p_Dist=1/ri
-                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Year Project']))[0]
-                        Year=meta['Year'][it]                    
-                        for iYr in range(Year.size):
-                            iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Fut_DisFromSim']]
-                            ec['MortalityFactor'][iT,iS,0]=100
-                            ec['GrowthFactor'][iT,iS,0]=0
-                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']    
-            
-                    #----------------------------------------------------------
-                    # Add simulated wildfire from Taz
-                    #----------------------------------------------------------
-                    
-                    if meta['Scenario'][iScn]['AAO Wildfire Status']=='On':
-            
-                        ind=np.where(wf_sim['Occurrence'][:,iS]==1)[0]
-                        if ind.size==0:
-                            continue
-                        
-                        ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(ind.size)
-                        Year=tv[ind]
-                        MortF=wf_sim['Mortality'][ind,iS]
-                        GrowthF=0*np.ones(ind.size)
-                        ID_GrowthCurve=1*np.ones(ind.size)
-                            
-                        for iYr in range(Year.size):
-                            iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=ID_Type[iYr]
-                            ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
-                            ec['GrowthFactor'][iT,iS,0]=GrowthF[iYr]
-                            ec['ID_GrowthCurve'][iT,iS,0]=ID_GrowthCurve[iYr]
-    
-                    #----------------------------------------------------------
-                    # Add simulated MPB from Taz
-                    #----------------------------------------------------------
-
+                    if iScn>0:
+                        YearRef=meta['Portfolio']['AIL']['Year'][iY]
+                        iT=np.where(tv==YearRef)[0]
+                        ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist']['Harvest Custom ' + str(iA+1)]
+                        ec['MortalityFactor'][iT,iS,0]=100
+                        ec['GrowthFactor'][iT,iS,0]=0
+                        ec['ID_GrowthCurve'][iT,iS,0]=2
             
                 #--------------------------------------------------------------
                 # Save to file            
@@ -541,3 +450,52 @@ def PrepareEventChronology(meta):
                 gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl',ec)
     
     return
+
+#%% Import results
+    
+def ImportResults(meta):
+    
+    # Import cbrunner outputs
+    v1=cbu.LoadScenarioResults(meta,[0,1])
+    v2,meta=cbu.CalculateGHGBalance(v1,meta)
+    
+    # Extract annual implementation level (ha/year)
+    iBAU=np.where(np.sum(meta['Portfolio']['AIL']['BAU'],axis=0)>0)[0]
+    iCAP=np.where(np.sum(meta['Portfolio']['AIL']['CAP'],axis=0)>0)[0]
+    ail=np.column_stack([meta['Portfolio']['AIL']['BAU'][:,iBAU],meta['Portfolio']['AIL']['CAP'][:,iCAP]])
+
+    # Initialize GHG balance for each activity type
+    vAT=[]
+    for iScn in range(meta['N Scenario']):
+        
+        d={}
+        d['Sec_NGHGB']=np.zeros((v2[iScn]['Year'].size,meta['Portfolio']['N AT']))
+        d['Sec_NGHGB_x_Area']=np.zeros((v2[iScn]['Year'].size,meta['Portfolio']['N AT']))
+    
+        for iAT in range(meta['Portfolio']['N AT']):
+            ind=np.where(meta['Portfolio']['Indices']['Activity']==iAT)[0]
+            ghgb0=v2[iScn]['Sec_NGHGB'][:,ind]
+            ghgb_x_area0=v2[iScn]['Sec_NGHGB'][:,ind]
+            for iYr in range(ghgb0.shape[1]):
+                ghgb_x_area0[:,iYr]=ail[iYr,iAT]*ghgb0[:,iYr]
+            d['Sec_NGHGB'][:,iAT]=np.mean(ghgb0,axis=1)
+            d['Sec_NGHGB_x_Area'][:,iAT]=np.sum(ghgb_x_area0,axis=1)
+        vAT.append(d)
+
+    # Results by portfolio
+    iBAU=np.where(meta['Portfolio']['Activities']['Portfolio Code']=='BAU')[0]
+    iCAP=np.where(meta['Portfolio']['Activities']['Portfolio Code']=='CAP')[0]
+    
+    vBAU=[]
+    vCAP=[]
+    for iScn in range(meta['N Scenario']):
+        
+        d={}
+        d['Sec_NGHGB_x_Area']=np.sum(vAT[iScn]['Sec_NGHGB_x_Area'][:,iBAU],axis=1)
+        vBAU.append(d)
+        
+        d={}
+        d['Sec_NGHGB_x_Area']=np.sum(vAT[iScn]['Sec_NGHGB_x_Area'][:,iCAP],axis=1)
+        vCAP.append(d)
+    
+    return v1,v2,vAT,vBAU,vCAP,meta

@@ -2465,7 +2465,7 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,o
             for j in range(u2.size):
                 ind3=np.where(d['IdxToSXY']==u2[j])[0]
                 for k in range(ind3.size):
-                    d['Activity_Type'][ind3[k]]=dAdmin['Project Type'][ind2[0]]
+                    d['Activity_Type'][ind3[k]]=dAdmin['Activity Type'][ind2[0]]
     
     elif project_name=='ReforestationNonOb':
     
@@ -2551,7 +2551,6 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,o
         #Natural Resource District
         d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
 
-
     df_fcinv=pd.DataFrame.from_dict(d)
     
     #--------------------------------------------------------------------------
@@ -2565,7 +2564,8 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,o
     #--------------------------------------------------------------------------
     
     df=df.sort_values(by=['IdxToSXY','Year','Month'])
-    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummarySiteAndEventsByGridCell.xlsx',index=False)   
+    
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryBySparseGridCell.xlsx',index=False)   
 
     return
 

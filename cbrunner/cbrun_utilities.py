@@ -161,13 +161,16 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     par['WF']['Exclude simulations during future period']='Off'
                     
                     # Think about moving this into the par dictionary
-                    method_occ='DirectFromParetoDraw'
+                    #method_occ='DirectFromParetoDraw'
                     
                     # Normally, this would be run here, but this approach assumes
                     # that stands have been swapped with ensembles (when running
                     # from spreadsheet). Instead, it is being re-run for each stand
-                    wf_sim=asm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'],method_occ)  
-            
+                    #wf_sim=asm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'],method_occ)  
+                    ba={}
+                    ba['BEC_ZONE_CODE']=inv['ID_BECZ']
+                    wf_sim=asm.GenerateWildfireFromAAO(meta,par,ba)
+                    
                 for iS in range(N_StandsInBatch): 
                     
                     #----------------------------------------------------------

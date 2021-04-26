@@ -22,8 +22,8 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #project_name='FCI_RollupFCI_Inv'
 #project_name='NutrientManagementSummary'
-project_name='SummaryNutrientManagementFull'
-#project_name='ReforestationNonObSummary'
+#project_name='SummaryNutrientManagementSubSet'
+project_name='SummaryReforestationNonOb'
 #project_name='SummaryGeneticGains'
 #project_name='SurveySummary'
 
@@ -55,11 +55,13 @@ if project_name=='FCI_RollupFCI_Inv':
     # Unique PP numbers in the database
     uPP=np.unique(dAdmin['PP Number'])
     
-elif project_name=='NutrientManagementSummary':
+elif project_name=='SummaryNutrientManagement':
     
     # Import AIL- used to subsample certain multipolygons
-    ail=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\AnnualImplementationLevel.pkl')
-    meta['subsampling_frequency']=ail['samp_rate_mp']
+    ail=gu.ipickle(r'D:\Data\FCI_Projects\SummaryNutrientManagement\Inputs\AnnualImplementationLevel.pkl')
+    
+    # Sparse grid subsampling rate
+    meta['subsampling_frequency']=0.1
     
 elif project_name=='SummaryNutrientManagementFull':
     
@@ -67,10 +69,20 @@ elif project_name=='SummaryNutrientManagementFull':
     #ail=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\AnnualImplementationLevel.pkl')
     meta['subsampling_frequency']=1
 
+elif project_name=='SummaryReforestationNonOb':
+    
+    # Import AIL- used to subsample certain multipolygons
+    #ail=gu.ipickle(r'D:\Data\FCI_Projects\SummaryReforestationNonOb\Inputs\AnnualImplementationLevel.pkl')
+    
+    # Sparse grid subsampling rate
+    meta['subsampling_frequency']=0.05
+
 elif project_name=='SummaryGeneticGains':  
     
     ail=gu.ipickle(r'D:\Data\FCI_Projects\SummaryGeneticGains\Inputs\AnnualImplementationLevel.pkl')
-    meta['subsampling_frequency']=ail['samp_rate_mp']
+    
+    # Sparse grid subsampling rate
+    meta['subsampling_frequency']=0.1
 
 else:    
     
@@ -193,7 +205,7 @@ with fiona.open(path,layer=lyr_nam) as source:
         # Project-specific query
         #----------------------------------------------------------------------
         
-        if project_name=='NutrientManagementSummary':
+        if project_name=='SummaryNutrientManagement':
             
             flg_stop=1
             if (prp['SILV_BASE_CODE']=='FE') & (prp['SILV_TECHNIQUE_CODE']=='CA') & (prp['SILV_METHOD_CODE']=='HELI') & (prp['RESULTS_IND']=='Y') & (prp['ACTUAL_TREATMENT_AREA']!=None) & (prp['ATU_COMPLETION_DATE']!=None) & (prp['SILV_FUND_SOURCE_CODE']!=None):
@@ -214,13 +226,8 @@ with fiona.open(path,layer=lyr_nam) as source:
             
             if flg_stop==1:
                 continue
-        
-        elif project_name=='FESBC':
             
-            if (prp['RESULTS_IND']!='Y') | (prp['SILV_FUND_SOURCE_CODE']!='FES') | (prp['SILV_BASE_CODE']=='SU'):
-                continue            
-            
-        elif project_name=='ReforestationNonObSummary':
+        elif project_name=='SummaryReforestationNonOb':
             
             # Define which funding source codes are licensee vs. non-ob
             ListOfNonObFSC=['FTL','FTM','RBM','RBL','FR','VG','FIL','FID','FIM','S', \
@@ -228,9 +235,7 @@ with fiona.open(path,layer=lyr_nam) as source:
             ListOfLicenseeFSC=['BCT','LFP''IA','IR','VOI','SBF']
             
             # Only include certain years
-            #tStart=2011
-            tStart=1990
-            if Year<tStart:
+            if Year<1990:
                 continue
             
             # To get actual planting or direct seeding, exclude:
@@ -240,8 +245,12 @@ with fiona.open(path,layer=lyr_nam) as source:
             flg=0
             if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (np.isin(prp['SILV_FUND_SOURCE_CODE'],ListOfNonObFSC)==True):
                 flg=1
-            if (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (np.isin(prp['SILV_FUND_SOURCE_CODE'],ListOfNonObFSC)==True):
-                flg=1
+            #if (prp['SILV_BASE_CODE']=='DS') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (np.isin(prp['SILV_FUND_SOURCE_CODE'],ListOfNonObFSC)==True):
+            #    flg=1
+            
+            # Do subsampling to save time
+            #if np.isin(prp['ACTIVITY_TREATMENT_UNIT_ID'],ail['id_atu_subsample'])==False:
+            #    continue
             
             if flg==0:
                 continue
@@ -258,7 +267,12 @@ with fiona.open(path,layer=lyr_nam) as source:
             # Do subsampling to save time
             if np.isin(prp['ACTIVITY_TREATMENT_UNIT_ID'],ail['id_atu_subsample'])==False:
                 continue
+        
+        elif project_name=='FESBC':
             
+            if (prp['RESULTS_IND']!='Y') | (prp['SILV_FUND_SOURCE_CODE']!='FES') | (prp['SILV_BASE_CODE']=='SU'):
+                continue   
+        
         elif project_name=='SurveySummary':
             
             Year=int(prp['ATU_COMPLETION_DATE'][0:4])   
