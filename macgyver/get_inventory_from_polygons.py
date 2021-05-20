@@ -20,10 +20,10 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Project name
 
-#project_name='FCI_RollupFCI_Inv'
-#project_name='NutrientManagementSummary'
+project_name='FCI_RollupFCI_Inv'
+#project_name='SummaryNutrientManagement'
 #project_name='SummaryNutrientManagementSubSet'
-project_name='SummaryReforestationNonOb'
+#project_name='SummaryReforestationNonOb'
 #project_name='SummaryGeneticGains'
 #project_name='SurveySummary'
 
@@ -31,8 +31,8 @@ project_name='SummaryReforestationNonOb'
 
 meta={}
 meta['Paths']={}
-meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
-#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401'
@@ -288,6 +288,8 @@ with fiona.open(path,layer=lyr_nam) as source:
             if prp['RESULTS_IND']=='N':
                 continue
             if (prp['SILV_FUND_SOURCE_CODE']!='FCE') & (prp['SILV_FUND_SOURCE_CODE']!='FCM') & (np.isin(prp['FIA_PROJECT_ID'],uPP)==False):
+                continue
+            if (prp['FIA_PROJECT_ID']=='RB0000320') | (prp['FIA_PROJECT_ID']=='FC0000313') | (prp['FIA_PROJECT_ID']=='WR0000011'):
                 continue
             if prp['SILV_BASE_CODE']=='SU':
                 continue
@@ -686,6 +688,12 @@ gdf_atu_polygons.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\atu_
 
 #%% Save sparse grid sample to file
 
+# Add opening id to SXY dictionary before saving
+sxy['OPENING_ID']=np.zeros(sxy['ID_atu_multipolygons'].size)
+for iMP in range(len(atu_multipolygons)):
+    ind=np.where(sxy['ID_atu_multipolygons']==iMP)[0]
+    sxy['OPENING_ID'][ind]=atu_multipolygons[iMP]['OPENING_ID']
+
 # Save sparse sample file
 gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\sxy.pkl',sxy)
 
@@ -696,12 +704,21 @@ if flg==1:
     points=[]
     for k in range(sxy['x'].size):
         points.append(Point(sxy['x'][k],sxy['y'][k]))
-    gdf_sxy=gpd.GeoDataFrame({'geometry':points,
-                              'ID_atu_multipolygons':sxy['ID_atu_multipolygons'],
-                              'ID_atu_polygons':sxy['ID_atu_polygons'],
-                              'ID_TSA':sxy['ID_TSA']})
+        
+    gdf_sxy=gpd.GeoDataFrame( {
+        'geometry':points,
+        'ID_atu_multipolygons':sxy['ID_atu_multipolygons'],
+        'ID_atu_polygons':sxy['ID_atu_polygons'],
+        'OPENING_ID':sxy['OPENING_ID'],
+        'ID_TSA':sxy['ID_TSA']} )
+    
+    gdf_sxy=gdf_sxy.set_geometry('geometry')
     gdf_sxy.crs=gdf_bm.crs   
-    gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\sxy.shp')
+    gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\sxy.geojson',driver='GeoJSON')
+
+#gdf_atu_polygons=gdf_atu_polygons.set_geometry('geometry')
+# #gdf_atu_polygons=gdf_atu_polygons.to_crs({'init':'epsg:4326'})
+#gdf_atu_polygons.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\atu_polygons.geojson',driver='GeoJSON')
 
 print((time.time()-t0)/60)
 
@@ -727,8 +744,8 @@ for iLyr in range(len(InvLyrInfo)):
         continue
     
     # Don't run this for FC silv - no valuable variables
-    if lyr_nam=='RSLT_FOREST_COVER_SILV_SVW':
-        continue
+    #if lyr_nam!='RSLT_FOREST_COVER_SILV_SVW':
+    #    continue
      
     # Initialize index to inventory
     IdxToInv=[None]*sxy['x'].size
@@ -1023,3 +1040,37 @@ t1=time.time()
 print(t1-t0)
 
 
+#%% Extract forest cover polygons for the AT sample
+
+def Get_FC_Polygons():
+
+    atu_multipolygons=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\atu_multipolygons.pkl')
+
+    # Unique list of opening ID
+    opid_atu=np.zeros(len(atu_multipolygons))
+    for i in range(len(atu_multipolygons)):
+        opid_atu[i]=atu_multipolygons[i]['OPENING_ID']
+    opid_atu=np.unique(opid_atu)
+
+    a=[None]*int(1e5)
+    cnt=0
+    with fiona.open(fin,layer=lyr) as source:
+        for feat in source:
+            if feat['geometry']==None:
+                continue
+            if np.isin(feat['properties']['OPENING_ID'],opid_atu)==True:
+                a[cnt]=feat
+                cnt=cnt+1
+                print(cnt)
+    a=a[0:cnt-1]            
+
+    # Give it the BC spatial reference system
+    gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
+    gdf_fcinv=gpd.GeoDataFrame.from_features(a,crs=gdf_bm.crs)
+
+    #gdf_fcinv2=gdf_fcinv.to_crs({'init':'epsg:4326'})
+
+    # Save
+    gdf_fcinv.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\fcinv.geojson',driver='GeoJSON')
+
+    return

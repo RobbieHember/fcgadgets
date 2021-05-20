@@ -3,6 +3,25 @@
 
 FCGADGETS - FOREST INVENTORY UTILITIES
 
+===============================================================================
+Instructions for how to update forest inventory data:
+===============================================================================
+
+ 1) Manually download geodatabases from BCGW in ArcGIS (60 min)
+    - if export not working, use copy and paste 
+    - store files at the paths indicated in "DefineInventoryLayersAndVariables"
+
+ 2) Define inventory layers and variables (<1min))
+    - Run: LayerInfo=invu.DefineInventoryLayersAndVariables()
+    - make sure folder release dates are updated
+
+ 3) Build and save LUTs (20 min)
+    - Run: invu.BuildForestInventoryLUTs(LayerInfo)
+
+ 4) Extract openings and forest cover polygons 
+    - Run: RecoverMissingATUGeometries()
+    - that can be used when activity spatial is missing
+    
 '''
 
 #%% Import modules
@@ -26,29 +45,6 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401\VRI.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb')
-
-#%% Define strings that frequently need to be populated with zeros
-
-#StringsToFill=['Month','Day','SILV_FUND_SOURCE_CODE','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
-#               'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
-#               'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
-#               'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5']
-
-
-''' 
-Update forest inventory data
-
- 1) Manually download geodatabases from BCGW in ArcGIS (60 min)
-    - if export not working, use copy and paste 
-    - store files at the paths indicated in "DefineInventoryLayersAndVariables"
-
- 2) Define inventory layers and variables (<1min))
-    - Run: LayerInfo=invu.DefineInventoryLayersAndVariables()
-    - make sure folder release dates are updated
-
- 3) Build and save LUTs (20 min)
-    - Run: invu.BuildForestInventoryLUTs(LayerInfo)
-'''
 
 #%% Define inventory layers and varialbes
 # The "Field List" variable contains touples containing the variable name and 
@@ -120,6 +116,10 @@ def DefineInventoryLayersAndVariables():
     d['Path']=PathInResultsFull
     d['File Name']='Results.gdb'
     d['Field List']=[('OPENING_ID',0,'float32'), \
+     ('FOREST_COVER_ID',0,'float32'), \
+     ('I_FOREST_COVER_LAYER_ID',0,'float32'), \
+     ('SILV_POLYGON_NUMBER',1,'int32'), \
+     ('STOCKING_STANDARD_UNIT_ID',0,'float32'), \
      ('SITE_INDEX',0,'float32'), \
      ('I_SPECIES_CODE_1',1,'int16'), \
      ('I_SPECIES_CODE_2',1,'int16'), \
@@ -153,6 +153,9 @@ def DefineInventoryLayersAndVariables():
     d['Path']=PathInResultsFull
     d['File Name']='Results.gdb'
     d['Field List']=[('OPENING_ID',0,'float32'), \
+     ('FOREST_COVER_ID',0,'float32'), \
+     ('SILV_POLYGON_NUMBER',1,'int32'), \
+     ('STOCKING_STANDARD_UNIT_ID',0,'float32'), \
      ('SITE_INDEX',0,'float32'), \
      ('S_SPECIES_CODE_1',1,'int16'), \
      ('S_SPECIES_CODE_2',1,'int16'), \
@@ -391,7 +394,6 @@ def DefineInventoryLayersAndVariables():
 def BuildForestInventoryLUTs(LayerInfo):
 
     t0=time.time()
-    #for iLyr in range(2,4):
     for iLyr in range(len(LayerInfo)):
 
         # Start counting time
@@ -433,7 +435,7 @@ def BuildForestInventoryLUTs(LayerInfo):
             if L!=0:
                 lut[fnam]={}
                 for i in range(L):
-                    lut[fnam][LayerInfo[iLyr]['LUT'][fnam][i]]=np.array(i+1,dtype=dtype,ndmin=1)    
+                    lut[fnam][LayerInfo[iLyr]['LUT'][fnam][i]]=np.array(i+1,dtype=dtype,ndmin=1)
         
         # Save
         gu.opickle(LayerInfo[iLyr]['Path'] + '\\LUTs_' + LayerInfo[iLyr]['Layer Name'] +'.pkl',lut)
@@ -799,81 +801,6 @@ def RecoverMissingATUGeometries(meta):
     
     print((time.time()-t0)/60)
     
-#    t0=time.time()
-#    at_geo_from_op=[None]*atu_mis['OPENING_ID'].size
-#    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
-#        for feat in source:
-#            
-#            # Index to AT entries with missing spatial that matches the spatial of this feature from the the opening layer
-#            ind0=np.where( (atu_mis['OPENING_ID']==feat['properties']['OPENING_ID']) )[0]
-#            
-#            if ind0.size==0:
-#                continue
-#            
-#            # There are not multiple instances of openings so you do not need to
-#            # accumulate hits in a list
-#            for i in range(ind0.size):
-#                at_geo_from_op[ind0[i]]=feat['geometry']
-#    
-#    # Save
-#    gu.opickle(PathInResultsFull + '\\at_geo_from_op.pkl',at_geo_from_op)
-#    
-#    print((time.time()-t0)/60)
-        
-    #--------------------------------------------------------------------------
-    # Forest cover (only saving geometries for artificial status)
-    # Too big if you save all geometries
-    # Takes 5 min
-    #--------------------------------------------------------------------------
-    
-#    t0=time.time()
-#    
-#    lyr=fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW')
-#    L=len(lyr)    
-#    
-#    at_geo_from_fc=[None]*atu_mis['OPENING_ID'].size
-#    ref_year_fc=[None]*atu_mis['OPENING_ID'].size   
-#    year_updated_fc=[None]*atu_mis['OPENING_ID'].size   
-#
-#    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
-#        for feat in source:
-#            
-#            if (feat['geometry']==None):
-#                continue
-#            
-#            if (feat['properties']['STOCKING_TYPE_CODE']!='ART'):
-#                continue
-#            
-#            # Index to AT entries that correspond to this feature and have missing geometries
-#            ind0=np.where( (atu_mis['OPENING_ID']==feat['properties']['OPENING_ID']) )[0]
-#            
-#            if ind0.size==0:
-#                continue
-#            
-#            YearUpdated=0
-#            if feat['properties']['FOREST_COVER_WHEN_UPDATED']!=None:
-#                YearUpdated=int(feat['properties']['FOREST_COVER_WHEN_UPDATED'][0:4]) 
-#            
-#            for i in range(ind0.size):
-#                
-#                # There can be multiple instances so accumulate hits in a list
-#                if at_geo_from_fc[ind0[i]]==None:                    
-#                    #at_geo_from_fc[ind0[i]]=feat['geometry']
-#                    at_geo_from_fc[ind0[i]]=[feat['geometry']]
-#                    ref_year_fc[ind0[i]]=[feat['properties']['REFERENCE_YEAR']]
-#                    year_updated_fc[ind0[i]]=[YearUpdated]
-#                else:
-#                    at_geo_from_fc[ind0[i]].append(feat['geometry'])
-#                    ref_year_fc[ind0[i]].append(feat['properties']['REFERENCE_YEAR'])
-#                    year_updated_fc[ind0[i]].append(YearUpdated)
-#    
-#    # Save
-#    gu.opickle(PathInResultsFull + '\\at_geo_from_fcinv.pkl',at_geo_from_fc)
-#    gu.opickle(PathInResultsFull + '\\ref_year_fc.pkl',ref_year_fc)
-#    gu.opickle(PathInResultsFull + '\\year_updated_fc.pkl',year_updated_fc)
-#            
-#    print((time.time()-t0)/60)    
-    
     #--------------------------------------------------------------------------
     # Forest cover by OPENING_ID (only saving geometries for artificial status)
     # Takes 5 min
@@ -979,104 +906,6 @@ def RecoverMissingATUGeometries(meta):
             
     gu.opickle(PathInResultsFull + '\\missing_geo_atu_list.pkl',atu_mis)
 
-##%% Scraps from toubleshooting missing geometries:
-#    
-#    #%% Analyze missing planting spatial
-#
-#c=[0,1,0,1]; #c=[0,1,2,3,0,1,2,3,0,1,2,3]
-#r=[0,0,1,1]; #r=[0,0,0,0,1,1,1,1,2,2,2,2]
-#
-## Import ATU data
-#atu_mis=gu.ipickle(PathInResultsFull + '\\atu_mis.pkl')
-#
-#at_geo_from_op=gu.ipickle(PathInResultsFull + '\\at_geo_from_op.pkl')
-#
-#garc.collect()
-#
-#
-## 5 percent where opening spatial cannot be found for AT entries
-#N=0 
-#for i in range(len(at_geo_from_op)):
-#    if at_geo_from_op[i]==None:
-#        N=N+1
-#N/atu_mis['OPENING_ID'].size
-#
-#
-## i=150 # Easy
-## i=2300 # Easy
-#
-#for i in range(atu_mis['OPENING_ID'].size):
-#
-#    if at_geo_from_op[i]==None:
-#        continue
-#    
-#    # i=2300
-#
-#    #print(atu_mis['OPENING_ID'][i])
-#    
-#    feat_op={}; feat_op['properties']=prp; feat_op['geometry']=at_geo_from_op[i]
-#    gdf_op=gpd.GeoDataFrame.from_features([feat_op])
-#    A_op=np.round(gdf_op.area.values[0]/1000)
-#    
-#    ind_atu=np.where( (atu_mis['OPENING_ID']==atu_mis['OPENING_ID'][i]) & (atu_mis['SBC']=='PL') )[0]
-#    atu_mis['SBC'][ind_atu]
-#    atu_mis['Year'][ind_atu]
-#    A_at=atu_mis['ACTUAL_TREATMENT_AREA'][ind_atu]        
-#
-#    if at_geo_from_fc[i]==None:
-#        continue
-#
-#    A_fc=np.zeros(len(at_geo_from_fc[i]))
-#    Year_fc=np.zeros(len(at_geo_from_fc[i]))
-#    for j in range(len(at_geo_from_fc[i])):
-#        feat_fc={}; feat_fc['properties']=prp; feat_fc['geometry']=at_geo_from_fc[i][j]
-#        gdf_fc=gpd.GeoDataFrame.from_features([feat_fc])
-#        A_fc[j]=np.round(gdf_fc.area.values[0]/10000)
-#        Year_fc[j]=ref_year_fc[i][j]
-#
-#    if ind_atu.size==A_fc.size:
-#        dist=np.abs(A_at[:, np.newaxis]-A_fc)
-#        potentialClosest=dist.argmin(axis=1)
-#        sD[i]=np.sum(A_at-A_fc[potentialClosest])
-#
-#
-#    idx=-999*np.ones(ind_atu.size)
-#    for j in range(ind_atu.size):
-#        if (atu_mis['SBC'][ind_atu[j]]=='PL'):
-#            ind1=np.where(A_fc==atu_mis['ACTUAL_TREATMENT_AREA'][ind_atu[j]])[0]
-#            if ind1.size>0:
-#                idx[j]=ind1
-#
-#
-#    plt.close('all')
-#    fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,9))
-#    gdf_op.plot(ax=ax,facecolor='None',linewidth=3,edgecolor='k',linestyle='-')
-#    for j in range(len(at_geo_from_fc[i])):
-#        gdf_op.plot(ax=ax,facecolor='None',linewidth=3,edgecolor='k',linestyle='-') 
-#        feat_fc={}; feat_fc['properties']=prp; feat_fc['geometry']=at_geo_from_fc[i][j]
-#        gdf_fc=gpd.GeoDataFrame.from_features([feat_fc])
-#        gdf_fc.plot(ax=ax,facecolor='g',edgecolor='y',linewidth=1,linestyle='-') 
-#          
-#
-#    plt.close('all')
-#    fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(12,9))
-#    for j in range(4):
-#        gdf_op.plot(ax=ax[r[j],c[j]],facecolor='None',linewidth=3,edgecolor='k',linestyle='-')
-#        ax[r[j],c[j]].set_yticklabels(''); ax[r[j],c[j]].set_xticklabels('')
-#    if at_geo_from_fc[i]!=None:
-#        Atot_fc=0
-#        for j in range(4):
-#            if j+1>len(at_geo_from_fc[i]):
-#                continue
-#            gdf_op.plot(ax=ax[r[j],c[j]],facecolor='None',linewidth=3,edgecolor='k',linestyle='-') 
-#            feat_fc={}; feat_fc['properties']=prp; feat_fc['geometry']=at_geo_from_fc[i][j]
-#            gdf_fc=gpd.GeoDataFrame.from_features([feat_fc])
-#            gdf_fc.plot(ax=ax[r[j],c[j]],facecolor='None',edgecolor='c',linewidth=2,linestyle='-') 
-#            ax[r[j],c[j]].set_title('Year: ' + str(ref_year_fc[i][j]) + ', Area: ' + str(np.round(gdf_fc.area.values[0]/10000)) + ' ha',fontsize=7)
-#            ax[r[j],c[j]].set_xticks([]); ax[r[j],c[j]].set_yticks([])
-#            Atot_fc=Atot_fc+gdf_fc.area.values[0]/10000
-#    plt.tight_layout()
-#    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Planting\ReconMissingGeom_Eg1','png',900)
 
     
 #%% ADD PLANTING INFO TO DMEC
@@ -1278,6 +1107,11 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
             
             for i in range(indS.size):
             
+                # Only continue if nothing yet added through burnsev layer
+                ind=np.where( ( np.floor(dmec0['Year'])==np.floor(burnsev['FIRE_YEAR'][indS[i]]) ) & (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
+                if ind.size>0: 
+                    continue
+                
                 bsr=burnsev['BURN_SEVERITY_RATING'][indS[i]]
                 if bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['Low']: 
                     Severity=50
@@ -1309,8 +1143,7 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
             for i in range(indS.size):
         
                 # Only continue if nothing yet added through burnsev layer
-                ind=np.where( (np.floor(dmec0['Year'])==np.floor(fire['FIRE_YEAR'][indS[i]])) & 
-                             (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
+                ind=np.where( ( np.floor(dmec0['Year'])==np.floor(fire['FIRE_YEAR'][indS[i]]) ) & (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
                 if ind.size>0: 
                     continue
             
@@ -1487,6 +1320,10 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
             
                 if (pest['CAPTURE_YEAR'][iYr]==0):
                     continue                    
+            
+                # Don't include trace
+                if (pest['PEST_SEVERITY_CODE'][iYr]==meta['LUT']['Pest']['PEST_SEVERITY_CODE']['T'][0]):
+                    continue
             
                 dmec0['Year']=np.append(dmec0['Year'],pest['CAPTURE_YEAR'][iYr])
                 dmec0['Month']=np.append(dmec0['Month'],-999)
@@ -1685,10 +1522,10 @@ def Exclude_Duplicate_Events(meta,dmec):
         if dmec[iStand]==None:
             continue
         for key in meta['LUT']['Dist'].keys():
-            ind=np.where(dmec[iStand]['ID_Type']==meta['LUT']['Dist'][key])[0]
-            if ind.size==0:
-                continue
-            uYear=np.unique(np.floor(dmec[iStand]['Year'][ind]))
+            indType=np.where(dmec[iStand]['ID_Type']==meta['LUT']['Dist'][key])[0]
+            if indType.size==0:
+                continue            
+            uYear=np.unique(np.floor(dmec[iStand]['Year'][indType]))
             for iYear in range(uYear.size):
                 ind=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist'][key]) & (np.floor(dmec[iStand]['Year'])==uYear[iYear]) )[0]
                 dmec[iStand]['ID_Type'][ind[1:]]=-999
@@ -2466,6 +2303,20 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,o
                 ind3=np.where(d['IdxToSXY']==u2[j])[0]
                 for k in range(ind3.size):
                     d['Activity_Type'][ind3[k]]=dAdmin['Activity Type'][ind2[0]]
+                    
+        u=np.unique(d['OPENING_ID'])
+        for i in range(u.size):
+            ind1=np.where(d['OPENING_ID']==u[i])[0]
+            if ind1.size==0:
+                continue
+            ind2=np.where( (dAdmin['OPENING_ID']==u[i]) & (dAdmin['Removed']!='Removed') )[0]
+            if ind2.size==0:
+                continue
+            u2=np.unique(d['IdxToSXY'][ind1])
+            for j in range(u2.size):
+                ind3=np.where(d['IdxToSXY']==u2[j])[0]
+                for k in range(ind3.size):
+                    d['Activity_Type'][ind3[k]]=dAdmin['Activity Type'][ind2[0]]            
     
     elif project_name=='ReforestationNonOb':
     
@@ -2704,6 +2555,7 @@ def LoadSparseGeospatialInputs(meta):
     burnsev=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_BURN_SEVERITY_SP.pkl')
     vri=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_COMP_LYR_R1_POLY.pkl')
     fcinv=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_FOREST_COVER_INV_SVW.pkl')
+    fcsilv=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_FOREST_COVER_SILV_SVW.pkl')
     fcres=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_FOREST_COVER_RESERVE_SVW.pkl')
     pl=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl')
     fire=gu.ipickle(meta['Paths']['Geospatial'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP.pkl')
@@ -2713,7 +2565,7 @@ def LoadSparseGeospatialInputs(meta):
     park=gu.ipickle(meta['Paths']['Geospatial'] + '\\TA_PARK_ECORES_PA_SVW.pkl')
     ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
 
-    return sxy,atu,op,burnsev,vri,fcinv,fcres,pl,fire,pest,cut,lul,park,ogmal
+    return sxy,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal
 
 #%% Load index to sparse grid
     

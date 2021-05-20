@@ -126,6 +126,29 @@ class BunchDictionary(dict):
 
 def BuildEventChronologyFromSpreadsheet(meta):       
     
+    #--------------------------------------------------------------------------
+    # Simulated wildfire (different among stands, the same among scenarios)
+    #--------------------------------------------------------------------------
+
+    iScn=0
+    iBat=0
+    
+    # Import inventory to get BGC zone
+    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                        
+    # Prepare required parameters dictionary
+    # Import fcgadgets parameters
+    par=invu.Load_Params(meta)
+    par['WF']['Scenario ID']=4
+    par['WF']['Exclude simulations during modern period']='On'
+    par['WF']['Exclude simulations during historical period']='Off'
+    par['WF']['Exclude simulations during future period']='Off'
+
+    wf_sim=asm.GenerateWildfireFromAAO_StandsActAsEnsembles(meta,par,inv)
+    
+    #--------------------------------------------------------------------------
+    #--------------------------------------------------------------------------
+    
     for iScn in range(meta['N Scenario']):    
         for iEns in range(meta['N Ensemble']):        
             for iBat in range(meta['N Batch']):
@@ -142,34 +165,6 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 ec['MortalityFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Max Events Per Year']),dtype='int16')
                 ec['GrowthFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Max Events Per Year']),dtype='int16')
                 ec['ID_GrowthCurve']=np.zeros((meta['Year'].size,indBat.size,meta['Max Events Per Year']),dtype='int16')
-            
-                #--------------------------------------------------------------
-                # Simulate wildfire occurrence and severity from Taz
-                #--------------------------------------------------------------
-                    
-                if meta['Scenario'][iScn]['AAO Wildfire Status']=='On':
-                        
-                    # Import inventory to get BGC zone
-                    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
-                        
-                    # Prepare required parameters dictionary
-                    # Import fcgadgets parameters
-                    par=invu.Load_Params(meta)
-                    par['WF']['Scenario ID']=meta['Scenario'][iScn]['AAO Wildfire Scenario ID']
-                    par['WF']['Exclude simulations during modern period']='On'
-                    par['WF']['Exclude simulations during historical period']='Off'
-                    par['WF']['Exclude simulations during future period']='Off'
-                    
-                    # Think about moving this into the par dictionary
-                    #method_occ='DirectFromParetoDraw'
-                    
-                    # Normally, this would be run here, but this approach assumes
-                    # that stands have been swapped with ensembles (when running
-                    # from spreadsheet). Instead, it is being re-run for each stand
-                    #wf_sim=asm.GenerateWildfireEnsembleFromAAO(meta,par,inv['ID_BECZ'],method_occ)  
-                    ba={}
-                    ba['BEC_ZONE_CODE']=inv['ID_BECZ']
-                    wf_sim=asm.GenerateWildfireFromAAO(meta,par,ba)
                     
                 for iS in range(N_StandsInBatch): 
                     
@@ -2218,7 +2213,8 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
     
         # Get area affected for multipolygon    
         A=AreaAffectedInSingleMultipolygon(meta,iScnForArea,ivlT,tv,MosByMP,iMP)
-    
+        A=cbu.AreaAffectedInSingleMultipolygon(meta,iScnForArea,ivlT,tv,MosByMP,iMP)
+        
         #atu_multipolygons[uMP[iMP]]
     
         lw1=1; cle1=[0,0,1]; cle2=[1,0,0]; ms=3; aw=0.28; ah=0.22;
