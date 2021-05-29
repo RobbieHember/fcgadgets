@@ -2213,7 +2213,7 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
     
         # Get area affected for multipolygon    
         A=AreaAffectedInSingleMultipolygon(meta,iScnForArea,ivlT,tv,MosByMP,iMP)
-        A=cbu.AreaAffectedInSingleMultipolygon(meta,iScnForArea,ivlT,tv,MosByMP,iMP)
+        #A=cbu.AreaAffectedInSingleMultipolygon(meta,iScnForArea,ivlT,tv,MosByMP,iMP)
         
         #atu_multipolygons[uMP[iMP]]
     

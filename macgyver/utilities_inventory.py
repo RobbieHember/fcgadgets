@@ -1782,6 +1782,7 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
     
     ba={} 
     ba['FIZ']=meta['LUT']['TIPSY']['FIZ']['I']*np.ones(meta['N Stand'])
+    ba['LAND_COVER_CLASS_CD_1']=-999*np.ones(meta['N Stand'])
     ba['BEC_ZONE_CODE']=meta['LUT']['VRI']['BEC_ZONE_CODE']['SBS']*np.ones(meta['N Stand'])
     ba['Spc_CD1']=-999*np.ones(meta['N Stand'])
     ba['Spc_CD2']=-999*np.ones(meta['N Stand'])
@@ -1831,6 +1832,8 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
     
         ind0=idx['vri'][iStand]['Index'][0]
         N_tot=N_tot+ind0.size
+        
+        ba['LAND_COVER_CLASS_CD_1'][iStand0]=vri['LAND_COVER_CLASS_CD_1'][ind0] 
         
         ba['BEC_ZONE_CODE'][iStand0]=vri['BEC_ZONE_CODE'][ind0]        
         
@@ -2379,7 +2382,10 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,o
     d['I_Spc2_CD']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
     for i in range(fcinv['IdxToSXY'].size):
         d['I_Spc1_CD'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])[0]
-        d['I_Spc2_CD'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])[0]
+        try:
+            d['I_Spc2_CD'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])[0]
+        except:
+            pass
 
     # Add VRI
     d['BGCz']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
@@ -2416,7 +2422,7 @@ def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,o
     
     df=df.sort_values(by=['IdxToSXY','Year','Month'])
     
-    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryBySparseGridCell.xlsx',index=False)   
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryAttributesBySXY.xlsx',index=False)   
 
     return
 
