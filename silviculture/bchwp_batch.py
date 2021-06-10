@@ -6,6 +6,8 @@ A Python version of the British Columbia Harvested Wood Product Calculator
 (Dymond 2012).
 
 Notes:
+    
+*** Warning *** This module is incomplete and completely non-functional.
 
 '''
 

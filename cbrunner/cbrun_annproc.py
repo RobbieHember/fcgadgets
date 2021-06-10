@@ -1502,33 +1502,40 @@ def Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP):
                     
                 vi['GCA'][:,iS,:]=NetGrowthNew
     
-#            #------------------------------------------------------------------
-#            # Apply growth factors (in response to non-lethal events)
-#            #------------------------------------------------------------------
-#
-#            flg=0
-#            if (flg==1) & (meta['Biomass Module']!='Sawtooth'):
-#                
-#                GF=vi['EH'][iS]['GrowthFactor'][indDist[iDist]]
-#                
-#                if (np.isnan(GF)==False) & (GF!=-999):
-#                    
-#                    GrowthFraction=1+GF.astype(float)/100               
-#                    NetGrowth=vi['GCA'][:,iS,:].copy().astype(float)/meta['GC']['Scale Factor']
-#                    
-#                    if ID_Type==meta['LUT']['Dist']['IDW']:
-#                        # Only a temporary change in growth (see severity class table)
-#                        ResponsePeriod=2  
-#                        A=np.arange(1,302,1)
-#                        iResponse=np.where( (A>=vo['A'][iT,iS]) & (A<=vo['A'][iT,iS]+ResponsePeriod) )[0]
-#                        NetGrowth[iResponse,:]=GrowthFraction*NetGrowth[iResponse,:]
-#                    else:
-#                        # A permanent change in growth
-#                        NetGrowth=GrowthFraction*NetGrowth                        
-#                    
-#                    NetGrowth=NetGrowth*meta['GC']['Scale Factor']
-#                    NetGrowth=NetGrowth.astype(np.int16)
-#                    vi['GCA'][:,iS,:]=NetGrowth
+        #----------------------------------------------------------------------
+        # Apply growth factors (in response to non-lethal events)
+        #----------------------------------------------------------------------
+
+        flg=1
+        if (flg==1) & (meta['Biomass Module']!='Sawtooth'):
+                
+            GF=vi['EC']['GrowthFactor'][iT,:,iE]
+            
+            indAdj=np.where(GF!=0)[0]
+            
+            if (indAdj.size>0):
+                
+                #print(vi['GC']['Active'].shape)
+                
+                GrowthFraction=1+GF[indAdj].astype(float)/100               
+                NetGrowth=vi['GC']['Active'][:,indAdj,:].copy().astype(float)/meta['GC']['Scale Factor']
+                    
+                #if ID_Type==meta['LUT']['Dist']['IDW']:
+                #    # Only a temporary change in growth (see severity class table)
+                #    # *** I have not checked to see if this is working properly ***
+                #    ResponsePeriod=2  
+                #    A=np.arange(1,302,1)
+                #    iResponse=np.where( (A>=vo['A'][iT,indAdj]) & (A<=vo['A'][iT,indAdj]+ResponsePeriod) )[0]
+                #    NetGrowth[iResponse,:]=GrowthFraction*NetGrowth[iResponse,:]
+                #else:
+                
+                # A permanent change in growth
+                for iAdj in range(indAdj.size):
+                    NetGrowth[:,iAdj,:]=GrowthFraction[iAdj]*NetGrowth[:,iAdj,:]                        
+                    
+                NetGrowth=NetGrowth*meta['GC']['Scale Factor']
+                NetGrowth=NetGrowth.astype(np.int16)
+                vi['GC']['Active'][:,indAdj,:]=NetGrowth
 
     #--------------------------------------------------------------------------
     # Aerial nutrient application events

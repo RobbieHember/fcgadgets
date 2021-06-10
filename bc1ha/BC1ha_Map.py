@@ -13,8 +13,8 @@ import fiona
 from shapely.geometry import Polygon,Point
 
 # Import custom modules
-import fcgadgets.utilities.utilities_general as gu
-import fcgadgets.utilities.utilities_gis as gis
+import fcgadgets.macgyver.utilities_general as gu
+import fcgadgets.macgyver.utilities_gis as gis
 
 #%% Set figure properties
 params={'font.sans-serif':'Arial',
@@ -46,7 +46,7 @@ tsa_key=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx
 gdf_tsa=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 
 # Roads
-#gdf_road=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Basemaps\roads.shp')
+gdf_road=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\roads.shp')
 
 # Districts
 #gdf_d=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Districts\district.shp')
@@ -57,8 +57,8 @@ gdf_tsa=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 # Pick the TSAs to include
 #tsaList=['Soo TSA']
 #tsaList=['Kamloops TSA','100 Mile House TSA','Williams Lake TSA']
-#tsaList=['Williams Lake TSA']
-tsaList=list(tsa_key['Name'])
+tsaList=['Williams Lake TSA']
+#tsaList=list(tsa_key['Name'])
 
 # Index to TSAs in query
 iROI=tsa_key.VALUE[np.isin(tsa_key.Name,tsaList)].values
@@ -86,7 +86,7 @@ gdf_lakes_roi=gpd.overlay(gdf_bm[(gdf_bm['TAG']=='lake')],gdf_tsa[np.isin(gdf_ts
 
 # Roads
 try:
-    gdf_road_roi=gdf_road.cx[tsa_mask1['minx']:tsa_mask1['maxx'],tsa_mask1['miny']:tsa_mask1['maxy']]
+    gdf_road_roi=gdf_road.cx[tsa_mask1['xmin']:tsa_mask1['xmax'],tsa_mask1['ymin']:tsa_mask1['ymax']]
     gdf_road_roi=gdf_road_roi.reset_index(drop=True)
     gdf_road_roi=gpd.sjoin(gdf_road_roi,gdf_tsa_roi,how='left')
     gdf_road_roi=gdf_road_roi.groupby('index_right')
@@ -95,7 +95,7 @@ except:
 
 #%% Import land cover scheme level 2 (Treed=4)
 
-zLC2_tmp=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\VRI\lc2.tif')
+zLC2_tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 zLC2=zTSA.copy()
 zLC2['Data']=zLC2_tmp['Data']
 del zLC2_tmp
@@ -104,11 +104,11 @@ gc.collect()
 
 #%% Import Base Thematic Map
 
-zBTM=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\LandUseLandCover\landuse.btm.tif')
+zBTM=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm.tif')
 zBTM=gis.ClipRaster(zBTM,xlim,ylim)
-dBTM=pd.read_csv(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\LandUseLandCover\landuse_btm_category_metadata.csv')
+dBTM=pd.read_csv(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse_btm_category_metadata.csv')
 cl=np.column_stack( (dBTM['C1'].values,dBTM['C2'].values,dBTM['C3'].values) )
-zBTM.Data1,zBTM.lab1,zBTM.cl1=gis.CompressCats(zBTM.Data,dBTM['Raster Value'].values,dBTM['PLU Label'].values,cl)
+zBTM['Data1'],zBTM['lab1'],zBTM['cl1']=gis.CompressCats(zBTM['Data'],dBTM['Raster Value'].values,dBTM['PLU Label'].values,cl)
 
 
 #%% PLOT TSA
@@ -126,7 +126,7 @@ N_color=4
 N_hidden=2
 
 # Colormap
-cm=np.vstack( ((0.55,0.55,0.55,1),(0.8,0.8,0.8,1),(0.93,0.93,0.93,1),(1,1,1,1)) )
+cm=np.vstack( ((0.7,0.7,0.7,1),(0.8,0.8,0.8,1),(0.93,0.93,0.93,1),(1,1,1,1)) )
 cm=matplotlib.colors.ListedColormap(cm)
 
 plt.close('all')
@@ -137,7 +137,7 @@ im=ax[0].matshow(z1[0::1,0::1],clim=(0,N_color),extent=zLC2['Extent'],cmap=cm)
 gdf_bc_boundary.plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
 gdf_lakes_roi.plot(ax=ax[0],facecolor=[0.82,0.88,1],edgecolor=[0.7*0.82,0.7*0.88,0.7*1],linewidth=0.25,label='Water')
 gdf_tsa_roi.plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
-gdf_road_roi.plot(ax=ax[0],facecolor='none',edgecolor=[0,0,0],label='Roads',linewidth=1.5,alpha=1,zorder=1)
+gdf_road_roi.plot(ax=ax[0],facecolor='none',edgecolor=[0,0,0],label='Roads',linewidth=0.75,alpha=1,zorder=1)
 ax[0].set(position=[0.04,0.02,0.92,0.96],xlim=xlim,ylim=ylim,aspect='auto')
 ax[0].grid(False)
 
@@ -150,7 +150,173 @@ ax[1].set(position=[0.8,0.04,0.03,0.06])
 
 #gu.PrintFig(r'G:\My Drive\Figures\CutYear','png',500)
 
+# Add burn seveirty rating 
+gdf_bsr_roi.plot(ax=ax[0],facecolor=[1,0,0],edgecolor=[1,0,0],linewidth=1,label='BSR',alpha=0.25)
 
+gdf_at_roi.plot(ax=ax[0],facecolor=[0,0.5,1],edgecolor=[0,0.5,1],linewidth=0.5,label='AT',hatch='////',alpha=0.25)
+
+# Plot planted areas
+gdf_fci=gpd.read_file(r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv\Geospatial\atu_polygons.geojson')
+gdf_fci2=gdf_fci[gdf_fci['SILV_BASE_CODE']=='PL']
+gdf_fci2.plot(ax=ax[0],facecolor=[0.5,1,0],edgecolor=[0,0.5,0],linewidth=0.5,label='FCI',hatch='///',alpha=0.25)
+
+# Surveys (zanzibar)
+dS=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\Surveys\ZANZIBAR FCI EXPORT.xlsx')
+import re
+dS['x']=np.zeros(dS['Latitude'].size)
+dS['y']=np.zeros(dS['Latitude'].size)
+for i in range(dS['Latitude'].size):
+    try:
+        lat=re.split('[°\'"]+',dS['Latitude'][i])
+        lon=re.split('[°\'"]+',dS['Longitude'][i])
+        dS['y'][i]=np.array(lat[0],dtype=float)+np.array(lat[1],dtype=float)/60+np.array(lat[2],dtype=float)/(60*60)
+        dS['x'][i]=-np.array(lon[0],dtype=float)-np.array(lon[1],dtype=float)/60-np.array(lon[2],dtype=float)/(60*60)
+    except:
+        pass
+    try:
+        lat=re.split('[.]+',dS['Latitude'][i])
+        lon=re.split('[.]+',dS['Longitude'][i])
+        dS['y'][i]=np.array(lat[0],dtype=float)+np.array(lat[1],dtype=float)/60+np.array(lat[2],dtype=float)/(60*60)
+        dS['x'][i]=-np.array(lon[0],dtype=float)-np.array(lon[1],dtype=float)/60-np.array(lon[2],dtype=float)/(60*60)
+    except:
+        pass
+    try:
+        lat=re.split('[\'"]+',dS['Latitude'][i])
+        lon=re.split('[\'"]+',dS['Longitude'][i])
+        dS['y'][i]=np.array(lat[0],dtype=float)+np.array(lat[1],dtype=float)/60+np.array(lat[2],dtype=float)/(60*60)
+        dS['x'][i]=-np.array(lon[0],dtype=float)-np.array(lon[1],dtype=float)/60-np.array(lon[2],dtype=float)/(60*60)
+    except:
+        pass
+    
+points=[]
+for k in range(dS['x'].size):
+    points.append(Point(dS['x'][k],dS['y'][k])) 
+gdf_su=gpd.GeoDataFrame({'geometry':points,'Opening ID':dS['Opening ID']} )
+gdf_su=gdf_su.set_geometry('geometry')
+gdf_su.crs={'init':'epsg:4326'}
+gdf_su=gdf_su.to_crs(gdf_bm.crs)
+
+gdf_su.plot(ax=ax[0],marker='o',markersize=14,edgecolor='k',facecolor='w',linewidth=1)
+
+# Surveys (All)
+dS=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\Surveys\FCI Post-wildfire Survey Summary.xlsx','2018')
+import re
+dS['x']=np.zeros(dS['Latitude'].size)
+dS['y']=np.zeros(dS['Latitude'].size)
+for i in range(dS['Latitude'].size):
+    try:
+        lat=re.split('[°\'"]+',dS['Latitude'][i])
+        lon=re.split('[°\'"]+',dS['Longitude'][i])
+        dS['y'][i]=np.array(lat[0],dtype=float)+np.array(lat[1],dtype=float)/60+np.array(lat[2],dtype=float)/(60*60)
+        dS['x'][i]=-np.array(lon[0],dtype=float)-np.array(lon[1],dtype=float)/60-np.array(lon[2],dtype=float)/(60*60)
+    except:
+        pass
+    try:
+        lat=re.split('[.]+',dS['Latitude'][i])
+        lon=re.split('[.]+',dS['Longitude'][i])
+        dS['y'][i]=np.array(lat[0],dtype=float)+np.array(lat[1],dtype=float)/60+np.array(lat[2],dtype=float)/(60*60)
+        dS['x'][i]=-np.array(lon[0],dtype=float)-np.array(lon[1],dtype=float)/60-np.array(lon[2],dtype=float)/(60*60)
+    except:
+        pass
+    try:
+        lat=re.split('[\'"]+',dS['Latitude'][i])
+        lon=re.split('[\'"]+',dS['Longitude'][i])
+        dS['y'][i]=np.array(lat[0],dtype=float)+np.array(lat[1],dtype=float)/60+np.array(lat[2],dtype=float)/(60*60)
+        dS['x'][i]=-np.array(lon[0],dtype=float)-np.array(lon[1],dtype=float)/60-np.array(lon[2],dtype=float)/(60*60)
+    except:
+        pass
+    
+points=[]
+for k in range(dS['x'].size):
+    points.append(Point(dS['x'][k],dS['y'][k])) 
+gdf_su=gpd.GeoDataFrame({'geometry':points,'Opening ID':dS['Opening ID']} )
+gdf_su=gdf_su.set_geometry('geometry')
+gdf_su.crs={'init':'epsg:4326'}
+gdf_su=gdf_su.to_crs(gdf_bm.crs)
+
+gdf_su.plot(ax=ax[0],marker='s',markersize=14,edgecolor='k',facecolor='w',linewidth=1)
+
+
+
+
+def GetAT():
+
+    pth=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb'
+    lyr='RSLT_ACTIVITY_TREATMENT_SVW'
+    
+    gl=[None]*int(1e5)
+    cnt=0
+    with fiona.open(pth,layer=lyr) as source:
+        for feat in source:
+            prp=feat['properties']
+            if (feat['geometry']==None) | (prp['ATU_COMPLETION_DATE']==None):
+                continue
+            Year=int(prp['ATU_COMPLETION_DATE'][0:4])
+            Month=int(prp['ATU_COMPLETION_DATE'][5:7])
+            if (Year<2017):
+                continue
+            if (prp['SILV_BASE_CODE']=='SU') | (prp['SILV_BASE_CODE']=='LB') | (prp['SILV_BASE_CODE']=='AU') | (prp['SILV_BASE_CODE']=='DN'):
+                continue
+            feat['properties']['Year']=Year
+            gl[cnt]=feat
+            cnt=cnt+1
+
+    # Truncate
+    gl=gl[0:cnt-1]
+
+    # Give it the BC spatial reference system
+    gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
+    
+    # Convert to geodataframe
+    gdf_at=gpd.GeoDataFrame.from_features(gl,crs=gdf_bm.crs)
+
+    # Isolate features that intersect ROI
+    gdf_at_roi=gpd.overlay(gdf_at,gdf_tsa[np.isin(gdf_tsa.Name,tsaList)],how='intersection')
+
+    # Convert to geographic coordinate system
+    #gdf_at=gdf_at.to_crs({'init':'epsg:4326'})
+
+    # Save
+    #gdf_at.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\fcinv.geojson',driver='GeoJSON')
+
+    return
+
+
+def GetBSR():
+
+    pth=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
+    lyr='VEG_BURN_SEVERITY_SP'
+    
+    gl=[None]*int(1e5)
+    cnt=0
+    with fiona.open(pth,layer=lyr) as source:
+        for feat in source:
+            prp=feat['properties']
+            if (feat['geometry']==None):
+                continue
+            if (prp['FIRE_YEAR']!=2017):
+                continue
+            if (prp['BURN_SEVERITY_RATING']=='Unburned') | (prp['BURN_SEVERITY_RATING']=='Low'):
+                continue
+            gl[cnt]=feat
+            cnt=cnt+1
+
+    # Truncate
+    gl=gl[0:cnt-1]
+
+    # Convert to geodataframe
+    gdf_bsr=gpd.GeoDataFrame.from_features(gl,crs=gdf_bm.crs)
+
+    # Isolate features that intersect ROI
+    gdf_bsr_roi=gpd.overlay(gdf_bsr,gdf_tsa[np.isin(gdf_tsa.Name,tsaList)],how='intersection')
+
+    # Convert to geographic coordinate system
+    #gdf_at=gdf_at.to_crs({'init':'epsg:4326'})
+
+    # Save
+    #gdf_at.to_file(filename=meta['Paths']['Project'] + '\\Geospatial\\fcinv.geojson',driver='GeoJSON')
+
+    return
 
 
 #%% PLOT BGC Zones within the TSA mask
@@ -353,6 +519,56 @@ for i in range(0,L):
     ax[1].plot([0,100],[i/(L-1),i/(L-1)],'k-',linewidth=0.5)
 ax[1].set(position=[0.8,0.04,0.025,0.5])
 
+
+#%% Plot climate
+
+
+zC_tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmean_gs_norm_1971to2000_si_hist_v1.tif')
+zC=zTSA.copy()
+zC['Data']=zC_tmp['Data']
+del zC_tmp
+zC=gis.ClipRaster(zC,xlim,ylim)
+zC['Data']=zC['Data'].astype('float')/10
+gc.collect()
+#plt.matshow(zC['Data'])
+
+# Grid
+bin=np.arange(8,17,0.5); bw=0.5;
+z1=(bin.size)*np.ones(zC['Data'].shape)
+for i in range(bin.size):
+    ind=np.where(np.abs(zC['Data']-bin[i])<=bw/2)
+    z1[ind]=i
+#z1[(tsa_mask1['Data']==1) & (zLC2['Data']!=4)]=i+1
+z1[(tsa_mask1['Data']!=1)]=i+2
+L=i+2
+
+# Labels
+lab=bin.astype(str)
+
+# Colormap
+cm=plt.cm.get_cmap('viridis',i)
+#cm=plt.cm.get_cmap('plasma',i)
+cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
+cm=matplotlib.colors.ListedColormap(cm)
+
+# Plot
+plt.close('all')
+fig,ax=plt.subplots(1,2)
+mngr=plt.get_current_fig_manager()
+mngr.window.setGeometry(100,100,950,750)
+im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=zC['Extent'],cmap=cm)
+gdf_tsa_roi.plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
+gdf_road_roi.plot(ax=ax[0],facecolor='none',edgecolor=[0,0,0],label='Roads',linewidth=0.75,alpha=1,zorder=1)
+ax[0].set(position=[0.04,0.02,0.92,0.96],xlim=xlim,ylim=ylim,aspect='auto')
+ax[0].grid(False)
+#ax[0].set(position=[0.04,0.02,0.92,0.96],xlim=[zTSA.minx,zTSA.maxx],ylim=[zTSA.miny,zTSA.maxy],aspect='auto')
+
+cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,L,1),ticks=np.arange(0.5,L+1.5,1))
+cb.ax.set(yticklabels=lab)
+cb.ax.tick_params(labelsize=6,length=0)
+for i in range(0,L):
+    ax[1].plot([0,100],[i/(L-1),i/(L-1)],'k-',linewidth=0.5)
+ax[1].set(position=[0.8,0.04,0.025,0.5])
 
 
 #%% PLOT harvested year within the TSA mask

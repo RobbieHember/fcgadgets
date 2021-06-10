@@ -16,7 +16,7 @@ import gc as garc
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_inventory as invu
-from fcgadgets.cbrunner import cbrun_utilities
+from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Project name
 
@@ -24,13 +24,14 @@ project_name='FCI_RollupFCI_Inv'
 #project_name='SummaryNutrientManagement'
 #project_name='SummaryNutrientManagementSubSet'
 #project_name='SummaryReforestationNonOb'
-#project_name='SummaryGeneticGains'
+#project_name='SummaryReforestation'
 #project_name='SurveySummary'
 
 #%% Define paths
 
 meta={}
 meta['Paths']={}
+meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
@@ -77,12 +78,13 @@ elif project_name=='SummaryReforestationNonOb':
     # Sparse grid subsampling rate
     meta['subsampling_frequency']=0.05
 
-elif project_name=='SummaryGeneticGains':  
+elif project_name=='SummaryReforestation':  
     
-    ail=gu.ipickle(r'D:\Data\FCI_Projects\SummaryGeneticGains\Inputs\AnnualImplementationLevel.pkl')
+    # Get random subsample
+    ail=gu.ipickle(r'D:\Data\FCI_Projects\SummaryReforestation\Inputs\AnnualImplementationLevel.pkl')
     
     # Sparse grid subsampling rate
-    meta['subsampling_frequency']=0.1
+    meta['subsampling_frequency']=0.02
 
 else:    
     
@@ -127,6 +129,13 @@ for iLyr in range(len(InvLyrInfo)):
 missing_geo_atu_list=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_atu_list.pkl')
 missing_geo_op_geos=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_op_geos.pkl')
 missing_geo_fc_geos=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_fc_geos.pkl')
+
+#%% Open missing FC layer geometries that were retreived from VRI
+# Forest cover spatial reporting didn’t get turned on until 2004ish when RESULTS got turned on.  
+# Previous forest cover reporting was delivered to the government as paper or as a PDF then 
+# digitized directly into the VRI (or predecessors).  
+
+dMisFC=gu.ipickle(meta['Paths']['Results'] + '\\missing_geo_fc_list.pkl')
 
 #%% Get layer
 
@@ -255,7 +264,7 @@ with fiona.open(path,layer=lyr_nam) as source:
             if flg==0:
                 continue
         
-        elif project_name=='SummaryGeneticGains':
+        elif project_name=='SummaryReforestation':
             
             flg=0
             if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') & (prp['ACTUAL_TREATMENT_AREA']!=None) & (prp['ATU_COMPLETION_DATE']!=None):    
@@ -360,28 +369,6 @@ with fiona.open(path,layer=lyr_nam) as source:
                     print('Missing spatial recovered from opening layer')
                     
             else:
-                
-#                if project_name=='NutrientManagementSummary':
-#                    
-#                    # If it is nutrient management, randomly assign a cutblock geometry
-#                    # of the approximate age 35
-#                    it=np.where(cut_mis['Year']==Year-35)[0]
-#                    if it.size>0:
-#                        it=it[0]
-#                        yr=cut_mis['Year'][it]
-#                    else:
-#                        it=0
-#                        yr=1950
-#                        
-#                    for iCutYr in range(len(cut_mis['feat'][it])):
-#                        if cut_mis['feat'][it][iCutYr]['properties']['Used Yet']==0:
-#                            geom=cut_mis['feat'][it][iCutYr]['geometry']
-#                            # Don't use it twice!
-#                            cut_mis['feat'][it][iCutYr]['properties']['Used Yet']=1                            
-#                            flg_geom_from_cut=1
-#                            print('Recovering spatial from a cutblock!')                            
-#                            break
-#                else:
                     
                 # Could not use either FC or opening layer
                 print('Missing spatial could not be recovered')
@@ -742,10 +729,6 @@ for iLyr in range(len(InvLyrInfo)):
     # Don't run this for planting - planting is done seperately below
     if lyr_nam=='RSLT_PLANTING_SVW':
         continue
-    
-    # Don't run this for FC silv - no valuable variables
-    #if lyr_nam!='RSLT_FOREST_COVER_SILV_SVW':
-    #    continue
      
     # Initialize index to inventory
     IdxToInv=[None]*sxy['x'].size
@@ -777,7 +760,7 @@ for iLyr in range(len(InvLyrInfo)):
             # If AT layer, may not be much need in retaining planned or SU
             if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):
                 if (prp['RESULTS_IND']=='N') | (prp['SILV_BASE_CODE']=='SU'):
-                    continue 
+                    continue
             
             # Populate missing ATU layer geometry with geometry from 
             # OPENING or FC layer where possible.
@@ -834,6 +817,27 @@ for iLyr in range(len(InvLyrInfo)):
                     # Could not use either FC or openign layer
                     #print('Missing spatial could not be recovered')
                     pass
+            
+            # Populate missing FC layer geometry with geometry from 
+            # OPENING or FC layer where possible.
+            if (lyr_nam=='RSLT_FOREST_COVER_INV_SVW') & (geom==None) | (lyr_nam=='RSLT_FOREST_COVER_SILV_SVW') & (geom==None):
+                
+                iMis_fc=np.where( (dMisFC['Unique Openings with Missing FC Geom']==prp['OPENING_ID']) )[0]
+                iMis_fc=iMis_fc[0]
+                
+                if dMisFC['Geom from VRI'][iMis_fc]!=None:
+                
+                    D=np.zeros(len(dMisFC['Geom from VRI'][iMis_fc]))
+                    for iV in range(len(dMisFC['Geom from VRI'][iMis_fc])):
+                        D[iV]=np.abs(prp['SILV_POLYGON_AREA']-dMisFC['Geom from VRI'][iMis_fc][iV]['Hectares'])
+                    iMinD=np.where(D==np.min(D))[0]
+                    iMinD=iMinD[0]
+            
+                    geom=dMisFC['Geom from VRI'][iMis_fc][iMinD]
+                
+                    # QA: Look at polygon
+                    #geom1=invu.GetPolygonsFromFionaFeature(geom)                
+                    #gdf=gpd.GeoDataFrame(geom1,crs=gdf_bm.crs)            
             
             # Only continue if spatial info exists
             if (geom==None) | (geom==[]):
@@ -967,6 +971,9 @@ lyr_nam=InvLyrInfo[iLyr]['Layer Name']
 gdf_pl=gpd.read_file(path,layer=lyr_nam)        
 d_pl=gu.DataFrameToDict(gdf_pl.drop(columns='geometry'))
 
+#ind=np.where( d_pl['OPENING_ID']==np.float(-603550000) )[0]
+#ind=np.where( d_pl['OPENING_ID']==-603550000 )[0]
+
 # Get keys for planting layer
 key_pl=[]
 for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
@@ -996,8 +1003,12 @@ IdxToInv=[None]*sxy['x'].size
 # Populate planting layer
 cnt_inventory=0
 for i in range(ind_at.size):
-    ind_pl=np.where(d_pl['ACTIVITY_TREATMENT_UNIT_ID']==atu['ACTIVITY_TREATMENT_UNIT_ID'][ind_at[i]])[0]
-    for j in range(ind_pl.size):           
+    
+    # Matches are not found if the format is not the same so you need to convert the pl dictionary value to float32
+    # to find matches
+    ind_pl=np.where(np.float32(d_pl['ACTIVITY_TREATMENT_UNIT_ID'])==atu['ACTIVITY_TREATMENT_UNIT_ID'][ind_at[i]])[0]
+    
+    for j in range(ind_pl.size):
         
         idx=atu['IdxToSXY'][ind_at[i]]
         
@@ -1041,82 +1052,128 @@ print(t1-t0)
 
 #%% Add Archive FC to FC Inventory dictionary
 
-def AddArchiveToForestCover():
+def AddArchiveToForestCover(meta):
 
+    # Import look-up 
+    meta=invu.Load_LUTs(meta)
+    
     # Path to forest cover archive geodatabase
-    path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\ForestCoverArchive.gdb'
+    path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\ForestCover.gdb'
     #fiona.listlayers(path)
+
+    #--------------------------------------------------------------------------
+    # Get FC info
+    #--------------------------------------------------------------------------
+    
+    n=int(5e6)
+    dFC={}
+    dFC['FOREST_COVER_ID']=np.zeros(n)
+    dFC['OPENING_ID']=np.zeros(n)
+    dFC['SILV_POLYG']=np.array(['' for _ in range(n)],dtype=object)
+    dFC['SILV_POL_1']=np.zeros(n)
+    dFC['REFERENCE_YEAR']=np.zeros(n)
+    dFC['STOCKING_T']=np.array(['' for _ in range(n)],dtype=object)
+    dFC['STOCKING_1']=np.array(['' for _ in range(n)],dtype=object)
+    dFC['ENTRY_TIME']=np.zeros(n)
+    dFC['UPDATE_YEAR']=np.zeros(n)
+    dFC['UPDATE_MONTH']=np.zeros(n)
+    cnt=0
+    with fiona.open(path,layer='RSLT_FOREST_COVER') as source:
+        for feat in source:
+            prp=feat['properties']
+            break
+            dFC['FOREST_COVER_ID'][cnt]=prp['FOREST_COV']
+            dFC['OPENING_ID'][cnt]=prp['OPENING_ID']
+            dFC['SILV_POLYG'][cnt]=prp['SILV_POLYG']
+            dFC['SILV_POL_1'][cnt]=prp['SILV_POL_1']
+            dFC['REFERENCE_YEAR'][cnt]=prp['REFERENCE_']
+            dFC['STOCKING_T'][cnt]=prp['STOCKING_T']
+            dFC['STOCKING_1'][cnt]=prp['STOCKING_1']
+            dFC['ENTRY_TIME'][cnt]=int(prp['ENTRY_TIME'][0:4])
+            dFC['UPDATE_YEAR'][cnt]=int(prp['UPDATE_TIM'][0:4])
+            dFC['UPDATE_MONTH'][cnt]=int(prp['UPDATE_TIM'][5:7])
+            cnt=cnt+1
+    #for k in dFC.keys():
+    #    dFC[k]=dFC[k][0:cnt]
 
     #--------------------------------------------------------------------------
     # Get FC archive info
     #--------------------------------------------------------------------------
-    
-    n=int(5e6)
-    dFCA={}
-    dFCA['FOREST_COVER_ID']=np.zeros(n)
-    dFCA['OPENING_ID']=np.zeros(n)
-    dFCA['SILV_POLYG']=np.array(['' for _ in range(n)],dtype=object)
-    dFCA['REFERENCE_YEAR']=np.zeros(n)
-    dFCA['STOCKING_T']=np.array(['' for _ in range(n)],dtype=object)
-    dFCA['STOCKING_1']=np.array(['' for _ in range(n)],dtype=object)
-    dFCA['ENTRY_TIME']=np.zeros(n)
-    dFCA['UPDATE_YEAR']=np.zeros(n)
-    dFCA['UPDATE_MONTH']=np.zeros(n)
-    cnt=0
+
     with fiona.open(path,layer='RSLT_FOREST_COVER_ARCHIVE') as source:
         for feat in source:
             prp=feat['properties']
-            dFCA['FOREST_COVER_ID'][cnt]=prp['FOREST_COV']
-            dFCA['OPENING_ID'][cnt]=prp['OPENING_ID']
-            dFCA['SILV_POLYG'][cnt]=prp['SILV_POLYG']
-            dFCA['REFERENCE_YEAR'][cnt]=prp['REFERENCE_']
-            dFCA['STOCKING_T'][cnt]=prp['STOCKING_T']
-            dFCA['STOCKING_1'][cnt]=prp['STOCKING_1']
-            dFCA['ENTRY_TIME'][cnt]=int(prp['ENTRY_TIME'][0:4])
-            dFCA['UPDATE_YEAR'][cnt]=int(prp['UPDATE_TIM'][0:4])
-            dFCA['UPDATE_MONTH'][cnt]=int(prp['UPDATE_TIM'][5:7])
+            dFC['FOREST_COVER_ID'][cnt]=prp['FOREST_COV']
+            dFC['OPENING_ID'][cnt]=prp['OPENING_ID']
+            dFC['SILV_POLYG'][cnt]=prp['SILV_POLYG']
+            dFC['SILV_POL_1'][cnt]=prp['SILV_POL_1']
+            dFC['REFERENCE_YEAR'][cnt]=prp['REFERENCE_']
+            dFC['STOCKING_T'][cnt]=prp['STOCKING_T']
+            dFC['STOCKING_1'][cnt]=prp['STOCKING_1']
+            dFC['ENTRY_TIME'][cnt]=int(prp['ENTRY_TIME'][0:4])
+            dFC['UPDATE_YEAR'][cnt]=int(prp['UPDATE_TIM'][0:4])
+            dFC['UPDATE_MONTH'][cnt]=int(prp['UPDATE_TIM'][5:7])
             cnt=cnt+1
-    for k in dFCA.keys():
-        dFCA[k]=dFCA[k][0:cnt]
+    
+    for k in dFC.keys():
+        dFC[k]=dFC[k][0:cnt]
         
     #--------------------------------------------------------------------------
-    # Get FC layer archive info
+    # Get FC layer info
     #--------------------------------------------------------------------------
     
     n=int(5e6)
-    dFCLA={}
-    dFCLA['FOREST_COVER_ID']=np.zeros(n)
-    dFCLA['FOREST_COVER_LAYER_ID']=np.zeros(n)
-    dFCLA['FCLA_TOTAL_STEMS_PER_HA']=np.zeros(n)
-    dFCLA['CROWN_CLOSURE_PCT']=np.zeros(n)
-    dFCLA['TOTAL_WELL_SPACED_STEMS_P']=np.zeros(n)
-    dFCLA['WELL_SPACED_STEMS_PER_HA']=np.zeros(n)
-    dFCLA['FREE_GROWING_STEMS_PER_HA']=np.zeros(n)
-    dFCLA['FOREST_COVER_LAYER_CODE']=np.array(['' for _ in range(n)],dtype=object)  
-    dFCLA['STOCKING_STATUS_CODE']=np.array(['' for _ in range(n)],dtype=object)  
-    dFCLA['STOCKING_TYPE_CODE']=np.array(['' for _ in range(n)],dtype=object)  
-    dFCLA['ARCHIVE_YEAR']=np.zeros(n)
-    dFCLA['ENTRY_TIME']=np.zeros(n)
-    dFCLA['UPDATE_TIME']=np.zeros(n)
+    dFCL={}
+    dFCL['FOREST_COVER_ID']=np.zeros(n)
+    dFCL['FOREST_COVER_LAYER_ID']=np.zeros(n)
+    dFCL['FCLA_TOTAL_STEMS_PER_HA']=np.zeros(n)
+    dFCL['CROWN_CLOSURE_PCT']=np.zeros(n)
+    dFCL['TOTAL_WELL_SPACED_STEMS_P']=np.zeros(n)
+    dFCL['WELL_SPACED_STEMS_PER_HA']=np.zeros(n)
+    dFCL['FREE_GROWING_STEMS_PER_HA']=np.zeros(n)
+    dFCL['FOREST_COVER_LAYER_CODE']=np.array(['' for _ in range(n)],dtype=object)  
+    dFCL['STOCKING_STATUS_CODE']=np.array(['' for _ in range(n)],dtype=object)  
+    dFCL['STOCKING_TYPE_CODE']=np.array(['' for _ in range(n)],dtype=object)  
+    dFCL['ARCHIVE_YEAR']=np.zeros(n)
+    dFCL['ENTRY_TIME']=np.zeros(n)
+    dFCL['UPDATE_TIME']=np.zeros(n)
     cnt=0
+    with fiona.open(path,layer='RSLT_FOREST_COVER_LAYER') as source:
+        for feat in source:
+            prp=feat['properties']
+            dFCL['FOREST_COVER_ID'][cnt]=prp['FOREST_COV']
+            dFCL['FOREST_COVER_LAYER_ID'][cnt]=prp['FOREST_C_1']
+            dFCL['FCLA_TOTAL_STEMS_PER_HA'][cnt]=prp['TOTAL_STEM']
+            #dFCL['ARCHIVE_YEAR'][cnt]=int(prp['ARCHIVE_DA'][0:4])
+            dFCL['CROWN_CLOSURE_PCT'][cnt]=prp['CROWN_CLOS']
+            dFCL['TOTAL_WELL_SPACED_STEMS_P'][cnt]=prp['FCLR_TOTAL']
+            dFCL['WELL_SPACED_STEMS_PER_HA'][cnt]=prp['WELL_SPACE']
+            dFCL['FOREST_COVER_LAYER_CODE'][cnt]=prp['FOREST_C_2']        
+            dFCL['STOCKING_STATUS_CODE'][cnt]=prp['STOCKING_S']
+            dFCL['STOCKING_TYPE_CODE'][cnt]=prp['STOCKING_T']
+            dFCL['ENTRY_TIME'][cnt]=int(prp['ENTRY_TIME'][0:4])
+            dFCL['UPDATE_TIME'][cnt]=int(prp['UPDATE_TIM'][0:4])
+            cnt=cnt+1
+    
     with fiona.open(path,layer='RSLT_FOREST_COVER_LYER_ARCHIVE') as source:
         for feat in source:
             prp=feat['properties']
-            dFCLA['FOREST_COVER_ID'][cnt]=prp['FOREST_COV']
-            dFCLA['FOREST_COVER_LAYER_ID'][cnt]=prp['FOREST_C_1']
-            dFCLA['FCLA_TOTAL_STEMS_PER_HA'][cnt]=prp['FCLA_TOTAL']
-            dFCLA['ARCHIVE_YEAR'][cnt]=int(prp['ARCHIVE_DA'][0:4])
-            dFCLA['CROWN_CLOSURE_PCT'][cnt]=prp['CROWN_CLOS']
-            dFCLA['TOTAL_WELL_SPACED_STEMS_P'][cnt]=prp['TOTAL_WELL']
-            dFCLA['WELL_SPACED_STEMS_PER_HA'][cnt]=prp['WELL_SPACE']
-            dFCLA['FOREST_COVER_LAYER_CODE'][cnt]=prp['FOREST_C_2']        
-            dFCLA['STOCKING_STATUS_CODE'][cnt]=prp['STOCKING_S']
-            dFCLA['STOCKING_TYPE_CODE'][cnt]=prp['STOCKING_T']
-            dFCLA['ENTRY_TIME'][cnt]=int(prp['ENTRY_TIME'][0:4])
-            dFCLA['UPDATE_TIME'][cnt]=int(prp['UPDATE_TIM'][0:4])
+            dFCL['FOREST_COVER_ID'][cnt]=prp['FOREST_COV']
+            dFCL['FOREST_COVER_LAYER_ID'][cnt]=prp['FOREST_C_1']
+            dFCL['FCLA_TOTAL_STEMS_PER_HA'][cnt]=prp['FCLA_TOTAL']
+            dFCL['ARCHIVE_YEAR'][cnt]=int(prp['ARCHIVE_DA'][0:4])
+            dFCL['CROWN_CLOSURE_PCT'][cnt]=prp['CROWN_CLOS']
+            dFCL['TOTAL_WELL_SPACED_STEMS_P'][cnt]=prp['TOTAL_WELL']
+            dFCL['WELL_SPACED_STEMS_PER_HA'][cnt]=prp['WELL_SPACE']
+            dFCL['FOREST_COVER_LAYER_CODE'][cnt]=prp['FOREST_C_2']        
+            dFCL['STOCKING_STATUS_CODE'][cnt]=prp['STOCKING_S']
+            dFCL['STOCKING_TYPE_CODE'][cnt]=prp['STOCKING_T']
+            dFCL['ENTRY_TIME'][cnt]=int(prp['ENTRY_TIME'][0:4])
+            dFCL['UPDATE_TIME'][cnt]=int(prp['UPDATE_TIM'][0:4])
             cnt=cnt+1
-    for k in dFCLA.keys():
-        dFCLA[k]=dFCLA[k][0:cnt]
+    
+    for k in dFCL.keys():
+        dFCL[k]=dFCL[k][0:cnt]
     
     #--------------------------------------------------------------------------
     # Get FC layer archive species info
@@ -1141,6 +1198,7 @@ def AddArchiveToForestCover():
             dFC_Spc['TREE_SPECIES_PCT'][cnt]=prp['TREE_SPE_1']
             #dFC_Spc['SPECIES_ORDER'][cnt]=prp['SPECIES_OR']
             cnt=cnt+1
+    
     for k in dFC_Spc.keys():
         dFC_Spc[k]=dFC_Spc[k][0:cnt]    
     
@@ -1149,20 +1207,27 @@ def AddArchiveToForestCover():
     #--------------------------------------------------------------------------
     
     uO=np.unique(np.column_stack([fcinv['OPENING_ID'],fcinv['SILV_POLYGON_NUMBER']]),axis=0)
-
-    #ind0=np.where(dFCA['FOREST_COVER_ID']==3782891)[0]
-
-    #pn=meta['LUT']['FC_I']['SILV_POLYGON_NUMBER'][dFCA['SILV_POLYG'][ind0][0]]
-    #ind2=np.where( (uO[:,0]==dFCA['OPENING_ID'][ind0]) & (uO[:,1]==pn) )[0]
     
-    #ind=np.where(fcinv['OPENING_ID']==1606456)[0]
+    # QA:
+    #ind0=np.where(dFC['FOREST_COVER_ID']==767135)[0]
+   
+    #ind0=np.where(dFCL['FOREST_COVER_ID']==767135)[0]
+    
+    #pn=meta['LUT']['FC_I']['SILV_POLYGON_NUMBER'][dFC['SILV_POLYG'][ind0][0]]
+    #ind2=np.where( (uO[:,0]==dFC['OPENING_ID'][ind0]) & (uO[:,1]==pn) )[0]
+    
+    # ind=np.where(atu['OPENING_ID']==np.float32(15241) )[0]
+    # ind=np.where(fcinv['OPENING_ID']==np.float32(15241) )[0]
     #fcinv['REFERENCE_YEAR'][ind]
+    
+    #ind0=np.where(fcinv['FOREST_COVER_ID']==767135)[0]
 
     n=int(1e6)
     dToAdd={}
     dToAdd['IdxToSXY']=np.zeros(n,dtype=np.int32)
     dToAdd['REFERENCE_YEAR']=np.zeros(n,dtype=np.float32)
     dToAdd['FOREST_COVER_ID']=np.zeros(n,dtype=np.float32)
+    dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype=np.float32)    
     dToAdd['STOCKING_STATUS_CODE']=-9999*np.ones(n)
     dToAdd['STOCKING_TYPE_CODE']=-9999*np.ones(n)
     dToAdd['I_TOTAL_STEMS_PER_HA']=-9999*np.ones(n)
@@ -1196,7 +1261,7 @@ def AddArchiveToForestCover():
         if IdxToSXY.size==0:
             continue
     
-        #iO=np.where(uO[:,0]==1115532)[0]
+        #iO=np.where(uO[:,0]==15241)[0]
         # iO=iO[0]
         #cbu.lut_n2s(meta['LUT']['FC_I']['SILV_POLYGON_NUMBER'],uO[iO[0],1])[0]
     
@@ -1204,38 +1269,42 @@ def AddArchiveToForestCover():
         cd=cbu.lut_n2s(meta['LUT']['FC_I']['SILV_POLYGON_NUMBER'],uO[iO,1])[0]
     
         # Index to forest cover archive        
-        indFCA=np.where( (dFCA['OPENING_ID']==uO[iO,0]) & (dFCA['SILV_POLYG']==cd) )[0]
-        # dFCA['REFERENCE_YEAR'][indFCA]
-        # dFCA['ENTRY_TIME'][indFCA]
-        # dFCA['UPDATE_TIME'][indFCA]
-        #dFCA['SILV_POLYG'][indFCA]
+        indFC=np.where( (dFC['OPENING_ID']==uO[iO,0]) & (dFC['SILV_POLYG']==cd) )[0]
+        # dFC['REFERENCE_YEAR'][indFC]
+        # dFC['ENTRY_TIME'][indFC]
+        # dFC['UPDATE_TIME'][indFC]
+        #dFC['SILV_POLYG'][indFC]
         
-        if indFCA.size==0:
+        if indFC.size==0:
             continue
 
-        for iFCA in range(indFCA.size):
+        for iFCA in range(indFC.size):
         
-            iFCA0=indFCA[iFCA]
+            iFCA0=indFC[iFCA]
             
             # Index to forest cover layer archive
-            indFCLA=np.where( (dFCLA['FOREST_COVER_ID']==dFCA['FOREST_COVER_ID'][iFCA0]) & (dFCLA['FOREST_COVER_LAYER_CODE']=='I') )[0]
+            indFCL=np.where( (dFCL['FOREST_COVER_ID']==dFC['FOREST_COVER_ID'][iFCA0]) & (dFCL['FOREST_COVER_LAYER_CODE']=='I') )[0]
         
             # Index to forest cover species archive
-            indSp=np.where( (dFC_Spc['FOREST_COVER_LAYER_ID']==dFCLA['FOREST_COVER_LAYER_ID'][indFCLA]) )[0]
+            indSp=np.where( (dFC_Spc['FOREST_COVER_LAYER_ID']==dFCL['FOREST_COVER_LAYER_ID'][indFCL]) )[0]
             
             for iSXY in range(IdxToSXY.size):
                    
                 dToAdd['IdxToSXY'][cnt]=IdxToSXY[iSXY]
-                dToAdd['REFERENCE_YEAR'][cnt]=dFCA['UPDATE_YEAR'][iFCA0]+dFCA['UPDATE_MONTH'][iFCA0]/13
-                dToAdd['FOREST_COVER_ID'][cnt]=dFCA['FOREST_COVER_ID'][iFCA0]
-                dToAdd['STOCKING_STATUS_CODE'][cnt]=meta['LUT']['FC_I']['STOCKING_STATUS_CODE'][dFCA['STOCKING_1'][iFCA0]][0]
-                dToAdd['STOCKING_TYPE_CODE'][cnt]=meta['LUT']['FC_I']['STOCKING_TYPE_CODE'][dFCA['STOCKING_T'][iFCA0]][0]
+                dToAdd['REFERENCE_YEAR'][cnt]=dFC['UPDATE_YEAR'][iFCA0]+dFC['UPDATE_MONTH'][iFCA0]/13
+                dToAdd['FOREST_COVER_ID'][cnt]=dFC['FOREST_COVER_ID'][iFCA0]
+                dToAdd['SILV_POLYGON_AREA'][cnt]=dFC['SILV_POL_1'][iFCA0]                
+                dToAdd['STOCKING_STATUS_CODE'][cnt]=meta['LUT']['FC_I']['STOCKING_STATUS_CODE'][dFC['STOCKING_1'][iFCA0]][0]
+                try:
+                    dToAdd['STOCKING_TYPE_CODE'][cnt]=meta['LUT']['FC_I']['STOCKING_TYPE_CODE'][dFC['STOCKING_T'][iFCA0]][0]
+                except:
+                    pass
                     
-                if indFCLA.size>0:                    
-                    dToAdd['I_TOTAL_STEMS_PER_HA'][cnt]=np.nanmean(dFCLA['FCLA_TOTAL_STEMS_PER_HA'][indFCLA])
-                    dToAdd['I_TOTAL_WELL_SPACED_STEMS_HA'][cnt]=np.nanmean(dFCLA['TOTAL_WELL_SPACED_STEMS_P'][indFCLA])
-                    dToAdd['I_FREE_GROWING_STEMS_PER_HA'][cnt]=np.nanmean(dFCLA['FREE_GROWING_STEMS_PER_HA'][indFCLA])
-                    dToAdd['I_CROWN_CLOSURE_PERCENT'][cnt]=np.nanmean(dFCLA['CROWN_CLOSURE_PCT'][indFCLA])
+                if indFCL.size>0:                    
+                    dToAdd['I_TOTAL_STEMS_PER_HA'][cnt]=np.nanmean(dFCL['FCLA_TOTAL_STEMS_PER_HA'][indFCL])
+                    dToAdd['I_TOTAL_WELL_SPACED_STEMS_HA'][cnt]=np.nanmean(dFCL['TOTAL_WELL_SPACED_STEMS_P'][indFCL])
+                    dToAdd['I_FREE_GROWING_STEMS_PER_HA'][cnt]=np.nanmean(dFCL['FREE_GROWING_STEMS_PER_HA'][indFCL])
+                    dToAdd['I_CROWN_CLOSURE_PERCENT'][cnt]=np.nanmean(dFCL['CROWN_CLOSURE_PCT'][indFCL])
                     
                     # Species
                     ord=np.flip(np.argsort(dFC_Spc['TREE_SPECIES_PCT'][indSp]))
@@ -1252,14 +1321,16 @@ def AddArchiveToForestCover():
     # Truncate    
     for k in dToAdd.keys():
         dToAdd[k]=dToAdd[k][0:cnt]
-
+    
     # Add to fcinv dictionary
     for k in fcinv.keys():
         if k in dToAdd:
             fcinv[k]=np.append(fcinv[k],dToAdd[k])
         else:
             fcinv[k]=np.append(fcinv[k],-9999*np.ones(dToAdd['IdxToSXY'].size))
-
+    
+    print('Done inv')
+    
     #--------------------------------------------------------------------------
     # Find forest cover for each opening (Silv label)
     #--------------------------------------------------------------------------
@@ -1270,6 +1341,7 @@ def AddArchiveToForestCover():
     dToAdd={}
     dToAdd['IdxToSXY']=np.zeros(n,dtype=np.int32)
     dToAdd['FOREST_COVER_ID']=np.zeros(n,dtype=np.float32)
+    dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype=np.float32)  
     dToAdd['REFERENCE_YEAR']=np.zeros(n,dtype=np.float32)
     dToAdd['STOCKING_STATUS_CODE']=-9999*np.ones(n)
     dToAdd['STOCKING_TYPE_CODE']=-9999*np.ones(n)
@@ -1302,36 +1374,40 @@ def AddArchiveToForestCover():
             continue
     
         # Index to forest cover archive
-        #indFCA=np.where( dFCA['OPENING_ID']==uO[iO] )[0]
+        #indFC=np.where( dFC['OPENING_ID']==uO[iO] )[0]
         cd=cbu.lut_n2s(meta['LUT']['FC_S']['SILV_POLYGON_NUMBER'],uO[iO,1])[0]        
-        indFCA=np.where( (dFCA['OPENING_ID']==uO[iO,0]) & (dFCA['SILV_POLYG']==cd) )[0]
+        indFC=np.where( (dFC['OPENING_ID']==uO[iO,0]) & (dFC['SILV_POLYG']==cd) )[0]
     
-        if indFCA.size==0:
+        if indFC.size==0:
             continue
 
-        for iFCA in range(indFCA.size):
+        for iFCA in range(indFC.size):
         
-            iFCA0=indFCA[iFCA]
+            iFCA0=indFC[iFCA]
             
             # Index to forest cover layer archive
-            indFCLA=np.where( (dFCLA['FOREST_COVER_ID']==dFCA['FOREST_COVER_ID'][iFCA0]) & (dFCLA['FOREST_COVER_LAYER_CODE']=='S') )[0]
+            indFCL=np.where( (dFCL['FOREST_COVER_ID']==dFC['FOREST_COVER_ID'][iFCA0]) & (dFCL['FOREST_COVER_LAYER_CODE']=='S') )[0]
         
             # Index to forest cover species archive
-            indSp=np.where( (dFC_Spc['FOREST_COVER_LAYER_ID']==dFCLA['FOREST_COVER_LAYER_ID'][indFCLA]) )[0]
+            indSp=np.where( (dFC_Spc['FOREST_COVER_LAYER_ID']==dFCL['FOREST_COVER_LAYER_ID'][indFCL]) )[0]
             
             for iSXY in range(IdxToSXY.size):
                    
                 dToAdd['IdxToSXY'][cnt]=IdxToSXY[iSXY]
-                dToAdd['REFERENCE_YEAR'][cnt]=dFCA['UPDATE_YEAR'][iFCA0]+dFCA['UPDATE_MONTH'][iFCA0]/13
-                dToAdd['FOREST_COVER_ID'][cnt]=dFCA['FOREST_COVER_ID'][iFCA0]
-                dToAdd['STOCKING_STATUS_CODE'][cnt]=meta['LUT']['FC_S']['STOCKING_STATUS_CODE'][dFCA['STOCKING_1'][iFCA0]][0]
-                dToAdd['STOCKING_TYPE_CODE'][cnt]=meta['LUT']['FC_S']['STOCKING_TYPE_CODE'][dFCA['STOCKING_T'][iFCA0]][0]
+                dToAdd['REFERENCE_YEAR'][cnt]=dFC['UPDATE_YEAR'][iFCA0]+dFC['UPDATE_MONTH'][iFCA0]/13
+                dToAdd['FOREST_COVER_ID'][cnt]=dFC['FOREST_COVER_ID'][iFCA0]
+                dToAdd['SILV_POLYGON_AREA'][cnt]=dFC['SILV_POL_1'][iFCA0]
+                dToAdd['STOCKING_STATUS_CODE'][cnt]=meta['LUT']['FC_S']['STOCKING_STATUS_CODE'][dFC['STOCKING_1'][iFCA0]][0]
+                try:
+                    dToAdd['STOCKING_TYPE_CODE'][cnt]=meta['LUT']['FC_S']['STOCKING_TYPE_CODE'][dFC['STOCKING_T'][iFCA0]][0]
+                except:
+                    pass
                     
-                if indFCLA.size>0:                    
-                    dToAdd['S_TOTAL_STEMS_PER_HA'][cnt]=np.nanmean(dFCLA['FCLA_TOTAL_STEMS_PER_HA'][indFCLA])
-                    dToAdd['S_TOTAL_WELL_SPACED_STEMS_HA'][cnt]=np.nanmean(dFCLA['TOTAL_WELL_SPACED_STEMS_P'][indFCLA])
-                    dToAdd['S_FREE_GROWING_STEMS_PER_HA'][cnt]=np.nanmean(dFCLA['FREE_GROWING_STEMS_PER_HA'][indFCLA])
-                    dToAdd['S_CROWN_CLOSURE_PERCENT'][cnt]=np.nanmean(dFCLA['CROWN_CLOSURE_PCT'][indFCLA])
+                if indFCL.size>0:                    
+                    dToAdd['S_TOTAL_STEMS_PER_HA'][cnt]=np.nanmean(dFCL['FCLA_TOTAL_STEMS_PER_HA'][indFCL])
+                    dToAdd['S_TOTAL_WELL_SPACED_STEMS_HA'][cnt]=np.nanmean(dFCL['TOTAL_WELL_SPACED_STEMS_P'][indFCL])
+                    dToAdd['S_FREE_GROWING_STEMS_PER_HA'][cnt]=np.nanmean(dFCL['FREE_GROWING_STEMS_PER_HA'][indFCL])
+                    dToAdd['S_CROWN_CLOSURE_PERCENT'][cnt]=np.nanmean(dFCL['CROWN_CLOSURE_PCT'][indFCL])
                     
                     # Species
                     ord=np.flip(np.argsort(dFC_Spc['TREE_SPECIES_PCT'][indSp]))
@@ -1358,13 +1434,24 @@ def AddArchiveToForestCover():
 
     return fcinv,fcsilv
 
-# Run
 
+# Import inputs
+#meta=gu.ipickle(r'D:\Data\FCI_Projects\SummaryReforestation\Inputs\Metadata.pkl')
+#meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
 fcinv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW.pkl')
 fcsilv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW.pkl')
 
-fcinv,fcsilv=AddArchiveToForestCover()
+# Save old versions as alterntive names in case you need to redo this/troubleshoot a problem
+#gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl',fcinv)
+#gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl',fcsilv)
+#fcinv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl')
+#fcsilv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl')
 
+
+# Run script
+fcinv,fcsilv=AddArchiveToForestCover(meta)
+
+# Save
 gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW.pkl',fcinv)
 gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW.pkl',fcsilv)
 
@@ -1382,9 +1469,10 @@ def Get_FC_Polygons_ForMap():
         opid_atu[i]=atu_multipolygons[i]['OPENING_ID']
     opid_atu=np.unique(opid_atu)
 
+    fin=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb'
     a=[None]*int(1e5)
     cnt=0
-    with fiona.open(fin,layer=lyr) as source:
+    with fiona.open(fin,layer='RSLT_FOREST_COVER_INV_SVW') as source:
         for feat in source:
             if feat['geometry']==None:
                 continue
@@ -1392,7 +1480,7 @@ def Get_FC_Polygons_ForMap():
                 a[cnt]=feat
                 cnt=cnt+1
                 print(cnt)
-    a=a[0:cnt-1]            
+    a=a[0:cnt-1]
 
     # Give it the BC spatial reference system
     gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')

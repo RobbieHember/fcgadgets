@@ -11,7 +11,7 @@ import numpy as np
 from ipywidgets import Layout, HBox, VBox, FloatText
 from shapely.geometry import Polygon,Point
 from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.macgyver import utilities_gis as gis
+#from fcgadgets.macgyver import utilities_gis as gis
 
 #%%
 

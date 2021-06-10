@@ -1646,7 +1646,8 @@ def PrepareInventoryFromSpreadsheet(meta):
 
 #%% Compile events
     
-def CompileEvents(ec,tv,iS,ID_Type,Year,MortalityFactor,GrowthFactor,ID_GrowthCurve):    
+def CompileEvents(ec,tv,iS,ID_Type,Year,MortalityFactor,GrowthFactor,ID_GrowthCurve):
+    
     if Year.size>0:
         YearFloor=np.floor(Year)
         uYearFloor=np.unique(YearFloor)
@@ -2382,7 +2383,7 @@ def PrepGrowthCurvesForCBR(meta):
     # Add negative nonmerch to merch 
     ind=np.where(G_StemNonMerch<0)
     G_StemMerch[ind]=G_StemMerch[ind]+G_StemNonMerch[ind]
-    G_StemNonMerch[ind]=0    
+    G_StemNonMerch[ind]=0
     
     #plt.close('all')
     #plt.plot(np.maximum(-1,G_Stem[:,1]))

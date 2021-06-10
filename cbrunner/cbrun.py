@@ -105,6 +105,10 @@ def MeepMeep(meta):
                         # No need to run this before a certain date
                         vo=annproc.HWP_From_BCHWP12(iT,vi,vo,psl,meta)
                 
+                    # Calculate costs and income
+                    #if meta['Year'][iT]>=meta['HWP Year Start']:
+                    #    vo,vi=annproc.Economics(iT,meta)
+                
                 # Export simulation results to file
                 ExportSimulation(meta,vi,vo,iScn,iEns,iBat,psl,iEP)
                 
@@ -358,6 +362,22 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #for j in range(len(HandleLabels)):
     #    d1[Keys[j]]=HandleLabels[j]  
     #meta['Labels Output Variables']=d1
+    
+    # Economics
+    
+    #vo['Cost_Admin']=np.zeros((m,n))
+    #vo['Cost Fertilizer Purchase']=np.zeros((m,n))
+    #vo['Cost Application']=np.zeros((m,n))
+    #vo['Cost Planning']=np.zeros((m,n))
+    #vo['Gross income log']=np.zeros((m,n))
+    #vo['Gross income lumber']=np.zeros((m,n))
+    #vo['Gross income pulp']=np.zeros((m,n))
+    #vo['Gross income resid fibre']=np.zeros((m,n))
+    #vo['Cost licensee felling']=np.zeros((m,n))
+    #vo['Cost licensee hazard abatement']=np.zeros((m,n))
+    #vo['Cost licensee transport']=np.zeros((m,n))
+    #vo['Cost licensee milling']=np.zeros((m,n))
+    
     
     #--------------------------------------------------------------------------
     # Initialize a log book that will record various diagnostics, warnings, 
