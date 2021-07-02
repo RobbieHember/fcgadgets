@@ -49,12 +49,15 @@ Forerly "OpenGdal"
 ============================================================================'''
 
 def OpenGeoTiff(pthin):
-        
-    ds=gdal.Open(pthin)
+
+    ds=gdal.Open(pthin)    
+    gt=ds.GetGeoTransform()    
     
-    gt=ds.GetGeoTransform(); 
-    
-    data=ds.ReadAsArray();
+    # Gdal does not recognize negative values so using rasterio to get the actual
+    # grid data
+    #data=ds.ReadAsArray()    
+    raster=rasterio.open(pthin)
+    data=raster.read(1)
     
     Projection=ds.GetProjection()
     prj=osr.SpatialReference(wkt=ds.GetProjection())

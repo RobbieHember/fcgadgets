@@ -141,7 +141,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
     par=invu.Load_Params(meta)
     par['WF']['Scenario ID']=4
     par['WF']['Exclude simulations during modern period']='On'
-    par['WF']['Exclude simulations during historical period']='Off'
+    par['WF']['Exclude simulations during historical period']='On'
     par['WF']['Exclude simulations during future period']='Off'
 
     wf_sim=asm.GenerateWildfireFromAAO_StandsActAsEnsembles(meta,par,inv)
@@ -602,6 +602,12 @@ def ImportProjectConfig(meta):
     if meta['Simulate breakup on the fly']=='On':
         meta['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['N Time'],meta['N Ensemble']))            
     
+    #--------------------------------------------------------------------------
+    # Parameter override options
+    #--------------------------------------------------------------------------
+    
+    meta['Override Default Parameters']={}
+    
     return meta
 
 #%% LOAD SINGLE OUTPUT FILE FOR SCENARIO A, ENSEMBLE, B AND BATCH C
@@ -925,8 +931,7 @@ def Import_BatchTIPSY_Output(meta):
 #%% Import growth curves
 
 def Import_CompiledGrowthCurves(meta,scn):
-    # *** This needs to be fixed - Vstem is on the end column ***
-    # gc[iScn][iGC][iStand]
+
     gc=[]
     for iScn in range(len(scn)): #range(meta['N Scenario']):
         gc0=[]
@@ -934,25 +939,25 @@ def Import_CompiledGrowthCurves(meta,scn):
         gc1=[]
         for iBat in range(0,meta['N Batch']):            
             tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve1_Bat' + FixFileNum(iBat) + '.pkl')
-            tmp=np.sum(tmp,axis=2).astype(float)
+            tmp=tmp[:,:,0].astype(float)
             for iS in range(tmp.shape[1]):
-                gc1.append(tmp[:,iS].copy()/meta['GC']['Scale Factor'])
+                gc1.append(tmp[:,iS].copy()*meta['GC']['Scale Factor'])
         gc0.append(gc1.copy())
         
         gc1=[]
         for iBat in range(0,meta['N Batch']):            
             tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve2_Bat' + FixFileNum(iBat) + '.pkl')
-            tmp=np.sum(tmp,axis=2).astype(float)
+            tmp=tmp[:,:,0].astype(float)
             for iS in range(tmp.shape[1]):
-                gc1.append(tmp[:,iS].copy()/meta['GC']['Scale Factor'])
+                gc1.append(tmp[:,iS].copy()*meta['GC']['Scale Factor'])
         gc0.append(gc1.copy())
         
         gc1=[]
         for iBat in range(0,meta['N Batch']):            
             tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve3_Bat' + FixFileNum(iBat) + '.pkl')
-            tmp=np.sum(tmp,axis=2).astype(float)
+            tmp=tmp[:,:,0].astype(float)
             for iS in range(tmp.shape[1]):
-                gc1.append(tmp[:,iS].copy()/meta['GC']['Scale Factor'])
+                gc1.append(tmp[:,iS].copy()*meta['GC']['Scale Factor'])
         gc0.append(gc1.copy())
         gc.append(gc0.copy())
     return gc
@@ -1009,6 +1014,8 @@ def ImportCustomHarvestAssumptions(pthin):
 
 def UpdateParamaters(pthin):
 
+    # pthin=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters'
+    
     #------------------------------------------------------------------------------
     # Carbon Pools
     #------------------------------------------------------------------------------
@@ -1590,6 +1597,22 @@ def Import_GraphicsParameters(type):
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
                 'savefig.bbox':'tight'}
+    elif type=='bc1ha_1':
+        params={'font.sans-serif':'Arial',
+                'font.size':7,
+                'axes.labelsize':7,
+                'axes.titlesize':14,
+                'axes.linewidth':0.5,        
+                'xtick.labelsize':7,
+                'xtick.major.width':0.5,
+                'xtick.major.size':5,
+                'xtick.direction':'in',
+                'ytick.labelsize':7,
+                'ytick.major.width':0.5,
+                'ytick.major.size':5,
+                'ytick.direction':'in',
+                'legend.fontsize':10,
+                'savefig.dpi':150}
     return params
 
 #%% Prepare inventory from spreadsheet
@@ -2425,13 +2448,13 @@ def PrepGrowthCurvesForCBR(meta):
                
                     #u=np.unique(ec['ID_GrowthCurve'][:,iS,:])
                     
-                    if (meta['Scenario Source']=='Spreadsheet') | (meta['Scenario Source']=='Portfolio'):
+                    if (meta['Scenario Source']=='Spreadsheet'):
                         
                         indTIPSY=np.where(
                                 (dfPar['ID_Scenario']==iScn+1) &
                                 (dfPar['ID_GC']==int(meta['GC']['ID GC'][iGC])) )[0]                    
                     
-                    elif meta['Scenario Source']=='Script':                        
+                    elif (meta['Scenario Source']=='Script') | (meta['Scenario Source']=='Portfolio'): 
                         
                         indTIPSY=np.where(
                             (dfPar['ID_Stand']==indBat[iS]+1) & 

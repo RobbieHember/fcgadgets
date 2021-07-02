@@ -20,20 +20,20 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Project name
 
-project_name='FCI_RollupFCI_Inv'
+#project_name='FCI_RollupFCI_Inv'
 #project_name='SummaryNutrientManagement'
-#project_name='SummaryNutrientManagementSubSet'
+project_name='SummaryNutrientManagementFull'
 #project_name='SummaryReforestationNonOb'
 #project_name='SummaryReforestation'
-#project_name='SurveySummary'
+#project_name='SummarySurvey'
 
 #%% Define paths
 
 meta={}
 meta['Paths']={}
 meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
-meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
+meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401'
@@ -68,11 +68,12 @@ elif project_name=='SummaryNutrientManagementFull':
     
     # Import AIL- used to subsample certain multipolygons
     #ail=gu.ipickle(r'D:\Data\FCI_Projects\NutrientManagementSummary\Inputs\AnnualImplementationLevel.pkl')
-    meta['subsampling_frequency']=1
+    meta['subsampling_frequency']=0.05
 
 elif project_name=='SummaryReforestationNonOb':
     
     # Import AIL- used to subsample certain multipolygons
+    # *** Not subsampling - its too hard to partition into different project types afterwards ***
     #ail=gu.ipickle(r'D:\Data\FCI_Projects\SummaryReforestationNonOb\Inputs\AnnualImplementationLevel.pkl')
     
     # Sparse grid subsampling rate
@@ -85,6 +86,11 @@ elif project_name=='SummaryReforestation':
     
     # Sparse grid subsampling rate
     meta['subsampling_frequency']=0.02
+    
+elif project_name=='SummarySurvey':  
+    
+    # Sparse grid subsampling rate
+    meta['subsampling_frequency']=0.01
 
 else:    
     
@@ -282,13 +288,13 @@ with fiona.open(path,layer=lyr_nam) as source:
             if (prp['RESULTS_IND']!='Y') | (prp['SILV_FUND_SOURCE_CODE']!='FES') | (prp['SILV_BASE_CODE']=='SU'):
                 continue   
         
-        elif project_name=='SurveySummary':
+        elif project_name=='SummarySurvey':
             
             Year=int(prp['ATU_COMPLETION_DATE'][0:4])   
             
             if (prp['SILV_BASE_CODE']!='SU'):
                 continue
-            if (Year<2017):
+            if (Year<2018):
                 continue
         
         elif project_name=='FCI_RollupFCI_Inv':
@@ -1442,11 +1448,10 @@ fcinv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV
 fcsilv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW.pkl')
 
 # Save old versions as alterntive names in case you need to redo this/troubleshoot a problem
-#gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl',fcinv)
-#gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl',fcsilv)
-#fcinv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl')
-#fcsilv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl')
-
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl',fcinv)
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl',fcsilv)
+# fcinv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl')
+# fcsilv=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl')
 
 # Run script
 fcinv,fcsilv=AddArchiveToForestCover(meta)

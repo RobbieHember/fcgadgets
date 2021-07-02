@@ -1161,7 +1161,7 @@ def DOM_like_CBM08(iT,vi,vo,psl,iEP,meta):
 
 #%% Disturbance and management events (from TAZ)
 
-def Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP):
+def Events_FromTaz(iT,iScn,iEns,vi,vo,psl,meta,iEP):
     
     # Predict stand breakup (on the fly)
     if meta['Simulate breakup on the fly']=='On':
@@ -1174,7 +1174,7 @@ def Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP):
             if vi['tv'][iT]<=meta['Year Project']:
                 Period='Historical'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iEns,Volume,Period,psl)
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period,psl)
     
     # Predict future harvesting (on the fly)        
     if (meta['Simulate harvesting on the fly (future)']=='On'):
@@ -1182,7 +1182,7 @@ def Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP):
             if vi['tv'][iT]>=meta['Scenario Switch']['Dist on Fly']['Harvesting (future) Year Start'][meta['iScn']]:
                 Period='Future'
                 Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iEns,Volume,Period,psl)        
+                vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period,psl)        
     
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta['N Stand'])
@@ -1201,8 +1201,9 @@ def Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP):
         MortalityFactor=vi['EC']['MortalityFactor'][iT,:,iE].copy()
         
         # Only continue if there are disturbance fluxes
-        if np.sum(MortalityFactor)==0:
-            continue
+        #if (np.sum(MortalityFactor)==0) & (ID_Type!=meta['LUT']['Dist']['Planting']):
+        #    # Don't do this 
+        #    continue
         
         # Get event-specific parameters        
         u,idx,inv=np.unique(ID_Type,return_index=True,return_inverse=True)        

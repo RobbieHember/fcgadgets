@@ -80,10 +80,6 @@ def MeepMeep(meta):
                     for iS in range(meta['N Stand']):                        
                         vo=annproc.BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP)
                 
-                #import matplotlib.pyplot as plt
-                #plt.close('all')
-                #plt.plot(vi['GC'][2][:,0,1])
-                
                 # Loop through time intervals (start in second time step)
                 for iT in range(1,meta['N Time']):
                     
@@ -97,7 +93,7 @@ def MeepMeep(meta):
                     vo=annproc.DOM_like_CBM08(iT,vi,vo,psl,iEP,meta)
                     
                     # Calculate effects of disturbance and management                    
-                    vo,vi=annproc.Events_FromTaz(iT,iEns,vi,vo,psl,meta,iEP)
+                    vo,vi=annproc.Events_FromTaz(iT,iScn,iEns,vi,vo,psl,meta,iEP)
                     
                     # Calculate products sector                    
                     if meta['Year'][iT]>=meta['HWP Year Start']:

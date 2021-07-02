@@ -121,7 +121,13 @@ def DefineInventoryLayersAndVariables():
      ('SILV_POLYGON_NUMBER',1,'int32'), \
      ('SILV_POLYGON_AREA',0,'float32'), \
      ('STOCKING_STANDARD_UNIT_ID',0,'float32'), \
+     ('BGC_ZONE_CODE',1,'int16'), \
+     ('BGC_SUBZONE_CODE',1,'int16'), \
+     ('BGC_VARIANT',1,'int16'), \
+     ('BGC_PHASE',1,'int16'), \
+     ('BEC_SITE_SERIES',1,'int16'), \
      ('SITE_INDEX',0,'float32'), \
+     ('I_SPECIES_AGE_1',0,'float32'), \
      ('I_SPECIES_CODE_1',1,'int16'), \
      ('I_SPECIES_CODE_2',1,'int16'), \
      ('I_SPECIES_CODE_3',1,'int16'), \
@@ -159,6 +165,7 @@ def DefineInventoryLayersAndVariables():
      ('SILV_POLYGON_AREA',0,'float32'), \
      ('STOCKING_STANDARD_UNIT_ID',0,'float32'), \
      ('SITE_INDEX',0,'float32'), \
+     ('S_SPECIES_AGE_1',0,'float32'), \
      ('S_SPECIES_CODE_1',1,'int16'), \
      ('S_SPECIES_CODE_2',1,'int16'), \
      ('S_SPECIES_CODE_3',1,'int16'), \
@@ -303,6 +310,7 @@ def DefineInventoryLayersAndVariables():
     d['File Name']='Disturbances.gdb'
     d['Field List']=[('OPENING_ID',0,'float32'), \
      ('HARVEST_YEAR',0,'int16'), \
+     ('AREA_HA',0,'float32'), \
      ('DISTURBANCE_START_DATE',0,'<U20'), \
      ('DISTURBANCE_END_DATE',0,'<U20')]
     d['LUT']={}
@@ -1478,6 +1486,107 @@ def PrepDMEC(idx,meta,par,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                     
                     # Add the slashpile burn
                     yr_burn=yr_harv+0.1
+                    dmec0['Year']=np.append(dmec0['Year'],yr_burn)
+                    dmec0['Month']=np.append(dmec0['Month'],-999)
+                    dmec0['Day']=np.append(dmec0['Day'],-999)
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
+                    dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
+                    dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
+                    dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
+                    dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],-999)
+                    dmec0=AddPlantingWithNoData(dmec0)
+    
+        #--------------------------------------------------------------------------
+        # Knockdown from RESULTS opening layer
+        #--------------------------------------------------------------------------
+    
+        if indS_op!=None: 
+        
+            iExisting=np.where( (dmec0['ID_Type']==meta['LUT']['Dist']['Knockdown']) )[0]
+            YearExisting=np.floor(dmec0['Year'][iExisting])
+        
+            indS=indS_op['Index']
+        
+            for i in range(indS.size):
+        
+                Year=np.floor(op['Year_Denu1_Comp'][indS[i]])
+                Month=op['Month_Denu1_Comp'][indS[i]]
+                cd=cbu.lut_n2s(meta['LUT']['OP']['DENUDATION_1_DISTURBANCE_CODE'],op['DENUDATION_1_DISTURBANCE_CODE'][indS[i]])
+            
+                # Determine whether it should be added, or whether it was already in the
+                # consolidated cutblocks DB
+                flg_add=0
+                if (cd=='R'):
+                    if iExisting.size==0:
+                        flg_add=1
+                    else:
+                        if np.isin(Year,YearExisting)==False:
+                            flg_add=1
+            
+                if flg_add==1:
+                    yr_rehab=Year+Month/12
+                    dmec0['Year']=np.append(dmec0['Year'],yr_rehab)
+                    dmec0['Month']=np.append(dmec0['Month'],Month)
+                    dmec0['Day']=np.append(dmec0['Day'],-999)
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Knockdown'])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
+                    dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
+                    dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
+                    dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
+                    dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],-999)
+                    dmec0=AddPlantingWithNoData(dmec0)
+                    
+                    # Add the slashpile burn
+                    yr_burn=yr_rehab+0.1
+                    dmec0['Year']=np.append(dmec0['Year'],yr_burn)
+                    dmec0['Month']=np.append(dmec0['Month'],-999)
+                    dmec0['Day']=np.append(dmec0['Day'],-999)
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
+                    dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
+                    dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
+                    dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
+                    dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],-999)
+                    dmec0=AddPlantingWithNoData(dmec0)
+        
+                Year=np.floor(op['Year_Denu2_Comp'][indS[i]])
+                Month=op['Month_Denu2_Comp'][indS[i]]
+                cd=cbu.lut_n2s(meta['LUT']['OP']['DENUDATION_2_DISTURBANCE_CODE'],op['DENUDATION_2_DISTURBANCE_CODE'][indS[i]])
+            
+                # Determine whether it should be added, or whether it was already in the
+                # consolidated cutblocks DB
+                flg_add=0
+                if (cd=='R'):
+                    if iExisting.size==0:
+                        flg_add=1
+                    else:
+                        if np.isin(Year,YearExisting)==False:
+                            flg_add=1
+            
+                if flg_add==1:
+                    yr_rehab=Year+Month/12
+                    dmec0['Year']=np.append(dmec0['Year'],yr_rehab)
+                    dmec0['Month']=np.append(dmec0['Month'],Month)
+                    dmec0['Day']=np.append(dmec0['Day'],-999)
+                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Knockdown'])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
+                    dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
+                    dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)   
+                    dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
+                    dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],-999)
+                    dmec0=AddPlantingWithNoData(dmec0)
+                    
+                    # Add the slashpile burn
+                    yr_burn=yr_rehab+0.1
                     dmec0['Year']=np.append(dmec0['Year'],yr_burn)
                     dmec0['Month']=np.append(dmec0['Month'],-999)
                     dmec0['Day']=np.append(dmec0['Day'],-999)
@@ -2782,3 +2891,921 @@ def LoadSparseGridIndex(meta):
     idx['ogmal']=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW_IdxToInv.pkl')
     
     return idx
+
+#%% Export summary by multipolygon
+
+def ExportSummaryActivities_ByMP(meta,par,atu_multipolygons,uMP,sxy,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal,dmec,ba,clm):
+
+    # Get land cover class names
+    lcc=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_VRI.xlsx','LCC')
+    
+    # Initialize structure
+    dMP={}
+
+    # Add ID_Multipolygon
+    dMP['ID_Multipolygon']=np.arange(0,len(atu_multipolygons))
+
+    dMP['See Overlapping MPs']=np.zeros(dMP['ID_Multipolygon'].size)
+    for i in range(len(atu_multipolygons)):
+        ind=np.where(sxy['ID_atu_multipolygons']==i)[0]
+        if ind.size==0:
+            dMP['See Overlapping MPs'][i]=1
+
+    # Initialize first set of variables from atu_multipolygon
+    vr=['FIA_PROJECT_ID','OPENING_ID','Year','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER','SILV_BASE_CODE','SILV_TECHNIQUE_CODE',
+        'SILV_METHOD_CODE', 'SILV_OBJECTIVE_CODE_1','GeomFromOpLyr', 'GeomFromFcLyr','ACTUAL_PLANTED_NUMBER']
+
+    for k in vr:
+        for i in range(1000):
+            if atu_multipolygons[i][k]!=None:
+                break
+        if (type(atu_multipolygons[i][k])==np.int32) | (type(atu_multipolygons[i][k])==int) | (type(atu_multipolygons[i][k])==np.float64):
+            dMP[k]=-999*np.ones(dMP['ID_Multipolygon'].size)
+        else:
+            dMP[k]=np.array(['' for _ in range(dMP['ID_Multipolygon'].size)],dtype=object)
+
+    # Populate with contents of atu_multipolygon
+    for i in range(len(atu_multipolygons)):
+        for k in vr:
+            if atu_multipolygons[i][k]==None:
+                if (type(dMP[k][i])==np.int32) | (type(dMP[k][i])==int) | (type(dMP[k][i])==np.float64):
+                    dMP[k][i]=np.nan
+                else:
+                    dMP[k][i]=''
+            else:
+                dMP[k][i]=atu_multipolygons[i][k]
+
+    # Convert actual planted number to planting density
+    dMP['ACTUAL_PLANTED_NUMBER']=dMP['ACTUAL_PLANTED_NUMBER']/dMP['ACTUAL_TREATMENT_AREA']
+    for i in range(dMP['ACTUAL_PLANTED_NUMBER'].size):
+        dMP['ACTUAL_PLANTED_NUMBER'][i]=np.round(dMP['ACTUAL_PLANTED_NUMBER'][i])
+    #ind=np.where(dMP['ACTUAL_PLANTED_NUMBER']>0)[0]
+    #dMP['ACTUAL_PLANTED_NUMBER'][ind]=int(dMP['ACTUAL_PLANTED_NUMBER'][ind])
+
+    # Initiatlize Project Type
+    dMP['Project Type']=np.array(['' for _ in range(dMP['ID_Multipolygon'].size)],dtype=object)
+    for i in range(len(atu_multipolygons)):
+        dMP['Project Type'][i]=meta['ProjectTypeByMP'][i]
+
+    # FCI - change so that input of PT is in meta, as above
+#    for i in range(dMP['Year'].size):
+#        ind=np.where( (dAdmin['PP Number']==dMP['FIA_PROJECT_ID'][i]) & (dAdmin['Removed']!='Removed') | (dAdmin['OPENING_ID']==dMP['OPENING_ID'][i]) & (dAdmin['Removed']!='Removed') )[0]
+#        if ind.size>0:
+#            uA,cA=np.unique(dAdmin['Project Type'][ind],return_counts=True)
+#            ord=np.flip(np.argsort(cA))
+#            dMP['Project Type'][i]=uA[ord[0]]
+
+    # Add land cover class
+    dMP['LCC 1']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+    dMP['LCC 2']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+    for i in range(len(atu_multipolygons)):
+        ind=np.where(sxy['ID_atu_multipolygons']==i)[0]
+        if ind.size==0:
+            continue
+        cd=[]
+        for j in range(ind.size):
+            cd.append(cbu.lut_n2s(meta['LUT']['VRI']['LAND_COVER_CLASS_CD_1'],ba['LAND_COVER_CLASS_CD_1'][ind[j]])[0])
+    
+        nam=['']*len(cd)
+        for j in range(len(cd)):
+            ind=np.where(lcc['Code']==cd[j])[0]
+            if ind.size>0:
+                nam[j]=lcc['Name'][ind[0]]
+    
+        u,c=np.unique(nam,return_counts=True)
+        ord=np.flip(np.argsort(c))
+        for j in range(np.minimum(2,u.size)):
+            dMP['LCC ' + str(j+1)][i]=nam[ord[j]] 
+    
+    # Add BGC zone
+    dMP['BGC Zone 1']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+    dMP['BGC Zone 2']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+    dMP['BGC Zone 3']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+    for i in range(len(atu_multipolygons)):
+        ind=np.where(sxy['ID_atu_multipolygons']==i)[0]
+        if ind.size==0:
+            continue
+        cd=[]
+        for j in range(ind.size):
+            cd.append(cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],ba['BEC_ZONE_CODE'][ind[j]])[0])
+    
+        u,c=np.unique(cd,return_counts=True)
+        ord=np.flip(np.argsort(c))
+        for j in range(np.minimum(3,u.size)):
+            dMP['BGC Zone ' + str(j+1)][i]=cd[ord[j]]
+
+    # Add SI from best-available
+    dMP['SI_ba_mean']=-999*np.ones(dMP['ID_Multipolygon'].size)
+    dMP['SI_ba_min']=-999*np.ones(dMP['ID_Multipolygon'].size)
+    dMP['SI_ba_max']=-999*np.ones(dMP['ID_Multipolygon'].size)
+    for i in range(len(atu_multipolygons)):
+        ind=np.where(sxy['ID_atu_multipolygons']==i)[0]
+        if ind.size==0:
+            continue
+        dMP['SI_ba_mean'][i]=np.round(np.mean(ba['SI'][ind]),decimals=1)
+        dMP['SI_ba_min'][i]=np.min(ba['SI'][ind])
+        dMP['SI_ba_max'][i]=np.max(ba['SI'][ind])
+
+    # Add forest cover inventory update year
+    for i in range(5):
+        dMP['FC' + str(i+1) + ' Year']=-999*np.ones(dMP['ID_Multipolygon'].size)
+        dMP['FC' + str(i+1) + ' Status']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+        dMP['FC' + str(i+1) + ' Type']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+        dMP['FC' + str(i+1) + ' CC']=-999*np.ones(dMP['ID_Multipolygon'].size)
+        dMP['FC' + str(i+1) + ' SPH Tot']=-999*np.ones(dMP['ID_Multipolygon'].size)
+        dMP['FC' + str(i+1) + ' SPH WS']=-999*np.ones(dMP['ID_Multipolygon'].size)
+        dMP['FC' + str(i+1) + ' Sp1 I']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+        dMP['FC' + str(i+1) + ' Sp2 I']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+
+    for i in range(len(atu_multipolygons)):
+    
+        ind=np.where(sxy['ID_atu_multipolygons']==i)[0]
+    
+        # Inventory label variables
+        ind_fc=np.array([],dtype=int)
+        for j in range(ind.size):
+            ind0=np.where(fcinv['IdxToSXY']==ind[j])[0]
+            ind_fc=np.append(ind_fc,ind0)
+    
+        uYear,uIndex=np.unique(fcinv['REFERENCE_YEAR'][ind_fc],return_index=True)
+        ord=np.flip(np.argsort(uYear))
+    
+        for j in range(np.minimum(5,uYear.size)):
+            ind_fc0=ind_fc[uIndex[ord[j]]]
+            dMP['FC' + str(j+1) + ' Year'][i]=uYear[ord[j]]
+            
+            dMP['FC' + str(j+1) + ' Status'][i]=cbu.lut_n2s(meta['LUT']['FC_I']['STOCKING_STATUS_CODE'],fcinv['STOCKING_STATUS_CODE'][ind_fc0])[0]
+            dMP['FC' + str(j+1) + ' Type'][i]=cbu.lut_n2s(meta['LUT']['FC_I']['STOCKING_TYPE_CODE'],fcinv['STOCKING_TYPE_CODE'][ind_fc0])[0]
+            
+            dMP['FC' + str(j+1) + ' CC'][i]=fcinv['I_CROWN_CLOSURE_PERCENT'][ind_fc0]
+            dMP['FC' + str(j+1) + ' SPH Tot'][i]=fcinv['I_TOTAL_STEMS_PER_HA'][ind_fc0]
+            #dMP['FC' + str(j+1) + ' SPH WS'][i]=fcinv['I_TOTAL_WELL_SPACED_STEMS_HA'][ind_fc0]
+            if fcinv['I_SPECIES_CODE_1'][ind_fc0]>0:
+                dMP['FC' + str(j+1) + ' Sp1 I'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][ind_fc0])[0]
+                if fcinv['I_SPECIES_CODE_2'][ind_fc0]>0:
+                    dMP['FC' + str(j+1) + ' Sp2 I'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][ind_fc0])[0]
+
+        # Silviculture label variables    
+        ind_fc=np.array([],dtype=int)
+        for j in range(ind.size):
+            ind0=np.where(fcsilv['IdxToSXY']==ind[j])[0]
+            ind_fc=np.append(ind_fc,ind0)
+    
+        uYear,uIndex=np.unique(fcsilv['REFERENCE_YEAR'][ind_fc],return_index=True)
+        ord=np.flip(np.argsort(uYear))
+    
+        for j in range(np.minimum(5,uYear.size)):
+            ind_fc0=ind_fc[uIndex[ord[j]]]
+            dMP['FC' + str(j+1) + ' SPH WS'][i]=fcsilv['S_TOTAL_WELL_SPACED_STEMS_HA'][ind_fc0]
+            #if fcsilv['S_SPECIES_CODE_1'][ind_fc0]>0:
+        #    dMP['FC' + str(j+1) + ' Sp1 S'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcsilv['S_SPECIES_CODE_1'][ind_fc0])[0]
+        #    dMP['FC' + str(j+1) + ' Sp2 S'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcsilv['S_SPECIES_CODE_2'][ind_fc0])[0]
+
+    # Add planting info
+    num_of_spc=5
+    for i in range(num_of_spc):
+        dMP['PL_S' + str(i+1) + '_CD']=np.array([' ' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+        dMP['PL_S' + str(i+1) + '_PCT']=np.array([' ' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+        dMP['PL_S' + str(i+1) + '_GW']=np.array([' ' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+
+    for iMP in range(len(atu_multipolygons)):
+    
+        indSXY=np.where(sxy['ID_atu_multipolygons']==iMP)[0]
+        
+        ind_pl=np.array([],dtype=int)
+        for j in range(indSXY.size):
+            ind0=np.where( (pl['IdxToSXY']==indSXY[j]) & (pl['Year']==dMP['Year'][iMP]) )[0]
+            ind_pl=np.append(ind_pl,ind0)
+    
+        if ind_pl.size==0:
+            continue
+
+        #tot_pl=np.sum(pl['NUMBER_PLANTED'][ind_pl])
+        #Ord=np.flip(np.argsort(pl['NUMBER_PLANTED'][ind_pl]))
+    
+        # Genetic worth from seedlot
+        gw0=np.zeros(ind_pl.size)
+        for j in range(ind_pl.size):
+            ind=np.where(par['GW']['SEEDLOT_NUMBER']==pl['SEEDLOT_NUMBER'][ind_pl[j]])[0]
+            if ind.size!=0:
+                gw0[j]=par['GW']['GENETIC_WORTH_RTNG'][ind[0]]
+    
+        # Unique species
+        u=np.unique(pl['SILV_TREE_SPECIES_CODE'][ind_pl])
+    
+        # Number for each unique code
+        nt=np.zeros(u.size)
+        gw=np.zeros(u.size)
+        for j in range(u.size):
+            ind=np.where(pl['SILV_TREE_SPECIES_CODE'][ind_pl]==u[j])[0]
+            nt[j]=np.sum(pl['NUMBER_PLANTED'][ind_pl[ind]])
+            gw[j]=np.mean(gw0[ind])
+        pct=nt/np.sum(nt)*100
+        ord=np.flip(np.argsort(nt))
+    
+        for j in range(np.minimum(u.size,num_of_spc)):
+            dMP['PL_S' + str(j+1) + '_CD'][iMP]=cbu.lut_n2s(meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'],u[ord[j]])[0]
+            dMP['PL_S' + str(j+1) + '_PCT'][iMP]=np.round(pct[ord[j]])
+            dMP['PL_S' + str(j+1) + '_GW'][iMP]=np.round(gw[ord[j]])
+
+    # Add age at time of fertilization
+    dMP['Age @ Fert mean']=-999*np.ones(dMP['ID_Multipolygon'].size)
+    try:
+        for i in range(len(atu_multipolygons)):
+            ind=np.where(sxy['ID_atu_multipolygons']==i)[0]
+            if ind.size==0:
+                continue
+            dMP['Age @ Fert mean'][i]=int(np.mean(meta['AgeAtFert'][ind]))
+    except:
+        pass
+
+    # Add district
+    u=np.unique(dMP['OPENING_ID'])
+    dMP['District']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+    for iU in range(u.size):
+        ind1=np.where(dMP['OPENING_ID']==u[iU])[0]
+        ind2=np.where(op['OPENING_ID']==u[iU])[0]
+        if ind2.size>0:
+            dMP['District'][ind1]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind2[0]])[0][0:-26]
+
+    # Add GHG benefit
+    #it=np.where( (tv>=2018) & (tv<=2050) )[0]
+    #dMP['GHG Benefit 2050']=0*np.ones(dMP['ID_Multipolygon'].size)
+    #for iMP in range(uMP.size):
+    #    ghgb=MosByMP[1]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP]-MosByMP[0]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP]
+    #    dMP['GHG Benefit 2050'][uMP[iMP]]=int(np.sum(ghgb[it]))
+
+    # Delete any unwanted variables
+    #del d['GeomFromCutLyr']
+
+    # Not sure why layot it making it through query
+    ind=np.where(dMP['SILV_METHOD_CODE']!='LAYOT')[0]
+    for k in dMP.keys():
+        dMP[k]=dMP[k][ind]
+
+    # Add disturbance history
+    nD=int(40)
+    for iD in range(nD):
+        dMP['Event' + str(iD+1) + '_Year']=np.array(['' for _ in range(dMP['ID_Multipolygon'].size)],dtype=object)
+        dMP['Event' + str(iD+1) + '_Type']=np.array(['' for _ in range(dMP['ID_Multipolygon'].size)],dtype=object)
+    for iMP in range(uMP.size):
+        indMP=np.where(dMP['ID_Multipolygon']==uMP[iMP])[0]
+        indS=np.where(sxy['ID_atu_multipolygons']==uMP[iMP])[0]
+        Year0=np.array([])
+        Type0=np.array([])
+        Mort0=np.array([])
+        BaseAffected0=np.array([])
+        ProjAffected0=np.array([])
+        for iS in range(indS.size):
+            Year0=np.append(Year0,dmec[indS[iS]]['Year'])
+            Mort0=np.append(Mort0,dmec[indS[iS]]['MortalityFactor'])
+            Type0=np.append(Type0,dmec[indS[iS]]['ID_Type'])
+            BaseAffected0=np.append(BaseAffected0,dmec[indS[iS]]['ScnAffected'][0])
+            ProjAffected0=np.append(ProjAffected0,dmec[indS[iS]]['ScnAffected'][1])
+    
+        u=np.flip(np.unique(np.column_stack([Year0,Type0,Mort0,BaseAffected0,ProjAffected0]),axis=0),axis=0)    
+        for iE in range(np.minimum(nD,u.shape[0])):
+            dMP['Event' + str(iE+1) + '_Year'][indMP]=str(np.round(u[iE,0],decimals=2))
+            dMP['Event' + str(iE+1) + '_Type'][indMP]=str(cbu.lut_n2s(meta['LUT']['Dist'],u[iE,1])[0]) + ' ' + str(int(u[iE,2])) + ' (' + str(int(u[iE,3])) + '-' + str(int(u[iE,4])) + ')'
+
+    # Add climate
+    dMP['tmin_ann']=np.zeros(dMP['ID_Multipolygon'].size)
+    dMP['tmean_gs']=np.zeros(dMP['ID_Multipolygon'].size)
+    dMP['ws_gs']=np.zeros(dMP['ID_Multipolygon'].size)
+    try:
+        for iMP in range(uMP.size): 
+            indMP=np.where(dMP['ID_Multipolygon']==uMP[iMP])[0]
+            indSXY=np.where(sxy['ID_atu_multipolygons']==iMP)[0]
+            dMP['tmin_ann'][indMP]=np.mean(clm['tmin_ann'][indSXY])
+            dMP['tmean_gs'][indMP]=np.mean(clm['tmean_gs'][indSXY])
+            dMP['ws_gs'][indMP]=np.mean(clm['ws_gs'][indSXY])
+    except:
+        pass
+        
+    # Add dictonary to dataframe
+    df=pd.DataFrame(dMP)
+
+    # Remove -999
+    df[df==-999]=np.nan
+    df[df==-9999]=np.nan
+
+    # Save
+    path=meta['Paths']['Project'] + '\\Inputs\\SummaryActivities_ByMP.xlsx'
+    df.to_excel(path,index=False)  
+
+    return dMP
+
+#%% Export AT Layer data to spreadhseet
+
+def ExportSummaryActivities_BySXY(meta,par,atu_multipolygons,sxy,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal):
+    
+    # Reverse crosswalk for FC silv polygon (too slow using lut_num2)
+    spn_id=np.zeros(len(meta['LUT']['FC_I']['SILV_POLYGON_NUMBER']))
+    spn_cd=np.array(['' for _ in range(spn_id.size)],dtype=object)
+    cnt=0
+    for k in meta['LUT']['FC_I']['SILV_POLYGON_NUMBER'].keys():
+        spn_id[cnt]=meta['LUT']['FC_I']['SILV_POLYGON_NUMBER'][k]
+        spn_cd[cnt]=str(k)
+        cnt=cnt+1
+    lut_spn={}  
+    for i in range(spn_id.size):
+        lut_spn[int(spn_id[i])]=spn_cd[i]
+      
+    # Get land cover class names
+    lcc=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_VRI.xlsx','LCC')   
+        
+    d={}
+    n_init=int(5e5)
+    cnt=0
+    
+    d['ID_SXY']=-999*np.ones(n_init)
+    d['ID_Multipolygon']=-999*np.ones(n_init)
+    d['OPENING_ID']=-999*np.ones(n_init)
+    d['SILV_POLYGON_NUMBER']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['Geom Source']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['Area']=-999*np.ones(n_init)
+    d['AEF_ATU']=np.zeros(n_init)
+    d['LCC']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['BGCz']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['BGCsz']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['BGCv']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['Year']=-999*np.ones(n_init)
+    d['Dist Type']=np.array(['' for _ in range(n_init)],dtype=object)
+    #d['Dist Mort']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['SBC']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['STC']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['SMC']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['SOC']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['FSC']=np.array(['' for _ in range(n_init)],dtype=object)
+    #d['Area AT']=-999*np.ones(n_init)
+    
+    d['FC Status']=np.array(['' for _ in range(n_init)],dtype=object)    
+    d['FC Type']=np.array(['' for _ in range(n_init)],dtype=object)    
+    d['FC CC']=-999*np.ones(n_init)
+    d['FC SPH TOT']=-999*np.ones(n_init)
+    d['FC SPH TWS']=-999*np.ones(n_init)
+    d['FC SPH FG']=-999*np.ones(n_init)
+    
+    d['PL SPH']=-999*np.ones(n_init)    
+    num_of_spc=5
+    for i in range(num_of_spc):
+        d['PL_S' + str(i+1) + '_CD']=np.array([' ' for _ in range(n_init)],dtype=object)
+        d['PL_S' + str(i+1) + '_PCT']=np.array([' ' for _ in range(n_init)],dtype=object)
+        d['PL_S' + str(i+1) + '_GW']=np.array([' ' for _ in range(n_init)],dtype=object)
+    
+    for iSXY in range(sxy['x'].size):
+        
+        # ATU
+        indAT=np.where(atu['IdxToSXY']==iSXY)[0]
+        for iAT in range(indAT.size):
+            ind=indAT[iAT]
+            d['ID_SXY'][cnt]=iSXY
+            d['ID_Multipolygon'][cnt]=sxy['ID_atu_multipolygons'][iSXY]
+            d['OPENING_ID'][cnt]=sxy['OPENING_ID'][iSXY]
+            d['Year'][cnt]=atu['Year'][ind]+atu['Month'][ind]/13+atu['Day'][ind]/30
+            d['Dist Type'][cnt]=cbu.lut_n2s(meta['LUT']['ATU']['DISTURBANCE_CODE'],atu['DISTURBANCE_CODE'][ind])[0]
+            d['SBC'][cnt]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][ind])[0]
+            d['STC'][cnt]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][ind])[0]
+            d['SMC'][cnt]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][ind])[0]            
+            d['SOC'][cnt]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_OBJECTIVE_CODE_1'],atu['SILV_OBJECTIVE_CODE_1'][ind])[0]   
+            d['FSC'][cnt]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][ind])[0]
+            d['Area'][cnt]=np.round(atu['ACTUAL_TREATMENT_AREA'][ind],decimals=1)
+            if (atu['ACTUAL_PLANTED_NUMBER'][ind])>0 & (atu['ACTUAL_TREATMENT_AREA'][ind]>0):
+                d['PL SPH'][cnt]=atu['ACTUAL_PLANTED_NUMBER'][ind]/atu['ACTUAL_TREATMENT_AREA'][ind]
+            cnt=cnt+1
+        
+        # Forest cover inventory layer
+        indFC=np.where(fcinv['IdxToSXY']==iSXY)[0]
+        for iFC in range(indFC.size):
+            ind=indFC[iFC]
+            d['ID_SXY'][cnt]=iSXY
+            d['ID_Multipolygon'][cnt]=sxy['ID_atu_multipolygons'][iSXY]
+            d['OPENING_ID'][cnt]=sxy['OPENING_ID'][iSXY]
+            d['Area'][cnt]=fcinv['SILV_POLYGON_AREA'][ind]
+            # This takes forever because the LUT is so long
+            if fcinv['SILV_POLYGON_NUMBER'][ind]!=-9999:
+                d['SILV_POLYGON_NUMBER'][cnt]=lut_spn[fcinv['SILV_POLYGON_NUMBER'][ind]]
+                #cbu.lut_n2s(meta['LUT']['FC_I']['SILV_POLYGON_NUMBER_rev'],fcinv['SILV_POLYGON_NUMBER'][ind])[0]
+            d['Year'][cnt]=fcinv['REFERENCE_YEAR'][ind]
+            d['FC Status'][cnt]=cbu.lut_n2s(meta['LUT']['FC_I']['STOCKING_STATUS_CODE'],fcinv['STOCKING_STATUS_CODE'][ind])[0]      
+            try:
+                d['FC Type'][cnt]=cbu.lut_n2s(meta['LUT']['FC_I']['STOCKING_TYPE_CODE'],fcinv['STOCKING_TYPE_CODE'][ind])[0]
+            except:
+                pass
+            d['FC CC'][cnt]=fcinv['I_CROWN_CLOSURE_PERCENT'][ind]
+            d['FC SPH TOT'][cnt]=fcinv['I_TOTAL_STEMS_PER_HA'][ind]
+            d['FC SPH TWS'][cnt]=fcinv['I_TOTAL_WELL_SPACED_STEMS_HA'][ind]
+            d['FC SPH FG'][cnt]=fcinv['I_FREE_GROWING_STEMS_PER_HA'][ind]
+            cnt=cnt+1
+        
+        # Cutblocks
+        indC=np.where(cut['IdxToSXY']==iSXY)[0]
+        for iC in range(indC.size):
+            ind=indC[iC]
+            d['ID_SXY'][cnt]=iSXY
+            d['ID_Multipolygon'][cnt]=sxy['ID_atu_multipolygons'][iSXY]
+            d['OPENING_ID'][cnt]=sxy['OPENING_ID'][iSXY]
+            d['Year'][cnt]=cut['HARVEST_YEAR'][ind]
+            try:
+                d['Area'][cnt]=cut['AREA_HA'][ind]
+            except:
+                pass        
+            d['Dist Type'][cnt]='Harvest'
+            cnt=cnt+1
+    
+    # Truncate dictionary  
+    for k in d.keys():
+        d[k]=d[k][0:cnt]
+    
+    # Fix FC inv and silv layers
+    for iD in range(d['ID_SXY'].size):
+        if d['FC Status'][iD]=='':
+            continue
+        indFC=np.where(fcsilv['IdxToSXY']==d['ID_SXY'][iD])[0]
+        for iFC in range(indFC.size):
+            ind=indFC[iFC]
+            if fcsilv['S_TOTAL_WELL_SPACED_STEMS_HA'][ind]>d['FC SPH TWS'][iD]:
+                d['FC SPH TWS'][iD]=fcsilv['S_TOTAL_WELL_SPACED_STEMS_HA'][ind]
+            if fcsilv['S_FREE_GROWING_STEMS_PER_HA'][ind]>d['FC SPH FG'][iD]:
+                d['FC SPH FG'][iD]=fcsilv['S_FREE_GROWING_STEMS_PER_HA'][ind]
+    
+    # Add info from atu_multipolygon 
+    uMP=np.unique(d['ID_Multipolygon']).astype(int)
+    for iMP in range(uMP.size):
+        
+        indD=np.where(d['ID_Multipolygon']==uMP[iMP])[0]
+        
+        if atu_multipolygons[uMP[iMP]]['GeomFromOpLyr']==1:
+            d['Geom Source'][indD]='OP'
+        elif atu_multipolygons[uMP[iMP]]['GeomFromFcLyr']==1:
+            d['Geom Source'][indD]='FC ART'
+        else:
+            d['Geom Source'][indD]='AT'
+        
+        A=atu_multipolygons[uMP[iMP]]['ACTUAL_TREATMENT_AREA']
+        if A!=None:
+            indS=np.where(sxy['ID_atu_multipolygons']==uMP[iMP])[0]
+            d['AEF_ATU'][indD]=np.round(A/indS.size,3)
+
+    # VRI
+    for iD in range(d['ID_SXY'].size):
+        indVRI=np.where(vri['IdxToSXY']==d['ID_SXY'][iD])[0]
+        for iVRI in range(indVRI.size):
+            ind=indVRI[iVRI]
+            cd=cbu.lut_n2s(meta['LUT']['VRI']['LAND_COVER_CLASS_CD_1'],vri['LAND_COVER_CLASS_CD_1'][ind])[0]
+            ind1=np.where(lcc['Code']==cd)[0]
+            if ind1.size>0:
+                d['LCC'][iD]=lcc['Name'][ind1[0]]
+            d['BGCz'][iD]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],vri['BEC_ZONE_CODE'][ind])[0]
+            d['BGCsz'][iD]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind])[0]
+            d['BGCv'][iD]=str(cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind])[0])
+    
+    # Add planting info
+    for iD in range(d['ID_SXY'].size):
+        
+        if d['SBC'][iD]!='PL':
+            continue
+        
+        ind_pl=np.where( (pl['IdxToSXY']==d['ID_SXY'][iD]) & (pl['Year']==np.floor(d['Year'][iD])) )[0]
+    
+        if ind_pl.size==0:
+            continue
+    
+        #tot_pl=np.sum(pl['NUMBER_PLANTED'][ind_pl])
+        #Ord=np.flip(np.argsort(pl['NUMBER_PLANTED'][ind_pl]))
+    
+        # Genetic worth from seedlot
+        gw0=np.zeros(ind_pl.size)
+        for j in range(ind_pl.size):
+            ind=np.where(par['GW']['SEEDLOT_NUMBER']==pl['SEEDLOT_NUMBER'][ind_pl[j]])[0]
+            if ind.size!=0:
+                gw0[j]=par['GW']['GENETIC_WORTH_RTNG'][ind[0]]
+    
+        # Unique species
+        u=np.unique(pl['SILV_TREE_SPECIES_CODE'][ind_pl])
+    
+        # Number for each unique code
+        nt=np.zeros(u.size)
+        gw=np.zeros(u.size)
+        for j in range(u.size):
+            ind=np.where(pl['SILV_TREE_SPECIES_CODE'][ind_pl]==u[j])[0]
+            nt[j]=np.sum(pl['NUMBER_PLANTED'][ind_pl[ind]])
+            gw[j]=np.mean(gw0[ind])
+        pct=nt/np.sum(nt)*100
+        ord=np.flip(np.argsort(nt))
+    
+        for j in range(np.minimum(u.size,num_of_spc)):
+            d['PL_S' + str(j+1) + '_CD'][iD]=cbu.lut_n2s(meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'],u[ord[j]])[0]
+            d['PL_S' + str(j+1) + '_PCT'][iD]=np.round(pct[ord[j]])
+            d['PL_S' + str(j+1) + '_GW'][iD]=np.round(gw[ord[j]])
+    
+    # Rounding
+    d['Year']=np.round(d['Year'],decimals=2)
+    d['PL SPH']=d['PL SPH'].astype(int)
+    
+    # Add dictonary to dataframe
+    df=pd.DataFrame(d)
+
+    # Remove -999 (setting to nan will appear as blank)
+    df[df==-999]=np.nan
+    df[df==-9999]=np.nan
+    df[df=='Unidentified']=np.nan
+
+    # Save
+    path=meta['Paths']['Project'] + '\\Inputs\\SummaryActivities_BySXY.xlsx'
+    df.to_excel(path,index=False)
+        
+    return d
+
+
+#%% Export summary attributes by PP number
+
+def ExportSummaryActivities_ByPP():
+
+    # Get GHG benefit
+    d2=gu.ReadExcel(r'Z:\!Workgrp\Forest Carbon\Forest Carbon Initiative\Program\RollupProjects\Live Run\FCI_RollupProjects_04_OutputsBiophysicalUndiscounted.xlsx','ByPPNumber')
+    d2['ghgb']=d2['GHG Benefit Cumu 2050 (tCO2e)']/d2['Area Completed (ha)']
+
+
+    MaterialMilestoneTypes=['Aerial Spray','Browse Protectors','Direct Seeding','Disc Trenching','Dwarf Mistletoe Control','Fertilization Aerial',
+                        'Fertilization Hand','Fertilization Teabag','Incremental Haul','Knockdown','Planting','Ripping','Thinning']
+
+    dPP={}
+    dPP['FIA_PROJECT_ID']=np.unique(dMP['FIA_PROJECT_ID'])
+    dPP['Num Openings']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['Year Start']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['Year Last']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['Project Type']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['Milestone Type']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['BGC Zone 1']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['BGC Zone 2']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['ACTUAL_TREATMENT_AREA']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['ACTUAL_PLANTED_NUMBER']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['Age @ Fert']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['SI BA AreaWeighted']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['Year FC Update']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['SPH FC Inv']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['SPH Planted']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['Spc1 FC Inv']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['Spc2 FC Inv']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['Spc3 FC Inv']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['Spc1 Planted']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['Spc2 Planted']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['Spc3 Planted']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['GHGB50 (tCO2e/ha)']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['GeomFromOpLyr']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['GeomFromFcLyr']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['District']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    dPP['Fire Num']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
+    
+    for i in range(dPP['FIA_PROJECT_ID'].size):
+        
+        # Indices
+        iMP=np.where(dMP['FIA_PROJECT_ID']==dPP['FIA_PROJECT_ID'][i])[0]    
+        iAdmin=np.where( (dAdmin['Estimation Method']=='Completed') & (dAdmin['PP Number']==dPP['FIA_PROJECT_ID'][i]) & (dAdmin['Removed']!='Removed') & (np.isin(dAdmin['Milestone Type'],MaterialMilestoneTypes)==True) )[0]
+        iD2=np.where( (d2['PP Number']==dPP['FIA_PROJECT_ID'][i]) & (d2['Estimation Method']=='Completed') )[0]
+        
+        dPP['Num Openings'][i]=np.unique(dMP['OPENING_ID'][iMP]).size
+    
+        dPP['Year Start'][i]=np.min(dMP['Year'][iMP])
+        dPP['Year Last'][i]=np.max(dMP['Year'][iMP])
+
+        uBGCZ,cBGCZ=np.unique(dMP['BGC Zone Mode'][iMP],return_counts=True)
+        ord=np.flip(np.argsort(cBGCZ))
+        dPP['BGC Zone 1'][i]=uBGCZ[ord[0]]
+        if ord.size>1:
+            dPP['BGC Zone 2'][i]=uBGCZ[ord[1]]        
+    
+        dPP['ACTUAL_TREATMENT_AREA'][i]=np.nansum(dMP['ACTUAL_TREATMENT_AREA'][iMP])
+        
+        dPP['ACTUAL_PLANTED_NUMBER'][i]=np.nansum(dMP['ACTUAL_PLANTED_NUMBER'][iMP])
+        
+        dPP['SI BA AreaWeighted'][i]=np.sum(dMP['SI_ba_mean'][iMP]*dMP['ACTUAL_TREATMENT_AREA'][iMP])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][iMP])
+    
+        dPP['Age @ Fert'][i]=np.sum(dMP['Age @ Fert mean'][iMP]*dMP['ACTUAL_TREATMENT_AREA'][iMP])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][iMP])
+    
+        if iAdmin.size>0:
+            dPP['Project Type'][i]=dAdmin['Project Type'][iAdmin[0]]
+            dPP['Milestone Type'][i]=dAdmin['Milestone Type'][iAdmin[0]]
+         
+        dPP['District'][i]=dMP['District'][iMP[0]]
+    
+        dPP['GeomFromOpLyr'][i]=np.nansum(dMP['GeomFromOpLyr'][iMP])
+        dPP['GeomFromFcLyr'][i]=np.nansum(dMP['GeomFromFcLyr'][iMP])
+    
+        # Add GHG benefit from FCI DB   
+        if d2['Area Completed (ha)'][iD2]>0:
+            dPP['GHGB50 (tCO2e/ha)'][i]=d2['GHG Benefit Cumu 2050 (tCO2e)'][iD2]/d2['Area Completed (ha)'][iD2]
+
+    # Convert to dataframe
+    df=pd.DataFrame.from_dict(dPP)
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryActivities_ByPP.xlsx',index=False)  
+    
+    return dPP
+
+#%% Plot time series by PP number
+
+def PlotTimeSeries_ByPP():
+    
+    List=[]
+    for iPr in range(dMP['FIA_PROJECT_ID'].size):
+        
+        if (np.isin(dMP['FIA_PROJECT_ID'][iPr],List)==True):
+            continue
+        
+        # Find multipolygons for tis project
+        if (dMP['FIA_PROJECT_ID'][iPr]!=''):
+            indP=np.where(uP_ByMP==dMP['FIA_PROJECT_ID'][iPr])[0]
+            nam=dMP['FIA_PROJECT_ID'][iPr]
+            List.append(dMP['FIA_PROJECT_ID'][iPr])
+        else:
+            indP=np.where(uO_ByMP==dMP['OPENING_ID'][iPr])[0]
+            nam=int(dMP['OPENING_ID'][iPr])
+        
+        lw1=1; cle1=[0,0,1]; cle2=[1,0,0]; ms=3; aw=0.28; ah=0.22;
+        xlim=[tv[it[0]],tv[it[-1]]]; xticks=np.arange(1500,2200,20);
+    
+        plt.close('all'); fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(28,20))  
+
+        ax[0,0].plot(tv,np.mean(MosByMP[iB]['v2']['Mean']['A']['Ensemble Mean'][:,indP],axis=1),'-',color=cle1,linewidth=lw1)
+        ax[0,0].plot(tv,np.mean(MosByMP[iP]['v2']['Mean']['A']['Ensemble Mean'][:,indP],axis=1),'--',color=cle2,linewidth=lw1)
+        ax[0,0].set(xlim=xlim,xticks=xticks,xlabel='',ylabel='Age, years')
+    
+        ax[0,1].plot(tv,np.mean(MosByMP[iB]['v1']['Mean']['C_Biomass']['Ensemble Mean'][:,indP],axis=1),'-',color=cle1,linewidth=lw1)
+        ax[0,1].plot(tv,np.mean(MosByMP[iP]['v1']['Mean']['C_Biomass']['Ensemble Mean'][:,indP],axis=1),'--',color=cle2,linewidth=lw1)
+        ax[0,1].set(xlim=xlim,xlabel='',ylabel='Biomass (MgC/ha)')
+    
+        ax[1,0].plot(tv,np.mean(MosByMP[iB]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,indP],axis=1),'-',color=cle1,linewidth=lw1)
+        ax[1,0].plot(tv,np.mean(MosByMP[iP]['v2']['Mean']['Eco_E_Wildfire']['Ensemble Mean'][:,indP],axis=1),'--',color=cle2,linewidth=lw1)
+        ax[1,0].set(xlim=xlim,xlabel='',ylabel='Wildfire emissions (tCO2e/ha/yr)')
+        
+        ax[1,1].plot(tv,np.mean(MosByMP[iB]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,indP],axis=1),'-',color=cle1,linewidth=lw1)
+        ax[1,1].plot(tv,np.mean(MosByMP[iP]['v2']['Mean']['Eco_Removals']['Ensemble Mean'][:,indP],axis=1),'--',color=cle2,linewidth=lw1)
+        ax[1,1].set(xlim=xlim,xlabel='',ylabel='Removals (tCO2e/ha/yr)')
+    
+        ax[2,0].plot(tv,np.mean(MosByMP[iB]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,indP],axis=1),'-',color=cle1,linewidth=lw1)
+        ax[2,0].plot(tv,np.mean(MosByMP[iP]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,indP],axis=1),'--',color=cle2,linewidth=lw1)
+        ax[2,0].set(xlim=xlim,xlabel='',ylabel='GHG balance (tCO2e/ha/yr)')
+        
+        d=np.mean(MosByMP[iP]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,indP],axis=1)-np.mean(MosByMP[iB]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,indP],axis=1)
+        ax[2,1].plot(tv,d,'g-',linewidth=lw1)
+        ax[2,1].set(xlim=xlim,xlabel='',ylabel='GHG benefit (tCO2e/ha/yr)')
+        plt.tight_layout()
+        gu.PrintFig(meta['Paths']['Figures'] + '\\ByPPNumber\\Project_' + str(nam),'png',200)
+
+    return
+
+#%% Export event summary by MP
+
+def ExportSummaryEvents_ByMP():
+
+    n=np.array(1e5,dtype=int)
+    dE={}
+    dE['ID Multipolygon']=np.zeros(n)
+    dE['Year']=np.zeros(n)
+    dE['Baseline']=np.array(['' for _ in range(n)],dtype=object)
+    dE['Project']=np.array(['' for _ in range(n)],dtype=object)
+    cnt=0
+    for iMP in range(uMP.size):
+        indS=np.where(sxy['ID_atu_multipolygons']==uMP[iMP])[0]
+        Year0=np.array([])
+        Type0=np.array([])
+        Mort0=np.array([])
+        BaseAffected0=np.array([])
+        ProjAffected0=np.array([])
+        for iS in range(indS.size):
+            Year0=np.append(Year0,dmec[indS[iS]]['Year'])
+            Mort0=np.append(Mort0,dmec[indS[iS]]['MortalityFactor'])
+            Type0=np.append(Type0,dmec[indS[iS]]['ID_Type'])
+            BaseAffected0=np.append(BaseAffected0,dmec[indS[iS]]['ScnAffected'][0])
+            ProjAffected0=np.append(ProjAffected0,dmec[indS[iS]]['ScnAffected'][1])
+    
+        u=np.unique(np.column_stack([Year0,Type0,Mort0,BaseAffected0,ProjAffected0]),axis=0)
+    
+        for iE in range(u.shape[0]):
+            dE['ID Multipolygon'][cnt]=uMP[iMP]
+            dE['Year'][cnt]=u[iE,0]
+            if u[iE,3]==1:
+                dE['Baseline'][cnt]=cbu.lut_n2s(meta['LUT']['Dist'],u[iE,1])[0] + '-' + str(int(u[iE,2]))
+            if u[iE,4]==1:
+                dE['Project'][cnt]=cbu.lut_n2s(meta['LUT']['Dist'],u[iE,1])[0] + '-' + str(int(u[iE,2]))
+            cnt=cnt+1
+
+    for k in dE.keys():
+        dE[k]=dE[k][0:cnt-1]
+
+    df=pd.DataFrame(dE)
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryEvents_ByMP.xlsx',index=False)
+    
+    return
+
+#%% Export summary events by SXY
+
+def ExportSummaryEvents_BySXY():
+
+    n=np.array(2e6,dtype=int)
+    dE={}
+    dE['ID SXY']=np.zeros(n)
+    dE['ID Multipolygon']=np.zeros(n)
+    dE['OPENING_ID']=np.zeros(n)
+    dE['Year']=np.zeros(n)
+    dE['Baseline']=np.array(['' for _ in range(n)],dtype=object)
+    dE['Project']=np.array(['' for _ in range(n)],dtype=object)
+    cnt=0
+    for iMP in range(uMP.size):
+        indS=np.where(sxy['ID_atu_multipolygons']==uMP[iMP])[0]
+        for iS in range(indS.size):
+            Year0=dmec[indS[iS]]['Year']
+            Mort0=dmec[indS[iS]]['MortalityFactor']
+            Type0=dmec[indS[iS]]['ID_Type']
+            BaseAffected0=dmec[indS[iS]]['ScnAffected'][0]
+            ProjAffected0=dmec[indS[iS]]['ScnAffected'][1]
+            u=np.unique(np.column_stack([Year0,Type0,Mort0,BaseAffected0,ProjAffected0]),axis=0)
+    
+            for iE in range(u.shape[0]):
+                dE['ID SXY'][cnt]=indS[iS]
+                dE['ID Multipolygon'][cnt]=uMP[iMP]
+                dE['OPENING_ID'][cnt]=atu_multipolygons[uMP[iMP]]['OPENING_ID']
+                dE['Year'][cnt]=u[iE,0]
+                if u[iE,3]==1:
+                    dE['Baseline'][cnt]=cbu.lut_n2s(meta['LUT']['Dist'],u[iE,1])[0] + '-' + str(int(u[iE,2]))
+                if u[iE,4]==1:
+                    dE['Project'][cnt]=cbu.lut_n2s(meta['LUT']['Dist'],u[iE,1])[0] + '-' + str(int(u[iE,2]))
+                cnt=cnt+1
+
+    for k in dE.keys():
+        dE[k]=dE[k][0:cnt-1]    
+
+    df=pd.DataFrame(dE)
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryEvents_BySXY.xlsx',index=False)  
+    
+    return
+
+#%% Export area-weighted average conditions by Project Type
+
+def ExportSummaryAttributes_AreaWeighted_ByActivityType():
+
+    uAT=np.unique(dMP['Project Type'])
+
+    dS={}
+    dS['Project Type']=uAT
+    dS['SI coast']=np.nan*np.ones(uAT.size)
+    dS['SPH coast']=np.nan*np.ones(uAT.size)
+    dS['SI interior']=np.nan*np.ones(uAT.size)
+    dS['SPH interior']=np.nan*np.ones(uAT.size)
+
+    for i in range(uAT.size):
+        
+        ind=np.where( (dMP['Project Type']==uAT[i]) & (dMP['BGC Zone 1']=='CWH') & (dMP['SI_ba_mean']>0) | (dMP['Project Type']==uAT[i]) & (dMP['BGC Zone 1']=='ICH') & (dMP['SI_ba_mean']>0) )[0]
+        if ind.size>0:
+            dS['SI coast'][i]=np.sum(dMP['SI_ba_mean'][ind]*dMP['ACTUAL_TREATMENT_AREA'][ind])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][ind])
+        
+        ind=np.where( (dMP['Project Type']==uAT[i]) & (dMP['BGC Zone 1']=='CWH') & (dMP['ACTUAL_PLANTED_NUMBER']>0) | (dMP['Project Type']==uAT[i]) & (dMP['BGC Zone 1']=='ICH') & (dMP['ACTUAL_PLANTED_NUMBER']>0) )[0]
+        if ind.size>0:
+            dS['SPH coast'][i]=np.sum(dMP['ACTUAL_PLANTED_NUMBER'][ind]*dMP['ACTUAL_TREATMENT_AREA'][ind])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][ind])
+        
+        ind=np.where( (dMP['Project Type']==uAT[i]) & (dMP['BGC Zone 1']!='CWH') & (dMP['BGC Zone 1']!='ICH') & (dMP['SI_ba_mean']>0) )[0]
+        if ind.size>0:
+            dS['SI interior'][i]=np.sum(dMP['SI_ba_mean'][ind]*dMP['ACTUAL_TREATMENT_AREA'][ind])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][ind])
+        
+        ind=np.where( (dMP['Project Type']==uAT[i]) & (dMP['BGC Zone 1']!='CWH') & (dMP['BGC Zone 1']!='ICH') & (dMP['ACTUAL_PLANTED_NUMBER']>0) )[0]
+        if ind.size>0:            
+            dS['SPH interior'][i]=np.sum(dMP['ACTUAL_PLANTED_NUMBER'][ind]*dMP['ACTUAL_TREATMENT_AREA'][ind])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][ind])
+
+    df=pd.DataFrame(dS)
+    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryAttributes_AreaWeighted_ByActivityType.xlsx',index=False)
+    
+    return
+
+#%% Summary by BGC
+# 68% of completed LCELF funds (excluding FFT) are CWH
+
+def Summary_ByBGC():
+    
+    uAT=np.unique(dMP['Project Type'])
+    
+    for iAT in range(uAT.size):
+        
+        indAT=np.where(dMP['Project Type']==uAT[iAT])[0]
+        
+        # Unique BGC classes
+        uC=np.unique(np.array([dMP['BGCz'][indAT],dMP['BGCsz'][indAT],dS['BGCv'][indAT]]).T,axis=0)
+        
+        for iC in range(uC.size):
+            ind=np.where( (dMP['Project Type']==uAT[iAT]) & (dMP['BGCz'][indAT],dMP['BGCsz'][indAT],dS['BGCv'][indAT]) )[0]
+    
+    ind=np.where( (dMP['SILV_BASE_CODE']=='FE') )[0]
+    uBGC=np.unique(dMP['BGC Zone Mode'][ind])
+
+    A=np.zeros(uBGC.size)
+    for i in range(uBGC.size):
+        ind=np.where( (dMP['BGC Zone Mode']==uBGC[i]) & (dMP['SILV_BASE_CODE']=='FE') )[0]
+        A[i]=np.sum(dMP['ACTUAL_TREATMENT_AREA'][ind])
+
+    ind=np.where( (uBGC=='CWH') )[0]
+    A_cwh=np.sum(A[ind])
+    A_tot=np.sum(A)
+    A_cwh/A_tot*100
+
+    # Area-weighted site index = 26 (May 3, 2021)
+    ind=np.where( (dMP['SILV_BASE_CODE']=='FE') )[0]
+    SI_w=np.sum(dMP['ACTUAL_TREATMENT_AREA'][ind]*dMP['SI_ba_mean'][ind])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][ind])
+    SI_w
+    
+    return
+
+#%% Summary attributes by SXY (only one row per grid cell)
+
+def ExportSummaryAttributes_BySXY():
+    
+    d={}
+    n_init=int(5e5)
+    cnt=0
+    
+    d['ID_SXY']=-999*np.ones(n_init)
+    d['ID_Multipolygon']=-999*np.ones(n_init)
+    d['OPENING_ID']=-999*np.ones(n_init)
+    d['SILV_POLYGON_NUMBER']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['Geom Source']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['AEF_ATU']=np.zeros(n_init)
+    d['LCC']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['BGCz']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['BGCsz']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['BGCv']=np.array(['' for _ in range(n_init)],dtype=object)
+    d['SBC']=np.array(['' for _ in range(n_init)],dtype=object)
+    
+    for iSXY in range(sxy['x'].size):        
+        d['ID_SXY'][cnt]=iSXY
+        d['ID_Multipolygon'][cnt]=sxy['ID_atu_multipolygons'][iSXY]
+        d['OPENING_ID'][cnt]=sxy['OPENING_ID'][iSXY]
+        cnt=cnt+1
+    
+    # Truncate dictionary  
+    for k in d.keys():
+        d[k]=d[k][0:cnt]
+    
+    # Add info from atu_multipolygon 
+    uMP=np.unique(d['ID_Multipolygon']).astype(int)
+    for iMP in range(uMP.size):        
+        indD=np.where(d['ID_Multipolygon']==uMP[iMP])[0]        
+        if atu_multipolygons[uMP[iMP]]['GeomFromOpLyr']==1:
+            d['Geom Source'][indD]='OP'
+        elif atu_multipolygons[uMP[iMP]]['GeomFromFcLyr']==1:
+            d['Geom Source'][indD]='FC ART'
+        else:
+            d['Geom Source'][indD]='AT'        
+        A=atu_multipolygons[uMP[iMP]]['ACTUAL_TREATMENT_AREA']
+        if A!=None:
+            #indS=np.where(sxy['ID_atu_multipolygons']==uMP[iMP])[0]
+            d['AEF_ATU'][indD]=np.round(A/indD.size,3)
+        d['SBC'][indD]=atu_multipolygons[uMP[iMP]]['SILV_BASE_CODE']
+
+    for iD in range(d['ID_SXY'].size):
+        indVRI=np.where(vri['IdxToSXY']==d['ID_SXY'][iD])[0]
+        for iVRI in range(indVRI.size):
+            ind=indVRI[iVRI]
+            cd=cbu.lut_n2s(meta['LUT']['VRI']['LAND_COVER_CLASS_CD_1'],vri['LAND_COVER_CLASS_CD_1'][ind])[0]
+            ind1=np.where(lcc['Code']==cd)[0]
+            if ind1.size>0:
+                d['LCC'][iD]=lcc['Name'][ind1[0]]
+            d['BGCz'][iD]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],vri['BEC_ZONE_CODE'][ind])[0]
+            d['BGCsz'][iD]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind])[0]
+            d['BGCv'][iD]=str(cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind])[0])
+    
+    # Add dictonary to dataframe
+    df=pd.DataFrame(d)
+
+    # Remove -999 (setting to nan will appear as blank)
+    df[df==-999]=np.nan
+    df[df==-9999]=np.nan
+    df[df=='Unidentified']=np.nan
+
+    # Save
+    path=meta['Paths']['Project'] + '\\Inputs\\SummaryAttributes_BySXY.xlsx'
+    df.to_excel(path,index=False)
+        
+    return d
+
+
+#%% Export attribute summary by BGC
+
+def ExportAttributes_ByBGC():
+
+    dS=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv\Inputs\SummaryAttributes_BySXY.xlsx')
+
+    # Unique BGC classes
+    u=np.unique(np.array([dS['BGCz'],dS['BGCsz']]).T,axis=0)
+
+    A_PL=np.zeros(u.shape[0])
+    A_FE=np.zeros(u.shape[0])
+    for i in range(u.shape[0]):
+        ind=np.where( (dS['SBC']=='PL') & (dS['BGCz']==u[i,0]) & (dS['BGCsz']==u[i,1]) )[0]
+        A_PL[i]=np.round(np.sum(dS['AEF_ATU'][ind]),2)
+        ind=np.where( (dS['SBC']=='FE') & (dS['BGCz']==u[i,0]) & (dS['BGCsz']==u[i,1]) )[0]    
+        A_FE[i]=np.round(np.sum(dS['AEF_ATU'][ind]),2)
+    sts=np.column_stack([u,A_PL,A_FE])
+    
+    df=pd.DataFrame(data=sts,columns=['Zone','Subzone','Area PL','Area FE'])
+    df.to_excel(r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv\Inputs\SummaryAttributes_ByBGC.xlsx',index=False)
+    
+    return

@@ -31,55 +31,81 @@ def ImportPortfolio(meta):
     # Import activity types
     #--------------------------------------------------------------------------
     
-    d=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\Portfolio Inputs.xlsx',sheet_name='Activity Types',skiprows=1).to_dict('split')
+    d=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\Portfolio Inputs.xlsx',sheet_name='Activity Types',skiprows=0).to_dict('split')
     meta['Portfolio']['Activities']={}
     
-    meta['Portfolio']['Activities']['Portfolio Code']=np.array(d['columns'][1:])
-    for i in range(len(meta['Portfolio']['Activities']['Portfolio Code'])):
-        meta['Portfolio']['Activities']['Portfolio Code'][i]=np.array(meta['Portfolio']['Activities']['Portfolio Code'][i][0:3])
-    
+    # Index to columns to keep
+    a=np.array(d['data'][1])
+    ind=np.where( (a!='Activity description') & (a!='nan') )[0]
     for i in range(len(d['data'])):
-        meta['Portfolio']['Activities'][d['data'][i][0]]=np.array(d['data'][i][1:])
+        tmp=np.array([])
+        for j in range(len(ind)):
+            tmp=np.append(tmp,d['data'][i][ind[j]])
+        meta['Portfolio']['Activities'][d['data'][i][0]]=tmp
+    
+    meta['Portfolio']['Activities']['Activity ID']=meta['Portfolio']['Activities']['Activity ID'].astype(int)
     
     #--------------------------------------------------------------------------
     # Import implementation levels
     #--------------------------------------------------------------------------
     
-    d=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\Portfolio Inputs.xlsx',sheet_name='Annual Implementation Level',skiprows=2).to_dict('split')
+    d=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\Portfolio Inputs.xlsx',sheet_name='Annual Implementation Level',skiprows=1).to_dict('split')
     meta['Portfolio']['AIL']={}
-    meta['Portfolio']['AIL']['Year']=np.arange(d['data'][0][0],d['data'][-1][0]+1,1,dtype=int)
-    meta['Portfolio']['AIL']['BAU']=np.zeros((meta['Portfolio']['AIL']['Year'].size,10))
-    meta['Portfolio']['AIL']['CAP']=np.zeros((meta['Portfolio']['AIL']['Year'].size,10))
-    for i in range(meta['Portfolio']['AIL']['Year'].size):
+    
+    meta['Portfolio']['AIL']['Year']=np.arange(d['data'][1][0],d['data'][-1][0]+1,1,dtype=int)
+    
+    meta['Portfolio']['AIL']['BAU']=np.zeros((meta['Portfolio']['AIL']['Year'].size,12))
+    meta['Portfolio']['AIL']['CAP']=np.zeros((meta['Portfolio']['AIL']['Year'].size,12))
+    for i in range(0,meta['Portfolio']['AIL']['Year'].size):
         cnt=0
-        for j in range(1,11):
-            meta['Portfolio']['AIL']['BAU'][i,cnt]=d['data'][i][j]
+        for j in range(1,12):
+            meta['Portfolio']['AIL']['BAU'][i,cnt]=d['data'][i+1][j]
             cnt=cnt+1
         cnt=0
-        for j in range(11,21):    
-            meta['Portfolio']['AIL']['CAP'][i,cnt]=d['data'][i][j]
+        for j in range(12,22):    
+            meta['Portfolio']['AIL']['CAP'][i,cnt]=d['data'][i+1][j]
             cnt=cnt+1
+    
     meta['Portfolio']['AIL']['BAU']=np.nan_to_num(meta['Portfolio']['AIL']['BAU'])
     meta['Portfolio']['AIL']['CAP']=np.nan_to_num(meta['Portfolio']['AIL']['CAP'])
+    meta['Portfolio']['AIL']['BAU']=meta['Portfolio']['AIL']['BAU'].astype(int)
+    meta['Portfolio']['AIL']['CAP']=meta['Portfolio']['AIL']['CAP'].astype(int)
+    
+    indBAU=np.where(np.sum(meta['Portfolio']['AIL']['BAU'],axis=0)>0)[0]
+    indCAP=np.where(np.sum(meta['Portfolio']['AIL']['CAP'],axis=0)>0)[0]
+    aid=np.array(d['data'][0][1:25])
+    meta['Portfolio']['AIL']['Activity ID']=np.append(aid[indBAU],aid[indCAP+11])
+    meta['Portfolio']['AIL']['Activity ID']=meta['Portfolio']['AIL']['Activity ID'].astype(int)
     
     #--------------------------------------------------------------------------
     # Index to activity ID and Year for each unique stand
     #--------------------------------------------------------------------------
     
-    meta['Portfolio']['N AT']=meta['Portfolio']['Activities']['Activity ID:'].size
+    # Number of unique activities
+    meta['Portfolio']['N AT BAU']=np.sum(np.sum(meta['Portfolio']['AIL']['BAU'],axis=0)>0)
+    meta['Portfolio']['N AT CAP']=np.sum(np.sum(meta['Portfolio']['AIL']['CAP'],axis=0)>0)
+    meta['Portfolio']['N AT']=meta['Portfolio']['N AT BAU']+meta['Portfolio']['N AT CAP']
+    
+    # Number of years with activities
     meta['Portfolio']['N Year']=meta['Portfolio']['AIL']['Year'].size
     
+    # Total number of stands
     meta['N Stand']=meta['Portfolio']['N AT']*meta['Portfolio']['N Year']
     
     meta['Portfolio']['Indices']={}
     meta['Portfolio']['Indices']['Activity']=np.zeros(meta['N Stand'],dtype=int)
+    meta['Portfolio']['Indices']['Activity Unique']=np.zeros(meta['N Stand'],dtype=int)
     meta['Portfolio']['Indices']['Year']=np.zeros(meta['N Stand'],dtype=int)
     cnt=0
     for iA in range(meta['Portfolio']['N AT']):
         for iY in range(meta['Portfolio']['N Year']):
-            meta['Portfolio']['Indices']['Activity'][cnt]=iA
+            meta['Portfolio']['Indices']['Activity'][cnt]=meta['Portfolio']['AIL']['Activity ID'][iA]-1
+            meta['Portfolio']['Indices']['Activity Unique'][cnt]=iA
             meta['Portfolio']['Indices']['Year'][cnt]=iY
             cnt=cnt+1
+    
+    meta['Portfolio']['Indices']['BAU Activity']=indBAU
+    meta['Portfolio']['Indices']['CAP Activity']=np.arange(indBAU[-1]+1,meta['Portfolio']['N AT'])
     
     return meta
 
@@ -322,7 +348,6 @@ def PrepareInventory(meta):
 
             # Save
             gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + cbu.FixFileNum(iBat) + '.pkl',inv)
-        
     
     return
 
@@ -464,38 +489,47 @@ def ImportResults(meta):
     iCAP=np.where(np.sum(meta['Portfolio']['AIL']['CAP'],axis=0)>0)[0]
     ail=np.column_stack([meta['Portfolio']['AIL']['BAU'][:,iBAU],meta['Portfolio']['AIL']['CAP'][:,iCAP]])
 
+
     # Initialize GHG balance for each activity type
-    vAT=[]
+    vAT=[None]*meta['N Scenario']
     for iScn in range(meta['N Scenario']):
-        
-        d={}
-        d['Sec_NGHGB']=np.zeros((v2[iScn]['Year'].size,meta['Portfolio']['N AT']))
-        d['Sec_NGHGB_x_Area']=np.zeros((v2[iScn]['Year'].size,meta['Portfolio']['N AT']))
-    
-        for iAT in range(meta['Portfolio']['N AT']):
-            ind=np.where(meta['Portfolio']['Indices']['Activity']==iAT)[0]
-            ghgb0=v2[iScn]['Sec_NGHGB'][:,ind]
-            ghgb_x_area0=v2[iScn]['Sec_NGHGB'][:,ind]
-            for iYr in range(ghgb0.shape[1]):
-                ghgb_x_area0[:,iYr]=ail[iYr,iAT]*ghgb0[:,iYr]
-            d['Sec_NGHGB'][:,iAT]=np.mean(ghgb0,axis=1)
-            d['Sec_NGHGB_x_Area'][:,iAT]=np.sum(ghgb_x_area0,axis=1)
-        vAT.append(d)
+        vAT[iScn]={}
+        vAT[iScn]['Sum']={}
+        vAT[iScn]['Per Ha']={}
+        for k in v2[0].keys():
+            if k=='Year':
+                continue
+            vAT[iScn]['Sum'][k]=np.zeros((v2[iScn]['Year'].size,meta['Portfolio']['N AT']))
+            vAT[iScn]['Per Ha'][k]=np.zeros((v2[iScn]['Year'].size,meta['Portfolio']['N AT']))
+            
+            for iAT in range(meta['Portfolio']['N AT']):
+                ind=np.where(meta['Portfolio']['Indices']['Activity Unique']==iAT)[0]
+                y=v2[iScn][k][:,ind]
+                y_x_area=v2[iScn][k][:,ind]
+                for iYr in range(y.shape[1]):
+                    y_x_area[:,iYr]=ail[iYr,iAT]*y[:,iYr]
+                vAT[iScn]['Sum'][k][:,iAT]=np.sum(y_x_area,axis=1)
+                vAT[iScn]['Per Ha'][k][:,iAT]=np.mean(y,axis=1)
 
     # Results by portfolio
-    iBAU=np.where(meta['Portfolio']['Activities']['Portfolio Code']=='BAU')[0]
-    iCAP=np.where(meta['Portfolio']['Activities']['Portfolio Code']=='CAP')[0]
+    iBAU=meta['Portfolio']['Indices']['BAU Activity']
+    iCAP=meta['Portfolio']['Indices']['CAP Activity']
     
-    vBAU=[]
-    vCAP=[]
+    vBAU=[None]*meta['N Scenario']
+    vCAP=[None]*meta['N Scenario']
     for iScn in range(meta['N Scenario']):
-        
-        d={}
-        d['Sec_NGHGB_x_Area']=np.sum(vAT[iScn]['Sec_NGHGB_x_Area'][:,iBAU],axis=1)
-        vBAU.append(d)
-        
-        d={}
-        d['Sec_NGHGB_x_Area']=np.sum(vAT[iScn]['Sec_NGHGB_x_Area'][:,iCAP],axis=1)
-        vCAP.append(d)
-    
+        vBAU[iScn]={}
+        vBAU[iScn]['Sum']={}
+        vBAU[iScn]['W Ave']={}
+        vCAP[iScn]={}
+        vCAP[iScn]['Sum']={}
+        vCAP[iScn]['W Ave']={}
+        for k in v2[0].keys():
+            if k=='Year':
+                continue
+            vBAU[iScn]['Sum'][k]=np.sum(vAT[iScn]['Sum'][k][:,iBAU],axis=1)
+            vBAU[iScn]['W Ave'][k]=0
+            vCAP[iScn]['Sum'][k]=np.sum(vAT[iScn]['Sum'][k][:,iCAP],axis=1)
+            vCAP[iScn]['W Ave'][k]=0
+
     return v1,v2,vAT,vBAU,vCAP,meta

@@ -158,7 +158,13 @@ def GenerateWildfireFromAAO_StandsActAsEnsembles(meta,par,inv):
     # Occurrence (by BGC zone) (the same among scenarios, different by ensemble)
     P_oc=np.zeros((meta['Year'].size,meta['N Stand']))
     for iT in range(meta['Year'].size):
-                    
+
+        if (par['WF']['Exclude simulations during historical period']=='On') & (meta['Year'][iT]<=meta['Year Project']):
+            continue
+        
+        if (par['WF']['Exclude simulations during future period']=='On') & (meta['Year'][iT]>meta['Year Project']):
+            continue
+         
         # Adjust shape parameter to match specified annual probability of 
         # occurrence from the deterministic component
         ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
@@ -599,36 +605,40 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,Age):
 
 #%% Simulate probability of harvesting on the fly
 
-def PredictHarvesting_OnTheFly(meta,vi,iT,iEns,V_Merch,Period,psl):
+def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period,psl):
     
     # Indicator of THLB (THLB=1, Non-THLB=0)
     flag_thlb=vi['Inv']['THLB'][iT,:]
     
     # Saturating annual probability of harvest
-    if Period=='Historical':
-        
-        # Historical
-        
+    if Period=='Historical':        
+        # Historical        
         #f1=0.0014*25**((meta['Year'][iT]-1900)/100)
         #f2=(1/(1+np.exp(0.12*(Year-1950))))
         f1=0.0011*35**((meta['Year'][iT]-1900)/100)
         f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
-        Pa_H_Sat=f1*f2
-    
-    else:
-        
-        # Future
-        if 'Override OTF Pa Harvest Sat' in meta:
-            # Check to see if defaults have been overridden
-            Pa_H_Sat=meta['Override OTF Pa Harvest Sat']
+        Pa_H_Sat=f1*f2    
+    else:        
+        # Future        
+        if 'OTF Pa Harvest Sat' in meta['Override Default Parameters']:
+            if len(meta['Override Default Parameters']['OTF Pa Harvest Sat'])==1:
+                # Default has been overriden with project-specific value
+                Pa_H_Sat=meta['Override Default Parameters']['OTF Pa Harvest Sat']
+            elif len(meta['Override Default Parameters']['OTF Pa Harvest Sat'])>1:
+                # Default has been overriden with scenario-specific value
+                Pa_H_Sat=meta['Override Default Parameters']['OTF Pa Harvest Sat'][iScn]
         else:
             # Use default
             Pa_H_Sat=psl['bOTF_Pa_Harvest_Sat']
     
     # Inflection point
-    if 'Override OTF_Pa Harvest Inf' in meta:
-        # Check to see if defaults have been overridden
-        Pa_H_Inf=meta['Override OTF Pa Harvest Inf']
+    if 'OTF Pa Harvest Inf' in meta['Override Default Parameters']:        
+        if len(meta['Override Default Parameters']['OTF Pa Harvest Inf'])==1:
+            # Default has been overriden with project-specific value
+            Pa_H_Inf=meta['Override Default Parameters']['OTF Pa Harvest Inf']
+        elif len(meta['Override Default Parameters']['OTF Pa Harvest Inf'])>1:
+            # Default has been overriden with scenario-specific value
+            Pa_H_Inf=meta['Override Default Parameters']['OTF Pa Harvest Inf'][iScn]
     else:
         # Use default
         Pa_H_Inf=psl['bOTF_Pa_Harvest_Inflection']
@@ -640,7 +650,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iEns,V_Merch,Period,psl):
     flg=0
     if flg==1:
         
-        beta=[0.03,-0.025,450]
+        beta=[0.03,-0.04,400]
         V_Merch=np.arange(1,1200)
         Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
         
