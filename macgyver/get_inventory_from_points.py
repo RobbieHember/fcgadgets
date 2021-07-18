@@ -16,22 +16,22 @@ import numpy.matlib as ml
 import matplotlib.pyplot as plt
 import time
 from shapely.geometry import Polygon,Point
-from fcgadgets.utilities import utilities_general as gu
-from fcgadgets.utilities import utilities_gis as gis
-from fcgadgets.utilities import utilities_inventory as invu
+from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import utilities_gis as gis
+from fcgadgets.macgyver import utilities_inventory as invu
 from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Define paths
 
 meta={}
 meta['Paths']={}
-#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_SparseGrid'
-meta['Paths']['Project']=r'D:\Data\FCI_Projects\SparseGrid_HighRes'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210208'
-meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20200430'
-meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430'
-meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20200706'
+meta['Paths']['Project']=r'D:\Data\FCI_Projects\FCI_SparseGrid'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SparseGrid_HighRes'
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210401'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
 # Save
@@ -48,7 +48,9 @@ tsa_boundaries=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundarie
 zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 
 # Define regular grid sampling frequency
-sfreq=20
+sfreq=100 # 10 km
+#sfreq=50 # 5 km
+#sfreq=20 # High res
 
 # Extract subgrid
 zTSA['X']=zTSA['X'][0::sfreq,0::sfreq]
@@ -86,7 +88,7 @@ sxy['ID_TSA']=zTSA['Data'][iIreg]
 # Save to pickle file
 gu.opickle(meta['Paths']['Geospatial'] + '\\sxy.pkl',sxy)
 
-# Save as shapefile
+# Save as geojson
 flg=1
 if flg==1:
     points=[]
@@ -94,7 +96,7 @@ if flg==1:
         points.append(Point(sxy['x'][k],sxy['y'][k]))
     gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':sxy['ID_TSA']})
     gdf_sxy.crs=tsa_boundaries.crs  
-    gdf_sxy.to_file(meta['Paths']['Geospatial'] + '\\sxy.shp')
+    gdf_sxy.to_file(meta['Paths']['Geospatial'] + '\\sxy.geojson',driver='GeoJSON')
 
 #%% Plot
 
@@ -268,7 +270,7 @@ for iLyr in range(len(InvLyrInfo)):
                     
                         else:
                 
-                            # Could not use either FC or openign layer
+                            # Could not use either FC or opening layer
                             print('Missing spatial could not be recovered')
                         
             # Only continue if spatial info exists

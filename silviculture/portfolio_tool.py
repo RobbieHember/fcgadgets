@@ -49,7 +49,7 @@ def ImportPortfolio(meta):
     # Import implementation levels
     #--------------------------------------------------------------------------
     
-    d=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\Portfolio Inputs.xlsx',sheet_name='Annual Implementation Level',skiprows=1).to_dict('split')
+    d=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\Portfolio Inputs.xlsx',sheet_name='Implementation Levels',skiprows=1).to_dict('split')
     meta['Portfolio']['AIL']={}
     
     meta['Portfolio']['AIL']['Year']=np.arange(d['data'][1][0],d['data'][-1][0]+1,1,dtype=int)
