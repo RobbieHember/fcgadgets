@@ -25,11 +25,13 @@ def MeepMeep(meta):
     
     # Initialize run time tracking info
     rt_info={}
-
+        
     # Loop through batches
     for iBat in range(meta['Project']['N Batch']):
         
-        # Loop through scenarios
+        flag_WorkingOnBatch=0
+        
+        # Loop through scenarios    
         for iScn in ScenariosToRun: 
         
             # Track the current scenario index
@@ -37,29 +39,23 @@ def MeepMeep(meta):
         
             # Loop through ensembles
             for iEns in range(meta['Project']['N Ensemble']):
-        
+                
                 # Track time
                 t0=time.time()
                 rt_info['t1']=time.time()
                 
-                # Path to output data file
-                pthAC=meta['Paths']['Output Scenario'][iScn] + '\\Data_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
-                
-                # Path to temporary "working on" file -> tells other instances 
-                # to skip it because it has been started by another instance.
-                pthWO=meta['Paths']['Output Scenario'][iScn] + '\\WorkingOn_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
+                # Path to temporary "working on batch..." file -> tells other instances 
+                pth_WorkingOnBatch=meta['Paths']['Project'] + '\\Outputs\\WorkingOnBatch_' + cbu.FixFileNum(iBat) + '.pkl'
                 
                 # Only proceed if the file does not exist running multiple instances
-                if meta['Project']['Skip Completed Runs']=='On':                    
+                if meta['Project']['Skip Completed Runs']=='On':                         
                     
-                    if os.path.exists(pthAC):
-                        continue                    
-                    if os.path.exists(pthWO):
-                        continue        
-                    
-                    # Create a WorkingOn file to let other instances know that this batch is
-                    # in progress
-                    gu.opickle(pthWO,[])
+                    if os.path.exists(pth_WorkingOnBatch)==False:
+                        gu.opickle(pth_WorkingOnBatch,[])
+                        flag_WorkingOnBatch=1
+                    else:
+                        if flag_WorkingOnBatch==0:
+                            continue
             
                 # Report progress
                 if (meta['Project']['Scenario Source']=='Spreadsheet'):
@@ -97,12 +93,17 @@ def MeepMeep(meta):
                     t_start=np.where(meta['Year']==meta['Core']['Year Stop Reusing First Batch'])[0][0]
                     
                     # Get output variables from first run of this batch
-                    vo=copy.deepcopy(vo_full)
+                    #vo=copy.deepcopy(vo_full)
+                    it=np.where(meta['Year']==meta['Core']['Year Stop Reusing First Batch']-1)[0]                    
+                    for k in vo.keys():
+                        if (k=='C_M_ByAgent'):
+                            continue
+                        vo[k][it,:]=vo_full[k]
                     
                     # Set future periods to zero
-                    it=np.where(meta['Year']>meta['Core']['Year Stop Reusing First Batch'])[0]
+                    it=np.where(meta['Year']>=meta['Core']['Year Stop Reusing First Batch'])[0]
                     for k in vo.keys():
-                        if (k=='C_M_ByAgent') | (k=='Product Yields'):
+                        if (k=='C_M_ByAgent'):
                             # Nested dictionaries
                             # *** These are already shortened time periods so set whole array to zero
                             for k2 in vo[k].keys():
@@ -138,15 +139,17 @@ def MeepMeep(meta):
                 
                 # Export simulation results to file
                 if (meta['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
+                    # Only save output if it is the first instance of a batch
                     vo_full=ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
-                else:
+                    
+                else:                   
                     ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
                 
                 rt_info['t6']=time.time()
                 
                 # Delete 'working on' file
-                if meta['Project']['Skip Completed Runs']=='On':   
-                    os.remove(pthWO)
+                #if meta['Project']['Skip Completed Runs']=='On':   
+                    #os.remove(pthWO)
                     
                 # Delete variables
                 del vi,vo
@@ -190,7 +193,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     # Import event chronology
     vi['EC']=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
     
-    vi['EC']=cbu.EventHistoryDecompress(meta,vi['EC'],iScn,iEns,iBat)    
+    vi['EC']=cbu.EventChronologyDecompress(meta,vi['EC'],iScn,iEns,iBat)    
     
     # Convert mortality percent to fraction
     vi['EC']['MortalityFactor']=vi['EC']['MortalityFactor'].astype(float)/100
@@ -503,7 +506,13 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     #--------------------------------------------------------------------------
     
     if (meta['Project']['N Ensemble']>1) & (iScn==0) & (iEns==0):        
-        vo_full=copy.deepcopy(vo)
+        it=np.where(meta['Year']==meta['Core']['Year Stop Reusing First Batch']-1)[0]
+        vo_full={}
+        for k in vo.keys():
+            if (k=='C_M_ByAgent'):
+                continue
+            vo_full[k]=vo[k][it,:]        
+        #vo_full=copy.deepcopy(vo)
     else:
         vo_full=[]
     
@@ -669,7 +678,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
             vi['EC']['GrowthFactor']=vi['EC']['GrowthFactor'][vi['EC']['idx']]
             vi['EC']['ID_GrowthCurve']=vi['EC']['ID_GrowthCurve'][vi['EC']['idx']]        
         
-        fout=meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
+        fout=meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
         
         gu.opickle(fout,vi['EC'])
     

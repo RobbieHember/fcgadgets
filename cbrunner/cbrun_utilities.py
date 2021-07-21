@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import glob
 import openpyxl
 import gc as garc
 import time
@@ -329,11 +330,8 @@ def BuildEventChronologyFromSpreadsheet(meta):
 
 #%% Decompress event chronology
 
-def EventHistoryDecompress(meta,ec,iScn,iEns,iBat):
+def EventChronologyDecompress(meta,ec,iScn,iEns,iBat):
 
-    # Import event chronology
-    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
-    
     # Uncompress event chronology if it has been compressed
     if 'idx' in ec:
         idx=ec['idx']
@@ -1821,10 +1819,12 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
     it=np.where( (tv_full>=tv_saving[0]) & (tv_full<=tv_saving[-1]) )[0]
     
     # Variables to save
-    nam1=['V_StemMerch','C_Ecosystem','C_Biomass','C_DeadWood','C_Litter','C_Soil','C_InUse','C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem', \
+    nam1=['V_StemMerch','C_Ecosystem','C_Biomass','C_DeadWood','C_Litter','C_Soil', \
+          'C_InUse','C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem', \
           'C_Lumber', 'C_Plywood', 'C_OSB', 'C_MDF', 'C_Paper', 'C_Fuel']
     
-    nam2=['A','Eco_NPP','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations','Eco_Removals','Pro_Emissions','Eco_NGHGB','Sec_NGHGB']
+    nam2=['A','Eco_NPP','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations', \
+          'Eco_Removals','Pro_Emissions','Eco_NGHGB','Sec_NGHGB']
 
     nam_cashflow=['Cost Total','Revenue Gross']
 
@@ -1939,10 +1939,13 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                 if (switch_area=='On' ) | (switch_cashflow=='On'):
                     
                     # Import event chronology
-                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                    if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
+                        ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                    else:
+                        ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
                     # Uncompress event chronology if it has been compressed
-                    ec=EventHistoryDecompress(meta,ec,iScn,iEns,iBat)            
+                    ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat) 
             
                 if switch_area=='On':
                 
@@ -2170,16 +2173,13 @@ def ModelOutputStats(meta,flag_save):
                         v2[k]=v2[k]+np.sum(d2[0][0][k],axis=1)    
             
                 # Import event chronology
-                ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
+                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                else:
+                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
             
                 # Uncompress event chronology if it has been compressed
-                if 'idx' in ec:
-                    idx=ec['idx']
-                    tmp=ec.copy()
-                    for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
-                        ec[v]=np.zeros((tv_full.size,d1['A'].shape[1],meta['Core']['Max Events Per Year']),dtype='int16')
-                        ec[v][idx[0],idx[1],idx[2]]=tmp[v]
-                del tmp
+                ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat) 
             
                 for iYr in range(tv_full.size):
                     it=np.where(tv==tv_full[iYr])[0]
@@ -3262,7 +3262,22 @@ def ImportParameters(meta):
 
     return meta
 
-##%% Import look-up tables
+#%% Delete all output files
+    
+def DeleteAllOutputFiles(meta):
+    
+    for iScn in range(meta['Project']['N Scenario']):
+        files=glob.glob(meta['Paths']['Output Scenario'][iScn] + '\\*')
+        for f in files:
+            os.remove(f)
+
+    for iBat in range(meta['Project']['N Batch']):
+        pth=meta['Paths']['Project'] + '\\Outputs\\WorkingOnBatch_' + cbu.FixFileNum(iBat) + '.pkl'
+        os.remove(pth)
+    
+    return
+
+#%% Import look-up tables
 #
 #def ImportLUTs(pthin):
 #    

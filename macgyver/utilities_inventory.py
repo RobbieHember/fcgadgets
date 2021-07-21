@@ -2734,7 +2734,7 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     #------------------------------------------------------------------------------
 
     # Initially assume everything is in the THLB
-    thlb_flag_Actual=np.ones((meta['N Time'],meta['Project']['N Stand Full']))
+    thlb_flag_Actual=np.ones((meta['Project']['N Time'],meta['Project']['N Stand Full']))
 
     # Define second THLB with areas that have been removed due to value diversification
     thlb_flag_Baseline=thlb_flag_Actual.copy()

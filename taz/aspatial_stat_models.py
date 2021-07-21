@@ -64,7 +64,7 @@ def SimulateWildfireFromAAO(meta,ba):
         # Populate for scenarios
         #----------------------------------------------------------------------
         
-        for iScn in range(meta['N Scenario']):
+        for iScn in range(meta['Project']['N Scenario']):
 
             # Initialize annual probability of occurrence (final with deterministic and
             # random components)
@@ -262,7 +262,7 @@ def SimulateIBMFromAAO(meta,ba):
         # Loop through scenarios
         #--------------------------------------------------------------------------
         
-        for iScn in range(meta['N Scenario']):
+        for iScn in range(meta['Project']['N Scenario']):
         
             # Initialize
             ibm_sim={}
@@ -587,7 +587,7 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,Age):
     Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
 
     #rn=np.random.random(Age.size)
-    rn=meta['On the Fly']['Random Numbers']['Breakup'][iT,iEns]
+    rn=meta['Project']['On the Fly']['Random Numbers']['Breakup'][iT,iEns]
     
     indS=np.where(rn<Po)[0]
     if indS.size>0:
@@ -665,7 +665,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
     
     # Random number
     #rn=np.random.random(V_Merch.size)
-    rn=meta['On the Fly']['Random Numbers']['Harvest'][iT,iEns]
+    rn=meta['Project']['On the Fly']['Random Numbers']['Harvest'][iT,iEns]
     
     # Occurrence
     Oc=flag_thlb*np.floor(np.minimum(1,Po/rn))
