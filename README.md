@@ -12,8 +12,9 @@ The **fcgadgets** repo was developed to:
 * Support complex policy decisions in land resource management
 
 ## LIST OF MODULES
-**cbrunner:** A computer simulation model
+**cbrunner:** A computer simulation model<br>
 **macgyver:** A toolbox of utilities for project preparation and analysis
+
 **silviculture:** A toolbox for simulating impacts of silviculture treatments on GHG balance and revenue
 **taz:** A toolbox for simulating natural disturbance events
 **bc1ha:** A toolbox for raster processing on a 1 hectare regular grid of British Columbia
