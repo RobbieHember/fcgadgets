@@ -1817,7 +1817,7 @@ def Load_Params(meta):
 #%% EXCLUDE DUPLICATE EVENTS
 
 def Exclude_Duplicate_Events(meta,dmec):
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         if dmec[iStand]==None:
             continue
         for key in meta['LUT']['Dist'].keys():
@@ -1834,7 +1834,7 @@ def Exclude_Duplicate_Events(meta,dmec):
 
 def Exclude_Unidentified_Events(meta,dmec):
 
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         if dmec[iStand]==None:
             continue
         ind=np.where(dmec[iStand]['ID_Type']!=-999)[0]
@@ -1846,7 +1846,7 @@ def Exclude_Unidentified_Events(meta,dmec):
 
 def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
 
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         
         if dmec[iStand]==None:
             continue
@@ -1865,7 +1865,7 @@ def Remove_SlashpileBurns_From_Select_Zones(meta,dmec,ba):
 
 def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity,StringsToFill):
     
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         
         if dmec[iStand]==None:
             continue
@@ -1886,32 +1886,37 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity,Strin
 #%% ENSURE DISTURBANCE PRECEDES AERIAL FERTILIZATION
 # So that age at fert is specified.
 
-def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert,StringsToFill):
+def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba,StringsToFill):
 
     ListOfTestedDist=[meta['LUT']['Dist']['Wildfire'],meta['LUT']['Dist']['Harvest'],
             meta['LUT']['Dist']['Knockdown'],meta['LUT']['Dist']['Harvest Salvage'],
             meta['LUT']['Dist']['Beetles'],meta['LUT']['Dist']['IBM'],meta['LUT']['Dist']['IBB'],
             meta['LUT']['Dist']['IBD'],meta['LUT']['Dist']['IBS']]
     
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         
         if dmec[iStand]==None:
             continue
     
-        iA=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist']['Fertilization Aerial']) )[0]
-        if iA.size==0: 
+        iFert=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist']['Fertilization Aerial']) )[0]
+        
+        if iFert.size==0: 
             continue
         
+        iFert=iFert[0]
+        
         # Index to events prior to first fertilization with 100% mortality
-        ind=np.where( (dmec[iStand]['Year']<=dmec[iStand]['Year'][iA[0]]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
+        ind=np.where( (dmec[iStand]['Year']<=dmec[iStand]['Year'][iFert[0]]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
         
-        # Add random component to age at fert
-        AgeAtFertPlusRandom=AgeAtFert+np.random.randint(-6,high=6)
-        
-        #dYear=dmec[iStand]['Year'][iA[0]]-dmec[iStand]['Year'][ind[-1]]
         if (ind.size==0):
             
-            Year=dmec[iStand]['Year'][iA[0]]-AgeAtFertPlusRandom
+            # Gapfill with VRI
+            Year=ba['Year'][iStand]-ba['PROJ_AGE_1'][iStand]
+            
+            if Year<=0:
+                # Assume mean of 36 + random variation
+                r=36+np.random.randint(-6,high=6)
+                Year=dmec[iStand]['Year'][iFert]-r
             
             # Add harvest
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
@@ -1939,13 +1944,66 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,th_sev_last_dist,AgeAtFert,Str
     
     return dmec
 
+#def Ensure_Fert_Preceded_By_Disturbance_old(meta,dmec,th_sev_last_dist,AgeAtFert,StringsToFill):
+#
+#    ListOfTestedDist=[meta['LUT']['Dist']['Wildfire'],meta['LUT']['Dist']['Harvest'],
+#            meta['LUT']['Dist']['Knockdown'],meta['LUT']['Dist']['Harvest Salvage'],
+#            meta['LUT']['Dist']['Beetles'],meta['LUT']['Dist']['IBM'],meta['LUT']['Dist']['IBB'],
+#            meta['LUT']['Dist']['IBD'],meta['LUT']['Dist']['IBS']]
+#    
+#    for iStand in range(meta['Project']['N Stand']):
+#        
+#        if dmec[iStand]==None:
+#            continue
+#    
+#        iA=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist']['Fertilization Aerial']) )[0]
+#        if iA.size==0: 
+#            continue
+#        
+#        # Index to events prior to first fertilization with 100% mortality
+#        ind=np.where( (dmec[iStand]['Year']<=dmec[iStand]['Year'][iA[0]]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
+#        
+#        # Add random component to age at fert
+#        AgeAtFertPlusRandom=AgeAtFert+np.random.randint(-6,high=6)
+#        
+#        #dYear=dmec[iStand]['Year'][iA[0]]-dmec[iStand]['Year'][ind[-1]]
+#        if (ind.size==0):
+#            
+#            Year=dmec[iStand]['Year'][iA[0]]-AgeAtFertPlusRandom
+#            
+#            # Add harvest
+#            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
+#            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
+#            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
+#            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+#            for v in StringsToFill:
+#                dmec[iStand][v]=np.append(dmec[iStand][v],-999)  
+#            
+#            # Add slashpile burn
+#            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+0.1)
+#            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
+#            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
+#            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+#            for v in StringsToFill:
+#                dmec[iStand][v]=np.append(dmec[iStand][v],-999)  
+#            
+#            # Add planting
+#            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+0.2)
+#            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Planting'])
+#            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
+#            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],0)
+#            for v in StringsToFill:
+#                dmec[iStand][v]=np.append(dmec[iStand][v],-999)            
+#    
+#    return dmec
+
 #%% IDW FIX SEVERITY
 # The dmec was populated with the numeric severity ID. Mortality only occurs 
 # following repeated outrbreak years. 
 
 def IDW_Fix_Severity(meta,dmec):
 
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         
         if dmec[iStand]==None:
             continue
@@ -1997,7 +2055,7 @@ def IDW_Fix_Severity(meta,dmec):
 
 def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
     
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         if idx['vri'][iStand]==None:
             continue
         ind=idx['vri'][iStand]['Index'][0]
@@ -2017,7 +2075,7 @@ def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
                 dmec[iStand][v]=np.append(dmec[iStand][v],-999)
 
     # Put events in order of calendar date
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         d=dmec[iStand].copy()
         ord=np.argsort(d['Year'])
         for key in d.keys():
@@ -2034,7 +2092,7 @@ def Clean_Species_Composition(meta,dmec,vri,fcinv):
     ListS=[('SXW','SX')]
     
     # Fix dmec
-    for iStand in range(meta['Project']['N Stand Full']):   
+    for iStand in range(meta['Project']['N Stand']):   
         for iSpc in range(len(ListS)):       
             # Disturbance/management inventory
             n0=meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'][ListS[iSpc][0]]
@@ -2094,7 +2152,11 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
     ba['Spc_Pct4']=-999*np.ones(meta['Project']['N Stand'])
     ba['Spc_Pct5']=-999*np.ones(meta['Project']['N Stand'])
     ba['SI']=-999*np.ones(meta['Project']['N Stand'])
-
+    ba['VRI_LIVE_STEMS_PER_HA']=-999*np.ones(meta['Project']['N Stand'])
+    ba['PROJ_AGE_1']=-999*np.ones(meta['Project']['N Stand'])
+    ba['Year']=-999*np.ones(meta['Project']['N Stand'])
+    ba['LIVE_STAND_VOLUME_125']=-999*np.ones(meta['Project']['N Stand'])
+    
     # Also keep track of the data source percentages
     basp={}
     basp['BEC_ZONE_CODE']={}
@@ -2142,6 +2204,11 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
             ba['FIZ'][iStand0]=meta['LUT']['TIPSY']['FIZ']['C']
         else:
             ba['FIZ'][iStand0]=meta['LUT']['TIPSY']['FIZ']['I']
+    
+        ba['VRI_LIVE_STEMS_PER_HA'][iStand0]=vri['VRI_LIVE_STEMS_PER_HA'][ind0] 
+        ba['PROJ_AGE_1'][iStand0]=vri['PROJ_AGE_1'][ind0] 
+        ba['Year'][iStand0]=vri['Year'][ind0] 
+        ba['LIVE_STAND_VOLUME_125'][iStand0]=vri['LIVE_STAND_VOLUME_125'][ind0]
     
     basp['BEC_ZONE_CODE']['From VRI']=N_tot/ba['SI'].size*100
     basp['FIZ']['From VRI']=N_tot/ba['SI'].size*100
@@ -2475,7 +2542,7 @@ def AdjustSpeciesSpecificMortality(meta,dmec,gc,iB):
                  meta['Param']['DistBySC']['SpcCD3'][ind],meta['Param']['DistBySC']['SpcCD4'][ind],
                  meta['Param']['DistBySC']['SpcCD5'][ind],meta['Param']['DistBySC']['SpcCD6'][ind]])
 
-    for iStand in range(meta['Project']['N Stand Full']):      
+    for iStand in range(meta['Project']['N Stand']):      
     
         for iYr in range(dmec[iStand]['Year'].size):
         
@@ -2508,7 +2575,7 @@ def AdjustSpeciesSpecificMortality(meta,dmec,gc,iB):
 #%% Put DMEC events in order
 
 def PutEventsInOrder(dmec,meta):    
-    for iStand in range(meta['Project']['N Stand Full']):
+    for iStand in range(meta['Project']['N Stand']):
         d=dmec[iStand].copy()
         ord=np.argsort(d['Year'])
         for key in d.keys():
@@ -2729,25 +2796,27 @@ def PutEventsInOrder(dmec,meta):
 
 def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     
+    meta['Project']['THLB']={}
+    
     #------------------------------------------------------------------------------
     # Initialize THLB flags (THLB=1,Non-THLB=0)
     #------------------------------------------------------------------------------
 
     # Initially assume everything is in the THLB
-    thlb_flag_Actual=np.ones((meta['Project']['N Time'],meta['Project']['N Stand Full']))
+    meta['Project']['THLB']['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']))
 
     # Define second THLB with areas that have been removed due to value diversification
-    thlb_flag_Baseline=thlb_flag_Actual.copy()
+    meta['Project']['THLB']['Baseline']=meta['Project']['THLB']['Actual'].copy()
 
     # Index to stands that are uneconomic
     iUneconomic=np.where(ba['SI']<=5)[0]
 
     # Remove uneconomic stands from THLB
-    thlb_flag_Actual[:,iUneconomic]=0
-    thlb_flag_Baseline[:,iUneconomic]=0
+    meta['Project']['THLB']['Actual'][:,iUneconomic]=0
+    meta['Project']['THLB']['Baseline'][:,iUneconomic]=0
 
     # Idenify stands that have been harvested
-    has_been_harvested=np.zeros(meta['Project']['N Stand Full'])
+    has_been_harvested=np.zeros(meta['Project']['N Stand'])
     for i in range(len(dmec)):
         ind=np.where(dmec[i]['ID_Type']==meta['LUT']['Dist']['Harvest'])[0]
         if ind.size>0:
@@ -2760,20 +2829,20 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     # among remaining primary forest
     ratio_thlb=22/55 # ratio of THLB to total forest (SOF)
 
-    corr=iUneconomic.size/meta['Project']['N Stand Full']
+    corr=iUneconomic.size/meta['Project']['N Stand']
 
     # Probability of evading harvest
     if iNoHarv.size>0:
-        p_evade=(1-ratio_thlb-corr)*(meta['Project']['N Stand Full']/iNoHarv.size)
+        p_evade=(1-ratio_thlb-corr)*(meta['Project']['N Stand']/iNoHarv.size)
     else:
         p_evade=(1-ratio_thlb-corr)
 
     # Random prediction of whether it will evade harvesting
     iRem=np.where(np.random.random(iNoHarv.size)<p_evade)[0]
-    thlb_flag_Actual[:,iNoHarv[iRem]]=0
-    thlb_flag_Baseline[:,iNoHarv[iRem]]=0
+    meta['Project']['THLB']['Actual'][:,iNoHarv[iRem]]=0
+    meta['Project']['THLB']['Baseline'][:,iNoHarv[iRem]]=0
 
-    # np.sum(thlb_flag_Actual[0,:])/meta['Project']['N Stand Full']
+    # np.sum(meta['Project']['THLB']['Actual'][0,:])/meta['Project']['N Stand']
 
     #------------------------------------------------------------------------------
     # Define the year of transition from THLB to non-THLB for specific LU types
@@ -2784,7 +2853,7 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     for k in meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].keys():
         ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][k]) )[0]
         d[k]=ind.size
-    ds={k: v for k,v in sorted(d.items(), key=lambda item: item[1])}
+    #ds={k: v for k,v in sorted(d.items(), key=lambda item: item[1])}
 
     # List of legal land use plan types that transition to conservatoin (this needs to be vetted by experts)
     ListCon=['Visually Sensitive Areas','Connectivity Corridors','Scenic Areas','Caribou Winter Habitat Zones',
@@ -2807,7 +2876,7 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     A=A+ogmal['IdxToSXY'].size
     
     #print(A)
-    print(str(A/meta['Project']['N Stand Full']*100) + '% of the sample transitioned to non-THLB.')
+    print(str(A/meta['Project']['N Stand']*100) + '% of the sample transitioned to non-THLB.')
 
     # Look at reserves
     N={}
@@ -2816,7 +2885,7 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
         N[k]=ind.size
 
     # Initialize year of transition
-    thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand Full'])
+    thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand'])
 
     # Define year of transition from legal land use plan objectives
     for i in range(len(ListCon)):
@@ -2833,22 +2902,22 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     for j in range(thlb_YearTransitionOut.size):
         if thlb_YearTransitionOut[j]>0:
             it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
-            thlb_flag_Actual[it,j]=0
+            meta['Project']['THLB']['Actual'][it,j]=0
 
     # Adjust the baseline so that simulated harvesting between 1995 and 2020 only
     # occurs in areas where the THLB was affected by value diversification
     for year in range(1990,2021,1):
         iT=np.where(meta['Year']==year)[0]
-        iS=np.where( (thlb_flag_Baseline[iT,:]==1) & (thlb_flag_Actual[iT,:]==1) )[1]
-        thlb_flag_Baseline[iT,iS]=0
+        iS=np.where( (meta['Project']['THLB']['Baseline'][iT,:]==1) & (meta['Project']['THLB']['Actual'][iT,:]==1) )[1]
+        meta['Project']['THLB']['Baseline'][iT,iS]=0
 
     flg=0
     if flg==1:
         plt.figure(2)
-        plt.plot(np.sum(thlb_flag_Actual,axis=1)/meta['Project']['N Stand Full'])
-        plt.plot(np.sum(thlb_flag_Baseline,axis=1)/meta['Project']['N Stand Full'],'--')
+        plt.plot(np.sum(meta['Project']['THLB']['Actual'],axis=1)/meta['Project']['N Stand'])
+        plt.plot(np.sum(meta['Project']['THLB']['Baseline'],axis=1)/meta['Project']['N Stand'],'--')
         
-    return thlb_flag_Actual,thlb_flag_Baseline
+    return meta
 
 #%% Load sparse geospatiatial inputs
 

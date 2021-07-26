@@ -1,5 +1,6 @@
 
 import numpy as np
+from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Nutrient application effects
 
@@ -10,20 +11,27 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
     
     if comp=='UpdateCounter':
         
-        meta['Nutrient Management']['ResponseCounter'][meta['Nutrient Management']['iApplication']]=meta['Nutrient Management']['ResponseCounter'][meta['Nutrient Management']['iApplication']]+1
+        iApplication=meta['Nutrient Management']['iApplication']
+        
+        meta['Nutrient Management']['ResponseCounter'][iApplication]=meta['Nutrient Management']['ResponseCounter'][iApplication]+1
     
     elif (comp=='AbovegroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
 
         # Need to revise to be based on N
         # r_NonUniform_Spatial_Distribution
         
+        # Index to stands where application occurs
+        iApplication=meta['Nutrient Management']['iApplication']
+
+        #----------------------------------------------------------------------
+        # Start response counter
+        #----------------------------------------------------------------------
+        
+        meta['Nutrient Management']['ResponseCounter'][iApplication]=meta['Nutrient Management']['ResponseCounter'][iApplication]+1
+        
         #----------------------------------------------------------------------
         # Adjust net growth
         #----------------------------------------------------------------------
-        
-        # Trigger flag indicating stand is being affectd by N application
-        # This is used to specify duration of the stimulus 
-        meta['Nutrient Management']['ResponseCounter'][meta['Nutrient Management']['iApplication']]=meta['Nutrient Management']['ResponseCounter'][meta['Nutrient Management']['iApplication']]+1
         
         # Response ratio of stemwood (before wood density effect)
         rrS=bNA['r_Stemwood']
@@ -51,15 +59,15 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         A_gc=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
         
         # Extract active growth curves, apply scale factor
-        GCA_SP=vi['GC']['Active'][:,meta['Nutrient Management']['iApplication'],:].copy().astype(float)*meta['GC']['Scale Factor']
-
-        for iStand in range(meta['Nutrient Management']['iApplication'].size):
+        GCA_SP=vi['GC']['Active'][:,iApplication,:].copy().astype(float)*meta['GC']['Scale Factor']
+        
+        for iStand in range(iApplication.size):
             
-            A_app=int(vo['A'][iT,meta['Nutrient Management']['iApplication'][iStand]])
+            AgeAtApplication=int(vo['A'][iT,iApplication[iStand]])
             
             # Index to the response period that will be alterred
-            iResponse=np.where( (A_gc>=A_app) & (A_gc<A_app+bNA['ResponseDuration']) )[0]
-            
+            iResponse=np.where( (A_gc>=AgeAtApplication) & (A_gc<AgeAtApplication+bNA['ResponseDuration']) )[0]
+                        
             # This will crash if an application occurs within 10 years of the maximum
             # TIPSY age curve (eg 200 years) -> adjust response period so that it
             # does not crash
@@ -71,8 +79,8 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
             else:
                 em='Error: Nutrient application not implemented - stand age exceeds max age of growth curves.'
                 print(em)
-                print(A_app)
-                
+                print(AgeAtApplication)
+            
         # Re-applly scalefactor
         GCA_SP=GCA_SP/meta['GC']['Scale Factor']
             
@@ -80,13 +88,16 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         GCA_SP=GCA_SP.astype(np.int16)
             
         # Repopulate in input variable dictionary
-        vi['GC']['Active'][:,meta['Nutrient Management']['iApplication'],:]=GCA_SP
+        vi['GC']['Active'][:,iApplication,:]=GCA_SP        
     
     elif (comp=='BelowgroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         
         #----------------------------------------------------------------------
         # Adjust root net growth
         #----------------------------------------------------------------------
+        
+        # Index to stands where application occurs
+        iApplication=meta['Nutrient Management']['iApplication']
         
         iEP=meta['Core']['iEP']
         
@@ -100,32 +111,39 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         
         # Remove the false stimulus that arises from estimating roots from AG
         # biomass  
-        vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]=0.84*vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]
-        vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]=0.84*vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]
-        #Gnet_RC[meta['Nutrient Management']['iApplication']]=0.65*(2-bNA['r_Stemwood'])*Gnet_RC[meta['Nutrient Management']['iApplication']]
-        #Gnet_RF[meta['Nutrient Management']['iApplication']]=0.65*(2-bNA['r_Stemwood'])*Gnet_RF[meta['Nutrient Management']['iApplication']] 
+        vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]=0.84*vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]
+        vo['C_G_Net'][iT,iApplication,iEP['RootFine']]=0.84*vo['C_G_Net'][iT,iApplication,iEP['RootFine']]
+        #Gnet_RC[iApplication]=0.65*(2-bNA['r_Stemwood'])*Gnet_RC[iApplication]
+        #Gnet_RF[iApplication]=0.65*(2-bNA['r_Stemwood'])*Gnet_RF[iApplication] 
         
         # Stimulate root growth from N application
-        #Gnet_RC[meta['Nutrient Management']['iApplication']]=rrRC*Gnet_RC[meta['Nutrient Management']['iApplication']]
-        #Gnet_RF[meta['Nutrient Management']['iApplication']]=rrRF*Gnet_RF[meta['Nutrient Management']['iApplication']]        
+        #Gnet_RC[iApplication]=rrRC*Gnet_RC[iApplication]
+        #Gnet_RF[iApplication]=rrRF*Gnet_RF[iApplication]        
         
         # Recalculate current-year root biomass where stimulated by N application
-        #vo['C_Eco_Pools'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]=vo['C_Eco_Pools'][iT-1,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]+Gnet_RC[meta['Nutrient Management']['iApplication']]
-        #vo['C_Eco_Pools'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]=vo['C_Eco_Pools'][iT-1,meta['Nutrient Management']['iApplication'],iEP['RootFine']]+Gnet_RF[meta['Nutrient Management']['iApplication']]
+        #vo['C_Eco_Pools'][iT,iApplication,iEP['RootCoarse']]=vo['C_Eco_Pools'][iT-1,iApplication,iEP['RootCoarse']]+Gnet_RC[iApplication]
+        #vo['C_Eco_Pools'][iT,iApplication,iEP['RootFine']]=vo['C_Eco_Pools'][iT-1,iApplication,iEP['RootFine']]+Gnet_RF[iApplication]
         
         # Populate net growth of root biomass
-        vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]=rrRC*vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]
-        vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]=rrRF*vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]
-        #vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]=Gnet_RC[meta['Nutrient Management']['iApplication']]
-        #vo['C_G_Net'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]=Gnet_RF[meta['Nutrient Management']['iApplication']]    
+        vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]=rrRC*vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]
+        vo['C_G_Net'][iT,iApplication,iEP['RootFine']]=rrRF*vo['C_G_Net'][iT,iApplication,iEP['RootFine']]
+        #vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]=Gnet_RC[iApplication]
+        #vo['C_G_Net'][iT,iApplication,iEP['RootFine']]=Gnet_RF[iApplication]    
         
         #----------------------------------------------------------------------
         # Stop stimulation counter when it passes the response duration
         #----------------------------------------------------------------------
     
         iStop=np.where( meta['Nutrient Management']['ResponseCounter']>bNA['ResponseDuration'] )[0]
+        
         if iStop.size>0:
+            
             meta['Nutrient Management']['ResponseCounter'][iStop]=0
+            
+            #uGC=np.unique(meta['GC']['ID GC'][iStop])
+            #for iGC in range(uGC.size):
+            #    indGC=np.where(meta['GC']['ID GC'][iStop]==uGC[iGC])[0]
+            #    vi['GC']['Active'][:,iStop[indGC],:]=vi['GC'][ uGC[iGC] ][:,iStop[indGC],:]
         
     elif (comp=='Mortality') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         
@@ -211,3 +229,25 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         meta['R_SoilS'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_SoilS'][0,meta['Nutrient Management']['iApplication']]
     
     return vi,vo,meta
+
+#%% Simulate probability of harvesting on the fly
+
+def ScheduleNutrientApplication_OnTheFly(meta,vi,vo,iT,iScn,iEns):
+    
+   rn=np.random.random(vo['A'][iT,:].size) 
+    
+   indS=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
+                 (vo['A'][iT,:]>=10) & (vo['A'][iT,:]<=71) & \
+                 (rn<meta['Scenario'][iScn]['Nutrient Application Prob']) & \
+                 (vo['V_StemMerch'][iT,:]>1) )[0]
+
+   if indS.size>0:
+       for i in range(indS.size):
+           iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]        
+           if iAvailable.size>0:
+               iE=iAvailable[0]
+               vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Fertilization Aerial']
+               vi['EC']['MortalityFactor'][iT,indS[i],iE]=np.array(0,dtype='int16')
+               vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
+    
+   return vi

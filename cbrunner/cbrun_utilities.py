@@ -28,7 +28,7 @@ def lut_n2s(dc,numb):
 
 def IndexToBatch(meta,iBat):
     iStart=meta['Project']['Batch Interval']*iBat
-    iStop=np.minimum(meta['Project']['N Stand Full'],iStart+meta['Project']['Batch Interval'])
+    iStop=np.minimum(meta['Project']['N Stand'],iStart+meta['Project']['Batch Interval'])
     indBat=np.arange(iStart,iStop,1)
     return indBat
 
@@ -337,7 +337,7 @@ def EventChronologyDecompress(meta,ec,iScn,iEns,iBat):
         idx=ec['idx']
         tmp=ec.copy()
         for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
-            ec[v]=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand'],meta['Core']['Max Events Per Year']),dtype='int16')
+            ec[v]=np.zeros((meta['Project']['N Time'],meta['Project']['Batch Size'][iBat],meta['Core']['Max Events Per Year']),dtype='int16')
             ec[v][idx[0],idx[1],idx[2]]=tmp[v]
         del tmp                
     
@@ -443,9 +443,10 @@ def ImportProjectConfig(meta):
 
     #--------------------------------------------------------------------------
     # Year to stop re-using first batch (to save processing time when N Ens > 1)
+    # *** Just use the same year to start saving to be consistent ***
     #--------------------------------------------------------------------------
     
-    meta['Core']['Year Stop Reusing First Batch']=1900
+    #meta['Core']['Year Stop Reusing First Batch']=1900
 
     #--------------------------------------------------------------------------
     # Define time
@@ -475,8 +476,10 @@ def ImportProjectConfig(meta):
     # Number of batches
     meta['Project']['N Batch']=np.ceil(meta['Project']['N Stand']/meta['Project']['Batch Interval']).astype(int)
 
-    # Projects with more than one batch change N Stand - create a full version
-    meta['Project']['N Stand Full']=meta['Project']['N Stand']
+    # Initialize list that can keep track of batch sizes
+    meta['Project']['Batch Size']=[None]*meta['Project']['N Batch']
+    for iBat in range(meta['Project']['N Batch']):
+        meta['Project']['Batch Size'][iBat]=IndexToBatch(meta,iBat).size
     
     #--------------------------------------------------------------------------
     # Import model parameters
@@ -543,7 +546,7 @@ def ImportProjectConfig(meta):
     
     meta['GC']={}
     meta['GC']['N Growth Curves']=5
-    meta['GC']['ID GC']=np.array([1,2,3,4,5])
+    meta['GC']['ID GC Unique']=np.array([1,2,3,4,5])
     meta['GC']['BatchTIPSY Maximum Age']=200
     meta['GC']['BatchTIPSY Column Names']=['Age','VolTot0','VolMerch125',
         'VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots',
@@ -602,15 +605,18 @@ def ImportProjectConfig(meta):
     meta['Nutrient Management']['iApplication']=[]
     
     # Nutrient addition response yearly counter
-    meta['Nutrient Management']['ResponseCounter']=np.zeros(meta['Project']['N Stand'])
+    #meta['Nutrient Management']['ResponseCounter']=np.zeros(meta['Project']['N Stand'])
     
     #--------------------------------------------------------------------------
     # Simulate random numbers that can be used for simulating harvest on the fly
     # The annual numbers will be the same among scenarios, but vary by ensemble
     #--------------------------------------------------------------------------
     
-    meta['Project']['On the Fly']={}
-    
+    # *** If you assign completely random numbers, random variation will occur among
+    # scenarios, which can add considerable noise and demands many ensembles. 
+    # Conversely if you assign these pre-set sequeences, the random component will
+    # vary among ensembles, but not among scenarios.
+    meta['Project']['On the Fly']={}    
     meta['Project']['On the Fly']['Random Numbers']={}
     meta['Project']['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))    
     meta['Project']['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
@@ -1613,8 +1619,6 @@ def GetDisturbanceHistory(meta):
             dh.append(dhB)
     return dh
 
-
-
 #%% GRAPHICS
 
 # Look at variables in rcParams:
@@ -1761,10 +1765,10 @@ def GetMortalityFrequencyDistribution(meta):
         M[iScn]['Ma']={}
         M[iScn]['Mr']={}
         for k in meta['LUT']['Dist'].keys():
-            M[iScn]['Ma'][k]=np.zeros((tv.size,meta['Project']['N Stand Full']))
-            M[iScn]['Mr'][k]=np.zeros((tv.size,meta['Project']['N Stand Full']))
-        M[iScn]['Ma']['Reg']=np.zeros((tv.size,meta['Project']['N Stand Full']))
-        M[iScn]['Mr']['Reg']=np.zeros((tv.size,meta['Project']['N Stand Full']))
+            M[iScn]['Ma'][k]=np.zeros((tv.size,meta['Project']['N Stand']))
+            M[iScn]['Mr'][k]=np.zeros((tv.size,meta['Project']['N Stand']))
+        M[iScn]['Ma']['Reg']=np.zeros((tv.size,meta['Project']['N Stand']))
+        M[iScn]['Mr']['Reg']=np.zeros((tv.size,meta['Project']['N Stand']))
         
         for iBat in range(meta['Project']['N Batch']): 
             
@@ -1899,22 +1903,22 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
             
             Data['v1']={}
             for iV in range(len(nam1)):
-                Data['v1'][nam1[iV]]=np.zeros((tv_saving.size,meta['Project']['N Stand Full']),dtype=int)
+                Data['v1'][nam1[iV]]=np.zeros((tv_saving.size,meta['Project']['N Stand']),dtype=int)
             
             Data['v2']={}
             for iV in range(len(nam2)):
-                Data['v2'][nam2[iV]]=np.zeros((tv_saving.size,meta['Project']['N Stand Full']),dtype=int)
+                Data['v2'][nam2[iV]]=np.zeros((tv_saving.size,meta['Project']['N Stand']),dtype=int)
             
             if switch_area=='On':
                 Data['Area']={}
                 for k in MosByMP[iScn]['Area']:
-                    Data['Area'][k]=np.zeros((tv_saving.size,meta['Project']['N Stand Full']),dtype=int)
+                    Data['Area'][k]=np.zeros((tv_saving.size,meta['Project']['N Stand']),dtype=int)
                     
             if switch_cashflow=='On':
                 Data['Cashflow']={}
                 for iV in range(len(nam_cashflow)):
                     nam=nam_cashflow[iV]
-                    Data['Cashflow'][nam]=np.zeros((tv_saving.size,meta['Project']['N Stand Full']),dtype=int)
+                    Data['Cashflow'][nam]=np.zeros((tv_saving.size,meta['Project']['N Stand']),dtype=int)
 
             #------------------------------------------------------------------
             # Populate full simulation results
@@ -2107,6 +2111,20 @@ def ModelOutputStats(meta,flag_save):
             mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
             mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
         
+        mos[iScn]['Cashflow']={}
+        mos[iScn]['Cashflow']['Mean']={}
+        mos[iScn]['Cashflow']['Sum']={}
+        vr_cashflow=['Cost Total','Revenue Gross']
+        for k in vr_cashflow:
+            mos[iScn]['Cashflow']['Mean'][k]={}
+            mos[iScn]['Cashflow']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mos[iScn]['Cashflow']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['Cashflow']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+            mos[iScn]['Cashflow']['Sum'][k]={}
+            mos[iScn]['Cashflow']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mos[iScn]['Cashflow']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mos[iScn]['Cashflow']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+        
         mos[iScn]['C_M_ByAgent']={}
         mos[iScn]['C_M_ByAgent']['Mean']={}
         mos[iScn]['C_M_ByAgent']['Sum']={}   
@@ -2131,22 +2149,18 @@ def ModelOutputStats(meta,flag_save):
         for iEns in range(meta['Project']['N Ensemble']):
             
             v1={}
-            v2={}          
+            v2={}
+            cashflow={}          
             C_M_ByAgent={}
             for iBat in range(meta['Project']['N Batch']):
             
                 # Basic output
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
-            
-                for k in d1.keys(): 
-                    
+                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)            
+                for k in d1.keys():                     
                     if k=='Year':
                         continue
-                    
-                    # Skip mortality summary by agent
                     if k=='C_M_ByAgent':
-                        continue
-                    
+                        continue                    
                     if iBat==0:
                         v1[k]=np.sum(d1[k],axis=1)
                     else:
@@ -2157,16 +2171,13 @@ def ModelOutputStats(meta,flag_save):
                     if iBat==0:
                         C_M_ByAgent[k]=d1['C_M_ByAgent'][k].flatten()
                     else:
-                        C_M_ByAgent[k]=C_M_ByAgent[k]+d1['C_M_ByAgent'][k].flatten()                            
+                        C_M_ByAgent[k]=C_M_ByAgent[k]+d1['C_M_ByAgent'][k].flatten()   
                 
-                # CO2e fluxes and pools
-                d2=CalculateGHGBalance(d1,meta)
-                
-                for k in d2[0][0].keys(): 
-                    
+                # GHG fluxes and pools
+                d2=CalculateGHGBalance(d1,meta)                
+                for k in d2[0][0].keys():                     
                     if k=='Year':
-                        continue
-                    
+                        continue                    
                     if iBat==0:
                         v2[k]=np.sum(d2[0][0][k],axis=1)
                     else:
@@ -2181,6 +2192,18 @@ def ModelOutputStats(meta,flag_save):
                 # Uncompress event chronology if it has been compressed
                 ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat) 
             
+                # Inventory
+                inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                    
+                # Cashflow
+                econ=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,d1)                
+                for k in vr_cashflow:
+                    if iBat==0:
+                        cashflow[k]=np.sum(econ[k],axis=1)
+                    else:
+                        cashflow[k]=cashflow[k]+np.sum(econ[k],axis=1)                    
+            
+                # Area
                 for iYr in range(tv_full.size):
                     it=np.where(tv==tv_full[iYr])[0]
                     if it.size==0:
@@ -2197,28 +2220,30 @@ def ModelOutputStats(meta,flag_save):
                 garc.collect()
             
             # Populate mos for each scenario
-            for k in v1.keys():
-                
+            for k in v1.keys():                
                 if k=='Year':
-                    continue
-                
+                    continue                
                 # Skip mortality summary by agent
                 if k=='C_M_ByAgent':
-                    continue
-                
+                    continue                
                 mos[iScn]['v1']['Sum'][k]['Ensembles'][:,iEns]=v1[k].copy()
-                mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['Project']['N Stand Full']
-            
-            for k in C_M_ByAgent.keys():                
-                mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()
-                mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()/meta['Project']['N Stand Full']
+                mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['Project']['N Stand']
             
             for k in v2.keys():
                 if k=='Year':
                     continue
                 mos[iScn]['v2']['Sum'][k]['Ensembles'][:,iEns]=v2[k].copy()
-                mos[iScn]['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/meta['Project']['N Stand Full']                                   
-        
+                mos[iScn]['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/meta['Project']['N Stand']                                   
+            
+            for k in vr_cashflow:
+                mos[iScn]['Cashflow']['Sum'][k]['Ensembles'][:,iEns]=cashflow[k].copy()
+                mos[iScn]['Cashflow']['Mean'][k]['Ensembles'][:,iEns]=cashflow[k].copy()/meta['Project']['N Stand'] 
+            
+            for k in C_M_ByAgent.keys():                
+                mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()
+                mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()/meta['Project']['N Stand']
+                
+        # Calculate statistics
         for k in v1.keys():
             if k=='Year':
                 continue
@@ -2246,6 +2271,12 @@ def ModelOutputStats(meta,flag_save):
             mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
             mos[iScn]['Area'][k]['Ensemble Mean']=np.mean(mos[iScn]['Area'][k]['Ensembles'],axis=1)
             mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
+        
+        for k in vr_cashflow:
+            mos[iScn]['Cashflow']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['Cashflow']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['Cashflow']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['Cashflow']['Sum'][k]['Ensembles'],axis=1)
+            mos[iScn]['Cashflow']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['Cashflow']['Mean'][k]['Ensembles'],axis=1)
+            mos[iScn]['Cashflow']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['Cashflow']['Mean'][k]['Ensembles'],axis=1)         
         
     # Save
     if flag_save=='On':
@@ -2592,7 +2623,7 @@ def PrepGrowthCurvesForCBR(meta):
                         
                         indTIPSY=np.where(
                                 (dfPar['ID_Scenario']==iScn+1) &
-                                (dfPar['ID_GC']==int(meta['GC']['ID GC'][iGC])) )[0]                    
+                                (dfPar['ID_GC']==int(meta['GC']['ID GC Unique'][iGC])) )[0]                    
                     
                     elif (meta['Project']['Scenario Source']=='Script') | (meta['Project']['Scenario Source']=='Portfolio'): 
                         
@@ -2763,7 +2794,7 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
         for iGC in range(meta['GC']['N Growth Curves']):
             
             # Index to the full set of growth curves for scenario iScn and growth curve iGC
-            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC'][iGC]) )[0]
+            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC Unique'][iGC]) )[0]
         
             # Extract the unique growth curve ID for scenario iScn and growth curve iGC
             ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
@@ -2797,7 +2828,7 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
                     G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
         
                 # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
+                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC Unique'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
 
     return
 
@@ -2862,7 +2893,7 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
         for iGC in range(meta['GC']['N Growth Curves']):
             
             # Index to the full set of growth curves for scenario iScn and growth curve iGC
-            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC'][iGC]) )[0]
+            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC Unique'][iGC]) )[0]
         
             # Extract the unique growth curve ID for scenario iScn and growth curve iGC
             ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
@@ -2896,7 +2927,7 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
                     G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
         
                 # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
+                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC Unique'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
 
     return
 
@@ -3272,8 +3303,11 @@ def DeleteAllOutputFiles(meta):
             os.remove(f)
 
     for iBat in range(meta['Project']['N Batch']):
-        pth=meta['Paths']['Project'] + '\\Outputs\\WorkingOnBatch_' + cbu.FixFileNum(iBat) + '.pkl'
-        os.remove(pth)
+        try:
+            pth=meta['Paths']['Project'] + '\\Outputs\\WorkingOnBatch_' + FixFileNum(iBat) + '.pkl'
+            os.remove(pth)
+        except:
+            pass
     
     return
 

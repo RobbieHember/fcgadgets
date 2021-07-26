@@ -3,12 +3,12 @@
 
 import numpy as np
 from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcgadgets.silviculture.nutrient_application import update_nutrient_status 
+from fcgadgets.silviculture import nutrient_application as napp
 from fcgadgets.taz import aspatial_stat_models as asm
 
 #%% Biomass dynamics
 
-def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,meta,iEP):
+def Biomass_FromTIPSYorTASS(iScn,iBat,iT,vi,vo,meta,iEP):
     
     # Update stand age
     vo['A'][iT,:]=vo['A'][iT-1,:]+1
@@ -24,8 +24,8 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,meta,iEP):
     iAge=iAge.astype(int)
     
     # Extract net growth from growth curves
-    NetGrowth=np.zeros((meta['Project']['N Stand'],6))
-    for iS in range(meta['Project']['N Stand']):
+    NetGrowth=np.zeros((meta['Project']['Batch Size'][iBat],6))
+    for iS in range(meta['Project']['Batch Size'][iBat]):
         NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:].copy().astype(float)
     
     # Apply growth factor
@@ -68,11 +68,11 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,meta,iEP):
     
     # Adjust N application response counter
     if meta['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,'UpdateCounter')
+        vi,vo,meta=napp.update_nutrient_status(vi,vo,iT,meta,'UpdateCounter')
     
     # Adjust root net growth
     if meta['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,'BelowgroundNetGrowth')
+        vi,vo,meta=napp.update_nutrient_status(vi,vo,iT,meta,'BelowgroundNetGrowth')
 
     #--------------------------------------------------------------------------
     # Add net growth to biomass pools
@@ -137,7 +137,7 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,meta,iEP):
     
     # Adjust mortality to account for N application response
     if meta['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,'Mortality')       
+        vi,vo,meta=napp.update_nutrient_status(vi,vo,iT,meta,'Mortality')       
     
     # Apply optional factor to mortality
     #if meta['Scenario Switch']['Mortality Factor Status'][iScn]=='On':
@@ -173,7 +173,7 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,meta,iEP):
                         
         d=vo['C_G_Net'][iT,iNegNetG,0:7]-meta['G_Net_PriorToBreakup'][iNegNetG,:]
         
-        CToTransfer=np.zeros((meta['Project']['N Stand'],7))
+        CToTransfer=np.zeros((meta['Project']['Batch Size'][iBat],7))
         CToTransfer[iNegNetG,:]=-1*d
         
         vo['C_G_Net'][iT,:,0:7]=vo['C_G_Net'][iT,:,0:7]+CToTransfer
@@ -214,7 +214,7 @@ def Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,meta,iEP):
         
     # Adjust litterfall to account for N application response
     if meta['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,'Litterfall')
+        vi,vo,meta=napp.update_nutrient_status(vi,vo,iT,meta,'Litterfall')
     
     #--------------------------------------------------------------------------
     # Update summary variables
@@ -973,7 +973,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
 
 #%% STAND DEAD ORGANIC MATTER DYNAMICS
 
-def DOM_like_CBM08(iT,vi,vo,iEP,meta):
+def DOM_like_CBM08(iT,iBat,vi,vo,iEP,meta):
     
     # Extract parameters
     bIPF=meta['Param']['Inter Pool Fluxes']
@@ -1059,7 +1059,7 @@ def DOM_like_CBM08(iT,vi,vo,iEP,meta):
     
     # Adjust decomposition to account for N application response
     if meta['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,'HeterotrophicRespiration')
+        vi,vo,meta=napp.update_nutrient_status(vi,vo,iT,meta,'HeterotrophicRespiration')
     
     # Remove respired carbon from source DOM pools
     vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]-meta['R_LitterVF']
@@ -1158,7 +1158,7 @@ def DOM_like_CBM08(iT,vi,vo,iEP,meta):
 
 #%% Disturbance and management events (from TAZ)
 
-def Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP):
+def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
     
     # Predict stand breakup (on the fly)
     if meta['Scenario'][iScn]['Breakup Status']=='On':
@@ -1176,10 +1176,15 @@ def Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP):
         if vi['tv'][iT]>=meta['Scenario'][iScn]['Harvest Year Transition']:
             Period='Future'
             Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-            vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period)        
+            vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period) 
+    
+    # Predict future nutrient application (on the fly)
+    if meta['Scenario'][iScn]['Nutrient Application Status']=='On':
+        if vi['tv'][iT]>=meta['Project']['Year Project']:
+            vi=napp.ScheduleNutrientApplication_OnTheFly(meta,vi,vo,iT,iScn,iEns)
     
     # Initialize indicator of aerial nutrient application
-    flag_nutrient_application=np.zeros(meta['Project']['N Stand'])
+    flag_nutrient_application=np.zeros(meta['Project']['Batch Size'][iBat])
     
     # Loop through events in year
     for iE in range(meta['Core']['Max Events Per Year']):
@@ -1188,13 +1193,13 @@ def Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP):
         ID_Type=vi['EC']['ID_Type'][iT,:,iE].copy()
         
         # Record stands with aerial nutrient application
-        ind=np.where(ID_Type==meta['LUT']['Dist']['Fertilization Aerial'])[0]
-        flag_nutrient_application[ind]=1
+        iApp=np.where(ID_Type==meta['LUT']['Dist']['Fertilization Aerial'])[0]
+        flag_nutrient_application[iApp]=1
         
         # Total affected biomass carbon
         MortalityFactor=vi['EC']['MortalityFactor'][iT,:,iE].copy()
         
-        # Only continue if there are disturbance fluxes
+        # Only continue if there are disturbance fluxes           
         #if (np.sum(MortalityFactor)==0) & (ID_Type!=meta['LUT']['Dist']['Planting']):
         #    # Don't do this 
         #    continue
@@ -1211,6 +1216,7 @@ def Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP):
             b[k]=bU[inv]
         
 #        # *** Adjust utilization of merch stemwood on coast to reflect FPB study ***
+#        # Need to work on regionalizing these parameters.
 #        ind=np.where( (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | \
 #                (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']) )[0]
 #        if ind.size>0:
@@ -1284,7 +1290,8 @@ def Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP):
         vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]-Affected_SnagBranch
             
         # Remove stemwood merch volume
-        vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT,:]-Affected_VolumeStemMerch
+        vo['V_StemMerch'][iT,:]=np.maximum(0,vo['V_StemMerch'][iT,:]-Affected_VolumeStemMerch)
+        #vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT,:]-Affected_VolumeStemMerch
             
         #----------------------------------------------------------------------
         # Carbon removed (sent to mill)
@@ -1419,10 +1426,13 @@ def Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP):
         if meta['Project']['Biomass Module']=='BatchTIPSY':
             
             for iGC in range(meta['GC']['N Growth Curves']):
-                ind=np.where(vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC'][iGC])[0]
+                
+                # Don't alter growth curve for fertilization
+                ind=np.where( (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Aerial']) )[0]
+                
                 if ind.size>0:
-                    vi['GC']['Active'][:,ind,:]=vi['GC'][meta['GC']['ID GC'][iGC]][:,ind,:]
-                    vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC'][iGC])
+                    vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['GC']['ID GC Unique'][iGC] ][:,ind,:]
+                    vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC Unique'][iGC])
     
         #----------------------------------------------------------------------
         # Impose regen failure
@@ -1542,16 +1552,16 @@ def Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP):
     if meta['Nutrient Management']['iApplication'].size>0:
         
         # Adjust net growth of aboveground biomass
-        vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,'AbovegroundNetGrowth')
+        vi,vo,meta=napp.update_nutrient_status(vi,vo,iT,meta,'AbovegroundNetGrowth')
                 
         # Adjust emissions
-        vi,vo,meta=update_nutrient_status(vi,vo,iT,meta,'Emissions')
+        vi,vo,meta=napp.update_nutrient_status(vi,vo,iT,meta,'Emissions')
         
     return vo,vi
 
 #%% Harvested wood products sector (from Dymond 2012)
 
-def HWP_From_BCHWP12(iT,vi,vo,meta):
+def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
     
     #--------------------------------------------------------------------------
     # If custom harvests occur, revise parameters

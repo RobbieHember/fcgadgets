@@ -25,7 +25,7 @@ def MeepMeep(meta):
     
     # Initialize run time tracking info
     rt_info={}
-        
+    
     # Loop through batches
     for iBat in range(meta['Project']['N Batch']):
         
@@ -59,7 +59,7 @@ def MeepMeep(meta):
             
                 # Report progress
                 if (meta['Project']['Scenario Source']=='Spreadsheet'):
-                    str_ens=' through ' + str(meta['Project']['N Stand Full'])
+                    str_ens=' through ' + str(meta['Project']['N Stand'])
                     print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble(s) 1' + str_ens + ', Batch ' + cbu.FixFileNum(iBat))                
                 else:
                     print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble ' + cbu.FixFileNum(iEns) + ', Batch ' + cbu.FixFileNum(iBat))
@@ -70,7 +70,7 @@ def MeepMeep(meta):
                 rt_info['t2']=time.time()
                 
                 # Set location-specific parameters
-                meta,vi=PrepareLocationSpecificParameters(meta,vi)
+                meta,vi=PrepareLocationSpecificParameters(meta,vi,iBat)
                 
                 rt_info['t3']=time.time()
               
@@ -79,7 +79,7 @@ def MeepMeep(meta):
                 
                 # Biomass dynamics from Sawtooth
                 if meta['Project']['Biomass Module']=='Sawtooth':                    
-                    for iS in range(meta['Project']['N Stand']):                        
+                    for iS in range(meta['Project']['Batch Size'][iBat]):                        
                         vo=annproc.BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP)
                 
                 # Try to start at a later date and adopt spinup from a previous run
@@ -90,18 +90,18 @@ def MeepMeep(meta):
                 
                 else:
                     
-                    t_start=np.where(meta['Year']==meta['Core']['Year Stop Reusing First Batch'])[0][0]
+                    t_start=np.where(meta['Year']==meta['Project']['Year Start Saving'])[0][0]
                     
                     # Get output variables from first run of this batch
                     #vo=copy.deepcopy(vo_full)
-                    it=np.where(meta['Year']==meta['Core']['Year Stop Reusing First Batch']-1)[0]                    
+                    it=np.where(meta['Year']==meta['Project']['Year Start Saving']-1)[0]                    
                     for k in vo.keys():
                         if (k=='C_M_ByAgent'):
                             continue
                         vo[k][it,:]=vo_full[k]
                     
                     # Set future periods to zero
-                    it=np.where(meta['Year']>=meta['Core']['Year Stop Reusing First Batch'])[0]
+                    it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]
                     for k in vo.keys():
                         if (k=='C_M_ByAgent'):
                             # Nested dictionaries
@@ -121,19 +121,19 @@ def MeepMeep(meta):
                     if meta['Project']['Biomass Module']=='BatchTIPSY':
                         
                         # Biomass from BatchTIPSY.exe (or TASS)
-                        vo=annproc.Biomass_FromTIPSYorTASS(iScn,iT,vi,vo,meta,iEP)
+                        vo=annproc.Biomass_FromTIPSYorTASS(iScn,iBat,iT,vi,vo,meta,iEP)
                     
                     # Calculate annual dead organic matter dynamics
-                    vo=annproc.DOM_like_CBM08(iT,vi,vo,iEP,meta)
+                    vo=annproc.DOM_like_CBM08(iT,iBat,vi,vo,iEP,meta)
                     
                     # Calculate effects of disturbance and management                    
-                    vo,vi=annproc.Events_FromTaz(iT,iScn,iEns,vi,vo,meta,iEP)
+                    vo,vi=annproc.Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP)
                     
                     # Calculate products sector                    
                     if meta['Year'][iT]>=meta['Core']['HWP Year Start']:
                         
                         # No need to run this before a certain date
-                        vo=annproc.HWP_From_BCHWP12(iT,vi,vo,meta)
+                        vo=annproc.HWP_From_BCHWP12(iT,iBat,vi,vo,meta)
                 
                 rt_info['t5']=time.time()
                 
@@ -174,10 +174,9 @@ def MeepMeep(meta):
 def InitializeStands(meta,iScn,iEns,iBat):
     
     #--------------------------------------------------------------------------
-    # Import input variables
+    # Input variables
     #--------------------------------------------------------------------------
 
-    # Input variables dictionary
     vi={}
         
     vi['tv']=meta['Year']
@@ -188,7 +187,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vi['Inv']=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         
     # Update number of stands for batch
-    meta['Project']['N Stand']=vi['Inv']['X'].shape[1]          
+    meta['Project']['N Stand Batch']=vi['Inv']['X'].shape[1]          
     
     # Import event chronology
     vi['EC']=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
@@ -210,7 +209,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
         vi['GC']['Active']=vi['GC'][1].copy()
         
         # Initialize an indicator of the active growth curve ID
-        vi['GC']['ID_GCA']=np.ones(meta['Project']['N Stand'])
+        vi['GC']['ID_GCA']=np.ones(meta['Project']['Batch Size'][iBat])
         
         # Import growth curve 2
         vi['GC'][2]=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\GrowthCurve2_Bat' + cbu.FixFileNum(iBat) + '.pkl')
@@ -238,55 +237,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
         vi['GC'][4]=0
         vi['GC'][5]=0
         vi['GC']['Active']=0 
-        vi['GC']['ID_GCA']=np.ones(meta['Project']['N Stand'])      
-    
-    #--------------------------------------------------------------------------
-    # Create a monotonic increase in different growth curves with each disturbance 
-    # event
-    #--------------------------------------------------------------------------
-    
-#    vi['EC']['ID_GrowthCurveM']=np.ones(vi['EC']['ID_GrowthCurve'].size)
-#    for iS in range(meta['Project']['N Stand']):
-#        ind=np.where(vi['EC']['ID_Type'][:,iS,:]!=0)[0]
-#        d=np.diff(vi['EC']['ID_GrowthCurve'][:,iS,:][ind])
-#        cnt=1
-#        for k in range(d.size):
-#            if d[k]!=0:
-#                cnt=cnt+1
-#                vi['EC']['ID_GrowthCurveM'][k+1]=cnt
-#            else:
-#                vi['EC']['ID_GrowthCurveM'][k+1]=vi['EC']['ID_GrowthCurveM'][k]
-                
-#    for j in range(meta['Project']['N Stand']):
-#        n=vi['EH'][j]['ID_GrowthCurve'].shape[0]
-#        vi['EH'][j]['ID_GrowthCurveM']=1*np.ones((n,))        
-#        d=np.diff(vi['EH'][j]['ID_GrowthCurve'])
-#        cnt=1
-#        for k in range(0,d.shape[0]):
-#            if d[k]!=0:
-#                cnt=cnt+1
-#                vi['EH'][j]['ID_GrowthCurveM'][k+1]=cnt 
-#            else:
-#                vi['EH'][j]['ID_GrowthCurveM'][k+1]=vi['EH'][j]['ID_GrowthCurveM'][k]
-    
-    #--------------------------------------------------------------------------
-    # Identify the start and end of a fixed spin up disturbance interval
-    # This is used to fast-track through the spinup period.
-    #--------------------------------------------------------------------------
-    
-    if meta['Project']['Biomass Module']=='Sawtooth':        
-        d=np.append(0,np.diff(vi['EH'][0]['Year']))
-        ind=np.where(d==meta['Project']['Spinup Disturbance Return Inverval'])[0]
-        meta['Project']['SpinupSpanFastTrack']=[np.min(vi['EH'][0]['Year'][ind])+meta['Project']['Spinup Disturbance Return Inverval'],np.max(vi['EH'][0]['Year'][ind])]
-    
-    #--------------------------------------------------------------------------
-    # Initialize flag for fixing negative net growth. When TIPSY yields negative
-    # net growth, the fluxes of gross growth and mortality need adjustment. 
-    # This flag helps achieve that.
-    #--------------------------------------------------------------------------
-    
-    meta['FlagNegNetGrowth']=np.zeros(meta['Project']['N Stand'])
-    meta['G_Net_PriorToBreakup']=np.zeros((meta['Project']['N Stand'],7))
+        vi['GC']['ID_GCA']=np.ones(meta['Project']['Batch Size'][iBat])
     
     #--------------------------------------------------------------------------
     # Initialize output variables
@@ -297,7 +248,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     
     # Get dimensions    
     m=meta['Project']['N Time']
-    n=meta['Project']['N Stand']
+    n=meta['Project']['Batch Size'][iBat]
     o=meta['Core']['N Pools Eco']
     
     # Stand age (i.e. time since stand-replacing disturbance)    
@@ -406,17 +357,34 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #meta['Labels Output Variables']=d1
     
     #--------------------------------------------------------------------------
-    # Initialize a log book that will record various diagnostics, warnings, 
-    # and error flags
+    # Configure batch-specific setttings
     #--------------------------------------------------------------------------
+                
+    # Nutrient application response yearly counter
+    meta['Nutrient Management']['ResponseCounter']=np.zeros(meta['Project']['Batch Size'][iBat])
     
+    # Identify the start and end of a fixed spin up disturbance interval
+    # This is used to fast-track through the spinup period.   
+    if meta['Project']['Biomass Module']=='Sawtooth':        
+        d=np.append(0,np.diff(vi['EH'][0]['Year']))
+        ind=np.where(d==meta['Project']['Spinup Disturbance Return Inverval'])[0]
+        meta['Project']['SpinupSpanFastTrack']=[np.min(vi['EH'][0]['Year'][ind])+meta['Project']['Spinup Disturbance Return Inverval'],np.max(vi['EH'][0]['Year'][ind])]
+    
+    # Initialize flag for fixing negative net growth. When TIPSY yields negative
+    # net growth, the fluxes of gross growth and mortality need adjustment. 
+    # This flag helps achieve that.    
+    meta['FlagNegNetGrowth']=np.zeros(meta['Project']['Batch Size'][iBat])
+    meta['G_Net_PriorToBreakup']=np.zeros((meta['Project']['Batch Size'][iBat],7))
+    
+    # Initialize a log book that will record various diagnostics, warnings, 
+    # and error flags    
     meta['Logbook']=list()
     
     return meta,vi,vo
 
 #%% Import parameters
 
-def PrepareLocationSpecificParameters(meta,vi):
+def PrepareLocationSpecificParameters(meta,vi,iBat):
       
     #--------------------------------------------------------------------------
     # Biomass allometry (stand level)
@@ -432,7 +400,7 @@ def PrepareLocationSpecificParameters(meta,vi):
         if k=='Region':
             continue    
         
-        meta['Param']['Biomass Allometry'][k]=np.zeros(meta['Project']['N Stand'])
+        meta['Param']['Biomass Allometry'][k]=np.zeros(meta['Project']['Batch Size'][iBat])
         
         for iU in range(u.size):
             
@@ -454,7 +422,7 @@ def PrepareLocationSpecificParameters(meta,vi):
     indPar=np.where( (meta['Param']['Biomass Turnover']['Raw']['SPECIES_CD']=='PL') )[0]
     
     for pn in PoolNames:
-        meta['Param']['Biomass Turnover'][pn]=meta['Param']['Biomass Turnover']['Raw'][pn][indPar]*np.ones((1,meta['Project']['N Stand']))
+        meta['Param']['Biomass Turnover'][pn]=meta['Param']['Biomass Turnover']['Raw'][pn][indPar]*np.ones((1,meta['Project']['Batch Size'][iBat]))
     
     #--------------------------------------------------------------------------
     # HWP
@@ -470,7 +438,7 @@ def PrepareLocationSpecificParameters(meta,vi):
             Name=Name[0:-2] + 'tr'
             Value=1-np.exp(-np.log(2)/Value)        
         
-        meta['Param']['HWP'][Name]=Value*np.ones(meta['Project']['N Stand'])
+        meta['Param']['HWP'][Name]=Value*np.ones(meta['Project']['Batch Size'][iBat])
     
     #--------------------------------------------------------------------------
     # Populate custom harvest parameters with those supplied for project
@@ -506,7 +474,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     #--------------------------------------------------------------------------
     
     if (meta['Project']['N Ensemble']>1) & (iScn==0) & (iEns==0):        
-        it=np.where(meta['Year']==meta['Core']['Year Stop Reusing First Batch']-1)[0]
+        it=np.where(meta['Year']==meta['Project']['Year Start Saving']-1)[0]
         vo_full={}
         for k in vo.keys():
             if (k=='C_M_ByAgent'):
@@ -845,12 +813,12 @@ def SaveOutputToMOS(meta,iScn,iEns):
         if k=='Year':
             continue
         mos[iScn]['v1']['Sum'][k]['Ensembles'][:,iEns]=v1[k].copy()
-        mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['Project']['N Stand Full']
+        mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['Project']['N Stand']
     for k in v2.keys():
         if k=='Year':
             continue
         mos[iScn]['v2']['Sum'][k]['Ensembles'][:,iEns]=v2[k].copy()
-        mos[iScn]['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/meta['Project']['N Stand Full']
+        mos[iScn]['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/meta['Project']['N Stand']
         
     # Save MOS
     gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_' + cbu.FixFileNum(iScn) + '.pkl',mos)
