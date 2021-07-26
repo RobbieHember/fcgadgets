@@ -11,7 +11,7 @@ The **fcgadgets** repo was developed to:
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
 
-## LIST OF MODULES
+## LIST OF TOOLBOXES
 **cbrunner:** A computer simulation model<br>
 **macgyver:** A toolbox of utilities for project preparation and analysis<br>
 **silviculture:** A toolbox for simulating impacts of silviculture treatments on GHG balance and revenue<br>
@@ -19,7 +19,7 @@ The **fcgadgets** repo was developed to:
 **bc1ha:** A toolbox for raster processing on a 1 hectare regular grid of British Columbia<br>
 
 ## CBRUNNER
-The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
+**cbrunner** is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
 wood products. The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the 
 biomass dynamics of trees, the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and 
 nutrient applications. 
@@ -100,7 +100,7 @@ The **cbrunner** model achieves comprehensive, granular representation of proces
 ![image info](./images/fcgadgets_constellation.png)
 
 ## MACGYVER
-The **fcgadgets.macgyver** subpackage contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
+The **macgyver** toolbox contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Sample of points
 	* Sample of polygons
@@ -152,7 +152,7 @@ scenarios, consistent across project studies, and supported by documentation.
 * Spatially explicit simulations of events based on annual probability of onset and spread
 
 ## SILVICULTURE
-The **fcgadgets.silviculture** module contains resources for representing effects of forest management on forest sector GHG balance.
+The **silviculture** toolbox contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_application.py:
 * Representation of GHG balance responses to aerial applications of Urea
 
