@@ -1,21 +1,22 @@
 # fcgadgets
 ## INTRODUCTION
 The **fcgadgets** repository supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector. 
-The repo is written in the Python 3/Jupyter environment, benefitting from Python's stable integrated libraries for simulation modelling, 
+The repo is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
 geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 The **fcgadgets** repo was developed to: 
 * Consolidate source code used by BC's Forest Carbon Initiative (FCI)
 * Share knowledge, methods and limitations
-* Streamline project setup and integration with BC information systems
-* Automate pre- and post-processing project workflow
+* Automate and streamline project design with BC information systems
 * Benefit from the diverse ecosystem of existing and new modelling approaches
-* Apply the information gained from experiments and monitoring programs to support complex policy decisions in natural resource management
+* Support complex policy decisions in land resource management
 
-## FEATURES
-* Simulate forest sector GHG balance at point locations, over forest openings, or for hypothetical stands
-* Calculate the GHG benefit (i.e., GHG emission reductions) associated with land use and forest management decisions
-* Map carbon stocks over continuous, high-resolution grids
+## LIST OF MODULES
+**cbrunner:** A computer simulation model
+**macgyver:** A toolbox of utilities for project preparation and analysis
+**silviculture:** A toolbox for simulating impacts of silviculture treatments on GHG balance and revenue
+**taz:** A toolbox for simulating natural disturbance events
+**bc1ha:** A toolbox for raster processing on a 1 hectare regular grid of British Columbia
 
 ## CBRUNNER
 The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
