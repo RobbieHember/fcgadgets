@@ -141,7 +141,7 @@ This module contains utilities that are specific to running tiled projects with 
 
 ## TAZ
 Forest sector GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed 
-to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. The **fcgadgets.taz** subpackage was developed to improve representation of disturbances in carbon models. It consists of statistics and scenarios of disturbance that were developed using a combination of observed constraints and probabilistic models. Despite 
+to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. The **taz** subpackage was developed to improve representation of disturbances in carbon models. It consists of statistics and scenarios of disturbance that were developed using a combination of observed constraints and probabilistic models. Despite 
 high prediction uncertainty, using the pre-defined scenarios ensures that representation of natural disturbances is grounded by available observations and science-informed 
 scenarios, consistent across project studies, and supported by documentation.
 ### aspatial_stat_models.py 
@@ -155,6 +155,7 @@ scenarios, consistent across project studies, and supported by documentation.
 The **silviculture** toolbox contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_application.py:
 * Representation of GHG balance responses to aerial applications of Urea
+* Schedule aerial nutrient applications with specified stand selection criteria
 
 ## PROJECT WORKFLOW
 There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
