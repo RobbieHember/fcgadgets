@@ -13,11 +13,10 @@ The **fcgadgets** repo was developed to:
 
 ## LIST OF MODULES
 **cbrunner:** A computer simulation model<br>
-**macgyver:** A toolbox of utilities for project preparation and analysis
-
-**silviculture:** A toolbox for simulating impacts of silviculture treatments on GHG balance and revenue
-**taz:** A toolbox for simulating natural disturbance events
-**bc1ha:** A toolbox for raster processing on a 1 hectare regular grid of British Columbia
+**macgyver:** A toolbox of utilities for project preparation and analysis<br>
+**silviculture:** A toolbox for simulating impacts of silviculture treatments on GHG balance and revenue<br>
+**taz:** A toolbox for simulating natural disturbance events<br>
+**bc1ha:** A toolbox for raster processing on a 1 hectare regular grid of British Columbia<br>
 
 ## CBRUNNER
 The **fcgadgets.cbrunner** subpackage is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
