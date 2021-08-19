@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 import glob
 import openpyxl
+import copy
 import gc as garc
 import time
 from fcgadgets.macgyver import utilities_general as gu
@@ -126,28 +127,39 @@ class BunchDictionary(dict):
 
 #%% Build event chronology from spreadsheet
 
-def BuildEventChronologyFromSpreadsheet(meta):       
-    
-    #--------------------------------------------------------------------------
-    # Simulated wildfire (different among stands, the same among scenarios)
-    #--------------------------------------------------------------------------
-
-    iScn=0
-    iBat=0
+def BuildEventChronologyFromSpreadsheet(meta):
     
     # Import inventory to get BGC zone
+    iScn=0
+    iBat=0
     inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
-    for iScn in range(meta['Project']['N Scenario']):        
+    # Simulate wildfires
+    asm.SimulateWildfireFromAAO(meta,inv)
+    
+    for iScn in range(meta['Project']['N Scenario']):
         
-        wf_sim=asm.SimulateWildfireFromAAO_StandsActAsEnsembles(meta,inv,iScn)
-        
-        for iEns in range(meta['Project']['N Ensemble']):        
+        for iEns in range(meta['Project']['N Ensemble']):
+            
+            # Import wildfire    
+            wf_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+            if 'idx' in wf_sim:
+                idx=wf_sim['idx']
+                tmp=wf_sim.copy()
+                for v in ['Occurrence','Mortality']:
+                    wf_sim[v]=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int16')
+                    wf_sim[v][idx[0],idx[1]]=tmp[v]
+                del tmp
+            
             for iBat in range(meta['Project']['N Batch']):
     
                 # Index to batch
                 indBat=IndexToBatch(meta,iBat)
+                
                 N_StandsInBatch=len(indBat)
+    
+                # Always just one stand
+                iS=0
     
                 tv=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
     
@@ -157,164 +169,106 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 ec['MortalityFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
                 ec['GrowthFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
                 ec['ID_GrowthCurve']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                
+                #----------------------------------------------------------
+                # Add spinup events
+                #----------------------------------------------------------
+                
+                ivl_spin=meta['Project']['Spinup Disturbance Return Inverval']                
+                YearRef=meta['Scenario'][iScn]['Year1_DisFromInv']
+                AgeRef=meta['Scenario'][iScn]['Age1_DisFromInv']                    
+                if AgeRef>=0:
+                    Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)        
+                else:
+                    Year1=meta['Project']['Year Start']+ivl_spin
+                    Year2=meta['Project']['Spinup Year End']
+                    Year=np.arange(Year1,Year2+1,meta['Project']['Spinup Disturbance Return Inverval'])
+                
+                for iYr in range(Year.size):
+                    iT=np.where(tv==Year[iYr])[0]
+                    ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Project']['Spinup Disturbance Type']]
+                    ec['MortalityFactor'][iT,iS,0]=100
+                    ec['GrowthFactor'][iT,iS,0]=0
+                    ec['ID_GrowthCurve'][iT,iS,0]=meta['Project']['Spinup Growth Curve ID']
+  
+                #----------------------------------------------------------
+                # Add events from inventory
+                #----------------------------------------------------------
+                
+                for iYr in range(1,8):
                     
-                for iS in range(N_StandsInBatch): 
-                    
-                    #----------------------------------------------------------
-                    # Add spinup events
-                    #----------------------------------------------------------
-                    
-                    ivl_spin=meta['Project']['Spinup Disturbance Return Inverval']                
-                    YearRef=meta['Scenario'][iScn]['Year1_DisFromInv']
-                    AgeRef=meta['Scenario'][iScn]['Age1_DisFromInv']                    
-                    if AgeRef>=0:
-                        Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)        
+                    if np.isnan(meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
+                        continue
+        
+                    # If IDW, convert IDW class to growth and mortality factor
+                    sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
+                    flg_i=0
+                    indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
+                    if indSc.size!=0:
+                        if flg_i==0:
+                            dfParDistBySC=pd.read_excel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
+                            flg_i=1
+                        indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
+                        ID_TypeN=meta['LUT']['Dist']['IDW']
+                        MF=dfParDistBySC.loc[indPar,'MortalityFactor']
+                        GF=dfParDistBySC.loc[indPar,'GrowthFactor']
                     else:
-                        Year1=meta['Project']['Year Start']+ivl_spin
-                        Year2=meta['Project']['Spinup Year End']
-                        Year=np.arange(Year1,Year2+1,meta['Project']['Spinup Disturbance Return Inverval'])
+                        ID_TypeS=meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
+                        try:
+                            ID_TypeN=meta['LUT']['Dist'][ID_TypeS]
+                        except:
+                            print(iScn)
+                            print(iYr)
+                            print(ID_TypeS)
+                        MF=meta['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
+                        GF=0
+        
+                    Year=meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
+                    iT=np.where(tv==Year)[0]
                     
+                    if iT.size==0:
+                        print('Warning: An event was scheduled outside the timeframe of the simulation.')
+                    
+                    iE=np.where(ec['ID_Type'][iT,iS,:]==0)[1]
+                    
+                    ec['ID_Type'][iT,iS,iE[0]]=ID_TypeN                    
+                    ec['MortalityFactor'][iT,iS,iE[0]]=MF
+                    ec['GrowthFactor'][iT,iS,iE[0]]=GF
+                    ec['ID_GrowthCurve'][iT,iS,iE[0]]=meta['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']  
+        
+                #----------------------------------------------------------
+                # Add simulated wildfire from Taz
+                #----------------------------------------------------------
+                
+                ind=[]                 
+                if meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':            
+                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']<1920) )[0]
+                    ind.append(ind0)
+                if meta['Scenario'][iScn]['Wildfire Status Modern']=='On':            
+                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=1920) & (meta['Year']<meta['Project']['Year Project']) )[0]
+                    ind.append(ind0)
+                if meta['Scenario'][iScn]['Wildfire Status Future']=='On':            
+                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=meta['Project']['Year Project']) )[0]
+                    ind.append(ind0)                        
+                    
+                if len(ind)>0:
+                    
+                    ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(len(ind))
+                    try:
+                        Year=tv[ind]
+                    except:
+                        print(ind)
+                        print(tv.size)
+                    MortF=wf_sim['Mortality'][ind,iS]
+                    GrowthF=0*np.ones(len(ind))
+                    ID_GrowthCurve=1*np.ones(len(ind))
+                        
                     for iYr in range(Year.size):
                         iT=np.where(tv==Year[iYr])[0]
-                        ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Project']['Spinup Disturbance Type']]
-                        ec['MortalityFactor'][iT,iS,0]=100
-                        ec['GrowthFactor'][iT,iS,0]=0
-                        ec['ID_GrowthCurve'][iT,iS,0]=meta['Project']['Spinup Growth Curve ID']
-                    
-                    #----------------------------------------------------------
-                    # Add simulated constant disturbances
-                    #----------------------------------------------------------
-               
-#                    # Historical disturbance from simulation 1
-#                    ri=meta['Scenario'][iScn]['ReturnInterval1_Hist_DisFromSim']
-#                    if (ri!=0) & (np.isnan(ri)==False):
-#                    
-#                        p_Dist=1/ri
-#                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-#                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Spinup Year End']) & (meta['Year']<meta['Project']['Year Project']))[0]
-#                        Year=meta['Year'][it]                    
-#                        for iYr in range(Year.size):
-#                            iT=np.where(tv==Year[iYr])[0]
-#                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Hist_DisFromSim']]
-#                            ec['MortalityFactor'][iT,iS,0]=100
-#                            ec['GrowthFactor'][iT,iS,0]=0
-#                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Project']['Spinup Growth Curve ID']
-                    
-#                    # Historical disturbance from simulation 2
-#                    ri=meta['Scenario'][iScn]['ReturnInterval2_Hist_DisFromSim']
-#                    if (ri!=0) & (np.isnan(ri)==False):
-#                    
-#                        p_Dist=1/ri
-#                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-#                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Spinup Year End']) & (meta['Year']<meta['Project']['Year Project']))[0]
-#                        Year=meta['Year'][it]                    
-#                        for iYr in range(Year.size):
-#                            iT=np.where(tv==Year[iYr])[0]
-#                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Hist_DisFromSim']]
-#                            ec['MortalityFactor'][iT,iS,0]=100
-#                            ec['GrowthFactor'][iT,iS,0]=0
-#                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Project']['Spinup Growth Curve ID']
-      
-                    #----------------------------------------------------------
-                    # Add events from inventory
-                    #----------------------------------------------------------
-                    
-                    for iYr in range(1,8):
-                        
-                        if np.isnan(meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
-                            continue
-            
-                        # If IDW, convert IDW class to growth and mortality factor
-                        sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
-                        flg_i=0
-                        indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
-                        if indSc.size!=0:
-                            if flg_i==0:
-                                dfParDistBySC=pd.read_excel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
-                                flg_i=1
-                            indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
-                            ID_TypeN=meta['LUT']['Dist']['IDW']
-                            MF=dfParDistBySC.loc[indPar,'MortalityFactor']
-                            GF=dfParDistBySC.loc[indPar,'GrowthFactor']
-                        else:
-                            ID_TypeS=meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
-                            ID_TypeN=meta['LUT']['Dist'][ID_TypeS]
-                            MF=meta['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
-                            GF=0
-            
-                        Year=meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
-                        iT=np.where(tv==Year)[0]
-                        
-                        iE=np.where(ec['ID_Type'][iT,iS,:]==0)[1]
-
-                        ec['ID_Type'][iT,iS,iE[0]]=ID_TypeN
-                        ec['MortalityFactor'][iT,iS,iE[0]]=MF
-                        ec['GrowthFactor'][iT,iS,iE[0]]=GF
-                        ec['ID_GrowthCurve'][iT,iS,iE[0]]=meta['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
-
-                    #----------------------------------------------------------
-                    # Add simulated constant future disturbances
-                    #----------------------------------------------------------
-               
-#                    # Future disturbance from simulation 1
-#                    ri=meta['Scenario'][iScn]['ReturnInterval1_Fut_DisFromSim']
-#                    if (ri!=0) & (np.isnan(ri)==False):
-#                    
-#                        p_Dist=1/ri
-#                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-#                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Year Project']))[0]
-#                        Year=meta['Year'][it]                    
-#                        for iYr in range(Year.size):
-#                            iT=np.where(tv==Year[iYr])[0]
-#                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Fut_DisFromSim']]
-#                            ec['MortalityFactor'][iT,iS,0]=100
-#                            ec['GrowthFactor'][iT,iS,0]=0
-#                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
-#                    
-#                    # Future disturbance from simulation 2
-#                    ri=meta['Scenario'][iScn]['ReturnInterval2_Fut_DisFromSim']
-#                    if (ri!=0) & (np.isnan(ri)==False):
-#                    
-#                        p_Dist=1/ri
-#                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
-#                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Year Project']))[0]
-#                        Year=meta['Year'][it]                    
-#                        for iYr in range(Year.size):
-#                            iT=np.where(tv==Year[iYr])[0]
-#                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Fut_DisFromSim']]
-#                            ec['MortalityFactor'][iT,iS,0]=100
-#                            ec['GrowthFactor'][iT,iS,0]=0
-#                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']    
-            
-                    #----------------------------------------------------------
-                    # Add simulated wildfire from Taz
-                    #----------------------------------------------------------
-                    
-                    ind=np.array([])                    
-                    if meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':            
-                        ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']<1920) )[0]
-                        ind=np.append(ind,ind0)
-                    if meta['Scenario'][iScn]['Wildfire Status Modern']=='On':            
-                        ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=1920) & (meta['Year']<meta['Project']['Year Project']) )[0]
-                        ind=np.append(ind,ind0)
-                    if meta['Scenario'][iScn]['Wildfire Status Future']=='On':            
-                        ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=meta['Project']['Year Project']) )[0]
-                        ind=np.append(ind,ind0)                        
-                        
-                    if ind.size>0:
-                        
-                        ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(ind.size)
-                        Year=tv[ind]
-                        MortF=wf_sim['Mortality'][ind,iS]
-                        GrowthF=0*np.ones(ind.size)
-                        ID_GrowthCurve=1*np.ones(ind.size)
-                            
-                        for iYr in range(Year.size):
-                            iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,iS,0]=ID_Type[iYr]
-                            ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
-                            ec['GrowthFactor'][iT,iS,0]=GrowthF[iYr]
-                            ec['ID_GrowthCurve'][iT,iS,0]=ID_GrowthCurve[iYr]
+                        ec['ID_Type'][iT,iS,0]=ID_Type[iYr]
+                        ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
+                        ec['GrowthFactor'][iT,iS,0]=GrowthF[iYr]
+                        ec['ID_GrowthCurve'][iT,iS,0]=ID_GrowthCurve[iYr]
     
                     #----------------------------------------------------------
                     # Add simulated MPB from Taz
@@ -327,6 +281,210 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 #--------------------------------------------------------------
                 
                 gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',ec)
+
+    return
+
+#def BuildEventChronologyFromSpreadsheet_old(meta):       
+#    
+#    #--------------------------------------------------------------------------
+#    # Simulated wildfire (different among stands, the same among scenarios)
+#    #--------------------------------------------------------------------------
+#
+#    iScn=0
+#    iBat=0
+#    
+#    # Import inventory to get BGC zone
+#    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+#
+#    for iScn in range(meta['Project']['N Scenario']):        
+#        
+#        wf_sim=asm.SimulateWildfireFromAAO_StandsActAsEnsembles(meta,inv,iScn)
+#        
+#        for iEns in range(meta['Project']['N Ensemble']):        
+#            for iBat in range(meta['Project']['N Batch']):
+#    
+#                # Index to batch
+#                indBat=IndexToBatch(meta,iBat)
+#                N_StandsInBatch=len(indBat)
+#    
+#                tv=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
+#    
+#                # Initialize dictionary
+#                ec={}
+#                ec['ID_Type']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+#                ec['MortalityFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+#                ec['GrowthFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+#                ec['ID_GrowthCurve']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+#                    
+#                for iS in range(N_StandsInBatch): 
+#                    
+#                    #----------------------------------------------------------
+#                    # Add spinup events
+#                    #----------------------------------------------------------
+#                    
+#                    ivl_spin=meta['Project']['Spinup Disturbance Return Inverval']                
+#                    YearRef=meta['Scenario'][iScn]['Year1_DisFromInv']
+#                    AgeRef=meta['Scenario'][iScn]['Age1_DisFromInv']                    
+#                    if AgeRef>=0:
+#                        Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)        
+#                    else:
+#                        Year1=meta['Project']['Year Start']+ivl_spin
+#                        Year2=meta['Project']['Spinup Year End']
+#                        Year=np.arange(Year1,Year2+1,meta['Project']['Spinup Disturbance Return Inverval'])
+#                    
+#                    for iYr in range(Year.size):
+#                        iT=np.where(tv==Year[iYr])[0]
+#                        ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Project']['Spinup Disturbance Type']]
+#                        ec['MortalityFactor'][iT,iS,0]=100
+#                        ec['GrowthFactor'][iT,iS,0]=0
+#                        ec['ID_GrowthCurve'][iT,iS,0]=meta['Project']['Spinup Growth Curve ID']
+#                    
+#                    #----------------------------------------------------------
+#                    # Add simulated constant disturbances
+#                    #----------------------------------------------------------
+#               
+##                    # Historical disturbance from simulation 1
+##                    ri=meta['Scenario'][iScn]['ReturnInterval1_Hist_DisFromSim']
+##                    if (ri!=0) & (np.isnan(ri)==False):
+##                    
+##                        p_Dist=1/ri
+##                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
+##                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Spinup Year End']) & (meta['Year']<meta['Project']['Year Project']))[0]
+##                        Year=meta['Year'][it]                    
+##                        for iYr in range(Year.size):
+##                            iT=np.where(tv==Year[iYr])[0]
+##                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Hist_DisFromSim']]
+##                            ec['MortalityFactor'][iT,iS,0]=100
+##                            ec['GrowthFactor'][iT,iS,0]=0
+##                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Project']['Spinup Growth Curve ID']
+#                    
+##                    # Historical disturbance from simulation 2
+##                    ri=meta['Scenario'][iScn]['ReturnInterval2_Hist_DisFromSim']
+##                    if (ri!=0) & (np.isnan(ri)==False):
+##                    
+##                        p_Dist=1/ri
+##                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
+##                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Spinup Year End']) & (meta['Year']<meta['Project']['Year Project']))[0]
+##                        Year=meta['Year'][it]                    
+##                        for iYr in range(Year.size):
+##                            iT=np.where(tv==Year[iYr])[0]
+##                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Hist_DisFromSim']]
+##                            ec['MortalityFactor'][iT,iS,0]=100
+##                            ec['GrowthFactor'][iT,iS,0]=0
+##                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Project']['Spinup Growth Curve ID']
+#      
+#                    #----------------------------------------------------------
+#                    # Add events from inventory
+#                    #----------------------------------------------------------
+#                    
+#                    for iYr in range(1,8):
+#                        
+#                        if np.isnan(meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
+#                            continue
+#            
+#                        # If IDW, convert IDW class to growth and mortality factor
+#                        sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
+#                        flg_i=0
+#                        indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
+#                        if indSc.size!=0:
+#                            if flg_i==0:
+#                                dfParDistBySC=pd.read_excel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
+#                                flg_i=1
+#                            indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
+#                            ID_TypeN=meta['LUT']['Dist']['IDW']
+#                            MF=dfParDistBySC.loc[indPar,'MortalityFactor']
+#                            GF=dfParDistBySC.loc[indPar,'GrowthFactor']
+#                        else:
+#                            ID_TypeS=meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
+#                            ID_TypeN=meta['LUT']['Dist'][ID_TypeS]
+#                            MF=meta['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
+#                            GF=0
+#            
+#                        Year=meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
+#                        iT=np.where(tv==Year)[0]
+#                        
+#                        iE=np.where(ec['ID_Type'][iT,iS,:]==0)[1]
+#
+#                        ec['ID_Type'][iT,iS,iE[0]]=ID_TypeN
+#                        ec['MortalityFactor'][iT,iS,iE[0]]=MF
+#                        ec['GrowthFactor'][iT,iS,iE[0]]=GF
+#                        ec['ID_GrowthCurve'][iT,iS,iE[0]]=meta['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
+#
+#                    #----------------------------------------------------------
+#                    # Add simulated constant future disturbances
+#                    #----------------------------------------------------------
+#               
+##                    # Future disturbance from simulation 1
+##                    ri=meta['Scenario'][iScn]['ReturnInterval1_Fut_DisFromSim']
+##                    if (ri!=0) & (np.isnan(ri)==False):
+##                    
+##                        p_Dist=1/ri
+##                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
+##                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Year Project']))[0]
+##                        Year=meta['Year'][it]                    
+##                        for iYr in range(Year.size):
+##                            iT=np.where(tv==Year[iYr])[0]
+##                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type1_Fut_DisFromSim']]
+##                            ec['MortalityFactor'][iT,iS,0]=100
+##                            ec['GrowthFactor'][iT,iS,0]=0
+##                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']
+##                    
+##                    # Future disturbance from simulation 2
+##                    ri=meta['Scenario'][iScn]['ReturnInterval2_Fut_DisFromSim']
+##                    if (ri!=0) & (np.isnan(ri)==False):
+##                    
+##                        p_Dist=1/ri
+##                        p_Rand=np.random.uniform(0,1,size=(meta['Year'].size))        
+##                        it=np.where((p_Rand<p_Dist) & (meta['Year']>meta['Project']['Year Project']))[0]
+##                        Year=meta['Year'][it]                    
+##                        for iYr in range(Year.size):
+##                            iT=np.where(tv==Year[iYr])[0]
+##                            ec['ID_Type'][iT,iS,0]=meta['LUT']['Dist'][meta['Scenario'][iScn]['Type2_Fut_DisFromSim']]
+##                            ec['MortalityFactor'][iT,iS,0]=100
+##                            ec['GrowthFactor'][iT,iS,0]=0
+##                            ec['ID_GrowthCurve'][iT,iS,0]=meta['Spinup Growth Curve ID']    
+#            
+#                    #----------------------------------------------------------
+#                    # Add simulated wildfire from Taz
+#                    #----------------------------------------------------------
+#                    
+#                    ind=np.array([])                    
+#                    if meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':            
+#                        ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']<1920) )[0]
+#                        ind=np.append(ind,ind0)
+#                    if meta['Scenario'][iScn]['Wildfire Status Modern']=='On':            
+#                        ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=1920) & (meta['Year']<meta['Project']['Year Project']) )[0]
+#                        ind=np.append(ind,ind0)
+#                    if meta['Scenario'][iScn]['Wildfire Status Future']=='On':            
+#                        ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=meta['Project']['Year Project']) )[0]
+#                        ind=np.append(ind,ind0)                        
+#                        
+#                    if ind.size>0:
+#                        
+#                        ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(ind.size)
+#                        Year=tv[ind]
+#                        MortF=wf_sim['Mortality'][ind,iS]
+#                        GrowthF=0*np.ones(ind.size)
+#                        ID_GrowthCurve=1*np.ones(ind.size)
+#                            
+#                        for iYr in range(Year.size):
+#                            iT=np.where(tv==Year[iYr])[0]
+#                            ec['ID_Type'][iT,iS,0]=ID_Type[iYr]
+#                            ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
+#                            ec['GrowthFactor'][iT,iS,0]=GrowthF[iYr]
+#                            ec['ID_GrowthCurve'][iT,iS,0]=ID_GrowthCurve[iYr]
+#    
+#                    #----------------------------------------------------------
+#                    # Add simulated MPB from Taz
+#                    #----------------------------------------------------------
+#
+#                    # To do list...
+#            
+#                #--------------------------------------------------------------
+#                # Save to file            
+#                #--------------------------------------------------------------
+#                
+#                gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',ec)
 
 #%% Decompress event chronology
 
@@ -461,17 +619,13 @@ def ImportProjectConfig(meta):
     #--------------------------------------------------------------------------
     
     # Number of stands 
-    if meta['Project']['Scenario Source']=='Spreadsheet' and meta['Project']['N Ensemble']==1:
-        meta['Project']['N Stand']=1    
-    
-    elif meta['Project']['Scenario Source']=='Spreadsheet' and meta['Project']['N Ensemble']>1:
-        # If running ensembles from spreadsheet, it is faster to run them as stands
-        meta['Project']['N Stand']=meta['Project']['N Ensemble']
-        meta['Project']['N Ensemble']=1
+    if meta['Project']['Scenario Source']=='Spreadsheet':
+        
+        meta['Project']['N Stand']=1
     
     elif meta['Project']['Scenario Source']=='Portfolio':
-        # Already defined in portfolio import function
-        pass
+        
+        meta['Project']['N Stand']=meta['Project']['N Stand per Activity Type']*meta['Project']['N AT']*meta['Project']['N AT Years']
     
     # Number of batches
     meta['Project']['N Batch']=np.ceil(meta['Project']['N Stand']/meta['Project']['Batch Interval']).astype(int)
@@ -491,22 +645,24 @@ def ImportProjectConfig(meta):
     # Define scenario parameters
     #--------------------------------------------------------------------------
 
-    df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios',usecols='A:OM')
+    if meta['Project']['Scenario Source']!='Portfolio':
     
-    df=df.iloc[:,df.iloc[0,:].isnull().values==False] 
+        df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios',usecols='A:OM')
     
-    meta['Scenario']=list()
-    for i in range(1,df.shape[1]):
-        pScn0={}
-        for j in range(df.shape[0]):
-            if df.iloc[j,0][-1]==':':
-                # Exclude headers
-                continue
-            pScn0.update({df.iloc[j,0]:df.iat[j,i]})
-        meta['Scenario'].append(pScn0)
-
-    # Number of scenarios
-    meta['Project']['N Scenario']=np.sum([i['Scenario Status']=='On' for i in meta['Scenario']])    
+        df=df.iloc[:,df.iloc[0,:].isnull().values==False] 
+        
+        meta['Scenario']=list()
+        for i in range(1,df.shape[1]):
+            pScn0={}
+            for j in range(df.shape[0]):
+                if df.iloc[j,0][-1]==':':
+                    # Exclude headers
+                    continue
+                pScn0.update({df.iloc[j,0]:df.iat[j,i]})
+            meta['Scenario'].append(pScn0)
+    
+        # Number of scenarios
+        meta['Project']['N Scenario']=np.sum([i['Scenario Status']=='On' for i in meta['Scenario']])    
 
     #--------------------------------------------------------------------------
     # Initialize project folders if they do not exist
@@ -599,14 +755,18 @@ def ImportProjectConfig(meta):
     # Nutrient management information (for compatibility with "actions" module)
     #--------------------------------------------------------------------------
     
+    # Initialize dictionary
     meta['Nutrient Management']={}
     
     # Initialize index to stands affected by nutrient application
     meta['Nutrient Management']['iApplication']=[]
     
-    # Nutrient addition response yearly counter
-    #meta['Nutrient Management']['ResponseCounter']=np.zeros(meta['Project']['N Stand'])
-    
+    # BGC zone exclusions
+    meta['Nutrient Management']['BGC Zone Exclusion CD']=['PP','IDF','MH','BAFA','BG','CMA','IMA']    
+    meta['Nutrient Management']['BGC Zone Exclusion ID']=np.zeros(len(meta['Nutrient Management']['BGC Zone Exclusion CD']))
+    for iZ in range(len(meta['Nutrient Management']['BGC Zone Exclusion CD'])):
+        meta['Nutrient Management']['BGC Zone Exclusion ID'][iZ]=meta['LUT']['VRI']['BEC_ZONE_CODE'][ meta['Nutrient Management']['BGC Zone Exclusion CD'][iZ] ]
+
     #--------------------------------------------------------------------------
     # Simulate random numbers that can be used for simulating harvest on the fly
     # The annual numbers will be the same among scenarios, but vary by ensemble
@@ -618,8 +778,43 @@ def ImportProjectConfig(meta):
     # vary among ensembles, but not among scenarios.
     meta['Project']['On the Fly']={}    
     meta['Project']['On the Fly']['Random Numbers']={}
-    meta['Project']['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))    
-    meta['Project']['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
+    meta['Project']['On the Fly']['Random Numbers']['Scale Factor']=0.001
+    
+    # Create random numbers and save them
+    for iEns in range(meta['Project']['N Ensemble']):
+        for iBat in range(meta['Project']['N Batch']):
+        
+            rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
+            rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
+            rn=rn.astype('int16')
+            gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+            
+            rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
+            rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
+            rn=rn.astype('int16')
+            gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+    
+    #meta['Project']['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))    
+    #meta['Project']['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
+    
+    #--------------------------------------------------------------------------
+    # Parameter uncertainty by ensemble
+    #--------------------------------------------------------------------------
+    
+    meta['Param']['By Ensemble']=[None]*meta['Project']['N Ensemble']
+    
+    for iEns in range(meta['Project']['N Ensemble']):
+        
+        meta['Param']['By Ensemble'][iEns]={}
+        
+        if meta['Project']['Uncertainty NM Status']=='On':            
+            meta['Param']['By Ensemble'][iEns]['Nutrient Management']={}            
+            for k in meta['Param']['BE']['Nutrient Management'].keys():            
+                mu=meta['Param']['BE']['Nutrient Management'][k]
+                sig=meta['Param']['Sigma']['Nutrient Management'][k]
+                r=np.random.normal(loc=mu,scale=mu*sig)
+                r=np.maximum(0,r)            
+                meta['Param']['By Ensemble'][iEns]['Nutrient Management'][k]=r
     
     #--------------------------------------------------------------------------
     # Parameter override options
@@ -627,6 +822,40 @@ def ImportProjectConfig(meta):
     
     meta['Project']['Override Default Parameters']={}
     
+    #--------------------------------------------------------------------------
+    # Generate indices for portfolio projects
+    #--------------------------------------------------------------------------
+    
+    if meta['Project']['Scenario Source']=='Portfolio':
+    
+        meta['Project']['Idx']={}
+        meta['Project']['Idx']['AT']=np.zeros(meta['Project']['N Stand'],dtype=int)
+        meta['Project']['Idx']['AT Unique']=np.zeros(meta['Project']['N Stand'],dtype=int)
+        meta['Project']['Idx']['Year']=np.zeros(meta['Project']['N Stand'],dtype=int)
+        meta['Project']['Idx']['Stand']=np.zeros(meta['Project']['N Stand'],dtype=int)
+        cnt=0
+        for iA in range(meta['Project']['N AT']):
+            for iY in range(meta['Project']['N AT Years']):
+                for iS in range(meta['Project']['N Stand per Activity Type']):
+                    meta['Project']['Idx']['AT'][cnt]=meta['Project']['AIL']['Activity ID'][iA]-1
+                    meta['Project']['Idx']['AT Unique'][cnt]=iA
+                    meta['Project']['Idx']['Year'][cnt]=iY
+                    meta['Project']['Idx']['Stand'][cnt]=iS
+                    cnt=cnt+1
+        
+        indBAU=np.where(np.sum(meta['Project']['AIL']['BAU'],axis=0)>0)[0]
+        meta['Project']['Idx']['BAU AT']=indBAU
+        meta['Project']['Idx']['CAP AT']=np.arange(indBAU[-1]+1,meta['Project']['N AT'])
+        
+        meta['Scenario']=[None]*meta['Project']['N Scenario']
+        for iScn in range(meta['Project']['N Scenario']):
+            meta['Scenario'][iScn]={}
+            meta['Scenario'][iScn]['Harvest Status Historical']='Off'
+            meta['Scenario'][iScn]['Harvest Status Future']='Off'
+            meta['Scenario'][iScn]['Breakup Status']='Off'
+            meta['Scenario'][iScn]['Nutrient Application Status']='Off'
+        
+        
     return meta
 
 #%% LOAD SINGLE OUTPUT FILE FOR SCENARIO A, ENSEMBLE, B AND BATCH C
@@ -768,16 +997,16 @@ def CalculateGHGBalance(v1,meta):
     # Global warming potential for CH4 -> using IPCC 2007 (AR4) values to be 
     # consistent with Greenhouse Gas Reduction Targets Act Carbon Neutral Government Regulation (B.C. Reg. 193/2014)
     #gwp_ch4=28
-    gwp_ch4=meta['Param']['Biophysical']['GWP_CH4_AR5']
+    gwp_ch4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']
     
     # CO not recognized as GHG in BC Reg 193/2014, so using most recent
     #gwp_co=3.3
-    #gwp_co=meta['Param']['Biophysical']['GWP_CO_AR5']
+    #gwp_co=meta['Param']['BE']['Biophysical']['GWP_CO_AR5']
     
     # Global warming potential for CH4 -> using IPCC 2007 (AR4) values to be 
     # consistent with Greenhouse Gas Reduction Targets Act Carbon Neutral Government Regulation (B.C. Reg. 193/2014)
     #gwp_n2o=298
-    #gwp_n2o=meta['Param']['Biophysical']['GWP_N2O_AR5']
+    #gwp_n2o=meta['Param']['BE']['Biophysical']['GWP_N2O_AR5']
        
     v2=[]
     for i in range(len(v1)):
@@ -785,26 +1014,26 @@ def CalculateGHGBalance(v1,meta):
         A=v1[i]['A'].copy()
         
         if meta['Project']['Save Biomass Pools']=='On':
-            Eco_G_Gross=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_G_Gross'],axis=2)
-            Eco_G_Net=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_G_Net'],axis=2)
-            Eco_M_Reg=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_M_Reg'],axis=2)
-            Eco_NPP=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_NPP'],axis=2)
-            Eco_RH=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_RH'],axis=2)
-            Eco_LF=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_LF'],axis=2)
+            Eco_G_Gross=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_G_Gross'],axis=2)
+            Eco_G_Net=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_G_Net'],axis=2)
+            Eco_M_Reg=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_M_Reg'],axis=2)
+            Eco_NPP=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_NPP'],axis=2)
+            Eco_RH=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_RH'],axis=2)
+            Eco_LF=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_LF'],axis=2)
         elif meta['Project']['Save Biomass Pools']!='On': 
-            Eco_G_Gross=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_G_Gross'].copy()
-            Eco_G_Net=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_G_Net'].copy()
-            Eco_M_Reg=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_M_Reg'].copy()
-            Eco_NPP=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_NPP'].copy()
-            Eco_RH=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_RH'].copy()
-            Eco_LF=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_LF'].copy()
+            Eco_G_Gross=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_G_Gross'].copy()
+            Eco_G_Net=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_G_Net'].copy()
+            Eco_M_Reg=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_M_Reg'].copy()
+            Eco_NPP=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_NPP'].copy()
+            Eco_RH=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_RH'].copy()
+            Eco_LF=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_LF'].copy()
     
         # Carbon dioxide flux (tCO2/ha/yr)
         Eco_E_Fire=v1[i]['CO2e_E_Fire'].copy()
         
-        Eco_E_Operations=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_E_Operations'].copy()
+        Eco_E_Operations=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_E_Operations'].copy()
         
-        Eco_Removals=meta['Param']['Biophysical']['Ratio_CO2_to_C']* \
+        Eco_Removals=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']* \
                         (v1[i]['C_RemovedMerch'].copy()+ \
                          v1[i]['C_RemovedNonMerch'].copy()+ \
                          v1[i]['C_RemovedSnagStem'].copy())
@@ -822,25 +1051,25 @@ def CalculateGHGBalance(v1,meta):
         Eco_NGHGB=Eco_NPP-Eco_RH-Eco_E_Fire-Eco_E_Operations-Eco_Removals
     
         if meta['Project']['Save Biomass Pools']=='On':
-            Eco_Biomass=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['BiomassTotal']].copy(),axis=2)       
-            #Eco_BiomassAG=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.nansum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['BiomassAboveground']].copy(),axis=2)
-            Eco_Felled=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Felled']].copy(),axis=2)
-            Eco_Litter=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Litter']].copy(),axis=2)
-            Eco_DeadWood=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['DeadWood']].copy(),axis=2)
-            Eco_Soil=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Soil']].copy(),axis=2)
-            Pro_InUse=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Pro_Pools'][:,:,0:10].copy(),axis=2)
-            Pro_DumpLandfill=meta['Param']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Pro_Pools'][:,:,10:17].copy(),axis=2)
-            #Pro_Emissions=gwp_co2*meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Pro_Pools'][:,:,17].copy()+gwp_ch4*meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i].C_Pro_Pools[:,:,18].copy()
+            Eco_Biomass=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['BiomassTotal']].copy(),axis=2)       
+            #Eco_BiomassAG=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.nansum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['BiomassAboveground']].copy(),axis=2)
+            Eco_Felled=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Felled']].copy(),axis=2)
+            Eco_Litter=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Litter']].copy(),axis=2)
+            Eco_DeadWood=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['DeadWood']].copy(),axis=2)
+            Eco_Soil=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Soil']].copy(),axis=2)
+            Pro_InUse=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Pro_Pools'][:,:,0:10].copy(),axis=2)
+            Pro_DumpLandfill=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Pro_Pools'][:,:,10:17].copy(),axis=2)
+            #Pro_Emissions=gwp_co2*meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Pro_Pools'][:,:,17].copy()+gwp_ch4*meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i].C_Pro_Pools[:,:,18].copy()
             Pro_Emissions=v1[i]['CO2e_E_Products'].copy() # Already converted to CO2e
         else: 
-            Eco_Biomass=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Biomass'].copy()
-            #Eco_BiomassAG=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_BiomassAG'].copy()
-            Eco_Felled=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Felled'].copy()
-            Eco_Litter=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Litter'].copy()
-            Eco_DeadWood=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_DeadWood'].copy()
-            Eco_Soil=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Soil'].copy()
-            Pro_InUse=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_InUse'].copy()
-            Pro_DumpLandfill=meta['Param']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_DumpLandfill'].copy()
+            Eco_Biomass=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Biomass'].copy()
+            #Eco_BiomassAG=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_BiomassAG'].copy()
+            Eco_Felled=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Felled'].copy()
+            Eco_Litter=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Litter'].copy()
+            Eco_DeadWood=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_DeadWood'].copy()
+            Eco_Soil=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Soil'].copy()
+            Pro_InUse=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_InUse'].copy()
+            Pro_DumpLandfill=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_DumpLandfill'].copy()
             Pro_Emissions=v1[i]['CO2e_E_Products'].copy() # Already converted to CO2e
         
         Eco_Total=Eco_Biomass+Eco_Felled+Eco_Litter+Eco_DeadWood+Eco_Soil
@@ -1624,10 +1853,11 @@ def GetDisturbanceHistory(meta):
 # Look at variables in rcParams:
 #plt.rcParams.keys()
 
-def Import_GraphicsParameters(type):
-    if type=='FCI Demo':
-        fs1=7
-        fs2=9
+def Import_GraphicsParameters(x):    
+    params={}    
+    if x=='FCI_Demo':
+        fs1=6
+        fs2=7
         params={'font.sans-serif':'Arial',
                 'font.size':fs1,
                 'figure.titlesize':fs2,
@@ -1657,7 +1887,7 @@ def Import_GraphicsParameters(type):
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
                 'savefig.bbox':'tight'}
-    elif type=='bc1ha_1':
+    elif x=='bc1ha_1':
         params={'font.sans-serif':'Arial',
                 'font.size':7,
                 'axes.labelsize':7,
@@ -1673,6 +1903,15 @@ def Import_GraphicsParameters(type):
                 'ytick.direction':'in',
                 'legend.fontsize':10,
                 'savefig.dpi':150}
+    elif x=='article':
+        fs=6
+        params={'font.sans-serif':'Arial','font.size':fs,'axes.edgecolor':'black','axes.labelsize':fs,'axes.labelcolor':'black',
+                'axes.titlesize':fs,'axes.linewidth':0.5,'lines.linewidth':0.5,'text.color':'black','xtick.color':'black',        
+                'xtick.labelsize':fs,'xtick.major.width':0.5,'xtick.major.size':3,'xtick.direction':'in','ytick.color':'black',
+                'ytick.labelsize':fs,'ytick.major.width':0.5,'ytick.major.size':3,'ytick.direction':'in','legend.fontsize':fs}
+    else:        
+        params={}
+    
     return params
 
 #%% Prepare inventory from spreadsheet
@@ -1851,9 +2090,17 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
             d['v1']['Mean'][nam1[iV]]={}
             d['v1']['Mean'][nam1[iV]]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
             d['v1']['Mean'][nam1[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Mean'][nam1[iV]]['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Mean'][nam1[iV]]['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Mean'][nam1[iV]]['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Mean'][nam1[iV]]['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
             d['v1']['Sum'][nam1[iV]]={}
             d['v1']['Sum'][nam1[iV]]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
             d['v1']['Sum'][nam1[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Sum'][nam1[iV]]['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Sum'][nam1[iV]]['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Sum'][nam1[iV]]['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            d['v1']['Sum'][nam1[iV]]['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
         
         d['v2']={}
         d['v2']['Mean']={}
@@ -1862,9 +2109,33 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
             d['v2']['Mean'][nam2[iV]]={}
             d['v2']['Mean'][nam2[iV]]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
             d['v2']['Mean'][nam2[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            #d['v2']['Mean'][nam2[iV]]['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            #d['v2']['Mean'][nam2[iV]]['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            #d['v2']['Mean'][nam2[iV]]['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            #d['v2']['Mean'][nam2[iV]]['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
             d['v2']['Sum'][nam2[iV]]={}
             d['v2']['Sum'][nam2[iV]]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
             d['v2']['Sum'][nam2[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            d['v2']['Sum'][nam2[iV]]['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            d['v2']['Sum'][nam2[iV]]['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            d['v2']['Sum'][nam2[iV]]['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            d['v2']['Sum'][nam2[iV]]['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
+        
+        # Add cumulative
+        d['v2']['Mean']['Sec_NGHGB_cumu']={}
+        d['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+        #d['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+        #d['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+        #d['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+        #d['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']['Sum']['Sec_NGHGB_cumu']={}
+        d['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+        d['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
         
         if switch_area=='On':
             d['Area']={}
@@ -1881,9 +2152,47 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                 d['Cashflow']['Mean'][nam_cashflow[iV]]={}
                 d['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
                 d['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+                #d['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+                #d['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+                #d['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+                #d['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
                 d['Cashflow']['Sum'][nam_cashflow[iV]]={}
                 d['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
                 d['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+                d['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+                d['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+                d['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+                d['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
+            
+            # Add cumulative
+            d['Cashflow']['Mean']['Cost Total_cumu']={}
+            d['Cashflow']['Mean']['Cost Total_cumu']['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Mean']['Cost Total_cumu']['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Cost Total_cumu']['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Cost Total_cumu']['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Cost Total_cumu']['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Cost Total_cumu']['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Cost Total_cumu']={}
+            d['Cashflow']['Sum']['Cost Total_cumu']['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Cost Total_cumu']['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Mean']['Revenue Gross_cumu']={}
+            d['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            #d['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Revenue Gross_cumu']={}
+            d['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P10']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P25']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P75']=np.zeros((tv_saving.size,uMP.size))
+            d['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P90']=np.zeros((tv_saving.size,uMP.size))
         
         MosByMP[iScn]=d
     
@@ -1977,12 +2286,12 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                 # Populating the final structure with area data is slow - get a flag
                 # indicator of whether each event ID can be skipped because it has no
                 # info
-                flg_area={}
+                flag_Area={}
                 for k in Data['Area'].keys():            
                     if np.sum(Data['Area'][k])>0:
-                        flg_area[k]=1
+                        flag_Area[k]=1
                     else:
-                        flg_area[k]=0
+                        flag_Area[k]=0
             
             #------------------------------------------------------------------
             # Calculate stats and populate results for each treatment area    
@@ -2003,6 +2312,10 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                     MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD'][:,iMP]+np.std(tmp,axis=1)
                     MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean'][:,iMP]+ATA*np.mean(tmp,axis=1)
                     MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD'][:,iMP]+ATA*np.std(tmp,axis=1)
+                    MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10'][:,iMP]=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10'][:,iMP]+ATA*np.percentile(tmp,10,axis=1)
+                    MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25'][:,iMP]=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25'][:,iMP]+ATA*np.percentile(tmp,25,axis=1)
+                    MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75'][:,iMP]=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75'][:,iMP]+ATA*np.percentile(tmp,75,axis=1)
+                    MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90'][:,iMP]=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90'][:,iMP]+ATA*np.percentile(tmp,90,axis=1)
                 
                 for iV in range(len(nam2)):
                     tmp=ScaleFactor*Data['v2'][nam2[iV]][:,ind].astype(float)
@@ -2010,6 +2323,21 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                     MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD'][:,iMP]+np.std(tmp,axis=1)
                     MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean'][:,iMP]+ATA*np.mean(tmp,axis=1)
                     MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD'][:,iMP]+ATA*np.std(tmp,axis=1)
+                    MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P10'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P10'][:,iMP]+ATA*np.percentile(tmp,10,axis=1)
+                    MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P25'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P25'][:,iMP]+ATA*np.percentile(tmp,25,axis=1)
+                    MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P75'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P75'][:,iMP]+ATA*np.percentile(tmp,75,axis=1)
+                    MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P90'][:,iMP]=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P90'][:,iMP]+ATA*np.percentile(tmp,90,axis=1)
+                
+                # Add cumulative
+                tmp=np.cumsum(ScaleFactor*Data['v2']['Sec_NGHGB'][:,ind].astype(float),axis=0)
+                MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble Mean'][:,iMP]=MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble Mean'][:,iMP]+np.mean(tmp,axis=1)
+                MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble SD'][:,iMP]=MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble SD'][:,iMP]+np.std(tmp,axis=1)
+                MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble Mean'][:,iMP]=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble Mean'][:,iMP]+ATA*np.mean(tmp,axis=1)
+                MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble SD'][:,iMP]=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble SD'][:,iMP]+ATA*np.std(tmp,axis=1) 
+                MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P10'][:,iMP]=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P10'][:,iMP]+ATA*np.percentile(tmp,10,axis=1) 
+                MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P25'][:,iMP]=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P25'][:,iMP]+ATA*np.percentile(tmp,25,axis=1)
+                MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P75'][:,iMP]=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P75'][:,iMP]+ATA*np.percentile(tmp,75,axis=1) 
+                MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P90'][:,iMP]=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P90'][:,iMP]+ATA*np.percentile(tmp,90,axis=1) 
                 
                 if switch_cashflow=='On':
                     for iV in range(len(nam_cashflow)):
@@ -2018,10 +2346,35 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                         MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD'][:,iMP]+np.std(tmp,axis=1)
                         MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean'][:,iMP]+ATA*np.mean(tmp,axis=1)
                         MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD'][:,iMP]+ATA*np.std(tmp,axis=1)
+                        MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10'][:,iMP]+ATA*np.percentile(tmp,10,axis=1)
+                        MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25'][:,iMP]+ATA*np.percentile(tmp,25,axis=1)
+                        MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75'][:,iMP]+ATA*np.percentile(tmp,75,axis=1)
+                        MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90'][:,iMP]+ATA*np.percentile(tmp,90,axis=1)
+                
+                    # Add cumulative
+                    tmp=np.cumsum(ScaleFactor*Data['Cashflow']['Cost Total'][:,ind].astype(float),axis=0)
+                    MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble Mean'][:,iMP]+np.mean(tmp,axis=1)
+                    MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble SD'][:,iMP]=MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble SD'][:,iMP]+np.std(tmp,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble Mean'][:,iMP]+ATA*np.mean(tmp,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble SD'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble SD'][:,iMP]+ATA*np.std(tmp,axis=1)  
+                    MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P10'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P10'][:,iMP]+ATA*np.percentile(tmp,10,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P25'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P25'][:,iMP]+ATA*np.percentile(tmp,25,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P75'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P75'][:,iMP]+ATA*np.percentile(tmp,75,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P90'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P90'][:,iMP]+ATA*np.percentile(tmp,90,axis=1)
+                    
+                    tmp=np.cumsum(ScaleFactor*Data['Cashflow']['Revenue Gross'][:,ind].astype(float),axis=0)
+                    MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble Mean'][:,iMP]+np.mean(tmp,axis=1)
+                    MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble SD'][:,iMP]=MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble SD'][:,iMP]+np.std(tmp,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble Mean'][:,iMP]+ATA*np.mean(tmp,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble SD'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble SD'][:,iMP]+ATA*np.std(tmp,axis=1)  
+                    MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P10'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P10'][:,iMP]+ATA*np.percentile(tmp,10,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P25'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P25'][:,iMP]+ATA*np.percentile(tmp,25,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P75'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P75'][:,iMP]+ATA*np.percentile(tmp,75,axis=1)
+                    MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P90'][:,iMP]=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P90'][:,iMP]+ATA*np.percentile(tmp,90,axis=1)
                 
                 if switch_area=='On':
                     for k in MosByMP[iScn]['Area']:
-                        if flg_area[k]==1:
+                        if flag_Area[k]==1:
                             # Only continue if there are some events
                             MosByMP[iScn]['Area'][k]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Area'][k]['Ensemble Mean'][:,iMP]+np.sum(Data['Area'][k][:,ind],axis=1)
 
@@ -2036,12 +2389,29 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
             MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD']=MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
             MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
             MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90']/meta['Project']['N Ensemble']
         
         for iV in range(len(nam2)):
             MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble Mean']=MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
             MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD']=MosByMP[iScn]['v2']['Mean'][nam2[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
             MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
             MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P10']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P10']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P25']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P25']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P75']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P75']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P90']=MosByMP[iScn]['v2']['Sum'][nam2[iV]]['Ensemble P90']/meta['Project']['N Ensemble']
+        
+        MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble Mean']=MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble Mean']/meta['Project']['N Ensemble']
+        MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble SD']=MosByMP[iScn]['v2']['Mean']['Sec_NGHGB_cumu']['Ensemble SD']/meta['Project']['N Ensemble']
+        MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble Mean']=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble Mean']/meta['Project']['N Ensemble']
+        MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble SD']=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble SD']/meta['Project']['N Ensemble']
+        MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P10']=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P10']/meta['Project']['N Ensemble']
+        MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P25']=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P25']/meta['Project']['N Ensemble']
+        MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P75']=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P75']/meta['Project']['N Ensemble']
+        MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P90']=MosByMP[iScn]['v2']['Sum']['Sec_NGHGB_cumu']['Ensemble P90']/meta['Project']['N Ensemble']
         
         if switch_cashflow=='On':
             for iV in range(len(nam_cashflow)):
@@ -2049,6 +2419,28 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                 MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD']=MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
                 MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
                 MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD']/meta['Project']['N Ensemble']            
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10']/meta['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25']/meta['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75']/meta['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90']/meta['Project']['N Ensemble']
+        
+            MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble Mean']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble SD']=MosByMP[iScn]['Cashflow']['Mean']['Cost Total_cumu']['Ensemble SD']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble Mean']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble SD']=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble SD']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P10']=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P10']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P25']=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P25']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P75']=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P75']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P90']=MosByMP[iScn]['Cashflow']['Sum']['Cost Total_cumu']['Ensemble P90']/meta['Project']['N Ensemble']
+            
+            MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble Mean']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble SD']=MosByMP[iScn]['Cashflow']['Mean']['Revenue Gross_cumu']['Ensemble SD']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble Mean']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble SD']=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble SD']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P10']=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P10']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P25']=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P25']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P75']=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P75']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P90']=MosByMP[iScn]['Cashflow']['Sum']['Revenue Gross_cumu']['Ensemble P90']/meta['Project']['N Ensemble']
         
         if switch_area=='On':
             for iV in MosByMP[iScn]['Area']:
@@ -2065,125 +2457,204 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
 
 #%% CALCULATE MODEL OUTPUT STATISTICS
 
-def ModelOutputStats(meta,flag_save):
+def ModelOutputStats(meta,**kwargs):
 
+    # Defaults
+    
+    if 'KeepEachEnsemble' in kwargs.keys():
+        flag_KeepEnsembles=1
+    else:
+        # Default is to not save individual ensembles
+        flag_KeepEnsembles=0
+    
+    if 'StandsToInclude' in kwargs.keys():
+        flag_stands_to_include=kwargs['StandsToInclude']
+    else:
+        flag_stands_to_include=[]
+        
+    if 'IncludeArea' in kwargs.keys():
+        flag_Area=1
+    else:
+        # Default is to not inlcude area
+        flag_Area=0 
+        
+    if 'IncludeMortalityByAgents' in kwargs.keys():
+        flag_MortAg=1
+    else:
+        # Default is to not inlcude mortality by agents
+        flag_MortAg=0
+    
+    flag_save=1
+    
+    # Initialize
     mos=[None]*meta['Project']['N Scenario']
     
     for iScn in range(meta['Project']['N Scenario']):
         
+        t0=time.time()
+        
         tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
         tv_full=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
         
+        #----------------------------------------------------------------------
         # Initialize structure
-        mos[iScn]={}
+        #----------------------------------------------------------------------
         
-        mos[iScn]['v1']={}
-        mos[iScn]['v1']['Mean']={}
-        mos[iScn]['v1']['Sum']={}
+        mosScn={}
+        
+        mosScn['v1']={}
+        mosScn['v1']['Mean']={}
+        mosScn['v1']['Sum']={}
         d1=LoadSingleOutputFile(meta,0,0,0)
         for k in d1.keys(): 
-            if k=='Year':
+            if (k=='Year') | (k=='C_M_ByAgent'):
                 continue
-            if k=='C_M_ByAgent':
-                continue
-            mos[iScn]['v1']['Mean'][k]={}
-            mos[iScn]['v1']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['v1']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v1']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
-            mos[iScn]['v1']['Sum'][k]={}
-            mos[iScn]['v1']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['v1']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v1']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['v1']['Mean'][k]={}
+            mosScn['v1']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mosScn['v1']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mosScn['v1']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['v1']['Mean'][k]['Ensemble P10']=np.zeros(tv.size)
+            mosScn['v1']['Mean'][k]['Ensemble P25']=np.zeros(tv.size)
+            mosScn['v1']['Mean'][k]['Ensemble P75']=np.zeros(tv.size)
+            mosScn['v1']['Mean'][k]['Ensemble P90']=np.zeros(tv.size)
+            mosScn['v1']['Sum'][k]={}
+            mosScn['v1']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mosScn['v1']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mosScn['v1']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['v1']['Sum'][k]['Ensemble P10']=np.zeros(tv.size)
+            mosScn['v1']['Sum'][k]['Ensemble P25']=np.zeros(tv.size)
+            mosScn['v1']['Sum'][k]['Ensemble P75']=np.zeros(tv.size)
+            mosScn['v1']['Sum'][k]['Ensemble P90']=np.zeros(tv.size)
             
-        mos[iScn]['v2']={}
-        mos[iScn]['v2']['Mean']={}
-        mos[iScn]['v2']['Sum']={}
+        mosScn['v2']={}
+        mosScn['v2']['Mean']={}
+        mosScn['v2']['Sum']={}
         d2=CalculateGHGBalance(d1,meta)        
         for k in d2[0][0].keys(): 
             if (k=='Year'):
                 continue
-            mos[iScn]['v2']['Mean'][k]={}
-            mos[iScn]['v2']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['v2']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v2']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
-            mos[iScn]['v2']['Sum'][k]={}
-            mos[iScn]['v2']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['v2']['Mean'][k]={}
+            mosScn['v2']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mosScn['v2']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mosScn['v2']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['v2']['Mean'][k]['Ensemble P10']=np.zeros(tv.size)
+            mosScn['v2']['Mean'][k]['Ensemble P25']=np.zeros(tv.size)
+            mosScn['v2']['Mean'][k]['Ensemble P50']=np.zeros(tv.size)
+            mosScn['v2']['Mean'][k]['Ensemble P75']=np.zeros(tv.size)
+            mosScn['v2']['Mean'][k]['Ensemble P90']=np.zeros(tv.size)
+            mosScn['v2']['Sum'][k]={}
+            mosScn['v2']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mosScn['v2']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mosScn['v2']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['v2']['Sum'][k]['Ensemble P10']=np.zeros(tv.size)
+            mosScn['v2']['Sum'][k]['Ensemble P25']=np.zeros(tv.size)
+            mosScn['v2']['Sum'][k]['Ensemble P50']=np.zeros(tv.size)
+            mosScn['v2']['Sum'][k]['Ensemble P75']=np.zeros(tv.size)
+            mosScn['v2']['Sum'][k]['Ensemble P90']=np.zeros(tv.size)
         
-        mos[iScn]['Cashflow']={}
-        mos[iScn]['Cashflow']['Mean']={}
-        mos[iScn]['Cashflow']['Sum']={}
+        mosScn['Cashflow']={}
+        mosScn['Cashflow']['Mean']={}
+        mosScn['Cashflow']['Sum']={}
         vr_cashflow=['Cost Total','Revenue Gross']
         for k in vr_cashflow:
-            mos[iScn]['Cashflow']['Mean'][k]={}
-            mos[iScn]['Cashflow']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['Cashflow']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['Cashflow']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
-            mos[iScn]['Cashflow']['Sum'][k]={}
-            mos[iScn]['Cashflow']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['Cashflow']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['Cashflow']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['Cashflow']['Mean'][k]={}
+            mosScn['Cashflow']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mosScn['Cashflow']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mosScn['Cashflow']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+            mosScn['Cashflow']['Sum'][k]={}
+            mosScn['Cashflow']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+            mosScn['Cashflow']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+            mosScn['Cashflow']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
         
-        mos[iScn]['C_M_ByAgent']={}
-        mos[iScn]['C_M_ByAgent']['Mean']={}
-        mos[iScn]['C_M_ByAgent']['Sum']={}   
-        for k in d1['C_M_ByAgent'].keys(): 
-            mos[iScn]['C_M_ByAgent']['Mean'][k]={}
-            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
-            mos[iScn]['C_M_ByAgent']['Sum'][k]={}
-            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
+        if flag_MortAg==1:
+            mosScn['C_M_ByAgent']={}
+            mosScn['C_M_ByAgent']['Mean']={}
+            mosScn['C_M_ByAgent']['Sum']={}   
+            for k in d1['C_M_ByAgent'].keys(): 
+                mosScn['C_M_ByAgent']['Mean'][k]={}
+                mosScn['C_M_ByAgent']['Mean'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+                mosScn['C_M_ByAgent']['Mean'][k]['Ensemble Mean']=np.zeros(tv.size)
+                mosScn['C_M_ByAgent']['Mean'][k]['Ensemble SD']=np.zeros(tv.size)
+                mosScn['C_M_ByAgent']['Sum'][k]={}
+                mosScn['C_M_ByAgent']['Sum'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+                mosScn['C_M_ByAgent']['Sum'][k]['Ensemble Mean']=np.zeros(tv.size)
+                mosScn['C_M_ByAgent']['Sum'][k]['Ensemble SD']=np.zeros(tv.size)
         
-        mos[iScn]['Area']={}
-        for k in meta['LUT']['Dist'].keys():
-            mos[iScn]['Area'][k]={}
-            mos[iScn]['Area'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
-            mos[iScn]['Area'][k]['Ensemble Mean']=np.zeros(tv.size)
-            mos[iScn]['Area'][k]['Ensemble SD']=np.zeros(tv.size)
-            
+        if flag_Area==1:
+            mosScn['Area']={}
+            for k in meta['LUT']['Dist'].keys():
+                mosScn['Area'][k]={}
+                mosScn['Area'][k]['Ensembles']=np.zeros((tv.size,meta['Project']['N Ensemble']))
+                mosScn['Area'][k]['Ensemble Mean']=np.zeros(tv.size)
+                mosScn['Area'][k]['Ensemble SD']=np.zeros(tv.size)
+        
+        #----------------------------------------------------------------------
         # Loop through ensembles
+        #----------------------------------------------------------------------
+        
         for iEns in range(meta['Project']['N Ensemble']):
             
+            # Initialize dictionaries for each ensemble
             v1={}
             v2={}
             cashflow={}          
             C_M_ByAgent={}
+            
+            N_Stands_Included=0
+            
             for iBat in range(meta['Project']['N Batch']):
             
-                # Basic output
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)            
-                for k in d1.keys():                     
-                    if k=='Year':
-                        continue
-                    if k=='C_M_ByAgent':
-                        continue                    
-                    if iBat==0:
-                        v1[k]=np.sum(d1[k],axis=1)
-                    else:
-                        v1[k]=v1[k]+np.sum(d1[k],axis=1)
+                # Include specific subset of stands
+                if len(flag_stands_to_include)==0:
+                    ikp=np.arange(0,meta['Project']['Batch Size'][iBat],1,dtype=int)
+                else:
+                    ikp=np.where(flag_stands_to_include[iScn][iEns][iBat]==1)[0]
                 
-                # Mortality summary by agent                
-                for k in d1['C_M_ByAgent'].keys():
+                N_Stands_Included=N_Stands_Included+ikp.size
+                
+                # Load basic output
+                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)  
+                
+                # Calculate GHG balance
+                d2=CalculateGHGBalance(d1,meta)
+                
+                # Basic output
+                
+                # Some projects may elect to keep each biomass pool in output ("Save Biomass Pools"=On")
+                # This script doesn't handle it so they need to be summed first.
+                if meta['Project']['Save Biomass Pools']=='On':
+                    List=['C_Eco_Pools','C_Pro_Pools','C_G_Gross','C_G_Net','C_M_Reg','C_LF','C_NPP','C_RH']
+                    for iList in range(len(List)):
+                        nam=List[iList]
+                        d1[nam]=np.sum(d1[nam][:,ikp],axis=2)
+                
+                for k in d1.keys():                     
+                    if (k=='Year') | (k=='C_M_ByAgent'):
+                        continue                   
                     if iBat==0:
-                        C_M_ByAgent[k]=d1['C_M_ByAgent'][k].flatten()
+                        v1[k]=np.sum(d1[k][:,ikp],axis=1)
                     else:
-                        C_M_ByAgent[k]=C_M_ByAgent[k]+d1['C_M_ByAgent'][k].flatten()   
+                        v1[k]=v1[k]+np.sum(d1[k][:,ikp],axis=1)
+                
+                # Mortality summary by agent  
+                if flag_MortAg==1:
+                    for k in d1['C_M_ByAgent'].keys():
+                        if iBat==0:
+                            C_M_ByAgent[k]=d1['C_M_ByAgent'][k].flatten()
+                        else:
+                            C_M_ByAgent[k]=C_M_ByAgent[k]+d1['C_M_ByAgent'][k].flatten()   
                 
                 # GHG fluxes and pools
-                d2=CalculateGHGBalance(d1,meta)                
+                                
                 for k in d2[0][0].keys():                     
-                    if k=='Year':
+                    if (k=='Year'):
                         continue                    
                     if iBat==0:
-                        v2[k]=np.sum(d2[0][0][k],axis=1)
+                        v2[k]=np.sum(d2[0][0][k][:,ikp],axis=1)
                     else:
-                        v2[k]=v2[k]+np.sum(d2[0][0][k],axis=1)    
+                        v2[k]=v2[k]+np.sum(d2[0][0][k][:,ikp],axis=1)    
             
-                # Import event chronology
+                # Import event chronology                
                 if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
                     ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
                 else:
@@ -2199,87 +2670,178 @@ def ModelOutputStats(meta,flag_save):
                 econ=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,d1)                
                 for k in vr_cashflow:
                     if iBat==0:
-                        cashflow[k]=np.sum(econ[k],axis=1)
+                        cashflow[k]=np.sum(econ[k][:,ikp],axis=1)
                     else:
-                        cashflow[k]=cashflow[k]+np.sum(econ[k],axis=1)                    
+                        cashflow[k]=cashflow[k]+np.sum(econ[k][:,ikp],axis=1)                    
             
                 # Area
-                for iYr in range(tv_full.size):
-                    it=np.where(tv==tv_full[iYr])[0]
-                    if it.size==0:
-                        continue
-                    ID_Type0=ec['ID_Type'][iYr,:,:].flatten()
-                    u=np.unique(ID_Type0)
-                    for iU in range(u.size):
-                        if u[iU]==0:
+                if flag_Area==1:
+                    for iYr in range(tv_full.size):
+                        it=np.where(tv==tv_full[iYr])[0]
+                        if it.size==0:
                             continue
-                        id=lut_n2s(meta['LUT']['Dist'],u[iU])[0]
-                        ind=np.where(ID_Type0==u[iU])[0]
-                        mos[iScn]['Area'][id]['Ensembles'][it,iEns]=mos[iScn]['Area'][id]['Ensembles'][it,iEns]+ind.size
-                del d1,d2,ec
+                        ID_Type0=ec['ID_Type'][iYr,ikp,:].flatten()
+                        u=np.unique(ID_Type0)
+                        for iU in range(u.size):
+                            if u[iU]==0:
+                                continue
+                            id=lut_n2s(meta['LUT']['Dist'],u[iU])[0]
+                            ind=np.where(ID_Type0==u[iU])[0]
+                            mosScn['Area'][id]['Ensembles'][it,iEns]=mosScn['Area'][id]['Ensembles'][it,iEns]+ind.size
+                
+                # Delete variables from workspace
+                del d1,d2,ec,econ
                 garc.collect()
             
+            #------------------------------------------------------------------
             # Populate mos for each scenario
+            #------------------------------------------------------------------
+            
             for k in v1.keys():                
-                if k=='Year':
-                    continue                
-                # Skip mortality summary by agent
-                if k=='C_M_ByAgent':
-                    continue                
-                mos[iScn]['v1']['Sum'][k]['Ensembles'][:,iEns]=v1[k].copy()
-                mos[iScn]['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/meta['Project']['N Stand']
+                if (k=='Year') | (k=='C_M_ByAgent'):
+                    continue
+                mosScn['v1']['Sum'][k]['Ensembles'][:,iEns]=v1[k].copy()
+                mosScn['v1']['Mean'][k]['Ensembles'][:,iEns]=v1[k].copy()/N_Stands_Included #meta['Project']['N Stand']
             
             for k in v2.keys():
                 if k=='Year':
                     continue
-                mos[iScn]['v2']['Sum'][k]['Ensembles'][:,iEns]=v2[k].copy()
-                mos[iScn]['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/meta['Project']['N Stand']                                   
+                mosScn['v2']['Sum'][k]['Ensembles'][:,iEns]=v2[k].copy()
+                mosScn['v2']['Mean'][k]['Ensembles'][:,iEns]=v2[k].copy()/N_Stands_Included #meta['Project']['N Stand']
             
             for k in vr_cashflow:
-                mos[iScn]['Cashflow']['Sum'][k]['Ensembles'][:,iEns]=cashflow[k].copy()
-                mos[iScn]['Cashflow']['Mean'][k]['Ensembles'][:,iEns]=cashflow[k].copy()/meta['Project']['N Stand'] 
+                mosScn['Cashflow']['Sum'][k]['Ensembles'][:,iEns]=cashflow[k].copy()
+                mosScn['Cashflow']['Mean'][k]['Ensembles'][:,iEns]=cashflow[k].copy()/N_Stands_Included #meta['Project']['N Stand']
             
-            for k in C_M_ByAgent.keys():                
-                mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()
-                mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()/meta['Project']['N Stand']
-                
+            if flag_MortAg==1:
+                for k in C_M_ByAgent.keys():                
+                    mosScn['C_M_ByAgent']['Sum'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()
+                    mosScn['C_M_ByAgent']['Mean'][k]['Ensembles'][:,iEns]=C_M_ByAgent[k].copy()/N_Stands_Included #meta['Project']['N Stand']
+        
+        #----------------------------------------------------------------------        
         # Calculate statistics
+        #----------------------------------------------------------------------
+        
+        # Basic output
         for k in v1.keys():
-            if k=='Year':
+            if (k=='Year') | (k=='C_M_ByAgent') | (k=='C_Eco_Pools') | (k=='C_Pro_Pools'):
                 continue
-            mos[iScn]['v1']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['v1']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v1']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v1']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
-            mos[iScn]['v1']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['v1']['Mean'][k]['Ensembles'],axis=1)
+            mosScn['v1']['Sum'][k]['Ensemble Mean']=np.mean(mosScn['v1']['Sum'][k]['Ensembles'],axis=1)
+            mosScn['v1']['Sum'][k]['Ensemble SD']=np.std(mosScn['v1']['Sum'][k]['Ensembles'],axis=1)
+            mosScn['v1']['Sum'][k]['Ensemble P10']=np.percentile(mosScn['v1']['Sum'][k]['Ensembles'],10,axis=1)
+            mosScn['v1']['Sum'][k]['Ensemble P25']=np.percentile(mosScn['v1']['Sum'][k]['Ensembles'],25,axis=1)
+            mosScn['v1']['Sum'][k]['Ensemble P50']=np.percentile(mosScn['v1']['Sum'][k]['Ensembles'],50,axis=1)
+            mosScn['v1']['Sum'][k]['Ensemble P75']=np.percentile(mosScn['v1']['Sum'][k]['Ensembles'],75,axis=1)
+            mosScn['v1']['Sum'][k]['Ensemble P90']=np.percentile(mosScn['v1']['Sum'][k]['Ensembles'],90,axis=1)
+            mosScn['v1']['Mean'][k]['Ensemble Mean']=np.mean(mosScn['v1']['Mean'][k]['Ensembles'],axis=1)
+            mosScn['v1']['Mean'][k]['Ensemble SD']=np.std(mosScn['v1']['Mean'][k]['Ensembles'],axis=1)
+            mosScn['v1']['Mean'][k]['Ensemble P10']=np.percentile(mosScn['v1']['Mean'][k]['Ensembles'],10,axis=1)
+            mosScn['v1']['Mean'][k]['Ensemble P25']=np.percentile(mosScn['v1']['Mean'][k]['Ensembles'],25,axis=1)
+            mosScn['v1']['Mean'][k]['Ensemble P50']=np.percentile(mosScn['v1']['Mean'][k]['Ensembles'],50,axis=1)
+            mosScn['v1']['Mean'][k]['Ensemble P75']=np.percentile(mosScn['v1']['Mean'][k]['Ensembles'],75,axis=1)
+            mosScn['v1']['Mean'][k]['Ensemble P90']=np.percentile(mosScn['v1']['Mean'][k]['Ensembles'],90,axis=1)
+            
+            if flag_KeepEnsembles==0:
+                del mosScn['v1']['Sum'][k]['Ensembles']
+                del mosScn['v1']['Mean'][k]['Ensembles']
         
-        for k in C_M_ByAgent.keys():
-            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['C_M_ByAgent']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'],axis=1)
-            mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['C_M_ByAgent']['Mean'][k]['Ensembles'],axis=1)
-        
+        # GHG balance variables
         for k in v2.keys():
             if k=='Year':
                 continue
-            mos[iScn]['v2']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['v2']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v2']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['v2']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['v2']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['v2']['Mean'][k]['Ensembles'],axis=1)
-            mos[iScn]['v2']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['v2']['Mean'][k]['Ensembles'],axis=1)
+            mosScn['v2']['Sum'][k]['Ensemble Mean']=np.mean(mosScn['v2']['Sum'][k]['Ensembles'],axis=1)
+            mosScn['v2']['Sum'][k]['Ensemble SD']=np.std(mosScn['v2']['Sum'][k]['Ensembles'],axis=1)
+            mosScn['v2']['Sum'][k]['Ensemble P10']=np.percentile(mosScn['v2']['Sum'][k]['Ensembles'],10,axis=1)
+            mosScn['v2']['Sum'][k]['Ensemble P25']=np.percentile(mosScn['v2']['Sum'][k]['Ensembles'],25,axis=1)
+            mosScn['v2']['Sum'][k]['Ensemble P50']=np.percentile(mosScn['v2']['Sum'][k]['Ensembles'],50,axis=1)
+            mosScn['v2']['Sum'][k]['Ensemble P75']=np.percentile(mosScn['v2']['Sum'][k]['Ensembles'],75,axis=1)
+            mosScn['v2']['Sum'][k]['Ensemble P90']=np.percentile(mosScn['v2']['Sum'][k]['Ensembles'],90,axis=1)
+            
+            mosScn['v2']['Mean'][k]['Ensemble Mean']=np.mean(mosScn['v2']['Mean'][k]['Ensembles'],axis=1)
+            mosScn['v2']['Mean'][k]['Ensemble SD']=np.std(mosScn['v2']['Mean'][k]['Ensembles'],axis=1)
+            mosScn['v2']['Mean'][k]['Ensemble P10']=np.percentile(mosScn['v2']['Mean'][k]['Ensembles'],10,axis=1)
+            mosScn['v2']['Mean'][k]['Ensemble P25']=np.percentile(mosScn['v2']['Mean'][k]['Ensembles'],25,axis=1)
+            mosScn['v2']['Mean'][k]['Ensemble P50']=np.percentile(mosScn['v2']['Mean'][k]['Ensembles'],50,axis=1)
+            mosScn['v2']['Mean'][k]['Ensemble P75']=np.percentile(mosScn['v2']['Mean'][k]['Ensembles'],75,axis=1)
+            mosScn['v2']['Mean'][k]['Ensemble P90']=np.percentile(mosScn['v2']['Mean'][k]['Ensembles'],90,axis=1)
+            
+            # Add cumulative GHG balance
+            if k=='Sec_NGHGB':
+                mosScn['v2']['Mean'][k + '_cumu']={}
+                mosScn['v2']['Mean'][k + '_cumu']['Ensemble Mean']=np.mean(np.cumsum(mosScn['v2']['Mean'][k]['Ensembles'],axis=0),axis=1)
+                mosScn['v2']['Mean'][k + '_cumu']['Ensemble SD']=np.std(np.cumsum(mosScn['v2']['Mean'][k]['Ensembles'],axis=0),axis=1)
+                mosScn['v2']['Mean'][k + '_cumu']['Ensemble P10']=np.percentile(np.cumsum(mosScn['v2']['Mean'][k]['Ensembles'],axis=0),10,axis=1)
+                mosScn['v2']['Mean'][k + '_cumu']['Ensemble P25']=np.percentile(np.cumsum(mosScn['v2']['Mean'][k]['Ensembles'],axis=0),25,axis=1)
+                mosScn['v2']['Mean'][k + '_cumu']['Ensemble P50']=np.percentile(np.cumsum(mosScn['v2']['Mean'][k]['Ensembles'],axis=0),50,axis=1)
+                mosScn['v2']['Mean'][k + '_cumu']['Ensemble P75']=np.percentile(np.cumsum(mosScn['v2']['Mean'][k]['Ensembles'],axis=0),75,axis=1)
+                mosScn['v2']['Mean'][k + '_cumu']['Ensemble P90']=np.percentile(np.cumsum(mosScn['v2']['Mean'][k]['Ensembles'],axis=0),90,axis=1)
+            
+                mosScn['v2']['Sum'][k + '_cumu']={}
+                mosScn['v2']['Sum'][k + '_cumu']['Ensemble Mean']=np.mean(np.cumsum(mosScn['v2']['Sum'][k]['Ensembles'],axis=0),axis=1)
+                mosScn['v2']['Sum'][k + '_cumu']['Ensemble SD']=np.std(np.cumsum(mosScn['v2']['Sum'][k]['Ensembles'],axis=0),axis=1)
+                mosScn['v2']['Sum'][k + '_cumu']['Ensemble P10']=np.percentile(np.cumsum(mosScn['v2']['Sum'][k]['Ensembles'],axis=0),10,axis=1)
+                mosScn['v2']['Sum'][k + '_cumu']['Ensemble P25']=np.percentile(np.cumsum(mosScn['v2']['Sum'][k]['Ensembles'],axis=0),25,axis=1)
+                mosScn['v2']['Sum'][k + '_cumu']['Ensemble P50']=np.percentile(np.cumsum(mosScn['v2']['Sum'][k]['Ensembles'],axis=0),50,axis=1)
+                mosScn['v2']['Sum'][k + '_cumu']['Ensemble P75']=np.percentile(np.cumsum(mosScn['v2']['Sum'][k]['Ensembles'],axis=0),75,axis=1)
+                mosScn['v2']['Sum'][k + '_cumu']['Ensemble P90']=np.percentile(np.cumsum(mosScn['v2']['Sum'][k]['Ensembles'],axis=0),90,axis=1)
+            
+            if flag_KeepEnsembles==0:
+                del mosScn['v2']['Sum'][k]['Ensembles']
+                del mosScn['v2']['Mean'][k]['Ensembles']
         
-        for k in mos[iScn]['Area'].keys():
-            mos[iScn]['Area'][k]['Ensemble Mean']=np.mean(mos[iScn]['Area'][k]['Ensembles'],axis=1)
-            mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
-            mos[iScn]['Area'][k]['Ensemble Mean']=np.mean(mos[iScn]['Area'][k]['Ensembles'],axis=1)
-            mos[iScn]['Area'][k]['Ensemble SD']=np.std(mos[iScn]['Area'][k]['Ensembles'],axis=1)
+        # By mortality agent
+        if flag_MortAg==1:
+            for k in C_M_ByAgent.keys():
+                mosScn['C_M_ByAgent']['Sum'][k]['Ensemble Mean']=np.mean(mosScn['C_M_ByAgent']['Sum'][k]['Ensembles'],axis=1)
+                mosScn['C_M_ByAgent']['Sum'][k]['Ensemble SD']=np.std(mosScn['C_M_ByAgent']['Sum'][k]['Ensembles'],axis=1)
+                mosScn['C_M_ByAgent']['Mean'][k]['Ensemble Mean']=np.mean(mosScn['C_M_ByAgent']['Mean'][k]['Ensembles'],axis=1)
+                mosScn['C_M_ByAgent']['Mean'][k]['Ensemble SD']=np.std(mosScn['C_M_ByAgent']['Mean'][k]['Ensembles'],axis=1)
+                
+                if flag_KeepEnsembles==0:
+                    del mosScn['C_M_ByAgent']['Sum'][k]['Ensembles']
+                    del mosScn['C_M_ByAgent']['Mean'][k]['Ensembles']
         
+        # Area impacted
+        if flag_Area==1:
+            for k in mosScn['Area'].keys():
+                mosScn['Area'][k]['Ensemble Mean']=np.mean(mosScn['Area'][k]['Ensembles'],axis=1)
+                mosScn['Area'][k]['Ensemble SD']=np.std(mosScn['Area'][k]['Ensembles'],axis=1)
+                mosScn['Area'][k]['Ensemble Mean']=np.mean(mosScn['Area'][k]['Ensembles'],axis=1)
+                mosScn['Area'][k]['Ensemble SD']=np.std(mosScn['Area'][k]['Ensembles'],axis=1)
+                
+                if flag_KeepEnsembles==0:
+                    del mosScn['Area'][k]['Ensembles']
+        
+        # Cashflow
         for k in vr_cashflow:
-            mos[iScn]['Cashflow']['Sum'][k]['Ensemble Mean']=np.mean(mos[iScn]['Cashflow']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['Cashflow']['Sum'][k]['Ensemble SD']=np.std(mos[iScn]['Cashflow']['Sum'][k]['Ensembles'],axis=1)
-            mos[iScn]['Cashflow']['Mean'][k]['Ensemble Mean']=np.mean(mos[iScn]['Cashflow']['Mean'][k]['Ensembles'],axis=1)
-            mos[iScn]['Cashflow']['Mean'][k]['Ensemble SD']=np.std(mos[iScn]['Cashflow']['Mean'][k]['Ensembles'],axis=1)         
+            mosScn['Cashflow']['Sum'][k]['Ensemble Mean']=np.mean(mosScn['Cashflow']['Sum'][k]['Ensembles'],axis=1)
+            mosScn['Cashflow']['Sum'][k]['Ensemble SD']=np.std(mosScn['Cashflow']['Sum'][k]['Ensembles'],axis=1)
+            mosScn['Cashflow']['Mean'][k]['Ensemble Mean']=np.mean(mosScn['Cashflow']['Mean'][k]['Ensembles'],axis=1)
+            mosScn['Cashflow']['Mean'][k]['Ensemble SD']=np.std(mosScn['Cashflow']['Mean'][k]['Ensembles'],axis=1)
+            
+            # Add cumulative values
+            if (k=='Cost Total') | (k=='Revenue Gross'):
+                mosScn['Cashflow']['Mean'][k + '_cumu']={}
+                mosScn['Cashflow']['Mean'][k + '_cumu']['Ensemble Mean']=np.mean(np.cumsum(mosScn['Cashflow']['Mean'][k]['Ensembles'],axis=0),axis=1)
+                mosScn['Cashflow']['Mean'][k + '_cumu']['Ensemble SD']=np.std(np.cumsum(mosScn['Cashflow']['Mean'][k]['Ensembles'],axis=0),axis=1)
+                mosScn['Cashflow']['Sum'][k + '_cumu']={}
+                mosScn['Cashflow']['Sum'][k + '_cumu']['Ensemble Mean']=np.mean(np.cumsum(mosScn['Cashflow']['Sum'][k]['Ensembles'],axis=0),axis=1)
+                mosScn['Cashflow']['Sum'][k + '_cumu']['Ensemble SD']=np.std(np.cumsum(mosScn['Cashflow']['Sum'][k]['Ensembles'],axis=0),axis=1)
+            
+            if flag_KeepEnsembles==0:
+                del mosScn['Cashflow']['Sum'][k]['Ensembles']
+                del mosScn['Cashflow']['Mean'][k]['Ensembles']
+    
+        #t1=time.time()
         
+        # Add scenario results to MOS dictionary
+        mos[iScn]=copy.deepcopy(mosScn)
+    
+    #--------------------------------------------------------------------------
     # Save
-    if flag_save=='On':
+    #--------------------------------------------------------------------------
+    
+    if flag_save==1:
         gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS.pkl',mos)
     
     return mos
@@ -2940,22 +3502,25 @@ def ImportParameters(meta):
     
     # Initialize parameter structure    
     meta['Param']={}
+    meta['Param']['BE']={}
+    meta['Param']['Sigma']={}
+    meta['Param']['BEV']={}
     
     #--------------------------------------------------------------------------
     # Biomass allometry (stand level)
     # Values are location specific
     #--------------------------------------------------------------------------
     
-    meta['Param']['Biomass Allometry']={}
-    meta['Param']['Biomass Allometry']['Raw']=gu.ReadExcel(pthin + '\Parameters_BiomassAllometrySL.xlsx')
+    meta['Param']['BE']['Biomass Allometry']={}
+    meta['Param']['BE']['Biomass Allometry']['Raw']=gu.ReadExcel(pthin + '\Parameters_BiomassAllometrySL.xlsx')
     
     #--------------------------------------------------------------------------
     # Biomass turnover
     # Values are location specific
     #--------------------------------------------------------------------------
     
-    meta['Param']['Biomass Turnover']={}
-    meta['Param']['Biomass Turnover']['Raw']=gu.ReadExcel(pthin + '\Parameters_BiomassTurnover.xlsx')
+    meta['Param']['BE']['Biomass Turnover']={}
+    meta['Param']['BE']['Biomass Turnover']['Raw']=gu.ReadExcel(pthin + '\Parameters_BiomassTurnover.xlsx')
     
     #--------------------------------------------------------------------------
     # Biophysical
@@ -2963,10 +3528,10 @@ def ImportParameters(meta):
     
     df=pd.read_excel(pthin + '\Parameters_Biophysical.xlsx',sheet_name='Sheet1')
     
-    meta['Param']['Biophysical']={}
+    meta['Param']['BE']['Biophysical']={}
     for i in range(len(df)):
         Name=df['Name'][i]
-        meta['Param']['Biophysical'][Name]=df['Value'][i]
+        meta['Param']['BE']['Biophysical'][Name]=df['Value'][i]
     
     #--------------------------------------------------------------------------
     # Inter-pool transfer parameters
@@ -2974,13 +3539,13 @@ def ImportParameters(meta):
     
     df=pd.read_excel(pthin + '\Parameters_InterPoolFluxes.xlsx',sheet_name='Sheet1',skiprows=2)
     
-    meta['Param']['Inter Pool Fluxes']={}
+    meta['Param']['BE']['Inter Pool Fluxes']={}
     for i in range(df.shape[0]):    
         for j in range(df.shape[1]-3):
             b=df.iloc[i,j+1]
             if (str(b)!='NaN') & (str(b)!='nan'):
                 Name=df.iloc[i,0] + 'To' + df.columns[j+1]            
-                meta['Param']['Inter Pool Fluxes'][Name]=b
+                meta['Param']['BE']['Inter Pool Fluxes'][Name]=b
     
     #--------------------------------------------------------------------------
     # Decomposition parameters
@@ -2988,19 +3553,19 @@ def ImportParameters(meta):
 
     df=pd.read_excel(pthin + '\Parameters_Decomposition.xlsx',sheet_name='Sheet1')
     
-    meta['Param']['Decomp']={}
+    meta['Param']['BE']['Decomp']={}
     for i in range(len(df)):
         Name=df['Name_Pool'].iloc[i] + '_PhysTransRate'
         Value=df['PhysTransRate'].iloc[i]
-        meta['Param']['Decomp'][Name]=Value
+        meta['Param']['BE']['Decomp'][Name]=Value
         
         Name=df['Name_Pool'].iloc[i] + '_Rten'
         Value=df['Rten'].iloc[i]
-        meta['Param']['Decomp'][Name]=Value
+        meta['Param']['BE']['Decomp'][Name]=Value
         
         Name=df['Name_Pool'].iloc[i] + '_Qten'
         Value=df['Qten'].iloc[i]
-        meta['Param']['Decomp'][Name]=Value
+        meta['Param']['BE']['Decomp'][Name]=Value
         
     #--------------------------------------------------------------------------
     # Disturbance parameters
@@ -3012,44 +3577,44 @@ def ImportParameters(meta):
                     'GrowthFactor_Source','GrowthRecovery_HL','GrowthRecovery_HL_Source',
                     'QA1','QA2','QA3']    
     
-    meta['Param']['Dist']={}
+    meta['Param']['BE']['Dist']={}
     for i in range(p['ID'].size):
-        meta['Param']['Dist'][p['ID'][i]]={}
-        meta['Param']['Dist'][p['ID'][i]]['BiomassMerch_Affected']=1
-        meta['Param']['Dist'][p['ID'][i]]['BiomassNonMerch_Affected']=1
-        meta['Param']['Dist'][p['ID'][i]]['Snags_Affected']=1
+        meta['Param']['BE']['Dist'][p['ID'][i]]={}
+        meta['Param']['BE']['Dist'][p['ID'][i]]['BiomassMerch_Affected']=1
+        meta['Param']['BE']['Dist'][p['ID'][i]]['BiomassNonMerch_Affected']=1
+        meta['Param']['BE']['Dist'][p['ID'][i]]['Snags_Affected']=1
         for k in p.keys():
             if np.isin(k,str_to_exclude)==True:
                 continue
-            meta['Param']['Dist'][p['ID'][i]][k]=np.nan_to_num(p[k][i])
+            meta['Param']['BE']['Dist'][p['ID'][i]][k]=np.nan_to_num(p[k][i])
     
     #--------------------------------------------------------------------------
     # Harvested wood products parameters (Dymond 2012)
     #--------------------------------------------------------------------------
       
-    meta['Param']['HWP']={}
-    meta['Param']['HWP']['Raw']=pd.read_excel(pthin + '\Parameters_HWP.xlsx',sheet_name='Default')
+    meta['Param']['BE']['HWP']={}
+    meta['Param']['BE']['HWP']['Raw']=pd.read_excel(pthin + '\Parameters_HWP.xlsx',sheet_name='Default')
     
     #--------------------------------------------------------------------------
     # Disturbance - By severity class
     #--------------------------------------------------------------------------
     
-    meta['Param']['DistBySC']=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
+    meta['Param']['BE']['DistBySC']=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
     
     #--------------------------------------------------------------------------
     # Disturbance - Wildfire aspatial (AAO) simulations from Taz
     #--------------------------------------------------------------------------
      
-    meta['Param']['Taz']={}
+    meta['Param']['BE']['Taz']={}
     
     wf=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_WildfireStatsMod.xlsx')
     
-    meta['Param']['Taz']['WF']={}    
+    meta['Param']['BE']['Taz']['WF']={}    
     for i in range(wf['Name'].size):
         try:
-            meta['Param']['Taz']['WF'][wf['Name'][i]]=wf['Value'][i].astype(float)
+            meta['Param']['BE']['Taz']['WF'][wf['Name'][i]]=wf['Value'][i].astype(float)
         except:
-            meta['Param']['Taz']['WF'][wf['Name'][i]]=wf['Value'][i]
+            meta['Param']['BE']['Taz']['WF'][wf['Name'][i]]=wf['Value'][i]
     
     #--------------------------------------------------------------------------
     # Disturbance - Mountain Pine Beetle AAO simulations
@@ -3057,18 +3622,18 @@ def ImportParameters(meta):
         
     ibm=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_IBMStatsMod.xlsx')
     
-    meta['Param']['Taz']['IBM']={}
+    meta['Param']['BE']['Taz']['IBM']={}
     for i in range(ibm['Name'].size):
         try:
-            meta['Param']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i].astype(float)
+            meta['Param']['BE']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i].astype(float)
         except:
-            meta['Param']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i]        
+            meta['Param']['BE']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i]        
     
     #--------------------------------------------------------------------------     
     # Disturbance - historical harvest reconstruction (really basic)
     #--------------------------------------------------------------------------
     
-    meta['Param']['Taz']['Ph_Simp']=gu.ReadExcel(meta['Paths']['Taz Datasets'] + '\\Harvest Stats and Scenarios\\HarvestHistoricalProbabilitySimple.xlsx')
+    meta['Param']['BE']['Taz']['Ph_Simp']=gu.ReadExcel(meta['Paths']['Taz Datasets'] + '\\Harvest Stats and Scenarios\\HarvestHistoricalProbabilitySimple.xlsx')
         
     #--------------------------------------------------------------------------
     # Disturbance - On the fly
@@ -3076,11 +3641,11 @@ def ImportParameters(meta):
     
     df=pd.read_excel(pthin + '\Parameters_OnTheFly.xlsx',sheet_name='Sheet1')
     
-    meta['Param']['On The Fly']={}
+    meta['Param']['BE']['On The Fly']={}
     for i in range(len(df)):
         Name=df['Name'].iloc[i]
         Value=df['Value'].iloc[i]
-        meta['Param']['On The Fly'][Name]=Value
+        meta['Param']['BE']['On The Fly'][Name]=Value
     
     #--------------------------------------------------------------------------
     # Nutrient application paramaters
@@ -3088,11 +3653,14 @@ def ImportParameters(meta):
     
     df=pd.read_excel(pthin + '\Parameters_NutrientApplication.xlsx',sheet_name='Sheet1')
 
-    meta['Param']['Nutrients']={}    
+    meta['Param']['BE']['Nutrient Management']={} 
+    meta['Param']['Sigma']['Nutrient Management']={} 
     for i in range(len(df)):
         Name=df['Name'].iloc[i]
         Value=df['Value'].iloc[i]
-        meta['Param']['Nutrients'][Name]=Value
+        Sigma=df['Sigma'].iloc[i]
+        meta['Param']['BE']['Nutrient Management'][Name]=Value
+        meta['Param']['Sigma']['Nutrient Management'][Name]=Sigma
         
     #--------------------------------------------------------------------------
     # Economics
@@ -3100,17 +3668,17 @@ def ImportParameters(meta):
     
     df=pd.read_excel(pthin + '\Parameters_Economics.xlsx',sheet_name='Sheet1')
     
-    meta['Param']['Econ']={}
+    meta['Param']['BE']['Econ']={}
     for i in range(len(df)):
         Name=df['Name'].iloc[i]
         Value=df['Value'].iloc[i]
-        meta['Param']['Econ'][Name]=Value
+        meta['Param']['BE']['Econ'][Name]=Value
         
     #--------------------------------------------------------------------------
     # Genetic worth
     #--------------------------------------------------------------------------
 
-    meta['Param']['Genetic Worth']=gu.ReadExcel(pthin + '\\Parameters_Seedlot_GW.xlsx')    
+    meta['Param']['BE']['Genetic Worth']=gu.ReadExcel(pthin + '\\Parameters_Seedlot_GW.xlsx')    
         
 #    #------------------------------------------------------------------------------
 #    # Biogeoclimatic Zone

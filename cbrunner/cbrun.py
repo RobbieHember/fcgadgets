@@ -48,8 +48,7 @@ def MeepMeep(meta):
                 pth_WorkingOnBatch=meta['Paths']['Project'] + '\\Outputs\\WorkingOnBatch_' + cbu.FixFileNum(iBat) + '.pkl'
                 
                 # Only proceed if the file does not exist running multiple instances
-                if meta['Project']['Skip Completed Runs']=='On':                         
-                    
+                if meta['Project']['Skip Completed Runs']=='On':                    
                     if os.path.exists(pth_WorkingOnBatch)==False:
                         gu.opickle(pth_WorkingOnBatch,[])
                         flag_WorkingOnBatch=1
@@ -59,8 +58,8 @@ def MeepMeep(meta):
             
                 # Report progress
                 if (meta['Project']['Scenario Source']=='Spreadsheet'):
-                    str_ens=' through ' + str(meta['Project']['N Stand'])
-                    print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble(s) 1' + str_ens + ', Batch ' + cbu.FixFileNum(iBat))                
+                    #print('Running Scenario ' + cbu.FixFileNum(iScn) )
+                    pass
                 else:
                     print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble ' + cbu.FixFileNum(iEns) + ', Batch ' + cbu.FixFileNum(iBat))
                 
@@ -70,7 +69,7 @@ def MeepMeep(meta):
                 rt_info['t2']=time.time()
                 
                 # Set location-specific parameters
-                meta,vi=PrepareLocationSpecificParameters(meta,vi,iBat)
+                meta,vi=PrepareParametersForBatch(meta,vi,iEns,iBat)
                 
                 rt_info['t3']=time.time()
               
@@ -162,7 +161,7 @@ def MeepMeep(meta):
                 #print(rt_info['t5']-rt_info['t4'])
                 #print(rt_info['t6']-rt_info['t5'])
                 t1=time.time()
-                print(t1-t0)
+                #print(t1-t0)
                 
             # Calculate and save model output stats for this ensemble, delete
             # full model output data to save space            
@@ -376,16 +375,50 @@ def InitializeStands(meta,iScn,iEns,iBat):
     meta['FlagNegNetGrowth']=np.zeros(meta['Project']['Batch Size'][iBat])
     meta['G_Net_PriorToBreakup']=np.zeros((meta['Project']['Batch Size'][iBat],7))
     
+    #--------------------------------------------------------------------------
+    # Get random numbers for on-the-fly disturbance types
+    #--------------------------------------------------------------------------
+    
+    if (meta['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta['Scenario'][iScn]['Harvest Status Future']=='On'):
+        rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        rn=rn.astype(float)
+        rn=rn*meta['Project']['On the Fly']['Random Numbers']['Scale Factor']        
+        meta['Project']['On the Fly']['Random Numbers']['Harvest']=rn.copy()
+    
+    if (meta['Scenario'][iScn]['Breakup Status']=='On'):
+        rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        rn=rn.astype(float)
+        rn=rn*meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
+        meta['Project']['On the Fly']['Random Numbers']['Breakup']=rn.copy()
+    
+    #--------------------------------------------------------------------------
     # Initialize a log book that will record various diagnostics, warnings, 
     # and error flags    
+    #--------------------------------------------------------------------------
+    
     meta['Logbook']=list()
     
     return meta,vi,vo
 
 #%% Import parameters
 
-def PrepareLocationSpecificParameters(meta,vi,iBat):
+def PrepareParametersForBatch(meta,vi,iEns,iBat):
       
+    #--------------------------------------------------------------------------
+    # Populate final parameters with initial best estimates
+    #--------------------------------------------------------------------------
+    
+    meta['Param']['BEV']=copy.deepcopy(meta['Param']['BE'])
+    
+    #--------------------------------------------------------------------------
+    # Add error variance
+    #--------------------------------------------------------------------------
+    
+    if meta['Project']['Uncertainty NM Status']=='On':
+        
+        for k in meta['Param']['BE']['Nutrient Management'].keys():        
+            meta['Param']['BEV']['Nutrient Management'][k]=meta['Param']['By Ensemble'][iEns]['Nutrient Management'][k]           
+    
     #--------------------------------------------------------------------------
     # Biomass allometry (stand level)
     #--------------------------------------------------------------------------
@@ -395,12 +428,12 @@ def PrepareLocationSpecificParameters(meta,vi,iBat):
     
     MaritimeZones=['CDF','CWH','ICH']
     
-    for k in meta['Param']['Biomass Allometry']['Raw'].keys():
+    for k in meta['Param']['BEV']['Biomass Allometry']['Raw'].keys():
         
         if k=='Region':
             continue    
         
-        meta['Param']['Biomass Allometry'][k]=np.zeros(meta['Project']['Batch Size'][iBat])
+        meta['Param']['BEV']['Biomass Allometry'][k]=np.zeros(meta['Project']['Batch Size'][iBat])
         
         for iU in range(u.size):
             
@@ -409,9 +442,9 @@ def PrepareLocationSpecificParameters(meta,vi,iBat):
             ind=np.where(vi['Inv']['ID_BECZ'].flatten()==u[iU])[0]
             
             if np.isin(bgc_cd,MaritimeZones)==True:
-                meta['Param']['Biomass Allometry'][k][ind]=meta['Param']['Biomass Allometry']['Raw'][k][0]
+                meta['Param']['BEV']['Biomass Allometry'][k][ind]=meta['Param']['BEV']['Biomass Allometry']['Raw'][k][0]
             else:
-                meta['Param']['Biomass Allometry'][k][ind]=meta['Param']['Biomass Allometry']['Raw'][k][1]
+                meta['Param']['BEV']['Biomass Allometry'][k][ind]=meta['Param']['BEV']['Biomass Allometry']['Raw'][k][1]
     
     #--------------------------------------------------------------------------
     # Biomass turnover
@@ -419,26 +452,26 @@ def PrepareLocationSpecificParameters(meta,vi,iBat):
     
     PoolNames=np.array(meta['Core']['Name Pools Eco'])[meta['Core']['iEP']['BiomassTotal']]
     
-    indPar=np.where( (meta['Param']['Biomass Turnover']['Raw']['SPECIES_CD']=='PL') )[0]
+    indPar=np.where( (meta['Param']['BEV']['Biomass Turnover']['Raw']['SPECIES_CD']=='PL') )[0]
     
     for pn in PoolNames:
-        meta['Param']['Biomass Turnover'][pn]=meta['Param']['Biomass Turnover']['Raw'][pn][indPar]*np.ones((1,meta['Project']['Batch Size'][iBat]))
+        meta['Param']['BEV']['Biomass Turnover'][pn]=meta['Param']['BEV']['Biomass Turnover']['Raw'][pn][indPar]*np.ones((1,meta['Project']['Batch Size'][iBat]))
     
     #--------------------------------------------------------------------------
     # HWP
     #--------------------------------------------------------------------------
     
-    for i in range(len(meta['Param']['HWP']['Raw'])):
+    for i in range(len(meta['Param']['BEV']['HWP']['Raw'])):
         
-        Name=meta['Param']['HWP']['Raw']['Name'].iloc[i]
-        Value=meta['Param']['HWP']['Raw']['Value'].iloc[i]
+        Name=meta['Param']['BEV']['HWP']['Raw']['Name'].iloc[i]
+        Value=meta['Param']['BEV']['HWP']['Raw']['Value'].iloc[i]
         
         # Convert half life to turnover rate
         if Name[-2:]=='hl':            
             Name=Name[0:-2] + 'tr'
             Value=1-np.exp(-np.log(2)/Value)        
         
-        meta['Param']['HWP'][Name]=Value*np.ones(meta['Project']['Batch Size'][iBat])
+        meta['Param']['BEV']['HWP'][Name]=Value*np.ones(meta['Project']['Batch Size'][iBat])
     
     #--------------------------------------------------------------------------
     # Populate custom harvest parameters with those supplied for project
@@ -454,7 +487,7 @@ def PrepareLocationSpecificParameters(meta,vi,iBat):
                     
                     if k[0:7]!='Removed':
                         id=meta['LUT']['Dist']['Harvest Custom ' + str(int(iHC+1))]
-                        meta['Param']['Dist'][id][k]=meta['Harvest Custom'][int(iHC+1)][k]/100 
+                        meta['Param']['BEV']['Dist'][id][k]=meta['Harvest Custom'][int(iHC+1)][k]/100 
 
     return meta,vi
 
@@ -512,22 +545,22 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     #--------------------------------------------------------------------------
     
     # Carbon dioxide flux (tCO2/ha/yr)
-    E_Fire_CO2=meta['Param']['Biophysical']['Ratio_CO2_to_C']*vo['C_E_FireAsCO2']
+    E_Fire_CO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*vo['C_E_FireAsCO2']
     
     # Carbon monoxide flux (tCO/ha/yr)
-    E_Fire_CO=meta['Param']['Biophysical']['Ratio_CO_to_C']*vo['C_E_FireAsCO']
+    E_Fire_CO=meta['Param']['BEV']['Biophysical']['Ratio_CO_to_C']*vo['C_E_FireAsCO']
     
     # Methan flux *(tCH4/ha/yr)
-    E_Fire_CH4=meta['Param']['Biophysical']['Ratio_CH4_to_C']*vo['C_E_FireAsCH4']
+    E_Fire_CH4=meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*vo['C_E_FireAsCH4']
     
     # Nitrous oxide flux (tN2O/ha/yr)
-    E_Fire_N2O=meta['Param']['Biophysical']['EF_N2O_fromCO2']*E_Fire_CO2
+    E_Fire_N2O=meta['Param']['BEV']['Biophysical']['EF_N2O_fromCO2']*E_Fire_CO2
     
     # Convert fluxes to CO2e using global warming potential estimates
     CO2e_E_Fire_AsCO2=1*E_Fire_CO2    
-    CO2e_E_Fire_AsCH4=meta['Param']['Biophysical']['GWP_CH4_AR5']*E_Fire_CH4    
-    CO2e_E_Fire_AsCO=meta['Param']['Biophysical']['GWP_CO_AR5']*E_Fire_CO    
-    CO2e_E_Fire_AsN2O=meta['Param']['Biophysical']['GWP_N2O_AR5']*E_Fire_N2O
+    CO2e_E_Fire_AsCH4=meta['Param']['BEV']['Biophysical']['GWP_CH4_AR5']*E_Fire_CH4    
+    CO2e_E_Fire_AsCO=meta['Param']['BEV']['Biophysical']['GWP_CO_AR5']*E_Fire_CO    
+    CO2e_E_Fire_AsN2O=meta['Param']['BEV']['Biophysical']['GWP_N2O_AR5']*E_Fire_N2O
     
     # Total CO2e emissions from fire
     vo['CO2e_E_Fire']=CO2e_E_Fire_AsCO2+CO2e_E_Fire_AsCH4+CO2e_E_Fire_AsCO+CO2e_E_Fire_AsN2O    
@@ -552,9 +585,9 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     vo['C_DumpLandfill']=np.sum(vo['C_Pro_Pools'][:,:,10:17],axis=2)
 
     # Combine emissions from product sector, express as tCO2e/ha/yr
-    co2_to_c=meta['Param']['Biophysical']['Ratio_CO2_to_C']
+    co2_to_c=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']
     gwp_co2=1
-    gwp_ch4=meta['Param']['Biophysical']['GWP_CH4_AR5']
+    gwp_ch4=meta['Param']['BEV']['Biophysical']['GWP_CH4_AR5']
     f_co2=vo['C_Pro_Pools'][:,:,17]
     f_ch4=vo['C_Pro_Pools'][:,:,18]
     vo['CO2e_E_Products']=gwp_co2*co2_to_c*f_co2+gwp_ch4*co2_to_c*f_ch4

@@ -101,44 +101,84 @@ def DataFrameToDataStruct(df):
 
 #%% ADD LETTERS TO FIGURE PANELS
 
-def axletters(ax,plt,rx,ry,*args):
-    lab=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)']
-    labCap=['A','B','C','D','E','F','G','H','I','J']
+def axletters(ax,plt,rx,ry,**kwargs):
+    
+    # Letter style
+    Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)']    
+    if 'LetterStyle' in kwargs.keys():
+        if kwargs['LetterStyle']=='Caps':
+            Letter=['A','B','C','D','E','F','G','H','I','J']
+    # Font size
+    fs=plt.rcParams.get('font.size')
+    if 'FontSize' in kwargs.keys():
+        fs=kwargs['FontSize']
+        
+    # Font weight
+    fw='normal'
+    if 'FontWeight' in kwargs.keys():
+        if (kwargs['FontWeight']=='Bold') | (kwargs['FontWeight']=='bold'):
+            fw='bold'
+    
+    # Additional labels
+    Label=['','','','','','','','','','','','','','']
+    if 'Labels' in kwargs.keys():
+        Label=kwargs['Labels']
+    
+    # Label spacer
+    LabelSpacer=0.05
+    if 'LabelSpacer' in kwargs.keys():
+        LabelSpacer=kwargs['LabelSpacer']
+    
     c=0
     if len(ax.shape)>1:
         for i in range(ax.shape[0]):
             for j in range(ax.shape[1]):
+                
                 yl=ax[i,j].get_ylim()
                 xl=ax[i,j].get_xlim()
+                
                 dyl=np.abs(yl[1]-yl[0])
                 dxl=np.abs(xl[1]-xl[0])
-                ax[i,j].text(xl[0]+rx*dxl,yl[0]+ry*dyl,lab[c],
-                  {'color':plt.rcParams.get('axes.edgecolor'),
-                   'fontsize':plt.rcParams.get('font.size')})
-                try:
-                    ax[i,j].text(xl[0]+(rx+args[1])*dxl,yl[0]+ry*dyl,args[0][c],
-                      {'color':plt.rcParams.get('axes.edgecolor'),
-                       'fontsize':plt.rcParams.get('font.size')})
-                except:
-                    pass
-                    
+                
+                # Letter
+                x=xl[0]+rx*dxl
+                y=yl[0]+ry*dyl
+                ax[i,j].text(x,y,Letter[c],{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':fw})
+                
+                # Label
+                if Label[c]!='':
+                    x=xl[0]+(rx+LabelSpacer)*dxl
+                    y=yl[0]+ry*dyl
+                    txt=Label[c]
+                    ax[i,j].text(x+LabelSpacer,y,txt,{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':'normal'})
+
                 c=c+1
+    
     elif len(ax.shape)==1:
+        
         for i in range(ax.shape[0]):
+            
             yl=ax[i].get_ylim()
             xl=ax[i].get_xlim()
+            
             dyl=np.abs(yl[1]-yl[0])
             dxl=np.abs(xl[1]-xl[0])
-            ax[i].text(xl[0]+rx*dxl,yl[0]+ry*dyl,lab[c],
-              {'color':plt.rcParams.get('axes.edgecolor'),
-               'fontsize':plt.rcParams.get('font.size')})
-            try:
-                ax[i].text(xl[0]+(rx+args[1])*dxl+args[1],yl[0]+ry*dyl,args[0][c],
-                  {'color':plt.rcParams.get('axes.edgecolor'),
-                   'fontsize':plt.rcParams.get('font.size')})
-            except:
-                pass
+            
+            # Letter
+            x=xl[0]+rx*dxl
+            y=yl[0]+ry*dyl
+            ax[i].text(x,y,Letter[c],{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':fw})
+            
+            # Label
+            if Label[c]!='':
+                x=xl[0]+(rx+LabelSpacer)*dxl
+                y=yl[0]+ry*dyl
+                txt=Label[c]
+                ax[i].text(x,y,txt,{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':'normal'})
+            
             c=c+1
+    
+    return
 
 #%% BUNCH CONTENTS OF DICTIONARY
 
@@ -262,7 +302,7 @@ def PartialCorrelation(C):
 
 def tvec(res,year1,year2):
     
-    yr=np.arange(year1,year2,1)
+    yr=np.arange(year1,year2+1,1)
     
     if res=='m':
         

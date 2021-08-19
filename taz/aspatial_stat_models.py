@@ -14,13 +14,17 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 def SimulateWildfireFromAAO(meta,ba):
 
+    # Ensure BGC zone has the right key name
+    if 'ID_BECZ' in ba:
+        ba['BEC_ZONE_CODE']=ba['ID_BECZ']
+    
     # Import wildfire stats (by BGC zone)  
     wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')    
     tv_wfss=np.arange(-2000,2201,1)
 
     # Prepare mortality probability coefficients
-    beta_pi=np.cumsum([meta['Param']['Taz']['WF']['p_Unburned_pi'],meta['Param']['Taz']['WF']['p_Low_pi'],meta['Param']['Taz']['WF']['p_Medium_pi'],meta['Param']['Taz']['WF']['p_High_pi']])
-    beta_obs=np.cumsum([meta['Param']['Taz']['WF']['p_Unburned_obs'],meta['Param']['Taz']['WF']['p_Low_obs'],meta['Param']['Taz']['WF']['p_Medium_obs'],meta['Param']['Taz']['WF']['p_High_obs']])
+    beta_pi=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_pi'],meta['Param']['BE']['Taz']['WF']['p_Low_pi'],meta['Param']['BE']['Taz']['WF']['p_Medium_pi'],meta['Param']['BE']['Taz']['WF']['p_High_pi']])
+    beta_obs=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_obs'],meta['Param']['BE']['Taz']['WF']['p_Low_obs'],meta['Param']['BE']['Taz']['WF']['p_Medium_obs'],meta['Param']['BE']['Taz']['WF']['p_High_obs']])
                         
     for iEns in range(meta['Project']['N Ensemble']):
         
@@ -37,14 +41,14 @@ def SimulateWildfireFromAAO(meta,ba):
         
         P_oc=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']))
         
-        # Get unique BGC zones
+        # Get unique BGC zone
         uZone=np.unique(ba['BEC_ZONE_CODE'])
             
         for iZone in range(uZone.size):
                 
             namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]        
             indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
-            Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(meta['Param']['Taz']['WF']['Scenario ID']))]
+            Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(meta['Param']['BE']['Taz']['WF']['Scenario ID']))]
         
             for iT in range(meta['Year'].size):
                     
@@ -140,12 +144,12 @@ def SimulateWildfireFromAAO_StandsActAsEnsembles(meta,inv,iScn):
     tv_wfss=np.arange(-2000,2201,1)
 
     # Prepare mortality probability coefficients
-    beta_pi=np.cumsum([meta['Param']['Taz']['WF']['p_Unburned_pi'],meta['Param']['Taz']['WF']['p_Low_pi'],meta['Param']['Taz']['WF']['p_Medium_pi'],meta['Param']['Taz']['WF']['p_High_pi']])
-    beta_obs=np.cumsum([meta['Param']['Taz']['WF']['p_Unburned_obs'],meta['Param']['Taz']['WF']['p_Low_obs'],meta['Param']['Taz']['WF']['p_Medium_obs'],meta['Param']['Taz']['WF']['p_High_obs']])
+    beta_pi=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_pi'],meta['Param']['BE']['Taz']['WF']['p_Low_pi'],meta['Param']['BE']['Taz']['WF']['p_Medium_pi'],meta['Param']['BE']['Taz']['WF']['p_High_pi']])
+    beta_obs=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_obs'],meta['Param']['BE']['Taz']['WF']['p_Low_obs'],meta['Param']['BE']['Taz']['WF']['p_Medium_obs'],meta['Param']['BE']['Taz']['WF']['p_High_obs']])
      
     # Get deterministic component of Po (specific to BGC zone)
     namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,0])[0]
-    P_oc_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(meta['Param']['Taz']['WF']['Scenario ID']))]
+    P_oc_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(meta['Param']['BE']['Taz']['WF']['Scenario ID']))]
     
     # Initialize annual probability of occurrence (final with deterministic and
     # random components)
@@ -222,11 +226,11 @@ def SimulateIBMFromAAO(meta,ba):
     ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
     
     # Prepare mortality probability coefficients
-    beta_obs=np.cumsum([meta['Param']['Taz']['IBM']['p_Trace_obs'],
-                       meta['Param']['Taz']['IBM']['p_Low_obs'],
-                       meta['Param']['Taz']['IBM']['p_Medium_obs'],
-                       meta['Param']['Taz']['IBM']['p_Severe_obs'],
-                       meta['Param']['Taz']['IBM']['p_VerySevere_obs']])
+    beta_obs=np.cumsum([meta['Param']['BE']['Taz']['IBM']['p_Trace_obs'],
+                       meta['Param']['BE']['Taz']['IBM']['p_Low_obs'],
+                       meta['Param']['BE']['Taz']['IBM']['p_Medium_obs'],
+                       meta['Param']['BE']['Taz']['IBM']['p_Severe_obs'],
+                       meta['Param']['BE']['Taz']['IBM']['p_VerySevere_obs']])
     
     for iEns in range(meta['Project']['N Ensemble']):
         
@@ -344,11 +348,11 @@ def SimulateIBMFromAAO(meta,ba):
 #    tv_scn=np.arange(-2000,2201,1)
 #    
 #    # Prepare mortality probability coefficients
-#    beta_obs=np.cumsum([meta['Param']['Taz']['IBM']['p_Trace_obs'],
-#                       meta['Param']['Taz']['IBM']['p_Low_obs'],
-#                       meta['Param']['Taz']['IBM']['p_Medium_obs'],
-#                       meta['Param']['Taz']['IBM']['p_Severe_obs'],
-#                       meta['Param']['Taz']['IBM']['p_VerySevere_obs']])
+#    beta_obs=np.cumsum([meta['Param']['BE']['Taz']['IBM']['p_Trace_obs'],
+#                       meta['Param']['BE']['Taz']['IBM']['p_Low_obs'],
+#                       meta['Param']['BE']['Taz']['IBM']['p_Medium_obs'],
+#                       meta['Param']['BE']['Taz']['IBM']['p_Severe_obs'],
+#                       meta['Param']['BE']['Taz']['IBM']['p_VerySevere_obs']])
 #    
 #    ibm_sim={}
 #    
@@ -373,17 +377,17 @@ def SimulateIBMFromAAO(meta,ba):
 #            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])
 #        
 #    # Exclude inventory period
-#    if meta['Param']['Taz']['IBM']['Exclude simulations during modern period']=='On':
+#    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during modern period']=='On':
 #        ind=np.where( (meta['Year']>=1951) & (meta['Year']<=meta['Project']['Year Project']) )[0]
 #        ibm_sim['Occurrence'][ind,:]=0 
 #        
 #    # Exclude historical period
-#    if meta['Param']['Taz']['IBM']['Exclude simulations during historical period']=='On':
+#    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during historical period']=='On':
 #        ind=np.where( (meta['Year']<=meta['Project']['Year Project']) )[0]
 #        ibm_sim['Occurrence'][ind,:]=0
 #    
 #    # Exclude future period
-#    if meta['Param']['Taz']['IBM']['Exclude simulations during future period']=='On':
+#    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during future period']=='On':
 #        ind=np.where( (meta['Year']>meta['Project']['Year Project']) )[0]
 #        ibm_sim['Occurrence'][ind,:]=0       
 #        
@@ -457,7 +461,7 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,Age):
     Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
 
     #rn=np.random.random(Age.size)
-    rn=meta['Project']['On the Fly']['Random Numbers']['Breakup'][iT,iEns]
+    rn=meta['Project']['On the Fly']['Random Numbers']['Breakup'][iT,:]
     
     indS=np.where(rn<Po)[0]
     if indS.size>0:
@@ -503,7 +507,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
         else:
             
             # Use default
-            Pa_H_Sat=meta['Param']['On The Fly']['Pa_Harvest_Sat']
+            Pa_H_Sat=meta['Param']['BE']['On The Fly']['Pa_Harvest_Sat']
     
     # Inflection point
     if 'Pa Harvest Inf' in meta['Scenario'][iScn]:
@@ -514,10 +518,10 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
     else:
         
         # Use default
-        Pa_H_Inf=meta['Param']['On The Fly']['Pa_Harvest_Inflection']
+        Pa_H_Inf=meta['Param']['BE']['On The Fly']['Pa_Harvest_Inflection']
     
     # Shape parameter
-    Pa_H_Shape=meta['Param']['On The Fly']['Pa_Harvest_Shape']
+    Pa_H_Shape=meta['Param']['BE']['On The Fly']['Pa_Harvest_Shape']
     
     # Plot function:
     flg=0
@@ -541,7 +545,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
     
     # Random number
     #rn=np.random.random(V_Merch.size)
-    rn=meta['Project']['On the Fly']['Random Numbers']['Harvest'][iT,iEns]
+    rn=meta['Project']['On the Fly']['Random Numbers']['Harvest'][iT,:]
     
     # Occurrence
     Oc=flag_thlb*np.floor(np.minimum(1,Po/rn))

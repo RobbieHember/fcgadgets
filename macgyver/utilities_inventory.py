@@ -1245,9 +1245,9 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 # Genetic worth           
                 gw0=np.zeros(n0.size)
                 for j in range(n0.size):
-                    ind=np.where(meta['Param']['Genetic Worth']['SEEDLOT_NUMBER']==pl['SEEDLOT_NUMBER'][indYear[j]])[0]
+                    ind=np.where(meta['Param']['BE']['Genetic Worth']['SEEDLOT_NUMBER']==pl['SEEDLOT_NUMBER'][indYear[j]])[0]
                     if ind.size!=0:
-                        gw0[j]=meta['Param']['Genetic Worth']['GENETIC_WORTH_RTNG'][ind[0]]
+                        gw0[j]=meta['Param']['BE']['Genetic Worth']['GENETIC_WORTH_RTNG'][ind[0]]
     
                 # Dissolve to unique species combinations and calculate weighted average genetic worth
                 cd1=np.unique(cd0)
@@ -1642,42 +1642,42 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
                 # Mountain pine beetle - Adjust severity based on fractin of pine later using: AdjustSpeciesSpecificMortality         
                 if (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBM']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBM'])
-                    ind=np.where( (meta['Param']['DistBySC']['Name']=='IBM') & (meta['Param']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['DistBySC']['MortalityFactor'][ind])
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['DistBySC']['GrowthFactor'][ind])
+                    ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBM') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
                 
                 # Western Balsam Bark Beetle
                 # (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-health/forest-pests/bark-beetles/western-balsam-bark-beetle)
                 elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBB']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBB'])
-                    ind=np.where( (meta['Param']['DistBySC']['Name']=='IBB') & (meta['Param']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['DistBySC']['MortalityFactor'][ind])
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['DistBySC']['GrowthFactor'][ind])
+                    ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBB') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
             
                 # Douglas-fir beetle
                 # (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-health/forest-pests/bark-beetles/western-balsam-bark-beetle)
                 elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBD']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBD'])
-                    ind=np.where( (meta['Param']['DistBySC']['Name']=='IBD') & (meta['Param']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['DistBySC']['MortalityFactor'][ind])
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['DistBySC']['GrowthFactor'][ind])
+                    ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBD') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
                 
                 # Spruce beetle
                 # (https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-health/forest-pests/bark-beetles/western-balsam-bark-beetle)
                 elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBS']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBS'])
-                    ind=np.where( (meta['Param']['DistBySC']['Name']=='IBS') & (meta['Param']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['DistBySC']['MortalityFactor'][ind])
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['DistBySC']['GrowthFactor'][ind])
+                    ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBS') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
                 
                 # Western spruce budworm 
                 # Populate severity with the ID for severity - it will be revised below
                 # to model mortality that occurs from repeated infestation
                 elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IDW']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
-                    ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']==sev_s) )[0]
+                    ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],sev)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['DistBySC']['GrowthFactor'][ind])
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
                 
                 # Other
                 else:
@@ -1906,7 +1906,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba,StringsToFill):
         iFert=iFert[0]
         
         # Index to events prior to first fertilization with 100% mortality
-        ind=np.where( (dmec[iStand]['Year']<=dmec[iStand]['Year'][iFert[0]]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
+        ind=np.where( (dmec[iStand]['Year']<=dmec[iStand]['Year'][iFert]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
         
         if (ind.size==0):
             
@@ -1940,7 +1940,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba,StringsToFill):
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],0)
             for v in StringsToFill:
-                dmec[iStand][v]=np.append(dmec[iStand][v],-999)            
+                dmec[iStand][v]=np.append(dmec[iStand][v],-999)
     
     return dmec
 
@@ -2018,8 +2018,8 @@ def IDW_Fix_Severity(meta,dmec):
                 # By default, apply mortality rate in the year of defoliation
                 sev1=dmec[iStand]['MortalityFactor'][iA]
                 sev_s1=cbu.lut_n2s(meta['LUT']['Pest']['PEST_SEVERITY_CODE'],sev1)[0]
-                ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']==sev_s1) )[0]
-                Mortality1=meta['Param']['DistBySV']['MortalityFactor'][ind]
+                ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s1) )[0]
+                Mortality1=meta['Param']['BE']['DistBySV']['MortalityFactor'][ind]
 
                 if iA>0:
                     if dmec[iStand]['ID_Type'][iA-1]=='IDW':
@@ -2028,23 +2028,23 @@ def IDW_Fix_Severity(meta,dmec):
                         sev0=Severity_Frozen[iA-1]
                         sev_s0=cbu.lut_n2s(meta['LUT']['Pest']['PEST_SEVERITY_CODE'],sev0)[0]
                         if (sev_s0=='M') & (sev_s1=='M'):
-                            ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']=='MM') )[0]
-                            Mortality1=meta['Param']['DistBySV']['MortalityFactor'][ind]
+                            ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']=='MM') )[0]
+                            Mortality1=meta['Param']['BE']['DistBySV']['MortalityFactor'][ind]
                         elif (sev_s0=='M') & (sev_s1=='S'):
-                            ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']=='MS') )[0]
-                            Mortality1=meta['Param']['DistBySV']['MortalityFactor'][ind]
+                            ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']=='MS') )[0]
+                            Mortality1=meta['Param']['BE']['DistBySV']['MortalityFactor'][ind]
                         elif (sev_s0=='M') & (sev_s1=='V'):
-                            ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']=='MV') )[0]
-                            Mortality1=meta['Param']['DistBySV']['MortalityFactor'][ind]
+                            ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']=='MV') )[0]
+                            Mortality1=meta['Param']['BE']['DistBySV']['MortalityFactor'][ind]
                         elif (sev_s0=='S') & (sev_s1=='S'):
-                            ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']=='SS') )[0]
-                            Mortality1=meta['Param']['DistBySV']['MortalityFactor'][ind]
+                            ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']=='SS') )[0]
+                            Mortality1=meta['Param']['BE']['DistBySV']['MortalityFactor'][ind]
                         elif (sev_s0=='S') & (sev_s1=='V'):
-                            ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']=='SV') )[0]
-                            Mortality1=meta['Param']['DistBySV']['MortalityFactor'][ind]
+                            ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']=='SV') )[0]
+                            Mortality1=meta['Param']['BE']['DistBySV']['MortalityFactor'][ind]
                         elif (sev_s0=='V') & (sev_s1=='V'):
-                            ind=np.where( (meta['Param']['DistBySC']['Name']=='IDW') & (meta['Param']['DistBySC']['SeverityCD']=='VV') )[0]
-                            Mortality1=meta['Param']['DistBySV']['MortalityFactor'][ind]
+                            ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']=='VV') )[0]
+                            Mortality1=meta['Param']['BE']['DistBySV']['MortalityFactor'][ind]
                         else:
                             pass                    
                 dmec[iStand]['MortalityFactor'][iA]=np.array(Mortality1,dtype='int16')
@@ -2360,17 +2360,17 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Fd.tif')
         x=z['X'][0,:]
         y=z['Y'][:,0]
-        Site_Prod_Fd=z['Data']
+        Site_Prod_Fd=np.squeeze(z['Data'])
         del z
         garc.collect()
     
         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Pl.tif')
-        Site_Prod_Pl=z['Data']
+        Site_Prod_Pl=np.squeeze(z['Data'])
         del z
         garc.collect()
     
         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Sx.tif')
-        Site_Prod_Sx=z['Data']
+        Site_Prod_Sx=np.squeeze(z['Data'])
         del z
         garc.collect()
     
@@ -2387,6 +2387,7 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
             ix=np.where(adx==np.min(adx))[0]
             iy=np.where(ady==np.min(ady))[0]
             ind=np.ix_(iy,ix)
+
             if (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FD']) | \
                 (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDI']) | \
                 (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDC']):
@@ -2537,10 +2538,10 @@ def AdjustSpeciesSpecificMortality(meta,dmec,gc,iB):
     
     SA_List=[None]*len(Pest_List)
     for iPest in range(len(Pest_List)):
-        ind=np.where( (meta['Param']['DistBySC']['Name']==Pest_List[iPest]) )[0][0]
-        SA_List[iPest]=np.array([meta['Param']['DistBySC']['SpcCD1'][ind],meta['Param']['DistBySC']['SpcCD2'][ind],
-                 meta['Param']['DistBySC']['SpcCD3'][ind],meta['Param']['DistBySC']['SpcCD4'][ind],
-                 meta['Param']['DistBySC']['SpcCD5'][ind],meta['Param']['DistBySC']['SpcCD6'][ind]])
+        ind=np.where( (meta['Param']['BE']['DistBySC']['Name']==Pest_List[iPest]) )[0][0]
+        SA_List[iPest]=np.array([meta['Param']['BE']['DistBySC']['SpcCD1'][ind],meta['Param']['BE']['DistBySC']['SpcCD2'][ind],
+                 meta['Param']['BE']['DistBySC']['SpcCD3'][ind],meta['Param']['BE']['DistBySC']['SpcCD4'][ind],
+                 meta['Param']['BE']['DistBySC']['SpcCD5'][ind],meta['Param']['BE']['DistBySC']['SpcCD6'][ind]])
 
     for iStand in range(meta['Project']['N Stand']):      
     

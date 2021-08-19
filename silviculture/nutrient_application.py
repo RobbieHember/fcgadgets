@@ -4,10 +4,10 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Nutrient application effects
 
-def update_nutrient_status(vi,vo,iT,meta,comp):
+def UpdateStatus(vi,vo,iT,meta,comp):
     
     # Exctract parameters
-    bNA=meta['Param']['Nutrients']
+    bNA=meta['Param']['BEV']['Nutrient Management']
     
     if comp=='UpdateCounter':
         
@@ -30,7 +30,7 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         meta['Nutrient Management']['ResponseCounter'][iApplication]=meta['Nutrient Management']['ResponseCounter'][iApplication]+1
         
         #----------------------------------------------------------------------
-        # Adjust net growth
+        # Adjust net growth on treatment area
         #----------------------------------------------------------------------
         
         # Response ratio of stemwood (before wood density effect)
@@ -78,8 +78,8 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         
             else:
                 em='Error: Nutrient application not implemented - stand age exceeds max age of growth curves.'
-                print(em)
-                print(AgeAtApplication)
+                #print(em)
+                #print(AgeAtApplication)
             
         # Re-applly scalefactor
         GCA_SP=GCA_SP/meta['GC']['Scale Factor']
@@ -88,7 +88,7 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         GCA_SP=GCA_SP.astype(np.int16)
             
         # Repopulate in input variable dictionary
-        vi['GC']['Active'][:,iApplication,:]=GCA_SP        
+        vi['GC']['Active'][:,iApplication,:]=GCA_SP
     
     elif (comp=='BelowgroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         
@@ -171,7 +171,7 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
     elif comp=='Emissions':
         
         #----------------------------------------------------------------------
-        # Adjust emissions
+        # Emissions from manufacture and transport
         #----------------------------------------------------------------------         
         
         # Urea dose (kgUrea/ha)
@@ -196,23 +196,73 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
         # Volatilization: CO2 emissions following application, Tier 1 
         # approach, IPCC 2006, 11.4.1 (tCO2e/ha)
         # 0.2*(430/1000)*(1/0.27) = 0.32 tCO2e/ha
-        #E_Vol=bNA['Ratio_C_to_Urea']*(DoseUrea/1000)*(1/meta['Param']['Biophysical']['bRatio_C_to_CO2'])
+        #E_Vol=bNA['Ratio_C_to_Urea']*(DoseUrea/1000)*(1/meta['Param']['BEV']['Biophysical']['Ratio_C_to_CO2'])
         # Assume sequestration and volatilization of CO2 cancel out 
         E_Vol=0
 
+        #----------------------------------------------------------------------
         # Denitrification: N2O emissions following application, Tier 1 
         # approach, IPCC 2006, 11.4.1 (tCO2e/ha)
-        E_Denit=bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)* \
-            bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['Biophysical']['GWP_N2O_AR4']
-                
+        #----------------------------------------------------------------------
+        
+        E_Denit=bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4']
+
+        #----------------------------------------------------------------------
         # Total emissions (tCO2e/ha)
+        #----------------------------------------------------------------------
+        
         E_Tot=E_ProdNH3+E_ProdUrea+E_Ops+E_Vol+E_Denit
                 
         # Total emissions of carbon (MgC/ha) emitted as CO2e, converted
         # to carbon to be consistent with the rest of the variables in 
         # the vo object.
-        vo['C_E_Operations'][iT,meta['Nutrient Management']['iApplication']]=meta['Param']['Biophysical']['Ratio_C_to_CO2']*E_Tot
+        vo['C_E_Operations'][iT,meta['Nutrient Management']['iApplication']]=meta['Param']['BEV']['Biophysical']['Ratio_C_to_CO2']*E_Tot
     
+        #----------------------------------------------------------------------
+        # Exterior area (volatilization/deposition effects)
+        #----------------------------------------------------------------------
+        
+        if meta['Project']['External Footprint Effect Status']=='On':
+        
+            # Dose (kgN/ha)
+            DoseN=bNA['DoseUrea_Standard']*bNA['Ratio_N_to_Urea']
+  
+            # Emissions (NH3-N ha-1)
+            EmissionNH3_as_N=bNA['EA Fraction volatilized']*DoseN
+    
+            # Canopy uptake (kgN)
+            CanopyUptakeN=EmissionNH3_as_N*bNA['EA Forest deposition fraction']*bNA['EA Leaf uptake fraction']
+            
+            # Root uptake (kgN)
+            RootUptakeN=EmissionNH3_as_N*bNA['EA Forest deposition fraction']*bNA['EA Throughfall fraction']*bNA['EA RootUptakeFraction']
+        
+            # GHG benefit from canopy uptake (MgC/ha)
+            GHG_Benefit_CanupyUptake_Coast=bNA['EA_NUEu_NGTT_Coast']*CanopyUptakeN/1000
+            GHG_Benefit_CanupyUptake_Interior=CanopyUptakeN/1000*bNA['EA_NUEu_NGTT_Interior']
+    
+            # GHG benefit from root uptake (MgC/ha)
+            GHG_Benefit_RootUptake_Coast=RootUptakeN/1000*bNA['EA_NUEa_NGTTD_Coast']
+            GHG_Benefit_RootUptake_Interior=RootUptakeN/1000*bNA['EA_NUEa_NGTTD_Interior']
+            
+            # Total GHG benefit (MgC/ha)
+            GHG_Benefit_Tot_Coast=GHG_Benefit_CanupyUptake_Coast+GHG_Benefit_RootUptake_Coast
+            GHG_Benefit_Tot_Interior=GHG_Benefit_CanupyUptake_Interior+GHG_Benefit_RootUptake_Interior
+            
+            EA_GHG_Benefit=GHG_Benefit_Tot_Coast*bNA['EA Fraction of footprint coast']+GHG_Benefit_Tot_Interior*bNA['EA Fraction of footprint interior']
+            
+            # Convert to carbon (MgC/ha/yr)
+            #EA_GHG_Benefit=EA_GHG_Benefit
+            
+            # Annaul GHG benefit over response duration (tCO2e/ha/yr)
+            #EA_GHG_Benefit=EA_GHG_Benefit/bNA['ResponseDuration']            
+            
+            # Add to operations
+            #vo['C_E_Operations'][iT:iT+int(bNA['ResponseDuration']),meta['Nutrient Management']['iApplication']]=vo['C_E_Operations'][iT:iT+int(bNA['ResponseDuration']),meta['Nutrient Management']['iApplication']]=EA_GHG_Benefit
+            try:
+                vo['C_E_Operations'][iT+1,meta['Nutrient Management']['iApplication']]=vo['C_E_Operations'][iT+1,meta['Nutrient Management']['iApplication']]-EA_GHG_Benefit
+            except:
+                pass                    
+            
     elif (comp=='HeterotrophicRespiration') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         
         #----------------------------------------------------------------------
@@ -232,14 +282,16 @@ def update_nutrient_status(vi,vo,iT,meta,comp):
 
 #%% Simulate probability of harvesting on the fly
 
-def ScheduleNutrientApplication_OnTheFly(meta,vi,vo,iT,iScn,iEns):
+def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
     
-   rn=np.random.random(vo['A'][iT,:].size) 
-    
+   rn=np.random.random(meta['Project']['Batch Size'][iBat])
+   
    indS=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
-                 (vo['A'][iT,:]>=10) & (vo['A'][iT,:]<=71) & \
+                 (vo['A'][iT,:]>=10) & \
+                 (vo['A'][iT,:]<=71) & \
                  (rn<meta['Scenario'][iScn]['Nutrient Application Prob']) & \
-                 (vo['V_StemMerch'][iT,:]>1) )[0]
+                 (vo['V_StemMerch'][iT,:]>10) & \
+                 (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) )[0]
 
    if indS.size>0:
        for i in range(indS.size):

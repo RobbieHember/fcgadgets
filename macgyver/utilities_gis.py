@@ -57,13 +57,13 @@ def OpenGeoTiff(pthin):
     # grid data
     #data=ds.ReadAsArray()    
     raster=rasterio.open(pthin)
-    data=raster.read(1)
+    data=raster.read()
     
     Projection=ds.GetProjection()
     prj=osr.SpatialReference(wkt=ds.GetProjection())
     proj4_str=prj.GetAttrValue('AUTHORITY',1)
     
-    m,n=data.shape    
+    n_bands,m,n=data.shape    
     xmin=gt[0]
     ymax=gt[3]
     xmax=xmin+gt[1]*n  
