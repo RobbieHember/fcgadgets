@@ -1565,7 +1565,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
 #%% Harvested wood products sector (from Dymond 2012)
 
-def HWP_From_BCHWP12_WithMods(iT,iBat,vi,vo,meta):
+def HWP_From_BCHWP12_Update21(iT,iBat,vi,vo,meta):
     
     #--------------------------------------------------------------------------
     # Revise parameters based on custom harvest inputs

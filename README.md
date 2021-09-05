@@ -13,7 +13,7 @@ The repository was developed to:
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
 <br>
-**fcgadgets** is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
+fcgadgets is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
 geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 ## PLUG-AND-PLAY MODULARITY
@@ -58,6 +58,12 @@ will match that originally predicted by the GY model.
 * Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems 
 * This module aims to capture the dynamics described by the [BC Harvested Wood Products model version 1 (Dymond, 2012)](https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
 * Driven by province-wide default parameters or user-specified parameters indicating product profiles
+
+### HWP_From_BCHWP12_Update21: 
+* Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems (Dymond, 2012)
+* Modifications made to include flow of fibre through chipper mills, post & pole mills, and firewood collection
+* Modifications made to represent domestric power generation, pellets
+* Modifications made to capture regional differences in harvest utilization levels
 
 ### Organizational structure of cbrunner
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:

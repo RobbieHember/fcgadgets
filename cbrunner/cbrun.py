@@ -132,7 +132,7 @@ def MeepMeep(meta):
                     if meta['Year'][iT]>=meta['Core']['HWP Year Start']:
                         
                         # No need to run this before a certain date
-                        vo=annproc.HWP_From_BCHWP12_WithMods(iT,iBat,vi,vo,meta)
+                        vo=annproc.HWP_From_BCHWP12_Update21(iT,iBat,vi,vo,meta)
                 
                 rt_info['t5']=time.time()
                 
