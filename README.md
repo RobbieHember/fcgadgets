@@ -12,6 +12,7 @@ The **fcgadgets** repo was developed to:
 * Automate and streamline project design with BC information systems
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
+<br>
 The repo is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
 geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
