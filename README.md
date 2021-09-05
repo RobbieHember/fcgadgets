@@ -99,7 +99,6 @@ The **cbrunner** model can be driven with output from [TASS/TIPSY growth and yie
 Once simulations are complete, use a series of functions in **cbrun_utilities.py** to summarize model output statistics (MOS).
 * Import simulation output variables for a given scenario, ensemble, and batch using **LoadSingleOutputFile**
 * Import simulation output variables for a given scenario using **LoadScenarioResults**
-* Calculate net forest sector greenhouse gas balance from simulation outputs using **CalculateGHGBalance**
 * Calculate the mean and variance of ensemble simulations using **ModelOutputStats**
 * When projects have been run for multi-polygon openings from RESULTS, model outputs can be summarized while preserving the exact treatment area that is specified for each multi-polygon using **MosByMultipolygon**
 
