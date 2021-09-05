@@ -4,7 +4,7 @@ The **fcgadgets** repository supports greenhouse gas (GHG) balance estimation, a
 The repo is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
 geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
-**fcgadgets** can be used to quantify the impact of natural processes, land-use decisions, and forest management on the concentration of atmospheric GHGs. Results account for all known interactions between forestry and other sectors. Emissions and removals are reported by sector, including Land use, Land Use Change and Forestry Sector (i.e., forest ecosystems and harvested wood products), Energy - Stationary Combustion Sector, Energy - Transportation Sector, and the Industrial Product and Product Use Sector.
+**fcgadgets** can be used to quantify the impact of natural processes, land-use decisions, and forest management on the concentration of atmospheric GHGs. Results account for all known interactions between forestry and other sectors. Emissions and removals are reported by sector, including Land Use, Land-use Change and Forestry Sector (i.e., forest ecosystems and harvested wood products), Energy - Stationary Combustion Sector, Energy - Transportation Sector, and the Industrial Product and Product Use Sector.
 
 The **fcgadgets** repo was developed to: 
 * Consolidate source code used by BC's Forest Carbon Initiative (FCI)
@@ -13,12 +13,9 @@ The **fcgadgets** repo was developed to:
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
 
-## LIST OF TOOLBOXES
-**cbrunner:** A computer simulation model<br>
-**macgyver:** A toolbox of utilities for project preparation and analysis<br>
-**silviculture:** A toolbox for simulating impacts of silviculture treatments on GHG balance and revenue<br>
-**taz:** A toolbox for simulating natural disturbance events<br>
-**bc1ha:** A toolbox for raster processing on a 1 hectare regular grid of British Columbia<br>
+## PLUG-AND-PLAY MODULARITY
+The repository allows for comprehensive representation of processes and new science by connecting a constellation of supporting modules.
+![image info](./images/fcgadgets_constellation.png)
 
 ## CBRUNNER
 **cbrunner** is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
@@ -97,10 +94,6 @@ Once simulations are complete, use a series of functions in **cbrun_utilities.py
 * Calculate the mean and variance of ensemble simulations using **ModelOutputStats**
 * When projects have been run for multi-polygon openings from RESULTS, model outputs can be summarized while preserving the exact treatment area that is specified for each multi-polygon using **MosByMultipolygon**
 
-### Plug-and-play modularity
-The **cbrunner** model achieves comprehensive, granular representation of processes through links to a constellation of supporting modules also stored in **fcgadgets**.
-![image info](./images/fcgadgets_constellation.png)
-
 ## MACGYVER
 The **macgyver** toolbox contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
@@ -158,6 +151,9 @@ The **silviculture** toolbox contains resources for representing effects of fore
 ### nutrient_application.py:
 * Representation of GHG balance responses to aerial applications of Urea
 * Schedule aerial nutrient applications with specified stand selection criteria
+
+##BC1HA
+The BC1ha toolbox supports raster processing on a 1 hectare regular grid of British Columbia<br>
 
 ## PROJECT WORKFLOW
 There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects – with fewer than 1,500 combinations of locations or scenarios – can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
