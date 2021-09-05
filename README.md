@@ -159,8 +159,10 @@ The **silviculture** toolbox contains resources for representing effects of fore
 ### nutrient_application.py:
 * Representation of GHG balance responses to aerial applications of Urea
 * Schedule aerial nutrient applications with specified stand selection criteria
+### economics.py:
+* Calculate cashflow from implementation of forest management events
 
-##BC1HA
+## BC1HA
 The BC1ha toolbox supports raster processing on a 1 hectare regular grid of British Columbia<br>
 
 ## PROJECT WORKFLOW

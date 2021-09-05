@@ -11,7 +11,7 @@ import time
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 
-#%% Calculate cashflow
+#%% Calculate net revenue
 
 def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     
