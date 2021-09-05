@@ -4,7 +4,7 @@ The **fcgadgets** repository supports greenhouse gas (GHG) balance estimation, a
 The repo is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
 geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
-**fcgadgets** can be used to quantify the impact of natural processes, land-use decisions, and forest management on atmospheric GHG balance. Results account for all known interactions between forestry and other sectors. Emissions and removals are reported by sector, including Land use, land use change and forestry Sector (i.e., forest ecosystems and harvested wood products), Energy - Stationary Combustion Sector, Energy - Transportation Sector, and the Industrial Product and Product Use Sector.
+**fcgadgets** can be used to quantify the impact of natural processes, land-use decisions, and forest management on the concentration of atmospheric GHGs. Results account for all known interactions between forestry and other sectors. Emissions and removals are reported by sector, including Land use, Land Use Change and Forestry Sector (i.e., forest ecosystems and harvested wood products), Energy - Stationary Combustion Sector, Energy - Transportation Sector, and the Industrial Product and Product Use Sector.
 
 The **fcgadgets** repo was developed to: 
 * Consolidate source code used by BC's Forest Carbon Initiative (FCI)
