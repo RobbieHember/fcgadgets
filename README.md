@@ -78,10 +78,11 @@ Projects with N<sub>Stands</sub> > 1,500 are segmented internally into batches t
 work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and 
 ensemble. 
 
-### Scenarios & probabilistic modelling framework
-Projects that explore climate change impacts or mitigation activities invariably consider multiple hypothetical scenarios for each forest stand. the hierarchical structure is
+### Scenarios comparisons
+Projects that explore climate change impacts or mitigation activities invariably consider multiple hypothetical scenarios for each forest stand. The hierarchical structure and post-processing scripts are
 therefore built around running and comparing multiple scenarios.
 
+### Uncertainty and ensemble forecasting
 The **cbrunner** model adopts a probabilistic framework to accommodate processes with both deterministic and random components, as well as uncertainty analysis. Multiple ensembles
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
@@ -156,10 +157,10 @@ scenarios, consistent across project studies, and supported by documentation.
 
 ## SILVICULTURE
 The **silviculture** toolbox contains resources for representing effects of forest management on forest sector GHG balance.
-### nutrient_application.py:
+### nutrient_application.py
 * Representation of GHG balance responses to aerial applications of Urea
 * Schedule aerial nutrient applications with specified stand selection criteria
-### economics.py:
+### economics.py
 * Calculate cashflow from implementation of forest management events
 
 ## BC1HA
