@@ -1198,14 +1198,9 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         
         # Total affected biomass carbon
         MortalityFactor=vi['EC']['MortalityFactor'][iT,:,iE].copy()
-        
-        # Only continue if there are disturbance fluxes           
-        #if (np.sum(MortalityFactor)==0) & (ID_Type!=meta['LUT']['Dist']['Planting']):
-        #    # Don't do this 
-        #    continue
-        
+                
         # Get event-specific parameters        
-        u,idx,inv=np.unique(ID_Type,return_index=True,return_inverse=True)        
+        u,idx,inver=np.unique(ID_Type,return_index=True,return_inverse=True)        
         b={}
         for k in meta['Param']['BEV']['Dist'][1].keys():
             bU=np.zeros(u.size)
@@ -1213,16 +1208,21 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
                 if u[iU]==0:
                     continue
                 bU[iU]=meta['Param']['BEV']['Dist'][u[iU]][k]
-            b[k]=bU[inv]
+            b[k]=bU[inver]
         
-#        # *** Adjust utilization of merch stemwood on coast to reflect FPB study ***
-#        # Need to work on regionalizing these parameters.
-#        ind=np.where( (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | \
-#                (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']) )[0]
-#        if ind.size>0:
-#            b['BiomassMerch_Removed'][ind]=0.88
-#            b['BiomassMerch_LeftOnSite'][ind]=0.12
-        
+        #----------------------------------------------------------------------
+        # *** Adjust utilization of merch stemwood on coast to reflect FPB study ***
+        #----------------------------------------------------------------------
+
+        if ID_Type==meta['LUT']['Dist']['Harvest']:
+            
+            ind=np.where( (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | \
+                (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']) )[0]
+            
+            if ind.size>0:
+                b['BiomassMerch_Removed'][ind]=0.88
+                b['BiomassMerch_LeftOnSite'][ind]=0.12
+
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
         #----------------------------------------------------------------------
@@ -1300,21 +1300,21 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         # Merch biomass to mill - of the total amount of biomass affected, 
         # Add bark
         Biomass_Merch_Removed=b['BiomassMerch_Removed']*(Affected_StemMerch+Affected_BarkMerch)
-        vo['C_RemovedMerch'][iT,:]=vo['C_RemovedMerch'][iT,:]+Biomass_Merch_Removed
+        vo['C_ToMillMerch'][iT,:]=vo['C_ToMillMerch'][iT,:]+Biomass_Merch_Removed
         
         # NonMerch biomass to mill - of the total amount of biomass affected, 
         # what fraction of non-merch biomass was sent to the mill?
         # - NonMerch = NonMerchStem + Foliage + Branch + Bark
         Biomass_NonMerch_Removed=b['BiomassNonMerch_Removed']*Affected_TotNonMerch
-        vo['C_RemovedNonMerch'][iT,:]=vo['C_RemovedNonMerch'][iT,:]+Biomass_NonMerch_Removed
+        vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+Biomass_NonMerch_Removed
         
         # Snag stemwood to mill           
         SnagStem_Removed=b['Snags_Removed']*Affected_SnagStem
-        vo['C_RemovedSnagStem'][iT,:]=vo['C_RemovedSnagStem'][iT,:]+SnagStem_Removed
+        vo['C_ToMillSnagStem'][iT,:]=vo['C_ToMillSnagStem'][iT,:]+SnagStem_Removed
         
         # Snag branches to mill
         SnagBranch_Removed=b['Snags_Removed']*Affected_SnagBranch
-        vo['C_RemovedNonMerch'][iT,:]=vo['C_RemovedNonMerch'][iT,:]+SnagBranch_Removed
+        vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+SnagBranch_Removed
         
         #----------------------------------------------------------------------
         # Carbon that is left on site (after felling or wind storms)
@@ -1388,6 +1388,10 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['C_E_FireAsCO2'][iT,:]=vo['C_E_FireAsCO2'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO2']*Total_Burned
         vo['C_E_FireAsCH4'][iT,:]=vo['C_E_FireAsCH4'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CH4']*Total_Burned
         vo['C_E_FireAsCO'][iT,:]=vo['C_E_FireAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
+        
+        # If it is slashpile burning, track it accordingly
+        ind=np.where(ID_Type==meta['LUT']['Dist']['Slashpile Burn'])[0]
+        vo['C_ToSlashpileBurn'][iT,ind]=Total_Burned[ind]
         
         #----------------------------------------------------------------------
         # Update stand age
@@ -1561,10 +1565,10 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
 #%% Harvested wood products sector (from Dymond 2012)
 
-def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
+def HWP_From_BCHWP12_WithMods(iT,iBat,vi,vo,meta):
     
     #--------------------------------------------------------------------------
-    # If custom harvests occur, revise parameters
+    # Revise parameters based on custom harvest inputs
     # *** This is slow, but thus far, custom harvests have only been used in
     # small projects. It will require improvements for speed if applied in big 
     # projects. It doesn't need to be in the annual loop, for starters. ***
@@ -1598,100 +1602,160 @@ def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
     # Note: Mills act as transient reservoirs that are not tracked over time
     #--------------------------------------------------------------------------
     
-    Mill_FuelFromChips=meta['Param']['BEV']['HWP']['RemovedMerchToFuel']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToFuel']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToFuel']*vo['C_RemovedSnagStem'][iT,:]    
+    ChipperMill=meta['Param']['BEV']['HWP']['RemovedMerchToChipperMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToChipperMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToChipperMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    Mill_Lumber=meta['Param']['BEV']['HWP']['RemovedMerchToLumber']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToLumber']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToLumber']*vo['C_RemovedSnagStem'][iT,:]
+    PulpMill=meta['Param']['BEV']['HWP']['RemovedMerchToPulpMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToPulpMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToPulpMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    Mill_Plywood=meta['Param']['BEV']['HWP']['RemovedMerchToPlywood']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToPlywood']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToPlywood']*vo['C_RemovedSnagStem'][iT,:]
+    PelletMill=meta['Param']['BEV']['HWP']['RemovedMerchToPelletMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToPelletMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToPelletMill']*vo['C_ToMillSnagStem'][iT,:]  
     
-    Mill_PulpFromChips=meta['Param']['BEV']['HWP']['RemovedMerchToPulp']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToPulp']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToPulp']*vo['C_RemovedSnagStem'][iT,:]
+    LumberMill=meta['Param']['BEV']['HWP']['RemovedMerchToLumberMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToLumberMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToLumberMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    Mill_Pulp=Mill_PulpFromChips + \
-                 meta['Param']['BEV']['HWP']['LumberToPulp']*Mill_Lumber + \
-                 meta['Param']['BEV']['HWP']['PlywoodToPulp']*Mill_Plywood
+    PlywoodMill=meta['Param']['BEV']['HWP']['RemovedMerchToPlywoodMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToPlywoodMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToPlywoodMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    Mill_OSB=meta['Param']['BEV']['HWP']['RemovedMerchToOSB']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToOSB']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToOSB']*vo['C_RemovedSnagStem'][iT,:]
+    OSBMill=meta['Param']['BEV']['HWP']['RemovedMerchToOSBMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToOSBMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToOSBMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    Mill_MDF=meta['Param']['BEV']['HWP']['RemovedMerchToMDF']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToMDF']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToMDF']*vo['C_RemovedSnagStem'][iT,:]
+    MDFMill=meta['Param']['BEV']['HWP']['RemovedMerchToMDFMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToMDFMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToMDFMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    Mill_Firewood=meta['Param']['BEV']['HWP']['RemovedMerchToFirewood']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToFirewood']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToFirewood']*vo['C_RemovedSnagStem'][iT,:]
+    PolePostMill=meta['Param']['BEV']['HWP']['RemovedMerchToPolePostMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToPolePostMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToPolePostMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    Mill_Cants=meta['Param']['BEV']['HWP']['RemovedMerchToCants']*vo['C_RemovedMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToCants']*vo['C_RemovedNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToCants']*vo['C_RemovedSnagStem'][iT,:]    
+    ShakeShingleMill=meta['Param']['BEV']['HWP']['RemovedMerchToShakeShingleMill']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToShakeShingleMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToShakeShingleMill']*vo['C_ToMillSnagStem'][iT,:]
     
-    # Transfers of lumber from lumber mill
-    Mill_LumberToSFH=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToSFH']
-    Mill_LumberToMFH=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToMFH']
-    Mill_LumberToCom=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToCom']
-    Mill_LumberToFurn=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToFurn']
-    Mill_LumberToShip=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToShip']
-    Mill_LumberToRepairs=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToRepairs']
-    Mill_LumberToOther=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToOther']
-    #Mill_LumberToPulp=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToPulp']
-    Mill_LumberToFuel=Mill_Lumber*meta['Param']['BEV']['HWP']['LumberToFuel']
+    Firewood=meta['Param']['BEV']['HWP']['RemovedMerchToFirewood']*vo['C_ToMillMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedNonMerchToFirewood']*vo['C_ToMillNonMerch'][iT,:] + \
+                 meta['Param']['BEV']['HWP']['RemovedSnagStemToFirewood']*vo['C_ToMillSnagStem'][iT,:]
     
-    # Transfers of plywood from plywood mill
-    Mill_PlywoodToSFH=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToSFH']
-    Mill_PlywoodToMFH=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToMFH']
-    Mill_PlywoodToCom=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToCom']
-    Mill_PlywoodToFurn=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToFurn']
-    Mill_PlywoodToShip=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToShip']
-    Mill_PlywoodToRepairs=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToRepairs']
-    Mill_PlywoodToOther=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToOther']
-    #Mill_PlywoodToPulp=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToPulp']
-    Mill_PlywoodToFuel=Mill_Plywood*meta['Param']['BEV']['HWP']['PlywoodToFuel']
+    #--------------------------------------------------------------------------
+    # Production of paper    
+    #--------------------------------------------------------------------------
     
-    # Transfers of OSB from OSB mill
-    Mill_OSBToSFH=Mill_OSB*meta['Param']['BEV']['HWP']['OSBToSFH']
-    Mill_OSBToMFH=Mill_OSB*meta['Param']['BEV']['HWP']['OSBToMFH']
-    Mill_OSBToCom=Mill_OSB*meta['Param']['BEV']['HWP']['OSBToCom']
-    Mill_OSBToFurn=Mill_OSB*meta['Param']['BEV']['HWP']['OSBToFurn']
-    Mill_OSBToShip=Mill_OSB*meta['Param']['BEV']['HWP']['OSBToShip']
-    Mill_OSBToRepairs=Mill_OSB*meta['Param']['BEV']['HWP']['OSBToRepairs']
-    Mill_OSBToOther=Mill_OSB*meta['Param']['BEV']['HWP']['OSBToOther']
+    PulpMillChips=PulpMill + \
+        meta['Param']['BEV']['HWP']['ChipperMillToPulpMillChips']*ChipperMill + \
+        meta['Param']['BEV']['HWP']['LumberMillToPulpMillChips']*LumberMill + \
+        meta['Param']['BEV']['HWP']['PlywoodMillToPulpMillChips']*PlywoodMill    
     
-    # Transfers of MDF from MDF mill
-    Mill_MDFToSFH=Mill_MDF*meta['Param']['BEV']['HWP']['MDFToSFH']
-    Mill_MDFToMFH=Mill_MDF*meta['Param']['BEV']['HWP']['MDFToMFH']
-    Mill_MDFToCom=Mill_MDF*meta['Param']['BEV']['HWP']['MDFToCom']
-    Mill_MDFToFurn=Mill_MDF*meta['Param']['BEV']['HWP']['MDFToFurn']
-    Mill_MDFToShip=Mill_MDF*meta['Param']['BEV']['HWP']['MDFToShip']
-    Mill_MDFToRepairs=Mill_MDF*meta['Param']['BEV']['HWP']['MDFToRepairs']
-    Mill_MDFToOther=Mill_MDF*meta['Param']['BEV']['HWP']['MDFToOther']
+    Paper=meta['Param']['BEV']['HWP']['PulpMillChipsToPaper']*PulpMillChips
+    
+    PulpEffluent=meta['Param']['BEV']['HWP']['PulpMillChipsToEffluent']*PulpMillChips
+    
+    #--------------------------------------------------------------------------
+    # Production of pellets    
+    #--------------------------------------------------------------------------
+        
+    PelletMillChips=PelletMill + \
+        meta['Param']['BEV']['HWP']['ChipperMillToPelletMillChips']*ChipperMill + \
+        meta['Param']['BEV']['HWP']['LumberMillToPelletMillChips']*LumberMill + \
+        meta['Param']['BEV']['HWP']['PlywoodMillToPelletMillChips']*PlywoodMill
+    
+    Pellets=meta['Param']['BEV']['HWP']['PelletMillChipsToPellets']*PelletMillChips
+    
+    #--------------------------------------------------------------------------
+    # Production of power generation  
+    #--------------------------------------------------------------------------
+    
+    PowerGeneration=meta['Param']['BEV']['HWP']['ChipperMillToPowerGeneration']*ChipperMill + \
+        meta['Param']['BEV']['HWP']['PulpMillChipsToPowerGeneration']*PulpMill + \
+        meta['Param']['BEV']['HWP']['PelletMillChipsToPowerGeneration']*PelletMill + \
+        meta['Param']['BEV']['HWP']['LumberMillToPowerGeneration']*LumberMill + \
+        meta['Param']['BEV']['HWP']['PlywoodMillToPowerGeneration']*PlywoodMill        
+        
+    #--------------------------------------------------------------------------
+    # Production of single-family homes
+    #--------------------------------------------------------------------------
+    
+    LumberMillToSFH=LumberMill*meta['Param']['BEV']['HWP']['LumberMillToSFH']
+    PlywoodMillToSFH=PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToSFH']
+    OSBMillToSFH=OSBMill*meta['Param']['BEV']['HWP']['OSBMillToSFH']
+    MDFMillToSFH=MDFMill*meta['Param']['BEV']['HWP']['MDFMillToSFH']
+    ShakeShingleToSFH=ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToSFH']
+
+    #--------------------------------------------------------------------------
+    # Production of multi-family homes
+    #--------------------------------------------------------------------------
+    
+    LumberMillToMFH=LumberMill*meta['Param']['BEV']['HWP']['LumberMillToMFH']
+    PlywoodMillToMFH=PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToMFH']
+    OSBMillToMFH=OSBMill*meta['Param']['BEV']['HWP']['OSBMillToMFH']    
+    MDFMillToMFH=MDFMill*meta['Param']['BEV']['HWP']['MDFMillToMFH']
+    ShakeShingleToMFH=ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToMFH']
+    
+    #--------------------------------------------------------------------------
+    # Production of commercial buildings
+    #--------------------------------------------------------------------------
+    
+    LumberMillToCom=LumberMill*meta['Param']['BEV']['HWP']['LumberMillToCom']
+    PlywoodMillToCom=PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToCom']
+    OSBMillToCom=OSBMill*meta['Param']['BEV']['HWP']['OSBMillToCom']
+    MDFMillToCom=MDFMill*meta['Param']['BEV']['HWP']['MDFMillToCom']
+    ShakeShingleToCom=ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToCom']
+    
+    #--------------------------------------------------------------------------
+    # Production of furniture
+    #--------------------------------------------------------------------------
+    
+    LumberMillToFurn=LumberMill*meta['Param']['BEV']['HWP']['LumberMillToFurn']
+    PlywoodMillToFurn=PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToFurn']
+    OSBMillToFurn=OSBMill*meta['Param']['BEV']['HWP']['OSBMillToFurn']
+    MDFMillToFurn=MDFMill*meta['Param']['BEV']['HWP']['MDFMillToFurn']
+    
+    #--------------------------------------------------------------------------
+    # Production of shipping containers
+    #--------------------------------------------------------------------------
+    
+    LumberMillToShip=LumberMill*meta['Param']['BEV']['HWP']['LumberMillToShip']
+    PlywoodMillToShip=PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToShip']
+    OSBMillToShip=OSBMill*meta['Param']['BEV']['HWP']['OSBMillToShip']
+    MDFMillToShip=MDFMill*meta['Param']['BEV']['HWP']['MDFMillToShip']
+    
+    #--------------------------------------------------------------------------
+    # Production of repairs
+    #--------------------------------------------------------------------------
+    
+    LumberMillToRepairs=LumberMill*meta['Param']['BEV']['HWP']['LumberMillToRepairs']
+    PlywoodMillToRepairs=PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToRepairs']
+    OSBMillToRepairs=OSBMill*meta['Param']['BEV']['HWP']['OSBMillToRepairs']
+    MDFMillToRepairs=MDFMill*meta['Param']['BEV']['HWP']['MDFMillToRepairs']
+    
+    #--------------------------------------------------------------------------
+    # Production of other
+    #--------------------------------------------------------------------------
+    
+    LumberMillToOther=LumberMill*meta['Param']['BEV']['HWP']['LumberMillToOther']
+    PlywoodMillToOther=PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToOther']  
+    OSBMillToOther=OSBMill*meta['Param']['BEV']['HWP']['OSBMillToOther']
+    MDFMillToOther=MDFMill*meta['Param']['BEV']['HWP']['MDFMillToOther']
+    PolePostMillToOther=PolePostMill*meta['Param']['BEV']['HWP']['PolePostMillToOther']
     
     #--------------------------------------------------------------------------
     # Track sales (for economic modelling)
     #--------------------------------------------------------------------------
     
-    Lumber_Total=Mill_LumberToSFH+Mill_LumberToMFH+Mill_LumberToCom+Mill_LumberToFurn+Mill_LumberToShip+Mill_LumberToRepairs+Mill_LumberToOther
-    Plywood_Total=Mill_PlywoodToSFH+Mill_PlywoodToMFH+Mill_PlywoodToCom+Mill_PlywoodToFurn+Mill_PlywoodToShip+Mill_PlywoodToRepairs+Mill_PlywoodToOther
-    OSB_Total=Mill_OSBToSFH+Mill_OSBToMFH+Mill_OSBToCom+Mill_OSBToFurn+Mill_OSBToShip+Mill_OSBToRepairs+Mill_OSBToOther
-    MDF_Total=Mill_MDFToSFH+Mill_MDFToMFH+Mill_MDFToCom+Mill_MDFToFurn+Mill_MDFToShip+Mill_MDFToRepairs+Mill_MDFToOther
-    
-    Paper_Total=meta['Param']['BEV']['HWP']['PulpToPaper']*Mill_Pulp
-    Fuel_Total=Mill_FuelFromChips+Mill_LumberToFuel+Mill_PlywoodToFuel  
-    
-    vo['C_Lumber'][iT,:]=Lumber_Total
-    vo['C_Plywood'][iT,:]=Plywood_Total
-    vo['C_OSB'][iT,:]=OSB_Total
-    vo['C_MDF'][iT,:]=MDF_Total
-    vo['C_Paper'][iT,:]=Paper_Total
-    vo['C_Fuel'][iT,:]=Fuel_Total
+    vo['C_ToLumber'][iT,:]=LumberMillToSFH+LumberMillToMFH+LumberMillToCom+LumberMillToFurn+LumberMillToShip+LumberMillToRepairs+LumberMillToOther
+    vo['C_ToPlywood'][iT,:]=PlywoodMillToSFH+PlywoodMillToMFH+PlywoodMillToCom+PlywoodMillToFurn+PlywoodMillToShip+PlywoodMillToRepairs+PlywoodMillToOther
+    vo['C_ToOSB'][iT,:]=OSBMillToSFH+OSBMillToMFH+OSBMillToCom+OSBMillToFurn+OSBMillToShip+OSBMillToRepairs+OSBMillToOther
+    vo['C_ToMDF'][iT,:]=MDFMillToSFH+MDFMillToMFH+MDFMillToCom+MDFMillToFurn+MDFMillToShip+MDFMillToRepairs+MDFMillToOther
+    vo['C_ToPolePost'][iT,:]=PolePostMillToOther
+    vo['C_ToPaper'][iT,:]=Paper
+    vo['C_ToPowerGeneration'][iT,:]=PowerGeneration
+    vo['C_ToPellets'][iT,:]=Pellets    
+    vo['C_ToFirewood'][iT,:]=Firewood
     
     #--------------------------------------------------------------------------
     # Mills --> In-use pools or other mills
@@ -1700,79 +1764,78 @@ def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to single-family homes
     ip=meta['Core']['iPP']['SFH']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-        Mill_LumberToSFH + \
-        Mill_PlywoodToSFH + \
-        Mill_OSBToSFH + \
-        Mill_MDFToSFH
+        LumberMillToSFH + \
+        PlywoodMillToSFH + \
+        OSBMillToSFH + \
+        MDFMillToSFH + \
+        ShakeShingleToSFH
     
     # Transfer mill fibre to multi-family homes
     ip=meta['Core']['iPP']['MFH']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-        Mill_LumberToMFH + \
-        Mill_PlywoodToMFH + \
-        Mill_OSBToMFH + \
-        Mill_MDFToMFH
+        LumberMillToMFH + \
+        PlywoodMillToMFH + \
+        OSBMillToMFH + \
+        MDFMillToMFH + \
+        ShakeShingleToMFH
     
     # Transfer mill fibre to commercial
     ip=meta['Core']['iPP']['Comm']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-        Mill_LumberToCom + \
-        Mill_PlywoodToCom + \
-        Mill_OSBToCom + \
-        Mill_MDFToCom
+        LumberMillToCom + \
+        PlywoodMillToCom + \
+        OSBMillToCom + \
+        MDFMillToCom + \
+        ShakeShingleToCom
     
     # Transfer mill fibre to furniture
     ip=meta['Core']['iPP']['Furn']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-        Mill_LumberToFurn + \
-        Mill_PlywoodToFurn + \
-        Mill_OSBToFurn + \
-        Mill_MDFToFurn
+        LumberMillToFurn + \
+        PlywoodMillToFurn + \
+        OSBMillToFurn + \
+        MDFMillToFurn
     
     # Transfer mill fibre to shipping
     ip=meta['Core']['iPP']['Ship']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-        Mill_LumberToShip + \
-        Mill_PlywoodToShip + \
-        Mill_OSBToShip + \
-        Mill_MDFToShip
+        LumberMillToShip + \
+        PlywoodMillToShip + \
+        OSBMillToShip + \
+        MDFMillToShip
     
     # Transfer mill fibre to repairs
     ip=meta['Core']['iPP']['Repairs']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-        Mill_LumberToRepairs + \
-        Mill_PlywoodToRepairs + \
-        Mill_OSBToRepairs + \
-        Mill_MDFToRepairs
+        LumberMillToRepairs + \
+        PlywoodMillToRepairs + \
+        OSBMillToRepairs + \
+        MDFMillToRepairs
     
     # Transfer mill fibre to other
     ip=meta['Core']['iPP']['Other']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-        Mill_LumberToOther + \
-        Mill_PlywoodToOther + \
-        Mill_OSBToOther + \
-        Mill_MDFToOther
+        LumberMillToOther + \
+        PlywoodMillToOther + \
+        OSBMillToOther + \
+        MDFMillToOther + \
+        PolePostMillToOther
     
     # Transfer pulp mill fibre to paper
     ip=meta['Core']['iPP']['Paper']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + Paper_Total
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + Paper
     
-    # Transfer mill fibre to fuel 
-    ip=meta['Core']['iPP']['Fuel']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + Fuel_Total
+    # Transfer mill fibre to power generation
+    ip=meta['Core']['iPP']['PowerGeneration']
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + PowerGeneration
     
     # Transfer firewood to firewood pool
     ip=meta['Core']['iPP']['Firewood']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + Mill_Firewood
-    
-    # Transfer mill fibre to cants
-    ip=meta['Core']['iPP']['Cants']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + Mill_Cants
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + Firewood
     
     # Transfer pulp mill carbon to pulp-mill effluent
     ip=meta['Core']['iPP']['EffluentPulp']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + \
-                 meta['Param']['BEV']['HWP']['PulpToEffluent']*Mill_Pulp   
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + PulpEffluent
     
     #--------------------------------------------------------------------------
     # Update dump and landfill reservoirs
@@ -1877,7 +1940,6 @@ def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
     ip=meta['Core']['iPP']['LandfillWoodNonDegradable']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + meta['Param']['BEV']['HWP']['FurnToLandfillWood']*(1-meta['Param']['BEV']['HWP']['ToLandfillWoodDegradableFrac'])*C_retired
     
-    
     #--------------------------------------------------------------------------
     # Shipping --> dump and landfill
     #--------------------------------------------------------------------------
@@ -1946,30 +2008,7 @@ def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
     # Transfer carbon to landfill (non-degradable)
     ip=meta['Core']['iPP']['LandfillWoodNonDegradable']
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + meta['Param']['BEV']['HWP']['OtherToLandfillWood']*(1-meta['Param']['BEV']['HWP']['ToLandfillWoodDegradableFrac'])*C_retired
-    
-    #--------------------------------------------------------------------------
-    # Cants --> dump and landfill
-    #--------------------------------------------------------------------------
-    
-    # Turnover
-    ip=meta['Core']['iPP']['Cants']
-    C_retired=meta['Param']['BEV']['HWP']['Cants_tr']*vo['C_Pro_Pools'][iT-1,:,ip]
-    
-    # Remove carbon
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_retired
-    
-    # Transfer carbon to dump wood
-    ip=meta['Core']['iPP']['DumpWood']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + meta['Param']['BEV']['HWP']['CantsToDumpWood']*C_retired
-    
-    # Transfer carbon to landfill (degradble)
-    ip=meta['Core']['iPP']['LandfillWoodDegradable']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + meta['Param']['BEV']['HWP']['CantsToLandfillWood']*meta['Param']['BEV']['HWP']['ToLandfillWoodDegradableFrac']*C_retired
-    
-    # Transfer carbon to landfill (non-degradable)
-    ip=meta['Core']['iPP']['LandfillWoodNonDegradable']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + meta['Param']['BEV']['HWP']['CantsToLandfillWood']*(1-meta['Param']['BEV']['HWP']['ToLandfillWoodDegradableFrac'])*C_retired
-    
+
     #--------------------------------------------------------------------------
     # Paper --> dump and landfill
     #--------------------------------------------------------------------------
@@ -1994,116 +2033,127 @@ def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + meta['Param']['BEV']['HWP']['PaperToLandfillPaper']*(1-meta['Param']['BEV']['HWP']['ToLandfillPaperDegradableFrac'])*C_retired
         
     #--------------------------------------------------------------------------
-    # Emissions from fuel combustion
+    # Emissions from combustion during domestic power generation
     #--------------------------------------------------------------------------
     
     # Turnover
-    ip=meta['Core']['iPP']['Fuel']
-    C_retired=meta['Param']['BEV']['HWP']['Fuel_tr']*vo['C_Pro_Pools'][iT,:,ip]
+    ip=meta['Core']['iPP']['PowerGeneration']
+    C_emitted=meta['Param']['BEV']['HWP']['Energy_tr']*vo['C_Pro_Pools'][iT,:,ip]
     
     # Remove carbon
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_retired
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_emitted
     
-    # Emissions of CO2 from fuel use
-    ip=meta['Core']['iPP']['E_CO2']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + meta['Param']['BEV']['HWP']['FuelCombustionFracEmitCO2']*C_retired
-    
-    # Emissions of CH4 from fuel use
-    ip=meta['Core']['iPP']['E_CH4']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + (1-meta['Param']['BEV']['HWP']['FuelCombustionFracEmitCO2'])*C_retired
+    # Emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
+    E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
+    vo['CO2e_StatComb_E'][iT,:]=vo['CO2e_StatComb_E'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
     
     #--------------------------------------------------------------------------
-    # Emissions from firewood combustion
+    # Emissions from combustion of pellets
+    #--------------------------------------------------------------------------
+    
+    # Turnover
+    ip=meta['Core']['iPP']['Pellets']
+    C_emitted=meta['Param']['BEV']['HWP']['Energy_tr']*vo['C_Pro_Pools'][iT,:,ip]
+    
+    # Remove carbon
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_emitted
+    
+    # Emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
+    E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
+    vo['CO2e_StatComb_E'][iT,:]=vo['CO2e_StatComb_E'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    
+    #--------------------------------------------------------------------------
+    # Emissions from combustion of firewood
     #--------------------------------------------------------------------------
     
     # Turnover
     ip=meta['Core']['iPP']['Firewood']
-    C_retired=meta['Param']['BEV']['HWP']['Firewood_tr']*vo['C_Pro_Pools'][iT,:,ip]
+    C_emitted=meta['Param']['BEV']['HWP']['Firewood_tr']*vo['C_Pro_Pools'][iT,:,ip]
     
     # Remove carbon
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_retired
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_emitted
     
-    # Emissions of CO2
-    ip=meta['Core']['iPP']['E_CO2']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] + C_retired
-    
-    # Emissions of CH4
-    #ip=meta['Core']['iPP']['E_CH4']
-    #vo['C_Pro_Pools[iT,:,ip]=vo['C_Pro_Pools[iT,:,ip] + (1-psl['FuelCombustionFracEmitCO2'])*C_retired
+    # Emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
+    E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
+    vo['CO2e_StatComb_E'][iT,:]=vo['CO2e_StatComb_E'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
        
     #--------------------------------------------------------------------------
-    # Emissions from pulp effluent
+    # Emissions from combustion of pulp effluent
     #--------------------------------------------------------------------------
          
     # Emissions from pulp effluent (CO2 from aerobic decomposition)
     ip=meta['Core']['iPP']['EffluentPulp']
-    c_emitted=meta['Param']['BEV']['HWP']['EffluentPulp_tr']*vo['C_Pro_Pools'][iT,:,ip]
+    C_emitted=meta['Param']['BEV']['HWP']['EffluentPulp_tr']*vo['C_Pro_Pools'][iT,:,ip]
     
     # Remove emitted carbon
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-c_emitted
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-C_emitted
     
     # Add emitted carbon to CO2 emission "pool"
-    ip=meta['Core']['iPP']['E_CO2']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+c_emitted    
+    # Emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
+    vo['CO2e_StatComb_E'][iT,:]=vo['CO2e_StatComb_E'][iT,:] + E_CO2e_AsCO2
     
     #--------------------------------------------------------------------------
-    # Emissions from dump wood
+    # Decomposition of dump wood
     #--------------------------------------------------------------------------
     
     # Turnover
     ip=meta['Core']['iPP']['DumpWood']
-    c_emitted=meta['Param']['BEV']['HWP']['DumpWood_tr']*vo['C_Pro_Pools'][iT,:,ip]
+    C_emitted=meta['Param']['BEV']['HWP']['DumpWood_tr']*vo['C_Pro_Pools'][iT,:,ip]
     
     # Removal
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-c_emitted
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-C_emitted
     
     # Add to emissions (CO2 emission from aerobic decomposition)
-    ip=meta['Core']['iPP']['E_CO2']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+c_emitted
+    vo['CO2e_LULUCF_E_HWP'][iT,:]=vo['CO2e_LULUCF_E_HWP'][iT,:] + meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*C_emitted
+    
+    # ip=meta['Core']['iPP']['E_CO2']
+    # vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+c_emitted
     
     #--------------------------------------------------------------------------
-    # Emissions from dump paper
+    # Decompositoin of dump paper
     #--------------------------------------------------------------------------
     
     # Turnover
     ip=meta['Core']['iPP']['DumpPaper']
-    c_emitted=meta['Param']['BEV']['HWP']['DumpPaper_tr']*vo['C_Pro_Pools'][iT,:,ip]
+    C_emitted=meta['Param']['BEV']['HWP']['DumpPaper_tr']*vo['C_Pro_Pools'][iT,:,ip]
     
     # Removal
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-c_emitted
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-C_emitted
     
     # Add to emissions (CO2 emission from aerobic decomposition)
-    ip=meta['Core']['iPP']['E_CO2']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+c_emitted
+    vo['CO2e_LULUCF_E_HWP'][iT,:]=vo['CO2e_LULUCF_E_HWP'][iT,:] + meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*C_emitted
     
     #--------------------------------------------------------------------------
-    # Emissions from landfill degradable wood
+    # Decomposion of landfill degradable wood
     #--------------------------------------------------------------------------
                
     # Turnover
     ip=meta['Core']['iPP']['LandfillWoodDegradable']
-    c_emitted=meta['Param']['BEV']['HWP']['LandfillWoodDegradable_tr']*vo['C_Pro_Pools'][iT,:,ip]
+    C_emitted=meta['Param']['BEV']['HWP']['LandfillWoodDegradable_tr']*vo['C_Pro_Pools'][iT,:,ip]
     
     # Removal
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-c_emitted
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-C_emitted
     
-    # Add to emissions (50% CO2 emissions during anaerobic decomposition)
-    ip=meta['Core']['iPP']['E_CO2']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+meta['Param']['BEV']['HWP']['LandfillDegradableFracEmitCO2']*c_emitted
+    # Add to emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['LandfillDegradableFracEmitCO2']*C_emitted
     
-    # Add to emissions (50% "potential" CH4 emissions during anaerobic decomposition)
-    #E_ch4_pot=(1-meta['Param']['BEV']['HWP']['LandfillDegradableFracEmitCO2)*c_emitted
+    vo['CO2e_LULUCF_E_HWP'][iT,:]=vo['CO2e_LULUCF_E_HWP'][iT,:]+E_CO2e_AsCO2
     
     # Adjustment for proportion of degradable landfills with gas collection systems, 
     # efficiency of system, and methane oxided to CO2 from the landfill cover
-    ch4_emitted=c_emitted*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])) + \
-        c_emitted*meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysEffic'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']))
-        
-    ip=meta['Core']['iPP']['E_CH4']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+ch4_emitted
+    E_C_AsCH4=C_emitted*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])) + \
+        C_emitted*meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysEffic'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']))
+    
+    E_CO2e_AsCH4=meta['Param']['BEV']['Biophysical']['GWP_CH4_AR5']*E_C_AsCH4
+
+    vo['CO2e_LULUCF_E_HWP'][iT,:]=vo['CO2e_LULUCF_E_HWP'][iT,:]+E_CO2e_AsCH4
     
     #--------------------------------------------------------------------------
-    # Emissions from landfill degradable paper
+    # Decomposition of landfill degradable paper
     #--------------------------------------------------------------------------
     
     # Turnover
@@ -2113,19 +2163,19 @@ def HWP_From_BCHWP12(iT,iBat,vi,vo,meta):
     # Removal
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]-c_emitted
     
-    # Add to emissions (50% CO2 emissions during anaerobic decomposition)
-    ip=meta['Core']['iPP']['E_CO2']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+meta['Param']['BEV']['HWP']['LandfillDegradableFracEmitCO2']*c_emitted
+    # Add to emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['LandfillDegradableFracEmitCO2']*C_emitted
     
-    # Add to emissions (50% "potential" CH4 emissions during anaerobic decomposition)
-    #E_ch4_pot=(1-meta['Param']['BEV']['HWP']['LandfillDegradableFracEmitCO2)*c_emitted
+    vo['CO2e_LULUCF_E_HWP'][iT,:]=vo['CO2e_LULUCF_E_HWP'][iT,:]+E_CO2e_AsCO2
+    
     
     # Adjustment for proportion of degradable landfills with gas collection systems, 
     # efficiency of system, and methane oxided to CO2 from the landfill cover
-    ch4_emitted=c_emitted*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])) + \
-        c_emitted*meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysEffic'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']))
+    E_C_AsCH4=C_emitted*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp'])) + \
+        C_emitted*meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']*((1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysEffic'])-meta['Param']['BEV']['HWP']['LandfillMethaneOxidizedToCO2']*(1-meta['Param']['BEV']['HWP']['LandfillMethaneEmit_GasColSysProp']))
+     
+    E_CO2e_AsCH4=meta['Param']['BEV']['Biophysical']['GWP_CH4_AR5']*E_C_AsCH4
         
-    ip=meta['Core']['iPP']['E_CH4']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+ch4_emitted
+    vo['CO2e_LULUCF_E_HWP'][iT,:]=vo['CO2e_LULUCF_E_HWP'][iT,:]+E_CO2e_AsCH4
     
     return vo

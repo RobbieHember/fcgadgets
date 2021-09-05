@@ -28,6 +28,65 @@ if flg==1:
     path=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
     fiona.listlayers(path)
 
+#%% Query pest DB
+    
+def GetPestSev():
+    
+    fin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
+    
+    d={}    
+    with fiona.open(fin,layer='PEST_INFESTATION_POLY') as source:
+        for feat in source:    
+            a=feat['properties']['PEST_SEVERITY_CODE']            
+            if a not in d:
+                d[a]=1  
+    return d
+ 
+#d=GetPestSev()
+
+#%%
+    
+def GetAnnualPestArea(Year0,Year1,sp_cd):
+    
+    fin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'  
+    
+    SevName=np.array(['Trace','Light','Moderate','Severe','Very Severe','Grey Attack'])
+    SevCD=np.array(['T','L','M','S','V','G'])
+    
+    tv=np.arange(Year0,Year1+1,1)
+    
+    d={}
+    for k in sp_cd:
+        d[k]={}    
+        for k2 in SevCD:
+            d[k][k2]=np.zeros(tv.size)
+    
+    with fiona.open(fin,layer='PEST_INFESTATION_POLY') as source:
+        for feat in source:
+            
+            if feat['geometry']==None:
+                continue  
+
+            if (feat['properties']['CAPTURE_YEAR']<Year0) | (feat['properties']['CAPTURE_YEAR']>Year1):
+                continue
+            
+            if feat['properties']['PEST_SPECIES_CODE'] not in sp_cd:
+                continue
+            
+            nam=feat['properties']['PEST_SPECIES_CODE']
+            
+            iSev=np.where(SevCD==feat['properties']['PEST_SEVERITY_CODE'])[0]
+            if iSev.size==0:
+                print(feat['properties']['PEST_SEVERITY_CODE'])
+                
+            sev=SevCD[iSev][0]
+
+            iT=np.where(tv==feat['properties']['CAPTURE_YEAR'])[0]
+            
+            d[nam][sev][iT]=d[nam][sev][iT]+feat['properties']['AREA_HA']
+    
+    return tv,d
+
 #%% Query wildfire perimiter
     
 def GetWildfirePerimiter(Year0,Year1):

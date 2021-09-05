@@ -171,7 +171,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
     elif comp=='Emissions':
         
         #----------------------------------------------------------------------
-        # Emissions from manufacture and transport
+        # Emissions from manufacture of ammonia and urea
         #----------------------------------------------------------------------         
         
         # Urea dose (kgUrea/ha)
@@ -188,36 +188,40 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         MMBtu_per_app=(DoseUrea/1000)*bNA['UreaEnergyConsumption']
         therm_per_app=MMBtu_per_app/bNA['MMBtu_per_therm']
         E_ProdUrea=bNA['EmissionFromUreaProduction_per_therm']*therm_per_app
-            
-        # Emissions from operations (tCO2e/ha)
-        E_Ops=bNA['EmissionFromRailBargeTruck_Workbook']+ \
-            bNA['EmissionFromHelicopter_SP10']
-
-        # Volatilization: CO2 emissions following application, Tier 1 
-        # approach, IPCC 2006, 11.4.1 (tCO2e/ha)
-        # 0.2*(430/1000)*(1/0.27) = 0.32 tCO2e/ha
-        #E_Vol=bNA['Ratio_C_to_Urea']*(DoseUrea/1000)*(1/meta['Param']['BEV']['Biophysical']['Ratio_C_to_CO2'])
-        # Assume sequestration and volatilization of CO2 cancel out 
-        E_Vol=0
+          
+        vo['CO2e_StatComb_E'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_StatComb_E'][iT,meta['Nutrient Management']['iApplication']] + \
+            (E_ProdNH3+E_ProdUrea)
+        
+        #----------------------------------------------------------------------
+        # Emissions from transportation (tCO2e/ha)
+        #----------------------------------------------------------------------
+        
+        vo['CO2e_Transp_E'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_Transp_E'][iT,meta['Nutrient Management']['iApplication']] + \
+            (bNA['EmissionFromRailBargeTruck_Workbook']+bNA['EmissionFromHelicopter_SP10'])
 
         #----------------------------------------------------------------------
         # Denitrification: N2O emissions following application, Tier 1 
         # approach, IPCC 2006, 11.4.1 (tCO2e/ha)
         #----------------------------------------------------------------------
         
-        E_Denit=bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4']
-
+        vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + \
+            (bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4'])
+        
         #----------------------------------------------------------------------
-        # Total emissions (tCO2e/ha)
+        # Volatilization 
         #----------------------------------------------------------------------
         
-        E_Tot=E_ProdNH3+E_ProdUrea+E_Ops+E_Vol+E_Denit
-                
-        # Total emissions of carbon (MgC/ha) emitted as CO2e, converted
-        # to carbon to be consistent with the rest of the variables in 
-        # the vo object.
-        vo['C_E_Operations'][iT,meta['Nutrient Management']['iApplication']]=meta['Param']['BEV']['Biophysical']['Ratio_C_to_CO2']*E_Tot
-    
+        # CO2 emissions following application, Tier 1 approach, IPCC 2006, 11.4.1 (tCO2e/ha)
+        # 0.2*(430/1000)*(1/0.27) = 0.32 tCO2e/ha
+        #E_Vol=bNA['Ratio_C_to_Urea']*(DoseUrea/1000)*(1/meta['Param']['BEV']['Biophysical']['Ratio_C_to_CO2'])
+        # Assume sequestration and volatilization of CO2 cancel out 
+        
+        E_vol=0.3
+        
+        vo['CO2e_IPPU_E'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_IPPU_E'][iT,meta['Nutrient Management']['iApplication']] - E_vol
+        
+        vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + E_vol
+        
         #----------------------------------------------------------------------
         # Exterior area (volatilization/deposition effects)
         #----------------------------------------------------------------------
@@ -250,18 +254,14 @@ def UpdateStatus(vi,vo,iT,meta,comp):
             
             EA_GHG_Benefit=GHG_Benefit_Tot_Coast*bNA['EA Fraction of footprint coast']+GHG_Benefit_Tot_Interior*bNA['EA Fraction of footprint interior']
             
-            # Convert to carbon (MgC/ha/yr)
-            #EA_GHG_Benefit=EA_GHG_Benefit
-            
             # Annaul GHG benefit over response duration (tCO2e/ha/yr)
             #EA_GHG_Benefit=EA_GHG_Benefit/bNA['ResponseDuration']            
             
-            # Add to operations
-            #vo['C_E_Operations'][iT:iT+int(bNA['ResponseDuration']),meta['Nutrient Management']['iApplication']]=vo['C_E_Operations'][iT:iT+int(bNA['ResponseDuration']),meta['Nutrient Management']['iApplication']]=EA_GHG_Benefit
-            try:
-                vo['C_E_Operations'][iT+1,meta['Nutrient Management']['iApplication']]=vo['C_E_Operations'][iT+1,meta['Nutrient Management']['iApplication']]-EA_GHG_Benefit
-            except:
-                pass                    
+            # Convert to CO2e (tCO2e/ha/yr)
+            EA_GHG_Benefit=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*EA_GHG_Benefit
+            
+            # Subtract from ecosystem LULUCF emissions
+            vo['CO2e_LULUCF_E_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]=vo['CO2e_LULUCF_E_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]-EA_GHG_Benefit
             
     elif (comp=='HeterotrophicRespiration') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         

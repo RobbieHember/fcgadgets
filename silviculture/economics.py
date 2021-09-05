@@ -36,24 +36,25 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     #----------------------------------------------------------------------
         
     # Convert lumber carbon (MgC/ha) to yield (000 bd ft)        
-    d['Yield Lumber']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['wood_m3_to_bd_ft']*(1/1000)*v1['C_Lumber']
+    d['Yield Lumber']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['wood_m3_to_bd_ft']*(1/1000)*v1['C_ToLumber']
         
     # Convert plywood carbon (MgC/ha) to yield (000 sq ft)
-    d['Yield Plywood']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['sq_ft_plywood_per_m3']*(1/1000)*v1['C_Plywood']
+    d['Yield Plywood']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['sq_ft_plywood_per_m3']*(1/1000)*v1['C_ToPlywood']
         
     # Convert OSB carbon (MgC/ha) to yield (000 sq ft)
-    d['Yield OSB']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['sq_ft_osb_per_m3']*(1/1000)*v1['C_OSB']
+    d['Yield OSB']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['sq_ft_osb_per_m3']*(1/1000)*v1['C_ToOSB']
         
     # Convert MDF carbon (MgC/ha) to yield (000 sq ft)
-    d['Yield MDF']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['sq_ft_mdf_per_m3']*(1/1000)*v1['C_MDF']
+    d['Yield MDF']=b['wood_C_to_DM']*b['wood_DM_to_m3']*b['sq_ft_mdf_per_m3']*(1/1000)*v1['C_ToMDF']
         
     # Convert paper carbon (MgC/ha) to yield (tonnes DM/ha)
-    d['Yield Newsprint']=b['wood_C_to_DM']*v1['C_Paper']
+    d['Yield Paper']=b['wood_C_to_DM']*v1['C_ToPaper']
         
-    # Convert bioenergy carbon (MgC/ha) to yield (MWh/ha)
-    d['Yield Pellets']=0.5*b['wood_C_to_DM']*v1['C_Fuel']*b['GJ per ODT']*b['MWh per GJ']
+    # Convert pellet carbon (MgC/ha) to yield (MWh/ha)
+    d['Yield Pellets']=b['wood_C_to_DM']*v1['C_ToPellets']*b['GJ per ODT']*b['MWh per GJ']
     
-    d['Yield Chips']=0.5*b['wood_C_to_DM']*v1['C_Fuel']
+    # Convert power carbon (MgC/ha) to yield (?)
+    d['Yield Power']=b['wood_C_to_DM']*v1['C_ToPowerGeneration']
         
     #----------------------------------------------------------------------
     # Price
@@ -64,8 +65,9 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Price OSB']=np.zeros(v1['A'].shape)
     d['Price MDF']=np.zeros(v1['A'].shape)
     d['Price Newsprint']=np.zeros(v1['A'].shape)
-    d['Price Chips']=np.zeros(v1['A'].shape)
+    d['Price PowerGeneration']=np.zeros(v1['A'].shape)
     d['Price Pellets']=np.zeros(v1['A'].shape)
+    d['Price Chips']=np.zeros(v1['A'].shape)
     d['Exchange Rate US']=np.zeros(v1['A'].shape)
     d['Exchange Rate Euro']=np.zeros(v1['A'].shape)
         
@@ -79,7 +81,8 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
         d['Price OSB'][it1,iStand]=dPrice['Price OSB (CDN$/000 sq ft)'][it0]
         d['Price MDF'][it1,iStand]=dPrice['Price MDF (CDN$/000 sq ft)'][it0]
         d['Price Newsprint'][it1,iStand]=dPrice['Price Newsprint (US$/tonne)'][it0]
-        d['Price Chips'][it1,iStand]=dPrice['Price Chips (US$/ton)'][it0]
+        #d['Price Chips'][it1,iStand]=dPrice['Price Chips (US$/ton)'][it0]
+        d['Price PowerGeneration'][it1,iStand]=0.0 #dPrice['Price PowerGeneration (CDN$/tC)'][it0]
         d['Price Pellets'][it1,iStand]=dPrice['Price Pellets (Euro/MWh CIF)'][it0]
         d['Exchange Rate US'][it1,iStand]=dPrice['Exchange Rate (US to CDN)'][it0]
         d['Exchange Rate Euro'][it1,iStand]=dPrice['Exchange Rate (Euro to CDN)'][it0]
@@ -99,6 +102,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Cost Survey']=np.zeros(v1['A'].shape)
     d['Cost Knockdown']=np.zeros(v1['A'].shape)
     d['Cost Ripping']=np.zeros(v1['A'].shape)
+    d['Cost Slashpile Burn']=np.zeros(v1['A'].shape)
     d['Harvest Vol Merch']=np.zeros(v1['A'].shape)
     d['Harvest Vol Resid']=np.zeros(v1['A'].shape)
         
@@ -227,7 +231,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
             if it1.size==0:
                 continue
                 
-            d['Cost Ripping'][it1,iStand]=dCost['Cost Ripping (CDN$/ha)'][it0]    
+            d['Cost Ripping'][it1,iStand]=dCost['Cost Ripping (CDN$/ha)'][it0] 
             
         #----------------------------------------------------------------------    
         # Harvesting
@@ -258,7 +262,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
                 # Merchantable wood
                 
-                Removed_C=v1['C_RemovedMerch'][it1,iStand]+v1['C_RemovedSnagStem'][it1,iStand]                
+                Removed_C=v1['C_ToMillMerch'][it1,iStand]+v1['C_ToMillSnagStem'][it1,iStand]                
                 Removed_DM=b['wood_C_to_DM']*Removed_C                
                 Removed_V=b['wood_DM_to_m3']*Removed_DM                
                 Removed_mbf=b['wood_m3_to_bd_ft']*(1/1000)*Removed_V
@@ -281,7 +285,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
                 
                 # Residual fibre
                 
-                Removed_C=v1['C_RemovedNonMerch'][it1,iStand]
+                Removed_C=v1['C_ToMillNonMerch'][it1,iStand]
                 Removed_DM=b['wood_C_to_DM']*Removed_C                
                 Removed_V=b['wood_DM_to_m3']*Removed_DM                
                 #Removed_mbf=b['wood_m3_to_bd_ft']*(1/1000)*Removed_V
@@ -289,6 +293,31 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
                 d['Harvest Vol Resid'][it1,iStand]=Removed_V
                 
                 d['Cost Harvest Residuals'][it1,iStand]=dCost['Cost Residual Haul and Grind (CDN$/m3)'][it0]*Removed_V
+        
+        #----------------------------------------------------------------------
+        # Slashpile burning
+        #----------------------------------------------------------------------
+        
+        for k in range(meta['Core']['Max Events Per Year']):
+                
+            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Slashpile Burn']) )[0]
+                
+            if ind.size==0:
+                continue
+                
+            Year=tv_full[ind]
+            it0=np.where(dPrice['Year']==Year)[0]
+            it1=np.where(tv==Year)[0]
+              
+            if it0.size==0:
+                continue
+            
+            if it1.size==0:
+                continue
+                
+            Burned_C=v1['C_ToSlashpileBurn'][it1,iStand]               
+            Burned_V=b['wood_DM_to_m3']*b['wood_C_to_DM']*Burned_C            
+            d['Cost Slashpile Burn'][it1,iStand]=dCost['Cost Ripping (CDN$/ha)'][it0]*Burned_V
         
     # Total cost
     d['Cost Total']=d['Cost Roads']+ \
@@ -301,6 +330,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
         d['Cost Planting']+ \
         d['Cost Survey']+ \
         d['Cost Ripping']+ \
+        d['Cost Slashpile Burn']+ \
         d['Cost Knockdown']
 
     # Gross revenue from sale of lumber: (CDN$/ha) = (US$/mbf) * (CDN$/US$) * (mbf/ha)
@@ -316,13 +346,16 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Revenue MDF']=d['Price MDF']*d['Yield MDF']
         
     # Revenue from sale of newsprint = (US$/tonne) * (CDN$/US$) * (tonne/ha)
-    d['Revenue Newsprint']=d['Price Newsprint']*(1/d['Exchange Rate US'])*d['Yield Newsprint']
+    d['Revenue Paper']=d['Price Newsprint']*(1/d['Exchange Rate US'])*d['Yield Paper']
         
+    # Revenue from sale of power generation
+    d['Revenue PowerGeneration']=0*d['Revenue Lumber']
+    
     # Revenue from sale of pellets (CDN$/ha) = (Euro$/MWh) * (CDN$/Euro$) * (MWh/ha)
     d['Revenue Pellets']=d['Price Pellets']*(1/d['Exchange Rate Euro'])*d['Yield Pellets']
     
-    # Revenue from sale of chips (CDN$/ha) = (US$/tonne) * (CDN$/Euro$) * (tonnes/ha)
-    d['Revenue Chips']=d['Price Chips']*(1/d['Exchange Rate US'])*d['Yield Chips']
+    # Revenue from sale of chips
+    d['Revenue Chips']=0*d['Revenue Lumber']
         
     # Remove all NaNs
     for k in d.keys():
@@ -330,7 +363,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
         
     # Gross revenue ($)
     d['Revenue Gross']=d['Revenue Lumber']+d['Revenue Plywood']+d['Revenue OSB']+d['Revenue MDF']+ \
-        d['Revenue Newsprint']+d['Revenue Chips']+d['Revenue Pellets']            
+        d['Revenue Paper']+d['Revenue PowerGeneration']+d['Revenue Pellets']+d['Revenue Chips']            
         
     # Net revenue
     d['Revenue Net']=d['Revenue Gross']-d['Cost Total']
@@ -342,3 +375,18 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     #d['PV']=d['Net Revenue']/(1+b['Interest Rate'])**d['t']
     
     return d
+
+#%% Calculate economic results for each scenario
+   
+def CalculateEconomics(meta,v1):
+    
+    econ=[]
+    for iScn in range(len(v1)):
+        iEns=0; 
+        iBat=0;
+        inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')            
+        ec=cbu.EventChronologyDecompress(meta,ec,iScn,iEns,iBat)
+        econ.append(CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1[iScn]))
+    
+    return econ

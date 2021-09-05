@@ -222,6 +222,10 @@ def SimulateWildfireFromAAO_StandsActAsEnsembles(meta,inv,iScn):
 
 def SimulateIBMFromAAO(meta,ba):
 
+    # Ensure BGC zone has the right key name
+    if 'ID_BECZ' in ba:
+        ba['BEC_ZONE_CODE']=ba['ID_BECZ']
+    
      # Import IBM stats    
     ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
     

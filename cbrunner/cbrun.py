@@ -132,7 +132,7 @@ def MeepMeep(meta):
                     if meta['Year'][iT]>=meta['Core']['HWP Year Start']:
                         
                         # No need to run this before a certain date
-                        vo=annproc.HWP_From_BCHWP12(iT,iBat,vi,vo,meta)
+                        vo=annproc.HWP_From_BCHWP12_WithMods(iT,iBat,vi,vo,meta)
                 
                 rt_info['t5']=time.time()
                 
@@ -257,47 +257,89 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #vo['Spc_ID']=np.zeros((m,n,6),dtype='int8')
     #vo['Spc_Percent']=np.zeros((m,n,6),dtype='int8')
     
+    # Stemwood merch volume
+    vo['V_StemMerch']=np.zeros((m,n))
+    
     # Carbon density of ecosystem (Mg C ha-1)
     # -> 3-D matrix: Time x Stand x Carbon pool
     vo['C_Eco_Pools']=np.zeros((m,n,o))
         
+    # Carbon density of products sector (Mg C ha-1)
+    # -> 3-D matrix: Time x Stand x Carbon pool
+    vo['C_Pro_Pools']=np.zeros((m,n,meta['Core']['N Pools Pro']))  
+    
+    # Aggregate pools (Mg C ha-1) (polulated upon export)
+    vo['C_Biomass_Tot']=np.array([])
+    vo['C_Felled_Tot']=np.array([])
+    vo['C_Litter_Tot']=np.array([])
+    vo['C_DeadWood_Tot']=np.array([])
+    vo['C_Soil_Tot']=np.array([])
+    vo['C_InUse_Tot']=np.array([])
+    vo['C_DumpLandfill_Tot']=np.array([])
+    
     # Carbon flux densities (Mg C ha-1 yr-1)
     vo['C_NPP']=np.zeros((m,n,o))
-    vo['C_G_Net']=np.zeros((m,n,o))
     vo['C_G_Gross']=np.zeros((m,n,o))
+    vo['C_G_Net']=np.zeros((m,n,o))    
     vo['C_M_Reg']=np.zeros((m,n,o))
     vo['C_M_Dist']=np.zeros((m,n))
     vo['C_M_ByAgent']={}
     for k in meta['LUT']['Dist']:
         vo['C_M_ByAgent'][k]=np.zeros((m,1))        
     vo['C_LF']=np.zeros((m,n,o))    
-    vo['C_RH']=np.zeros((m,n,o))    
-    vo['C_RemovedMerch']=np.zeros((m,n))
-    vo['C_RemovedNonMerch']=np.zeros((m,n))
-    vo['C_RemovedSnagStem']=np.zeros((m,n))
-    vo['C_E_Operations']=np.zeros((m,n))
+    vo['C_RH']=np.zeros((m,n,o))  
+    
+    # Aggregate pools (Mg C ha-1) (polulated upon export)
+    vo['C_G_Gross_Tot']=np.array([])
+    vo['C_G_Net_Tot']=np.array([])
+    vo['C_M_Reg_Tot']=np.array([])
+    vo['C_LF_Tot']=np.array([])
+    vo['C_RH_Tot']=np.array([])
+    
+    # Keep track of carbon transfers
+    vo['C_ToMillMerch']=np.zeros((m,n))
+    vo['C_ToMillNonMerch']=np.zeros((m,n))
+    vo['C_ToMillSnagStem']=np.zeros((m,n))
+    vo['C_ToSlashpileBurn']=np.zeros((m,n))
+    vo['C_ToLumber']=np.zeros((m,n))
+    vo['C_ToPlywood']=np.zeros((m,n))
+    vo['C_ToOSB']=np.zeros((m,n))
+    vo['C_ToMDF']=np.zeros((m,n))
+    vo['C_ToPolePost']=np.zeros((m,n))
+    vo['C_ToPaper']=np.zeros((m,n))
+    vo['C_ToPowerGeneration']=np.zeros((m,n))
+    vo['C_ToPellets']=np.zeros((m,n))
+    vo['C_ToFirewood']=np.zeros((m,n))
+    
+    # Emissions from wildfire and open burning (will be deleted upon export)
     vo['C_E_FireAsCO2']=np.zeros((m,n))
     vo['C_E_FireAsCH4']=np.zeros((m,n))
     vo['C_E_FireAsCO']=np.zeros((m,n))
     vo['C_E_FireAsN2O']=np.zeros((m,n))
     
-    # Carbon density of products sector (Mg C ha-1)
-    # -> 3-D matrix: Time x Stand x Carbon pool
-    vo['C_Pro_Pools']=np.zeros((m,n,meta['Core']['N Pools Pro']))  
+    # LULUCF Sector: Net ecosystem production (polulated in load results)
+    vo['CO2e_LULUCF_NEP']=np.array([])
     
-    # Summary of aboveground biomass
-    vo['C_BiomassAG']=np.zeros((m,n))    
+    # LULUCF Sector: Net ecosystem production (polulated upon export)
+    vo['CO2e_LULUCF_E_Wildfire']=np.array([])
     
-    # Stemwood merch volume
-    vo['V_StemMerch']=np.zeros((m,n))
+    # LULUCF Sector: Net ecosystem production (polulated upon export)
+    vo['CO2e_LULUCF_E_OpenBurning']=np.array([])
     
-    # Product transfers for economic modelling
-    vo['C_Lumber']=np.zeros((m,n))
-    vo['C_Plywood']=np.zeros((m,n))
-    vo['C_OSB']=np.zeros((m,n))
-    vo['C_MDF']=np.zeros((m,n))
-    vo['C_Paper']=np.zeros((m,n))
-    vo['C_Fuel']=np.zeros((m,n))
+    # LULUCF Sector: Denitrification, valatilization
+    vo['CO2e_LULUCF_E_EcoOther']=np.zeros((m,n))
+    
+    # LULUCF Sector: RH from dumps and landfills
+    vo['CO2e_LULUCF_E_HWP']=np.zeros((m,n)) 
+    
+    # Energy - Stationary Combustion Sector
+    vo['CO2e_StatComb_E']=np.zeros((m,n))
+    
+    # Energy - Transporation Sector
+    vo['CO2e_Transp_E']=np.zeros((m,n))
+    
+    # Inudstrial Produciton and Product Use Sector
+    vo['CO2e_IPPU_E']=np.zeros((m,n))
     
     #vo['C_M_Sim_Reg']=np.zeros((m,n))
     #vo['C_M_Sim_Fir']=np.zeros((m,n))
@@ -456,7 +498,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
     
     for pn in PoolNames:
         meta['Param']['BEV']['Biomass Turnover'][pn]=meta['Param']['BEV']['Biomass Turnover']['Raw'][pn][indPar]*np.ones((1,meta['Project']['Batch Size'][iBat]))
-    
+        
     #--------------------------------------------------------------------------
     # HWP
     #--------------------------------------------------------------------------
@@ -518,94 +560,176 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         vo_full=[]
     
     #--------------------------------------------------------------------------
+    # Extract parameters
+    #--------------------------------------------------------------------------
+    
+    bB=meta['Param']['BEV']['Biophysical']
+    
+    #--------------------------------------------------------------------------
     # Isolate time period that will be saved to file
     #--------------------------------------------------------------------------
     
-    it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]    
+    it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]
     
     # Main output variables
     for k in vo:
         
         # Skip mortality summary
-        if (k=='C_M_ByAgent') | (k=='Product Yields'):
+        if type(vo[k])==dict:
             continue
         
+        # Skip variables that were initiated but not yet populated
+        if vo[k].size==0:
+            continue
+
         vo[k]=vo[k][it,:]
     
     # Mortality summaries
     for k in vo['C_M_ByAgent']:
         vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k][it,:]
     
-    #if iScn==0:
-    #    import matplotlib.pyplot as plt
-    #    plt.plot(vo['C_G_Net'][-200:,0,1],'-')
-    
     #--------------------------------------------------------------------------
-    # Convert emissions to CO2e
+    # Convert fire to CO2e
     #--------------------------------------------------------------------------
     
     # Carbon dioxide flux (tCO2/ha/yr)
-    E_Fire_CO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*vo['C_E_FireAsCO2']
+    E_Fire_CO2=bB['Ratio_CO2_to_C']*vo['C_E_FireAsCO2']
     
     # Carbon monoxide flux (tCO/ha/yr)
-    E_Fire_CO=meta['Param']['BEV']['Biophysical']['Ratio_CO_to_C']*vo['C_E_FireAsCO']
+    E_Fire_CO=bB['Ratio_CO_to_C']*vo['C_E_FireAsCO']
     
     # Methan flux *(tCH4/ha/yr)
-    E_Fire_CH4=meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*vo['C_E_FireAsCH4']
+    E_Fire_CH4=bB['Ratio_CH4_to_C']*vo['C_E_FireAsCH4']
     
     # Nitrous oxide flux (tN2O/ha/yr)
-    E_Fire_N2O=meta['Param']['BEV']['Biophysical']['EF_N2O_fromCO2']*E_Fire_CO2
+    E_Fire_N2O=bB['EF_N2O_fromCO2']*E_Fire_CO2
     
     # Convert fluxes to CO2e using global warming potential estimates
     CO2e_E_Fire_AsCO2=1*E_Fire_CO2    
-    CO2e_E_Fire_AsCH4=meta['Param']['BEV']['Biophysical']['GWP_CH4_AR5']*E_Fire_CH4    
-    CO2e_E_Fire_AsCO=meta['Param']['BEV']['Biophysical']['GWP_CO_AR5']*E_Fire_CO    
-    CO2e_E_Fire_AsN2O=meta['Param']['BEV']['Biophysical']['GWP_N2O_AR5']*E_Fire_N2O
+    CO2e_E_Fire_AsCH4=bB['GWP_CH4_AR5']*E_Fire_CH4    
+    CO2e_E_Fire_AsCO=bB['GWP_CO_AR5']*E_Fire_CO    
+    CO2e_E_Fire_AsN2O=bB['GWP_N2O_AR5']*E_Fire_N2O
     
-    # Total CO2e emissions from fire
-    vo['CO2e_E_Fire']=CO2e_E_Fire_AsCO2+CO2e_E_Fire_AsCH4+CO2e_E_Fire_AsCO+CO2e_E_Fire_AsN2O    
+    CO2e_E_Fire_Total=CO2e_E_Fire_AsCO2+CO2e_E_Fire_AsCH4+CO2e_E_Fire_AsCO+CO2e_E_Fire_AsN2O
     
+    #--------------------------------------------------------------------------
+    # Emissions from wildfire
+    #--------------------------------------------------------------------------
+    
+    vo['CO2e_LULUCF_E_Wildfire']=np.zeros(vo['C_ToMillMerch'].shape)
+    ind=np.where( (vo['C_ToMillMerch']==0) & (vo['C_ToMillSnagStem']==0) )    
+    if ind[0].size>0:
+        vo['CO2e_LULUCF_E_Wildfire'][ind[0],ind[1]]=CO2e_E_Fire_Total[ind[0],ind[1]]
+
+    #--------------------------------------------------------------------------
+    # Emissions from open burning    
+    #--------------------------------------------------------------------------
+    
+    vo['CO2e_LULUCF_E_OpenBurning']=np.zeros(vo['C_ToMillMerch'].shape)
+    ind=np.where( (vo['C_ToMillMerch']>0) | (vo['C_ToMillSnagStem']>0) )    
+    if ind[0].size>0:
+        vo['CO2e_LULUCF_E_OpenBurning'][ind[0],ind[1]]=CO2e_E_Fire_Total[ind[0],ind[1]]
+    
+    #--------------------------------------------------------------------------
     # Remove unnecessary fire emission variables
+    #--------------------------------------------------------------------------
+    
     del vo['C_E_FireAsCO2']
     del vo['C_E_FireAsCO']
     del vo['C_E_FireAsCH4']
-    
-    #----------------------------------------------------------------------
-    # Add aggregate pools
-    #----------------------------------------------------------------------
-          
-    vo['C_Biomass']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassTotal']],axis=2)
-    vo['C_BiomassAG']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassAboveground']],axis=2)
-    vo['C_Felled']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Felled']],axis=2)
-    vo['C_Litter']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Litter']],axis=2)
-    vo['C_DeadWood']=np.sum(vo['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)
-    vo['C_Soil']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)
-    vo['C_Ecosystem']=vo['C_Biomass']+vo['C_Litter']+vo['C_DeadWood']+vo['C_Soil']
-    vo['C_InUse']=np.sum(vo['C_Pro_Pools'][:,:,0:10],axis=2)
-    vo['C_DumpLandfill']=np.sum(vo['C_Pro_Pools'][:,:,10:17],axis=2)
-
-    # Combine emissions from product sector, express as tCO2e/ha/yr
-    co2_to_c=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']
-    gwp_co2=1
-    gwp_ch4=meta['Param']['BEV']['Biophysical']['GWP_CH4_AR5']
-    f_co2=vo['C_Pro_Pools'][:,:,17]
-    f_ch4=vo['C_Pro_Pools'][:,:,18]
-    vo['CO2e_E_Products']=gwp_co2*co2_to_c*f_co2+gwp_ch4*co2_to_c*f_ch4
+    del vo['C_E_FireAsN2O']
     
     #--------------------------------------------------------------------------
-    # Sum pools if "Save Biomass Pools" is Off
+    # Substitution effects
+    # This needs to be here so that parameter uncertainty can be considered.
+    #--------------------------------------------------------------------------
+    
+    if meta['Scenario'][iScn]['Substitution Effects Status']=='On':
+    
+        # Extract parameters
+        bS=meta['Param']['BEV']['Substitution']
+        WoodDensity=0.42
+        
+        # Power generation (MgC/ha) to (green tonne/ha)    
+        PowerGeneration=vo['C_ToPowerGeneration']/WoodDensity/bB['WoodMoistureContent']
+        
+        # Power generation (GJ/ha)
+        GJ=bB['Wood Fuel Industrial (50% moisture) (GJ/kg)']*(PowerGeneration*1000)
+        
+        E_Coal=bS['PowerGenFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ/1000
+        E_Diesel=bS['PowerGenFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ/1000
+        E_NatGas=bS['PowerGenFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ/1000
+        E_Oil=bS['PowerGenFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ/1000
+        E_PowerGenSub=E_Coal+E_Diesel+E_NatGas+E_Oil
+        
+        # Pellets (MgC/ha) to (kiln dried tonne/ha)
+        Pellets=vo['C_ToPellets']/WoodDensity
+        
+        # Pellets (GJ/ha)
+        GJ=bB['Wood Fuel Kiln-dried (GJ/kg)']*(Pellets*1000)
+        
+        E_Coal=bS['PelletFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ/1000
+        E_Diesel=bS['PelletFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ/1000
+        E_NatGas=bS['PelletFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ/1000
+        E_Oil=bS['PelletFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ/1000
+        E_PelletSub=E_Coal+E_Diesel+E_NatGas+E_Oil
+        
+        # Firewood (MgC/ha) to (air dried tonne/ha)
+        Firewood=vo['C_ToFirewood']/WoodDensity
+        
+        # Firewood (GJ/ha)
+        GJ=bB['Wood Fuel Residential (0% moisture) (GJ/kg)']*(Firewood*1000)
+        
+        E_Coal=bS['FirewoodFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ/1000
+        E_Diesel=bS['FirewoodFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ/1000
+        E_NatGas=bS['FirewoodFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ/1000
+        E_Oil=bS['FirewoodFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ/1000
+        E_FirewoodSub=E_Coal+E_Diesel+E_NatGas+E_Oil
+        
+        # Sum substitution of power generation, pellets, and firewood
+        vo['CO2e_StatComb_E']=vo['CO2e_StatComb_E']-1*(E_PowerGenSub+E_PelletSub+E_FirewoodSub)
+        
+        # Building materials (tCO2e/ha)
+        E_LumberSub=bB['Ratio_CO2_to_C']*bS['LumberDisplacementFactor']*vo['C_ToLumber']
+        E_PanelSub=bB['Ratio_CO2_to_C']*bS['PanelDisplacementFactor']*(vo['C_ToPlywood']+vo['C_ToOSB']+vo['C_ToMDF'])
+        
+        # Sum substitution of building materials
+        vo['CO2e_StatComb_E']=vo['CO2e_StatComb_E']-1*(E_LumberSub+E_PanelSub)
+    
+    #--------------------------------------------------------------------------
+    # Sum pools and fluxes if "Save Biomass Pools" is Off
+    # These variables only need to be saved to file if the indiviudal pools are
+    # not being stored.
     #--------------------------------------------------------------------------    
     
     if meta['Project']['Save Biomass Pools']!='On':
+        
+        # Aggregate pools
+        vo['C_Biomass_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassTotal']],axis=2)
+        vo['C_Felled_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Felled']],axis=2)
+        vo['C_Litter_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Litter']],axis=2)
+        vo['C_DeadWood_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)
+        vo['C_Soil_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)
+        vo['C_InUse_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['InUse']],axis=2)
+        vo['C_DumpLandfill_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['DumpLandfill']],axis=2)
         
         # Remove pools
         del vo['C_Eco_Pools']
         del vo['C_Pro_Pools']
         
-        # Sum fluxes
-        vNam=['C_G_Gross','C_G_Net','C_M_Reg','C_LF','C_NPP','C_RH']
-        for iV in range(len(vNam)):
-            vo[vNam[iV]]=np.sum(vo[vNam[iV]],axis=2)
+        # Aggregate fluxes
+        vo['C_G_Gross_Tot']=np.sum(vo['C_G_Gross'],axis=2)
+        vo['C_G_Net_Tot']=np.sum(vo['C_G_Net'],axis=2)
+        vo['C_M_Reg_Tot']=np.sum(vo['C_M_Reg'],axis=2)
+        vo['C_LF_Tot']=np.sum(vo['C_LF'],axis=2)
+        vo['C_RH_Tot']=np.sum(vo['C_RH'],axis=2)
+        
+        # Remove fluxes
+        del vo['C_G_Gross']
+        del vo['C_G_Net']
+        del vo['C_G_M_Reg']
+        del vo['C_G_LF']
+        del vo['C_G_RH']
         
     #--------------------------------------------------------------------------
     # Apply scale factor to data
@@ -617,8 +741,11 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         if (k=='C_M_ByAgent'):
             continue
         
+        if vo[k].size==0:
+            continue
+        
         # This one variable needs a larger scale factor
-        if (k=='CO2e_E_Products'):
+        if (k=='CO2e_LULUCF_HWP'):
             vo[k]=vo[k]/meta['Core']['Scale Factor Export Big']
         else:
             vo[k]=vo[k]/meta['Core']['Scale Factor Export Small']
@@ -661,6 +788,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     
     fout=meta['Paths']['Output Scenario'][iScn] + '\\Data_Scn' + cbu.FixFileNum(iScn) + \
         '_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
+    
     gu.opickle(fout,vo)
     
     #--------------------------------------------------------------------------
@@ -710,7 +838,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         NPP=np.sum(vo['C_NPP'][:,0,0:7],axis=1)
         RH=np.sum(vo['C_RH'][:,0,7:16],axis=1)
         E=vo['C_E_FireAsCO2'][:,0]+vo['C_E_FireAsCO'][:,0]+vo['C_E_FireAsCH4'][:,0]+vo['C_E_FireAsN2O'][:,0]
-        R=vo['C_RemovedMerch'][:,0]+vo['C_RemovedNonMerch'][:,0]
+        R=vo['C_ToMillMerch'][:,0]+vo['C_ToMillNonMerch'][:,0]
         x=np.sum(vo['C_Eco_Pools'][:,0,0:16],axis=1)
         y=np.sum(vo['C_Eco_Pools'][0,0,0:16],axis=0)+np.cumsum(NPP-RH-R-E)
         D_abs=np.mean(np.abs(y-x))

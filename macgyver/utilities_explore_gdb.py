@@ -31,8 +31,8 @@ path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.
 fiona.listlayers(path)
 
 # Set layer
-#lyr='RSLT_ACTIVITY_TREATMENT_SVW'
-lyr='RSLT_FOREST_COVER_INV_SVW'
+lyr='RSLT_ACTIVITY_TREATMENT_SVW'
+#lyr='RSLT_FOREST_COVER_INV_SVW'
 #lyr='VEG_COMP_LYR_R1_POLY'
 
 # Load dataset with CRS

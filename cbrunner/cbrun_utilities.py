@@ -137,6 +137,9 @@ def BuildEventChronologyFromSpreadsheet(meta):
     # Simulate wildfires
     asm.SimulateWildfireFromAAO(meta,inv)
     
+    # Simulate MPB
+    asm.SimulateIBMFromAAO(meta,inv)
+    
     for iScn in range(meta['Project']['N Scenario']):
         
         for iEns in range(meta['Project']['N Ensemble']):
@@ -149,6 +152,16 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 for v in ['Occurrence','Mortality']:
                     wf_sim[v]=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int16')
                     wf_sim[v][idx[0],idx[1]]=tmp[v]
+                del tmp
+            
+            # Import IBM  
+            ibm_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+            if 'idx' in ibm_sim:
+                idx=ibm_sim['idx']
+                tmp=ibm_sim.copy()
+                for v in ['Occurrence','Mortality']:
+                    ibm_sim[v]=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int16')
+                    ibm_sim[v][idx[0],idx[1]]=tmp[v]
                 del tmp
             
             for iBat in range(meta['Project']['N Batch']):
@@ -240,33 +253,37 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 # Add simulated wildfire from Taz
                 #----------------------------------------------------------
                 
-                ind=[]                 
+                ind=np.array([],dtype=int)
                 if meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':            
                     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']<1920) )[0]
-                    ind.append(ind0)
+                    ind=np.append(ind,ind0)
                 if meta['Scenario'][iScn]['Wildfire Status Modern']=='On':            
                     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=1920) & (meta['Year']<meta['Project']['Year Project']) )[0]
-                    ind.append(ind0)
+                    ind=np.append(ind,ind0)
                 if meta['Scenario'][iScn]['Wildfire Status Future']=='On':            
                     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=meta['Project']['Year Project']) )[0]
-                    ind.append(ind0)                        
+                    ind=np.append(ind,ind0)                       
                     
-                if len(ind)>0:
+                if ind.size>0:
                     
-                    ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(len(ind))
-                    try:
-                        Year=tv[ind]
-                    except:
-                        print(ind)
-                        print(tv.size)
+                    ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(ind.size)
+                    Year=tv[ind]
                     MortF=wf_sim['Mortality'][ind,iS]
-                    GrowthF=0*np.ones(len(ind))
-                    ID_GrowthCurve=1*np.ones(len(ind))
+                    GrowthF=0*np.ones(ind.size)
+                    ID_GrowthCurve=1*np.ones(ind.size)
                         
                     for iYr in range(Year.size):
                         iT=np.where(tv==Year[iYr])[0]
                         ec['ID_Type'][iT,iS,0]=ID_Type[iYr]
-                        ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
+                        try:
+                            ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
+                        except:
+                            print(ind)
+                            print(Year)
+                            print(ind.size)
+                            print(MortF.shape)
+                            print(Year.shape)
+                            print(ec['MortalityFactor'][iT,iS,0])
                         ec['GrowthFactor'][iT,iS,0]=GrowthF[iYr]
                         ec['ID_GrowthCurve'][iT,iS,0]=ID_GrowthCurve[iYr]
     
@@ -274,7 +291,31 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     # Add simulated MPB from Taz
                     #----------------------------------------------------------
 
-                    # To do list...
+                    ind=np.array([],dtype=int)               
+                    if meta['Scenario'][iScn]['MPB Status Pre-modern']=='On':            
+                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta['Year']<1920) )[0]
+                        ind=np.append(ind,ind0)
+                    if meta['Scenario'][iScn]['MPB Status Modern']=='On':            
+                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta['Year']>=1920) & (meta['Year']<meta['Project']['Year Project']) )[0]
+                        ind=np.append(ind,ind0)
+                    if meta['Scenario'][iScn]['MPB Status Future']=='On':            
+                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta['Year']>=meta['Project']['Year Project']) )[0]
+                        ind=np.append(ind,ind0)                     
+                        
+                    if ind.size>0:
+                        
+                        ID_Type=meta['LUT']['Dist']['IBM']*np.ones(ind.size)
+                        Year=tv[ind]
+                        MortF=ibm_sim['Mortality'][ind,iS]
+                        GrowthF=0*np.ones(ind.size)
+                        ID_GrowthCurve=1*np.ones(ind.size)
+                            
+                        for iYr in range(Year.size):
+                            iT=np.where(tv==Year[iYr])[0]
+                            ec['ID_Type'][iT,iS,0]=ID_Type[iYr]
+                            ec['MortalityFactor'][iT,iS,0]=MortF[iYr]
+                            ec['GrowthFactor'][iT,iS,0]=GrowthF[iYr]
+                            ec['ID_GrowthCurve'][iT,iS,0]=ID_GrowthCurve[iYr]
             
                 #--------------------------------------------------------------
                 # Save to file            
@@ -559,10 +600,10 @@ def ImportProjectConfig(meta):
     meta['Core']['N Pools Eco']=len(meta['Core']['Name Pools Eco'])
     
     # Pool names (products)
-    meta['Core']['Name Pools Pro']=['SFH','MFH','Comm','Furn','Ship','Repairs','Other', \
-        'Paper','Fuel','Firewood','EffluentPulp', \
-        'DumpWood','DumpPaper','LandfillWoodDegradable','LandfillWoodNonDegradable', \
-        'LandfillPaperDegradable','LandfillPaperNonDegradable','E_CO2','E_CH4','Cants']    
+    meta['Core']['Name Pools Pro']=['SFH','MFH','Comm','Furn','Ship','Repairs', \
+        'Other','Paper','EffluentPulp','PowerGeneration','Pellets','Firewood','DumpWood', \
+        'DumpPaper','LandfillWoodDegradable','LandfillWoodNonDegradable', \
+        'LandfillPaperDegradable','LandfillPaperNonDegradable','E_CO2','E_CH4']
     
     # Number of product pools
     meta['Core']['N Pools Pro']=len(meta['Core']['Name Pools Pro'])
@@ -590,6 +631,9 @@ def ImportProjectConfig(meta):
     for nam in meta['Core']['Name Pools Pro']:
         meta['Core']['iPP'][nam]=cnt
         cnt=cnt+1
+    iPP=meta['Core']['iPP']
+    meta['Core']['iPP']['InUse']=np.array([ iPP['SFH'],iPP['MFH'],iPP['Comm'],iPP['Furn'],iPP['Ship'],iPP['Repairs'],iPP['Other'],iPP['Paper'] ])
+    meta['Core']['iPP']['DumpLandfill']=np.array([ iPP['DumpWood'],iPP['DumpPaper'],iPP['LandfillWoodDegradable'],iPP['LandfillWoodNonDegradable'],iPP['LandfillPaperDegradable'],iPP['LandfillPaperNonDegradable'] ])
     
     #--------------------------------------------------------------------------
     # Maximum number of events per year
@@ -874,7 +918,7 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
         
         data[k]=data[k].astype(float)
         
-        if k=='CO2e_E_Products':
+        if k=='CO2e_LULUCF_HWP':
             data[k]=data[k]*meta['Core']['Scale Factor Export Big']
         else:
             data[k]=data[k]*meta['Core']['Scale Factor Export Small']
@@ -892,21 +936,33 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
 # Return a list of dictionaries for each scenario. If multiple ensemble were run, 
 # the function will retun the average.
 
-def LoadScenarioResults(meta,scn):
+def LoadScenarioResults(meta):
+    
+    # Extract indices
+    iEP=meta['Core']['iEP']
+    
+    # Extract biophysical parameters
+    bB=meta['Param']['BEV']['Biophysical']
     
     # Initialize list that will contain scenarios
     v=[]
-    for iScn in scn:
+    for iScn in range(meta['Project']['N Scenario']):
         
-        for iEns in range(0,meta['Project']['N Ensemble']):            
+        for iEns in range(meta['Project']['N Ensemble']):            
             
-            for iBat in range(0,meta['Project']['N Batch']):
+            for iBat in range(meta['Project']['N Batch']):
                 
+                #--------------------------------------------------------------
                 # Open batch results
+                #--------------------------------------------------------------
+                
                 pth=meta['Paths']['Project'] + '\\Outputs\\Scenario' + FixFileNum(iScn) + '\\Data_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl'
                 data_batch=gu.ipickle(pth)
                 
+                #--------------------------------------------------------------
                 # Convert to float and apply scale factor
+                #--------------------------------------------------------------
+                
                 for key in data_batch.keys():
                     
                     # Skip mortality summary by agent
@@ -915,12 +971,52 @@ def LoadScenarioResults(meta,scn):
                     
                     data_batch[key]=data_batch[key].astype(float)
                     
-                    if key=='CO2e_E_Products':
+                    if (key=='CO2e_LULUCF_HWP'):
                         data_batch[key]=data_batch[key]*meta['Core']['Scale Factor Export Big']
                     else:
                         data_batch[key]=data_batch[key]*meta['Core']['Scale Factor Export Small']
                 
+                #--------------------------------------------------------------
+                # Add derived variables
+                #--------------------------------------------------------------
+                
+                if meta['Project']['Save Biomass Pools']=='On':
+                    
+                    # Aggregate variables not yet generated
+                    
+                    # Aggregate pools
+                    data_batch['C_Biomass_Tot']=np.sum(data_batch['C_Eco_Pools'][:,:,iEP['BiomassTotal']],axis=2)
+                    data_batch['C_Felled_Tot']=np.sum(data_batch['C_Eco_Pools'][:,:,iEP['Felled']],axis=2)
+                    data_batch['C_Litter_Tot']=np.sum(data_batch['C_Eco_Pools'][:,:,iEP['Litter']],axis=2)
+                    data_batch['C_DeadWood_Tot']=np.sum(data_batch['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)
+                    data_batch['C_Soil_Tot']=np.sum(data_batch['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)
+                    data_batch['C_InUse_Tot']=np.sum(data_batch['C_Pro_Pools'][:,:,meta['Core']['iPP']['InUse']],axis=2)
+                    data_batch['C_DumpLandfill_Tot']=np.sum(data_batch['C_Pro_Pools'][:,:,meta['Core']['iPP']['DumpLandfill']],axis=2)
+                
+                    # Aggregate fluxes
+                    data_batch['C_G_Gross_Tot']=np.sum(data_batch['C_G_Gross'],axis=2)
+                    data_batch['C_G_Net_Tot']=np.sum(data_batch['C_G_Net'],axis=2)
+                    data_batch['C_M_Reg_Tot']=np.sum(data_batch['C_M_Reg'],axis=2)
+                    data_batch['C_LF_Tot']=np.sum(data_batch['C_LF'],axis=2)
+                    data_batch['C_RH_Tot']=np.sum(data_batch['C_RH'],axis=2)
+                
+                # Net primary productivity (MgC/ha/yr)
+                data_batch['C_NPP_Tot']=data_batch['C_G_Net_Tot']+data_batch['C_M_Reg_Tot']+data_batch['C_LF_Tot']
+                
+                # Net ecosystem production (tCO2e/ha/yr)                
+                data_batch['CO2e_LULUCF_NEP']=bB['Ratio_CO2_to_C']*(data_batch['C_NPP_Tot']-data_batch['C_RH_Tot'])
+                
+                # Ecosystem fire total (tCO2e/ha/yr)
+                data_batch['CO2e_LULUCF_E_Fire']=data_batch['CO2e_LULUCF_E_Wildfire']+data_batch['CO2e_LULUCF_E_OpenBurning']
+                
+                # Atmospheric GHG balance (tCO2e/ha/yr)  
+                data_batch['CO2e_AGHGB']=data_batch['CO2e_LULUCF_NEP']-data_batch['CO2e_LULUCF_E_Wildfire']-data_batch['CO2e_LULUCF_E_OpenBurning']- \
+                    data_batch['CO2e_LULUCF_E_EcoOther']-data_batch['CO2e_LULUCF_E_HWP']-data_batch['CO2e_StatComb_E']-data_batch['CO2e_Transp_E']-data_batch['CO2e_IPPU_E']
+                
+                #--------------------------------------------------------------
                 # Accumulate data in each batch
+                #--------------------------------------------------------------
+                
                 if iBat==0:                    
                     
                     data_all=data_batch
@@ -929,23 +1025,23 @@ def LoadScenarioResults(meta,scn):
                     
                     for key1 in data_batch.keys():                        
                         
-                        if key1=='Year':
-                            
+                        if key1=='Year':                            
                             # Only needed once
                             continue
                         
-                        elif (key1=='C_M_ByAgent'):
-                            
+                        elif (key1=='C_M_ByAgent'):                            
                             # Nested dictionary
                             for key2 in data_batch[key1].keys():
                                 data_all[key1][key2]=np.append(data_all[key1][key2],data_batch[key1][key2],axis=1)
                         
-                        else:
-                            
+                        else:                            
                             # No nested dictionary
                             data_all[key1]=np.append(data_all[key1],data_batch[key1],axis=1)
             
+            #------------------------------------------------------------------
             # Sum across ensembles
+            #------------------------------------------------------------------
+            
             if iEns==0:
                 
                 data_sum2ave=data_all
@@ -965,7 +1061,10 @@ def LoadScenarioResults(meta,scn):
                         # No nested dictionary
                         data_sum2ave[key1]=data_sum2ave[key1]+data_all[key1]
         
+        #----------------------------------------------------------------------
         # If the simulation includes ensembles, calculate average
+        #----------------------------------------------------------------------
+        
         for key1 in data_batch.keys():
             
             # Skip mortality summary by agent
@@ -980,157 +1079,20 @@ def LoadScenarioResults(meta,scn):
                 # No nested dictionary
                 data_sum2ave[key1]=data_sum2ave[key1]/meta['Project']['N Ensemble']        
         
-        v.append(BunchDictionary(data_sum2ave))
+        #----------------------------------------------------------------------
+        # Add year
+        #----------------------------------------------------------------------
+        
+        it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]
+        data_sum2ave['Year']=meta['Year'][it]
+        
+        #----------------------------------------------------------------------
+        # Append to list
+        #----------------------------------------------------------------------
+        
+        v.append(data_sum2ave)
         
     return v
-
-#%% Calculate GHG balance
-
-def CalculateGHGBalance(v1,meta):
-
-    if type(v1)!=list:
-        v1=[v1]
-    
-    # Global warming potential of CO2
-    gwp_co2=1
-        
-    # Global warming potential for CH4 -> using IPCC 2007 (AR4) values to be 
-    # consistent with Greenhouse Gas Reduction Targets Act Carbon Neutral Government Regulation (B.C. Reg. 193/2014)
-    #gwp_ch4=28
-    gwp_ch4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']
-    
-    # CO not recognized as GHG in BC Reg 193/2014, so using most recent
-    #gwp_co=3.3
-    #gwp_co=meta['Param']['BE']['Biophysical']['GWP_CO_AR5']
-    
-    # Global warming potential for CH4 -> using IPCC 2007 (AR4) values to be 
-    # consistent with Greenhouse Gas Reduction Targets Act Carbon Neutral Government Regulation (B.C. Reg. 193/2014)
-    #gwp_n2o=298
-    #gwp_n2o=meta['Param']['BE']['Biophysical']['GWP_N2O_AR5']
-       
-    v2=[]
-    for i in range(len(v1)):
-        Year=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
-        A=v1[i]['A'].copy()
-        
-        if meta['Project']['Save Biomass Pools']=='On':
-            Eco_G_Gross=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_G_Gross'],axis=2)
-            Eco_G_Net=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_G_Net'],axis=2)
-            Eco_M_Reg=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_M_Reg'],axis=2)
-            Eco_NPP=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_NPP'],axis=2)
-            Eco_RH=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_RH'],axis=2)
-            Eco_LF=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_LF'],axis=2)
-        elif meta['Project']['Save Biomass Pools']!='On': 
-            Eco_G_Gross=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_G_Gross'].copy()
-            Eco_G_Net=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_G_Net'].copy()
-            Eco_M_Reg=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_M_Reg'].copy()
-            Eco_NPP=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_NPP'].copy()
-            Eco_RH=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_RH'].copy()
-            Eco_LF=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_LF'].copy()
-    
-        # Carbon dioxide flux (tCO2/ha/yr)
-        Eco_E_Fire=v1[i]['CO2e_E_Fire'].copy()
-        
-        Eco_E_Operations=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_E_Operations'].copy()
-        
-        Eco_Removals=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']* \
-                        (v1[i]['C_RemovedMerch'].copy()+ \
-                         v1[i]['C_RemovedNonMerch'].copy()+ \
-                         v1[i]['C_RemovedSnagStem'].copy())
-        
-        Eco_E_OpenBurning=np.zeros(Eco_E_Fire.shape)
-        ind=np.where(Eco_Removals>0)
-        if ind[0].size>0:
-            Eco_E_OpenBurning[ind[0],ind[1]]=Eco_E_Fire[ind[0],ind[1]]
-        
-        Eco_E_Wildfire=np.zeros(Eco_E_Fire.shape)
-        ind=np.where(Eco_Removals==0)
-        if ind[0].size>0:
-            Eco_E_Wildfire[ind[0],ind[1]]=Eco_E_Fire[ind[0],ind[1]]
-        
-        Eco_NGHGB=Eco_NPP-Eco_RH-Eco_E_Fire-Eco_E_Operations-Eco_Removals
-    
-        if meta['Project']['Save Biomass Pools']=='On':
-            Eco_Biomass=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['BiomassTotal']].copy(),axis=2)       
-            #Eco_BiomassAG=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.nansum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['BiomassAboveground']].copy(),axis=2)
-            Eco_Felled=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Felled']].copy(),axis=2)
-            Eco_Litter=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Litter']].copy(),axis=2)
-            Eco_DeadWood=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['DeadWood']].copy(),axis=2)
-            Eco_Soil=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Eco_Pools'][:,:,meta['Core']['iEP']['Soil']].copy(),axis=2)
-            Pro_InUse=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Pro_Pools'][:,:,0:10].copy(),axis=2)
-            Pro_DumpLandfill=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*np.sum(v1[i]['C_Pro_Pools'][:,:,10:17].copy(),axis=2)
-            #Pro_Emissions=gwp_co2*meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Pro_Pools'][:,:,17].copy()+gwp_ch4*meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i].C_Pro_Pools[:,:,18].copy()
-            Pro_Emissions=v1[i]['CO2e_E_Products'].copy() # Already converted to CO2e
-        else: 
-            Eco_Biomass=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Biomass'].copy()
-            #Eco_BiomassAG=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_BiomassAG'].copy()
-            Eco_Felled=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Felled'].copy()
-            Eco_Litter=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Litter'].copy()
-            Eco_DeadWood=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_DeadWood'].copy()
-            Eco_Soil=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_Soil'].copy()
-            Pro_InUse=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_InUse'].copy()
-            Pro_DumpLandfill=meta['Param']['BE']['Biophysical']['Ratio_CO2_to_C']*v1[i]['C_DumpLandfill'].copy()
-            Pro_Emissions=v1[i]['CO2e_E_Products'].copy() # Already converted to CO2e
-        
-        Eco_Total=Eco_Biomass+Eco_Felled+Eco_Litter+Eco_DeadWood+Eco_Soil
-        Pro_Total=Pro_InUse+Pro_DumpLandfill        
-        Sec_NGHGB=Eco_NPP-Eco_RH-Eco_E_Fire-Eco_E_Operations-Pro_Emissions
-    
-        # Add data to dictionary        
-        d={'Year':Year,
-              'A':A,
-              'Eco_G_Gross':Eco_G_Gross,
-              'Eco_G_Net':Eco_G_Net,
-              'Eco_M_Reg':Eco_M_Reg,
-              'Eco_NPP':Eco_NPP,
-              'Eco_RH':Eco_RH,
-              'Eco_LF':Eco_LF,
-              'Eco_E_Wildfire':Eco_E_Wildfire,
-              'Eco_E_OpenBurning':Eco_E_OpenBurning,              
-              'Eco_E_Operations':Eco_E_Operations,
-              'Eco_Removals':Eco_Removals,
-              'Eco_NGHGB':Eco_NGHGB,
-              'Eco_Biomass':Eco_Biomass,
-              'Eco_Felled':Eco_Felled,
-              'Eco_Litter':Eco_Litter,
-              'Eco_DeadWood':Eco_DeadWood,
-              'Eco_Soil':Eco_Soil,
-              'Eco_Total':Eco_Total,
-              'Pro_InUse':Pro_InUse,
-              'Pro_DumpLandfill':Pro_DumpLandfill,
-              'Pro_Total':Pro_Total,
-              'Pro_Emissions':Pro_Emissions,
-              'Sec_NGHGB':Sec_NGHGB}
-
-        # No longer bunching stuff - just not worth it
-        #v2.append(BunchDictionary(d))
-        v2.append(d)
-        
-        #----------------------------------------------------------------------
-        # Keep labels for each variable for plotting
-        #----------------------------------------------------------------------
-        
-        HandleLabels=['Time, years','Stand age (years)','Gross growth (tCO2e/ha/yr)',
-             'Net growth (tCO2e/ha/yr)','Regular mortality (tCO2e/ha/yr)',
-             'NPP (tCO2e/ha/yr)','RH (tCO2e/ha/yr)','LF (tCO2e/ha/yr)',
-             'Wildfire emissions (tCO2e/ha/yr)',
-             'Open burning emissions (tCO2e/ha/yr)','Operational emissions (tCO2e/ha/yr)',
-             'Removals (tCO2e/ha/yr)','Net ecosystem GHG balance (tCO2e/ha/yr)',
-             'Biomass (tCO2e/ha)','Felled (tCO2e/ha)','Litter (tCO2e/ha)','Dead wood (tCO2e/ha)',
-             'Soil (tCO2e/ha)','Total ecosystem (tCO2e/ha)','In-use products (tCO2e/ha)',
-             'Dump and landfill (tCO2e/ha)','Total product sector (tCO2e/ha)',
-             'Product emissions (tCO2e/ha/yr)','Net sector GHG balance (tCO2e/ha/yr)']        
-        Keys=np.array(list(d.keys()))
-        d1={}
-        for j in range(len(HandleLabels)):
-            d1[Keys[j]]=HandleLabels[j]  
-        meta['Labels GHG Balance']=d1
-    
-    # Not sure why, but the list is being nested in a second list
-    #v2=v2[0]
-    
-    return v2,meta
-
 
 #%% GET TASS GROWTH CURVES
 
@@ -1237,53 +1199,6 @@ def Import_CompiledGrowthCurves(meta,scn):
         gc0.append(gc1.copy())
         gc.append(gc0.copy())
     return gc
-
-#%% Import custom harvest assumptions (optional)
-
-def ImportCustomHarvestAssumptions(pthin):
-
-    # Import parameters
-    df=pd.read_excel(pthin,sheet_name='Sheet1',skiprows=1)
-    
-    d={}
-    d['BiomassMerch_Affected']=df.iloc[1,1]    
-    d['BiomassMerch_Removed']=df.iloc[5,1]
-    d['BiomassMerch_Burned']=df.iloc[3,1]
-    d['BiomassMerch_LeftOnSite']=df.iloc[4,1]    
-    d['BiomassNonMerch_Affected']=df.iloc[1,2]
-    d['BiomassNonMerch_Removed']=df.iloc[5,2]
-    d['BiomassNonMerch_Burned']=df.iloc[3,2]
-    d['BiomassNonMerch_LeftOnSite']=df.iloc[4,2]    
-    d['Snags_Affected']=df.iloc[1,3]
-    d['Snags_Removed']=df.iloc[5,3]
-    d['Snags_Burned']=df.iloc[3,3]
-    d['Snags_LeftOnSite']=df.iloc[4,3]    
-    d['RemovedMerchToPulp']=df.iloc[11,1]
-    d['RemovedMerchToFuel']=df.iloc[12,1]
-    d['RemovedMerchToLumber']=df.iloc[7,1]
-    d['RemovedMerchToPlywood']=df.iloc[8,1]
-    d['RemovedMerchToOSB']=df.iloc[9,1]
-    d['RemovedMerchToMDF']=df.iloc[10,1]    
-    d['RemovedMerchToCants']=df.iloc[13,1]
-    d['RemovedMerchToFirewood']=df.iloc[14,1]    
-    d['RemovedNonMerchToFuel']=df.iloc[12,2]
-    d['RemovedNonMerchToLumber']=df.iloc[7,2]
-    d['RemovedNonMerchToPlywood']=df.iloc[8,2]
-    d['RemovedNonMerchToOSB']=df.iloc[9,2]
-    d['RemovedNonMerchToMDF']=df.iloc[10,2]
-    d['RemovedNonMerchToPulp']=df.iloc[11,2]
-    d['RemovedNonMerchToCants']=df.iloc[13,2]
-    d['RemovedNonMerchToFirewood']=df.iloc[14,2]    
-    d['RemovedSnagStemToFuel']=df.iloc[12,3]
-    d['RemovedSnagStemToLumber']=df.iloc[7,3]
-    d['RemovedSnagStemToPlywood']=df.iloc[8,3]
-    d['RemovedSnagStemToOSB']=df.iloc[9,3]
-    d['RemovedSnagStemToMDF']=df.iloc[10,3]
-    d['RemovedSnagStemToPulp']=df.iloc[11,3]
-    d['RemovedSnagStemToCants']=df.iloc[13,3]
-    d['RemovedSnagStemToFirewood']=df.iloc[14,3]
-    
-    return d
 
 
 #%% Update parameters
@@ -2063,8 +1978,8 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
     
     # Variables to save
     nam1=['V_StemMerch','C_Ecosystem','C_Biomass','C_DeadWood','C_Litter','C_Soil', \
-          'C_InUse','C_DumpLandfill','C_RemovedMerch','C_RemovedNonMerch','C_RemovedSnagStem', \
-          'C_Lumber', 'C_Plywood', 'C_OSB', 'C_MDF', 'C_Paper', 'C_Fuel']
+          'C_InUse','C_DumpLandfill','C_ToMillMerch','C_ToMillNonMerch','C_ToMillSnagStem', \
+          'C_ToLumber','C_ToPlywood','C_ToOSB','C_ToMDF','C_ToPaper','C_ToPowerGeneration','C_ToPellets','C_ToFirewood']
     
     nam2=['A','Eco_NPP','Eco_RH','Eco_E_Wildfire','Eco_E_OpenBurning','Eco_E_Operations', \
           'Eco_Removals','Pro_Emissions','Eco_NGHGB','Sec_NGHGB']
@@ -3673,7 +3588,18 @@ def ImportParameters(meta):
         Name=df['Name'].iloc[i]
         Value=df['Value'].iloc[i]
         meta['Param']['BE']['Econ'][Name]=Value
-        
+     
+    #--------------------------------------------------------------------------
+    # Substitution effects
+    #--------------------------------------------------------------------------
+
+    df=pd.read_excel(pthin + '\\Parameters_Substitution.xlsx',sheet_name='Sheet1')
+
+    meta['Param']['BE']['Substitution']={}
+    for i in range(len(df)):
+        Name=df['Name'][i]
+        meta['Param']['BE']['Substitution'][Name]=df['Value'][i]
+    
     #--------------------------------------------------------------------------
     # Genetic worth
     #--------------------------------------------------------------------------
@@ -3878,6 +3804,56 @@ def DeleteAllOutputFiles(meta):
             pass
     
     return
+
+#%% Import custom harvest assumptions (optional)
+
+def ImportCustomHarvestAssumptions(pthin):
+
+    # Import parameters
+    df=pd.read_excel(pthin,sheet_name='Sheet1',skiprows=1)
+    
+    d={}
+    d['BiomassMerch_Affected']=df.iloc[1,1]    
+    d['BiomassMerch_Removed']=df.iloc[5,1]
+    d['BiomassMerch_Burned']=df.iloc[3,1]
+    d['BiomassMerch_LeftOnSite']=df.iloc[4,1]    
+    d['BiomassNonMerch_Affected']=df.iloc[1,2]
+    d['BiomassNonMerch_Removed']=df.iloc[5,2]
+    d['BiomassNonMerch_Burned']=df.iloc[3,2]
+    d['BiomassNonMerch_LeftOnSite']=df.iloc[4,2]    
+    d['Snags_Affected']=df.iloc[1,3]
+    d['Snags_Removed']=df.iloc[5,3]
+    d['Snags_Burned']=df.iloc[3,3]
+    d['Snags_LeftOnSite']=df.iloc[4,3]    
+    
+    d['RemovedMerchToLumberMill']=df.iloc[7,1]
+    d['RemovedMerchToPlywoodMill']=df.iloc[8,1]
+    d['RemovedMerchToOSBMill']=df.iloc[9,1]
+    d['RemovedMerchToMDFMill']=df.iloc[10,1]    
+    d['RemovedMerchToPulpMill']=df.iloc[11,1]
+    d['RemovedMerchToChipperMill']=df.iloc[12,1]
+    d['RemovedMerchToPelletMill']=df.iloc[13,1]
+    d['RemovedMerchToFirewood']=df.iloc[14,1]
+    
+    d['RemovedNonMerchToLumberMill']=df.iloc[7,2]
+    d['RemovedNonMerchToPlywoodMill']=df.iloc[8,2]
+    d['RemovedNonMerchToOSBMill']=df.iloc[9,2]
+    d['RemovedNonMerchToMDFMill']=df.iloc[10,2]
+    d['RemovedNonMerchToPulpMill']=df.iloc[11,2]
+    d['RemovedNonMerchToChipperMill']=df.iloc[12,2]
+    d['RemovedNonMerchToPelletMill']=df.iloc[13,2]
+    d['RemovedNonMerchToFirewood']=df.iloc[14,2]
+    
+    d['RemovedSnagStemToLumberMill']=df.iloc[7,3]
+    d['RemovedSnagStemToPlywoodMill']=df.iloc[8,3]
+    d['RemovedSnagStemToOSBMill']=df.iloc[9,3]
+    d['RemovedSnagStemToMDFMill']=df.iloc[10,3]
+    d['RemovedSnagStemToPulpMill']=df.iloc[11,3]
+    d['RemovedSnagStemToChipperMill']=df.iloc[12,3]
+    d['RemovedSnagStemToPelletMill']=df.iloc[13,3]
+    d['RemovedSnagStemToFirewood']=df.iloc[14,3]
+    
+    return d
 
 #%% Import look-up tables
 #
