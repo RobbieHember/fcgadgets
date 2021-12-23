@@ -23,9 +23,9 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 #%% Set path and layer
 
 # Path to forest cover archive geodatabase
-path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb'
+#path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210930\Results.gdb'
 #path=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401\VRI.gdb'
-#path=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
+path=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210930\Disturbances.gdb'
 
 # List layers
 fiona.listlayers(path)
@@ -49,6 +49,16 @@ with fiona.open(path,layer=lyr) as source:
 
 with fiona.open(path,layer='VEG_CONSOLIDATED_CUT_BLOCKS_SP') as source:
     for feat in source:
+        break
+
+A=np.array([0.0])
+with fiona.open(path,layer='VEG_BURN_SEVERITY_SP') as source:
+    for feat in source:
+        if (feat['properties']['FIRE_YEAR']<2017) | (feat['properties']['FIRE_YEAR']>2018) | (feat['properties']['BURN_SEVERITY_RATING']=='Unburned'):
+            continue
+        A=A+feat['properties']['AREA_HA']
+        
+        
         break
 
 N=0

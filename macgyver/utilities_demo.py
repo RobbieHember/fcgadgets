@@ -10,8 +10,19 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
+from matplotlib.patches import Rectangle
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
+  
+#%%
+
+def GetSingleEnsembleResults(meta):
+
+    v0=[]
+    for iScn in range(meta['Project']['N Scenario']):    
+        v0.append(cbu.LoadSingleOutputFile(meta,iScn,0,0))
+    
+    return v0
 
 #%%
     
@@ -37,6 +48,8 @@ def CalculateAggregateVariables(meta,v1):
         v1[iScn]['C_Eco_Tot']=np.sum(v1[iScn]['C_Eco_Pools'],axis=2)
         v1[iScn]['C_Eco_Tot']=np.sum(v1[iScn]['C_Eco_Pools'],axis=2)
         v1[iScn]['C_Eco_Tot'][np.isnan(v1[iScn]['C_Eco_Tot'])]=0
+        
+        #v1[iScn]['Sum']['C_Forest']=v1[iScn]['Sum']['C_Biomass_Tot']+v1[iScn]['Sum']['C_DeadWood_Tot']+v1[iScn]['Sum']['C_Litter_Tot']+v1[iScn]['Sum']['C_Soil_Tot']
     
     return v1
 
@@ -237,35 +250,315 @@ def CompareScenarios(meta,v1,iB,iP,iT):
     
     return dFluxRel,dFluxAct,dPoolRel,dStemMort,dMerchVolume,dNUE_applied,dNUE_utilized
 
+#%%
 
-#%% Plot cashflow
+def ExportSummariesByScenario(meta,tv,t_start,t_end,mu1):
+    
+    it=np.where( (tv>=t_start) & (tv<=t_end) )[0]
+    
+    for iScn in range(meta['Project']['N Scenario']):
+        
+        VL=['A','LogSizeEnhancement','V_StemMerch','V_StemMerchToMill',
+            'C_Biomass_Tot',
+            'C_DeadWood_Tot',
+            'C_DumpLandfill_Tot',
+            'C_Eco_Pools',
+            'C_Piled_Tot',
+            'C_G_Gross',
+            'C_G_Gross_Tot',
+            'C_G_Net',
+            'C_G_Net_Tot',
+            'C_InUse_Tot',
+            'C_LF',
+            'C_LF_Tot',
+            'C_Litter_Tot',
+            'C_M_Dist',
+            'C_M_Reg',
+            'C_M_Reg_Tot',
+            'C_NPP_Tot',
+            'C_Pro_Pools',
+            'C_RH',
+            'C_RH_Tot',
+            'C_Soil_Tot',
+            'C_ToFirewoodDom',
+            'C_ToFirewoodFor',
+            'C_ToLogExport',
+            'C_ToLumber',
+            'C_ToMDF',
+            'C_ToMill',
+            'C_ToMillMerch',
+            'C_ToMillNonMerch',
+            'C_ToMillSnagStem',
+            'C_ToOSB',
+            'C_ToPaper',
+            'C_ToPellets',
+            'C_ToPlywood',
+            'C_ToPowerFacilityDom',
+            'C_ToPowerFacilityFor',
+            'C_ToPowerGrid',
+            'C_ToSlashpileBurn',
+            'E_CO2e_LULUCF_NEE',
+            'E_CO2e_LULUCF_EcoOther',
+            'E_CO2e_LULUCF_Fire',
+            'E_CO2e_LULUCF_OpenBurning',
+            'E_CO2e_LULUCF_Wildfire',
+            'E_CO2e_LULUCF_HWP',
+            'E_CO2e_ESC_Comb',
+            'E_CO2e_ESC_SubBM',
+            'E_CO2e_ESC_SubE',
+            'E_CO2e_ET_Comb',
+            'E_CO2e_IPPU_Comb',
+            'E_CO2e_AGHGB_WOSub',
+            'E_CO2e_AGHGB_WOSub_cumu',
+            'E_CO2e_AGHGB_WSub',
+            'E_CO2e_AGHGB_WSub_cumu',
+            'Cost Roads',
+            'Cost Knockdown',
+            'Cost Ripping',
+            'Cost Nutrient Management',
+            'Cost PAS Deactivation',
+            'Cost Harvest Felling and Piling',
+            'Cost Harvest Hauling',
+            'Cost Harvest Overhead',
+            'Cost Harvest Residuals',
+            'Cost Milling',
+            'Cost Slashpile Burn',            
+            'Cost Planting',
+            'Cost Survey',
+            'Cost Silviculture Total',
+            'Cost Total',            
+            'Cost Total Disc',
+            'Cost Total Disc_cumu',
+            'Revenue FirewoodDom',
+            'Revenue LogExport',
+            'Revenue Lumber',
+            'Revenue MDF',
+            'Revenue OSB',
+            'Revenue Paper',
+            'Revenue Pellets',
+            'Revenue Plywood',
+            'Revenue PowerFacilityDom',
+            'Revenue PowerGrid',
+            'Revenue Gross',
+            'Revenue Gross Disc',
+            'Revenue Gross Disc_cumu',
+            'Revenue Net',
+            'Revenue Net Disc',
+            'Revenue Net Disc_cumu',
+            'Yield FirewoodDom',
+            'Yield LogExport',
+            'Yield Lumber',
+            'Yield MDF',
+            'Yield OSB',
+            'Yield Paper',
+            'Yield Pellets',
+            'Yield Plywood',
+            'Yield PowerFacilityDom','Yield PowerGrid']
+        
+        d={}        
+        for k in VL:
+            d['Sum ' + k]=np.round(np.sum(mu1[iScn][k][it]),decimals=2)
+        
+        for k in VL:
+            d['Mean ' + k]=np.round(np.mean(mu1[iScn][k][it]),decimals=2)
+        
+        if iScn==0:
+            df=pd.DataFrame().from_dict(d,orient='index')
+        else:
+            df0=pd.DataFrame().from_dict(d,orient='index')
+            df=pd.concat([df,df0],axis=1)
+    
+    #df.index.name='Variable'
+    df.columns=[np.arange(1,df.columns.size+1)]
+    #df=df.sort_index(axis=0)
+    
+    df.to_excel(meta['Paths']['Project'] + '\\Outputs\\TabularSummary_' + str(t_start) + '-' + str(t_end) + '.xlsx')
+    
+    return df
 
-def Plot_Cashflow(meta,v1,econ,iB,iP,iT):
+#%%
     
-    lw=0.75
+def PlotSchematicAtmoGHGBal(meta,mu1,iB,iP,t_start,t_end):
     
-    fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(15,11.5))
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
     
-    ax[0,0].plot(v1[0]['Year'],econ[iB]['Cost Total']/1000,'-bo',lw=lw,ms=4,label='Baseline')
-    ax[0,0].plot(v1[0]['Year'],econ[iP]['Cost Total']/1000,'--r^',lw=lw,ms=3,label='Project')
-    ax[0,0].set(xlim=[v1[0]['Year'][iT[0]], v1[0]['Year'][iT[-1]]],ylabel='Cost (CDN$/000)')
-    ax[0,0].legend(loc='upper right',frameon=False,facecolor=None)
+    iT=np.where( (tv>=t_start) & (tv<=t_end) )[0]
     
-    ax[0,1].plot(v1[0]['Year'],(econ[iP]['Cost Total']-econ[iB]['Cost Total'])/1000,'-g',lw=lw)
-    ax[0,1].set(xlim=[v1[0]['Year'][iT[0]], v1[0]['Year'][iT[-1]]],ylabel='Cost (CDN$/000)')
+    # Calculate aggregate variables
+    for iScn in range(len(mu1)):
+        mu1[iScn]['C_Forest']=mu1[iScn]['C_Biomass_Tot']+mu1[iScn]['C_DeadWood_Tot']+mu1[iScn]['C_Litter_Tot']+mu1[iScn]['C_Soil_Tot']
+        mu1[iScn]['C_HWP']=mu1[iScn]['C_InUse_Tot']+mu1[iScn]['C_DumpLandfill_Tot']
+        mu1[iScn]['C_ToMill']=mu1[iScn]['C_ToMillMerch']+mu1[iScn]['C_ToMillNonMerch']+mu1[iScn]['C_ToMillSnagStem']
     
-    ax[1,0].plot(v1[0]['Year'],econ[iB]['Revenue Net']/1000,'-bo',ms=4,lw=lw)
-    ax[1,0].plot(v1[0]['Year'],econ[iP]['Revenue Net']/1000,'--r^',ms=3,lw=lw)
-    ax[1,0].set(xlim=[v1[0]['Year'][iT[0]], v1[0]['Year'][iT[-1]]],ylabel='Net revenue (CDN$/000)')
+    y_b={}
+    y_p={}
+    y_d={}
+    for k in mu1[0].keys():
+        if (k=='C_Forest') | (k=='C_HWP') | (k=='C_ToMill'):
+            y_b[k]=mu1[iB][k][iT[-1]]-mu1[iB][k][iT[0]]
+            y_p[k]=mu1[iP][k][iT[-1]]-mu1[iP][k][iT[0]]
+            y_d[k]=y_p[k]-y_b[k]
+        else:
+            y_b[k]=np.sum(mu1[iB][k][iT])
+            y_p[k]=np.sum(mu1[iP][k][iT])
+            y_d[k]=y_p[k]-y_b[k]
+        
+        # Round
+        y_b[k]=y_b[k].astype(int)
+        y_p[k]=y_p[k].astype(int)
+        y_d[k]=y_d[k].astype(int)
     
-    ax[1,1].plot(v1[0]['Year'],(econ[iP]['Revenue Net']-econ[iB]['Revenue Net'])/1000,'-g',lw=lw)
-    ax[1,1].set(xlim=[v1[0]['Year'][iT[0]], v1[0]['Year'][iT[-1]]],ylabel='Net revenue (CDN$/000)')
+    bx_ec='none'
+    bx_fs=9
+    bx_fc=[0.93,0.93,0.93]
+    bx2_fc=[0.9,0.9,0.9]
+    bx_lower_h=0.47
+    bx_lulucf_w=0.48
+    bx_esc_w=0.23
+    bx_atmo_bottom=0.88
+    arrow_head_w=0.007
+    arrow_lw=0.05
+    fs_flux=6.5
+    decim=1
     
-    ax[2,0].plot(v1[0]['Year'],np.cumsum(econ[iB]['Revenue Net'])/1000,'-b',ms=4,lw=lw)
-    ax[2,0].plot(v1[0]['Year'],np.cumsum(econ[iP]['Revenue Net'])/1000,'--r',ms=3,lw=lw)
-    ax[2,0].set(xlim=[v1[0]['Year'][iT[0]], v1[0]['Year'][iT[-1]]],ylabel='Cumulative net revenue (CDN$/000)')
+    def GetSign(y):
+        if y>0:
+            x='+'
+        else:
+            x=''
+        return x
     
-    ax[2,1].plot(v1[0]['Year'],(np.cumsum(econ[iP]['Revenue Net'])-np.cumsum(econ[iB]['Revenue Net']))/1000,'-g',lw=lw)
-    ax[2,1].set(xlim=[v1[0]['Year'][iT[0]], v1[0]['Year'][iT[-1]]],ylabel='Cumulative net revenue (CDN$/000)');
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(18,10))
+    
+    # Background
+    #ax.add_patch(Rectangle([0,1],0,1,fc='w',ec='k'))
+    
+    # Atmosphere
+    ax.add_patch(Rectangle([0.01,bx_atmo_bottom],0.98,0.1,fc=bx_fc,ec=bx_ec))
+    ax.text(0.5,0.935,'Atmosphere',size=bx_fs,ha='center')
+    vr='E_CO2e_AGHGB_WSub'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt=str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.5,0.9,txt,size=fs_flux,ha='center')
+    
+    # LULUCF
+    ax.add_patch(Rectangle([0.01,0.01],bx_lulucf_w,bx_lower_h,fc=bx_fc,ec=bx_ec))
+    ax.text(0.25,0.04,'Land Use, Land Use Change and Forestry',size=bx_fs,ha='center')
+    
+    # Forest land
+    ax.add_patch(Rectangle([0.02,0.1],bx_lulucf_w*0.53,bx_lower_h-0.11,fc=bx2_fc,ec=bx_ec))
+    ax.text(0.15,0.28,'Forest Land',size=bx_fs,ha='center')    
+    vr='C_Forest'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt=str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.15,0.24,txt,size=fs_flux,ha='center')
+    
+    # Harvested wood products
+    ax.add_patch(Rectangle([0.36,0.1],0.12,bx_lower_h-0.11,fc=bx2_fc,ec=bx_ec))
+    ax.text(0.42,0.24,'Harvested\nWood\nProducts',size=bx_fs,ha='center')
+    vr='C_HWP'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt=str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.42,0.20,txt,size=fs_flux,ha='center')
+
+    # Energy - Stationary Combustion
+    ax.add_patch(Rectangle([bx_lulucf_w+0.02,0.01],bx_esc_w,bx_lower_h,fc=bx_fc,ec=bx_ec))
+    ax.text(0.62,0.21,'Energy\nStationary\nCombustion',size=bx_fs,ha='center')
+    
+    # Energy - Transportation
+    ax.add_patch(Rectangle([bx_lulucf_w+bx_esc_w+0.03,0.01],0.12,bx_lower_h,fc=bx_fc,ec=bx_ec))
+    ax.text(0.8,0.23,'Energy\nTransportation',size=bx_fs,ha='center')
+    
+    # IPPU
+    ax.add_patch(Rectangle([0.87,0.01],0.12,bx_lower_h,fc=bx_fc,ec=bx_ec))
+    ax.text(0.93,0.18,'Industrial\nProducts\n&\nProduct\nUse',size=bx_fs,ha='center')
+    
+    # NEE
+    vr='E_CO2e_LULUCF_NEE'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Net ecosystem\nexchange\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.02,0.79,txt,ha='left',size=fs_flux)
+    ax.arrow(0.015,bx_atmo_bottom,0,-1*(bx_atmo_bottom-bx_lower_h-0.02),head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Volatilization
+    vr='E_CO2e_LULUCF_EcoOther'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Volatilization\nand\ndenitrificaiton\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.115,0.52,txt,ha='right',size=fs_flux)
+    ax.arrow(0.12,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Wildfire
+    vr='E_CO2e_LULUCF_Wildfire'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Wildfire\n' + str(a1) + ',' + str(a2) + ' (' + str(a3) + ')'
+    ax.text(0.15,0.52,txt,ha='left',size=fs_flux)
+    ax.arrow(0.145,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Denitrification
+    #a1=0.2; a2=0.5; a3=0.3
+    #txt='Denitrification\n' + str(a1) + ',' + str(a2) + ' (' + str(a3) + ')'
+    #ax.text(0.175,0.7,txt,ha='left',size=fs_flux)
+    #ax.arrow(0.17,bx_lower_h+0.15,0,bx_atmo_bottom-bx_lower_h-0.15-0.01,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Open burning
+    vr='E_CO2e_LULUCF_OpenBurning'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Open burning\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.27,0.52,txt,ha='left',size=fs_flux)
+    ax.arrow(0.265,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # HWP fluxes
+    vr='E_CO2e_LULUCF_HWP'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Product decay and\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.435,0.64,txt,ha='right',size=fs_flux)
+    ax.arrow(0.44,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Removals
+    vr='C_ToMill'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    #a1=0.2; a2=0.5; a3=0.3
+    txt='Removals\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.32,0.33,txt,ha='center',size=fs_flux)
+    ax.arrow(0.28,0.3,0.07,0,head_width=0.01,head_length=arrow_head_w,fc='k',ec='k',lw=arrow_lw)
+    
+    # Bioenergy combustion
+    vr='E_CO2e_ESC_Comb'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Bioenergy\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.515,0.5,txt,ha='left',size=fs_flux)
+    ax.arrow(0.51,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Displacement energy
+    vr='E_CO2e_ESC_SubE'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Displacement \nof\nnon-renewable\nenergy\nsources\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.615,0.72,txt,ha='left',size=fs_flux)
+    ax.arrow(0.61,bx_atmo_bottom,0,-1*(bx_atmo_bottom-bx_lower_h-0.02),head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Displacement building materials
+    vr='E_CO2e_ESC_SubBM'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Displacement \nof\nnon-renewable\nenergy\nsources\nby solid\nwood\nproducts\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.715,0.65,txt,ha='left',size=fs_flux)
+    ax.arrow(0.71,bx_atmo_bottom,0,-1*(bx_atmo_bottom-bx_lower_h-0.02),head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Combustion from transportation
+    vr='E_CO2e_ET_Comb'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Transportation\nfuel\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.815,0.51,txt,ha='left',size=fs_flux)
+    ax.arrow(0.81,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    # Sequestration from IPPU
+    vr='E_CO2e_IPPU_Comb'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Urea\nsequestration\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.915,0.79,txt,ha='left',size=fs_flux)
+    ax.arrow(0.91,bx_atmo_bottom,0,-1*(bx_atmo_bottom-bx_lower_h-0.02),head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    
+    ax.set(position=[0,0,1,1],visible='Off',xticks=[],yticks=[])
+    
+    gu.PrintFig(meta['Paths']['Figures'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
     
     return

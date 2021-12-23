@@ -6,8 +6,8 @@ TILE UTILITIES
 
 import geopandas as gpd
 import numpy as np
-from fcgadgets.utilities import utilities_general as gu
-from fcgadgets.utilities import utilities_gis as gis
+from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import utilities_gis as gis
 
 #%% 
 

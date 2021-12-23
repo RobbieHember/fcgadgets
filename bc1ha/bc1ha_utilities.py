@@ -15,34 +15,6 @@ import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 
-#%% Import basemaps
-
-def Import_BaseMaps():
-
-    # BC basemap info
-    bm={}
-    bm['gdf_bc_bound']=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
-    bm['gdf_bm']=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
-
-    # Import TSA info
-    tsa={}
-    tsa['grd']=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
-    tsa['key']=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx')
-    tsa['gdf_bound']=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
-
-    # Roads
-    road={}
-    road['gdf']=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\roads.shp')
-
-    # Districts
-    district={}
-    try:
-        district['gdf']=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Districts\district.shp')
-    except:
-        pass
-
-    return bm,tsa,road,district
-
 #%% Region of interest
 
 def DefineROI(roi,tsa,bm,road):
@@ -113,6 +85,35 @@ def DefineROI(roi,tsa,bm,road):
         
     return roi
 
+#%% Import basemaps
+
+def Import_BaseMaps():
+
+    # BC basemap info
+    bm={}
+    bm['gdf_bc_bound']=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
+    bm['gdf_bm']=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
+
+    # Import TSA info
+    tsa={}
+    tsa['grd']=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
+    tsa['grd']['Data']=np.squeeze(tsa['grd']['Data'])
+    tsa['key']=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx')
+    tsa['gdf_bound']=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
+
+    # Roads
+    road={}
+    road['gdf']=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\roads.shp')
+
+    # Districts
+    district={}
+    try:
+        district['gdf']=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Districts\district.shp')
+    except:
+        pass
+
+    return bm,tsa,road,district
+
 #%% Clip geodataframe to ROI
 
 def ClipGDF_ByROI(gdf_in,roi):
@@ -120,56 +121,67 @@ def ClipGDF_ByROI(gdf_in,roi):
     gdf_out=gdf_in.cx[roi['Mask']['xmin']:roi['Mask']['xmax'],roi['Mask']['ymin']:roi['Mask']['ymax']]
     gdf_out=gdf_out.reset_index(drop=True)
     gdf_out=gpd.sjoin(gdf_out,roi['gdf_bound'],how='left')
-    gdf_out=gdf_out.groupby('index_right')
+    
+    # This grouped by may not be necessary - it prevents the file from working in overlays
+    #gdf_out=gdf_out.groupby('index_right')
     
     return gdf_out
 
 #%% Import variables for ROI
 
-def Import_Raster_Over_ROI(v_cd,roi):
+def Import_Raster_Over_ROI(meta,v_cd,roi):
 
     d_out={}
     
-    if v_cd=='lc2':
-            
+    if v_cd=='lc2':            
         #land cover scheme level 2 (Treed=4)        
-        d_out['grd']=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
-        d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim'])        
-        #d_out['grd']=tsa['grd'].copy()
-        #tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
-        #d_out['grd']['Data']=tmp['Data']
-        #del tmp
-        #d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim'])
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\VRI\\lc2.tif')
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
+        d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim'])
         gc.collect()
             
     elif v_cd=='btm':
-
         # Import Base Thematic Map
-        d_out['grd']=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm.tif')
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\LandUseLandCover\\landuse.btm.tif')
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
         d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim'])        
         lut=pd.read_csv(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse_btm_category_metadata.csv')
         cl=np.column_stack( (lut['C1'].values,lut['C2'].values,lut['C3'].values) )
         d_out['Data1'],d_out['lab1'],d_out['cl1']=gis.CompressCats(d_out['grd']['Data'],lut['Raster Value'].values,
              lut['PLU Label'].values,cl)
     
-    elif v_cd=='bgcz':
-        
+    elif v_cd=='bgcz':        
         # BGC classification
-        d_out['grd']=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz.tif')
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\VRI\\becz.tif')
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
         d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim'])  
-        d_out['key']=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz.tif.vat.xlsx')
-        #zBGC=tsa['grd'].copy()
-        #zBGC['Data']=zBGC_tmp['Data']
-        #del zBGC_tmp        
-        #zBGC=gis.ClipRaster(zBGC,xlim,ylim)
-        #gc.collect()
+        d_out['key']=pd.read_excel(meta['Paths']['BC1ha'] + '\\VRI\\becz_lut.xlsx')
+    
+    elif v_cd=='age1':        
+        # Age 1
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\VRI\\age1.tif')
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
+        d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim']) 
+    
+    elif v_cd=='sphlive':        
+        # SPH
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\VRI\\sphlive.tif')
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
+        d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim']) 
+    
+    elif v_cd=='sphdead':        
+        # SPH
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\VRI\\sphdead.tif')
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
+        d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim']) 
         
     elif v_cd=='cut_yr':
         
         d_out['grd']=roi['Mask'].copy()
         d_out['grd']['Data']=0*d_out['grd']['Data']
         for i in range(1,5):
-            tmp=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year' + str(i) + '.tif')
+            tmp=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\Disturbances\\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year' + str(i) + '.tif')
+            tmp['Data']=np.squeeze(tmp['Data'])
             tmp=gis.ClipRaster(tmp,roi['xlim'],roi['ylim'])    
             d_out['grd']['Data']=np.maximum(d_out['grd']['Data'],tmp['Data'])
             del tmp
@@ -177,9 +189,16 @@ def Import_Raster_Over_ROI(v_cd,roi):
     
     elif v_cd=='bsr':
     
-        d_out['grd']=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\VEG_BURN_SEVERITY_SP_2017.tif')    
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\Disturbances\\VEG_BURN_SEVERITY_SP_2017.tif')    
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
         d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim'])
-        d_out['key']=gu.ReadExcel(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\VEG_BURN_SEVERITY_SP.xlsx')  
+        d_out['key']=gu.ReadExcel(meta['Paths']['BC1ha'] + '\\Disturbances\\VEG_BURN_SEVERITY_SP.xlsx')
+    
+    elif v_cd=='wf':
+    
+        d_out['grd']=gis.OpenGeoTiff(meta['Paths']['BC1ha'] + '\\Disturbances\\PROT_HISTORICAL_FIRE_POLYS_SP_2017.tif')    
+        d_out['grd']['Data']=np.squeeze(d_out['grd']['Data'])
+        d_out['grd']=gis.ClipRaster(d_out['grd'],roi['xlim'],roi['ylim'])
     
     return d_out
 
@@ -407,3 +426,56 @@ def GetClimateNormalFromGeoTiff(x,y,pthin,varl):
         d[varl[iv]]=d[varl[iv]].astype('float')*sf
     
     return d
+
+#%% PLOT ROI mask
+
+def Plot_ROI_Mask(meta,roi,lc2,bm):
+
+    # Grid and labels
+    lab=[]
+    z1=np.ones(lc2['grd']['Data'].shape)
+    z1[(roi['Mask']['Data']==1) & (lc2['grd']['Data']==4)]=0; lab.append('Treed')
+    z1[(roi['Mask']['Data']==1) & (lc2['grd']['Data']!=4)]=1; lab.append('Non-treed')
+    z1[(roi['Mask']['Data']!=1) & (lc2['grd']['Data']!=1)]=2; lab.append('hidden')
+    z1[(roi['Mask']['Data']!=1) & (lc2['grd']['Data']==1)]=3; lab.append('hidden')
+
+    # Number of colours and number of colours excluded from colorbar
+    N_color=4
+    N_hidden=2
+
+    # Colormap
+    cm=np.vstack( ((0.7,0.7,0.7,1),(0.8,0.8,0.8,1),(0.93,0.93,0.93,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    fig,ax=plt.subplots(1,2)
+    mngr=plt.get_current_fig_manager()
+    mngr.window.setGeometry(100,100,meta['Graphics']['figsize1'][0],meta['Graphics']['figsize1'][1])
+    im=ax[0].matshow(z1[0::1,0::1],clim=(0,N_color),extent=lc2['grd']['Extent'],cmap=cm)
+    bm['gdf_bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    roi['gdf_lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],edgecolor=[0.7*0.82,0.7*0.88,0.7*1],linewidth=0.25,label='Water')
+    try:
+        roi['gdf_rivers'].plot(ax=ax[0],linecolor=[0,0,0.7],label='Water',linewidth=3.25)
+    except:
+        pass    
+    roi['gdf_bound'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
+    try:
+        roi['gdf_roads'].plot(ax=ax[0],facecolor='none',edgecolor=[0,0,0],label='Roads',linewidth=0.75,alpha=1,zorder=1)
+    except:
+        # No roads exist in areas
+        pass
+    ax[0].set(position=meta['Graphics']['pos1'],xlim=roi['xlim'],ylim=roi['ylim'],aspect='auto')
+    ax[0].grid(False)
+    ax[0].yaxis.set_ticks_position('both')
+    ax[0].xaxis.set_ticks_position('both')
+
+    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color-1,1),ticks=np.arange(0.5,N_color+1.5,1))
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=6,length=0)
+    for i in range(0,N_color):
+        ax[1].plot([0,100],[i/(N_color-N_hidden),i/(N_color-N_hidden)],'k-',linewidth=0.5)
+    pos2=meta['Graphics']['pos2']
+    pos2[1]=0.8
+    pos2[3]=0.1
+    ax[1].set(position=pos2)
+
+    return fig,ax

@@ -30,6 +30,12 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         meta['Nutrient Management']['ResponseCounter'][iApplication]=meta['Nutrient Management']['ResponseCounter'][iApplication]+1
         
         #----------------------------------------------------------------------
+        # Update log-size enhancement factor
+        #----------------------------------------------------------------------
+        
+        vo['LogSizeEnhancement'][iT:,iApplication]=vo['LogSizeEnhancement'][iT:,iApplication]+1
+        
+        #----------------------------------------------------------------------
         # Adjust net growth on treatment area
         #----------------------------------------------------------------------
         
@@ -189,14 +195,14 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         therm_per_app=MMBtu_per_app/bNA['MMBtu_per_therm']
         E_ProdUrea=bNA['EmissionFromUreaProduction_per_therm']*therm_per_app
           
-        vo['CO2e_StatComb_E'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_StatComb_E'][iT,meta['Nutrient Management']['iApplication']] + \
+        vo['E_CO2e_ESC_Comb'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_ESC_Comb'][iT,meta['Nutrient Management']['iApplication']] + \
             (E_ProdNH3+E_ProdUrea)
         
         #----------------------------------------------------------------------
         # Emissions from transportation (tCO2e/ha)
         #----------------------------------------------------------------------
         
-        vo['CO2e_Transp_E'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_Transp_E'][iT,meta['Nutrient Management']['iApplication']] + \
+        vo['E_CO2e_ET_Comb'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_ET_Comb'][iT,meta['Nutrient Management']['iApplication']] + \
             (bNA['EmissionFromRailBargeTruck_Workbook']+bNA['EmissionFromHelicopter_SP10'])
 
         #----------------------------------------------------------------------
@@ -204,7 +210,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         # approach, IPCC 2006, 11.4.1 (tCO2e/ha)
         #----------------------------------------------------------------------
         
-        vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + \
+        vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + \
             (bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4'])
         
         #----------------------------------------------------------------------
@@ -218,16 +224,22 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         
         E_vol=0.3
         
-        vo['CO2e_IPPU_E'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_IPPU_E'][iT,meta['Nutrient Management']['iApplication']] - E_vol
+        vo['E_CO2e_IPPU_Comb'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_IPPU_Comb'][iT,meta['Nutrient Management']['iApplication']] - E_vol
         
-        vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['CO2e_LULUCF_E_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + E_vol
+        vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + E_vol
         
         #----------------------------------------------------------------------
         # Exterior area (volatilization/deposition effects)
         #----------------------------------------------------------------------
         
-        if meta['Project']['External Footprint Effect Status']=='On':
+        flg=1
         
+        if 'Nutrient Application Footprint Status' in meta['Scenario'][meta['iScn']]:
+            if meta['Scenario'][meta['iScn']]['Nutrient Application Footprint Status']!='On':
+                flg=0
+        
+        if (meta['Project']['External Footprint Effect Status']=='On') & (flg==1):
+            
             # Dose (kgN/ha)
             DoseN=bNA['DoseUrea_Standard']*bNA['Ratio_N_to_Urea']
   
@@ -261,7 +273,11 @@ def UpdateStatus(vi,vo,iT,meta,comp):
             EA_GHG_Benefit=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*EA_GHG_Benefit
             
             # Subtract from ecosystem LULUCF emissions
-            vo['CO2e_LULUCF_E_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]=vo['CO2e_LULUCF_E_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]-EA_GHG_Benefit
+            # *** it will crash in the last time step ***
+            try:
+                vo['E_CO2e_LULUCF_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_LULUCF_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]-EA_GHG_Benefit
+            except:
+                pass
             
     elif (comp=='HeterotrophicRespiration') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         

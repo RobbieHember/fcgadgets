@@ -28,6 +28,21 @@ if flg==1:
     path=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
     fiona.listlayers(path)
 
+#%% Query wildfire perimiter
+    
+def GetWildfirePerimiter(meta,Year0,Year1):
+    
+    List=[]
+    with fiona.open(meta['Paths']['Forest Inventory Disturbances'],layer='PROT_HISTORICAL_FIRE_POLYS_SP') as source:
+        for feat in source:
+            if feat['geometry']==None:
+                continue  
+            if (feat['properties']['FIRE_YEAR']>=Year0) & (feat['properties']['FIRE_YEAR']<=Year1):
+                List.append(feat)
+    gdf=gpd.GeoDataFrame.from_features(List,crs=meta['crs'])
+    
+    return gdf
+
 #%% Query pest DB
     
 def GetPestSev():
@@ -86,28 +101,6 @@ def GetAnnualPestArea(Year0,Year1,sp_cd):
             d[nam][sev][iT]=d[nam][sev][iT]+feat['properties']['AREA_HA']
     
     return tv,d
-
-#%% Query wildfire perimiter
-    
-def GetWildfirePerimiter(Year0,Year1):
-    
-    # Load dataset with CRS
-    gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\bc_land.shp')
-    crs=gdf_bm.crs
-    del gdf_bm
-    
-    # HARVESTING
-    fin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
-    List=[]
-    with fiona.open(fin,layer='PROT_HISTORICAL_FIRE_POLYS_SP') as source:
-        for feat in source:
-            if feat['geometry']==None:
-                continue  
-            if (feat['properties']['FIRE_YEAR']>=Year0) & (feat['properties']['FIRE_YEAR']<=Year1):
-                List.append(feat)
-    gdf=gpd.GeoDataFrame.from_features(List,crs=crs)
-    
-    return gdf
 
 #%% Query all openings
     

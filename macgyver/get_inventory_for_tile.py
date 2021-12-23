@@ -26,10 +26,10 @@ import rasterio
 from rasterio import features
 from rasterio.transform import from_origin
 
-from fcgadgets.utilities import utilities_general as gu
-from fcgadgets.utilities import utilities_gis as gis
-from fcgadgets.utilities import utilities_inventory as invu
-from fcgadgets.utilities import utilities_tile as tu
+from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import utilities_gis as gis
+from fcgadgets.macgyver import utilities_inventory as invu
+from fcgadgets.macgyver import utilities_tile as tu
 from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Import paths
@@ -48,9 +48,9 @@ gdf_tile=gpd.read_file(Paths['Project Root'] + '\\TilesBC.shp')
 #%% Specify the tiles to run
 
 TilesToRun_ij=np.zeros((1,2),dtype=int)
-TilesToRun_ij[0,:]=[10,8]
+#TilesToRun_ij[0,:]=[10,8]
 #TilesToRun_ij[0,:]=[11,7]
-#TilesToRun_ij[0,:]=[9,9]
+TilesToRun_ij[0,:]=[9,9]
 #TilesToRun_ij[0,:]=[11,8]
 
 #%% Import inventory layer information (names, variables, LUTs)
@@ -66,10 +66,21 @@ for iLyr in range(len(InvLyrInfo)):
 
 lut_atu=gu.ipickle(Paths['Results'] + '\\LUTs_RSLT_ACTIVITY_TREATMENT_SVW.pkl')
 
-#%% Open crosswalk between missing AT geometries and opening geometries (if already exists)
+#%% Open crosswalk between missing AT geometries and opening geometries
+# If this doesn't work, you need to run the script that creates the crosswalk
 
-atu_mis=gu.ipickle(Paths['Results'] + '\\atu_mis.pkl')
-at_geo_from_op=gu.ipickle(Paths['Results'] + '\\at_geo_from_op.pkl')
+#atu_mis=gu.ipickle(Paths['Results'] + '\\atu_mis.pkl')
+#at_geo_from_op=gu.ipickle(Paths['Results'] + '\\at_geo_from_op.pkl')
+missing_geo_atu_list=gu.ipickle(Paths['Results'] + '\\missing_geo_atu_list.pkl')
+missing_geo_op_geos=gu.ipickle(Paths['Results'] + '\\missing_geo_op_geos.pkl')
+missing_geo_fc_geos=gu.ipickle(Paths['Results'] + '\\missing_geo_fc_geos.pkl')
+
+#%% Open missing FC layer geometries that were retreived from VRI
+# Forest cover spatial reporting didn’t get turned on until 2004ish when RESULTS got turned on.  
+# Previous forest cover reporting was delivered to the government as paper or as a PDF then 
+# digitized directly into the VRI (or predecessors).  
+
+dMisFC=gu.ipickle(Paths['Results'] + '\\missing_geo_fc_list.pkl')
 
 #%% Compile inventory layers
 
@@ -93,14 +104,14 @@ for hTile in range(TilesToRun_ij.shape[0]):
     # Loop through layers
     #------------------------------------------------------------------------------
     
-    for iLyr in range(7,8): #len(InvLyrInfo)):
+    for iLyr in range(len(InvLyrInfo)):
         #iLyr=0
         
         # Loop through features in layer
         t_start=time.time()
     
         # Define path
-        path=InvLyrInfo[iLyr]['Path'] + '\\' + InvLyrInfo[iLyr]['File Name']
+        path0=InvLyrInfo[iLyr]['Path'] + '\\' + InvLyrInfo[iLyr]['File Name']
     
         # Define layer
         lyr_nam=InvLyrInfo[iLyr]['Layer Name']
@@ -128,30 +139,105 @@ for hTile in range(TilesToRun_ij.shape[0]):
         
         # Scan through layer file to extract selected variables, and convert string
         # variables to numeric based on LUTs
-        with fiona.open(path,layer=lyr_nam) as source:    
+        with fiona.open(path0,layer=lyr_nam) as source:    
             for feat in source:
                 
-                # Populate AT missing geometry with geometry from OPENING layer where
-                # possible.
-                if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW') & (feat['geometry']==None):
-                    ind=np.where(atu_mis['OPENING_ID']==feat['properties']['OPENING_ID'])[0]
-                    if ind.size>0:
-                        feat['geometry']=at_geo_from_op[ind[0]]
-                    else:
-                        print('Checked for opening spatial, but no match')
+                # Extract attributes and geometry
+                prp=feat['properties']
+                geom=feat['geometry']
             
+                #if (geom!=None): 
+                #    break
+            
+                # Populate missing ATU layer geometry with geometry from 
+                # OPENING or FC layer where possible.
+                flg_geom_from_op=0
+                flg_geom_from_fc=0
+                if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW') & (geom==None):
+                        
+                    # Check to see if the opening is listed in the AT missing dictionary
+                    indMis=np.where( (missing_geo_atu_list['ACTIVITY_TREATMENT_UNIT_ID']==prp['ACTIVITY_TREATMENT_UNIT_ID']) )[0]
+                
+                    if indMis.size>0:
+                    
+                        idx2fc=missing_geo_atu_list['IdxToFC'][indMis[0]]
+                    
+                        if len(idx2fc)>0:
+            
+                            # Use forest cover geometries
+                    
+                            geom={}
+                            geom['coordinates']=[]
+                            for i in range(len(idx2fc)):
+                                geo0=missing_geo_fc_geos[prp['OPENING_ID']][idx2fc[i]]
+                                if type(geo0)==dict:
+                                    geo1=geo0['coordinates']
+                                    geom['coordinates'].append(geo1[0])
+                                else:
+                                    for j in range(len(geo0)):
+                                        geo1=geo0[j]['coordinates']
+                                        geom['coordinates'].append(geo1[0])
+                        
+                            flg_geom_from_fc=1
+                        
+                        #elif prp['OPENING_ID'] in missing_geo_op_geos==True:
+                        
+                        elif len(missing_geo_op_geos[prp['OPENING_ID']])>0:
+                        
+                            # Use opening geometry
+                    
+                            geom={}
+                            geom['coordinates']=[]
+                            geo0=missing_geo_op_geos[prp['OPENING_ID']]
+                            if type(geo0)==dict:
+                                geo1=geo0['coordinates']
+                                geom['coordinates'].append(geo1[0])
+                            else:
+                                for j in range(len(geo0)):
+                                    geo1=geo0[j]['coordinates']
+                                    geom['coordinates'].append(geo1[0])
+    
+                            flg_geom_from_op=1
+                        
+                    else:
+                    
+                        # Could not use either FC or openign layer
+                        #print('Missing spatial could not be recovered')
+                        pass
+            
+                # Populate missing FC layer geometry with geometry from 
+                # OPENING or VRI where possible.
+                if (lyr_nam=='RSLT_FOREST_COVER_INV_SVW') & (geom==None) | (lyr_nam=='RSLT_FOREST_COVER_SILV_SVW') & (geom==None):
+                    
+                    iMis_fc=np.where( (dMisFC['Unique Openings with Missing FC Geom']==prp['OPENING_ID']) )[0]
+                    iMis_fc=iMis_fc[0]
+                    
+                    if dMisFC['Geom from VRI'][iMis_fc]!=None:
+                    
+                        D=np.zeros(len(dMisFC['Geom from VRI'][iMis_fc]))
+                        for iV in range(len(dMisFC['Geom from VRI'][iMis_fc])):
+                            D[iV]=np.abs(prp['SILV_POLYGON_AREA']-dMisFC['Geom from VRI'][iMis_fc][iV]['Hectares'])
+                        iMinD=np.where(D==np.min(D))[0]
+                        iMinD=iMinD[0]
+                
+                        geom=dMisFC['Geom from VRI'][iMis_fc][iMinD]
+                    
+                        # QA: Look at polygon
+                        #geom1=invu.GetPolygonsFromFionaFeature(geom)                
+                        #gdf=gpd.GeoDataFrame(geom1,crs=gdf_bm.crs) 
+                
                 # If non-veg, continue
                 if InvLyrInfo[iLyr]['Layer Name']=='VEG_COMP_LYR_R1_POLY':
-                    if (feat['properties']['BCLCS_LEVEL_1']=='N'): 
+                    if (prp['BCLCS_LEVEL_1']=='N'): 
                         continue
             
                 # Don't conitnue if no spatial data
-                if (feat['geometry']==None): 
+                if (geom==None): 
                     continue        
         
                 # Extract multipolygon
                 flg_outside=0
-                coords0=feat['geometry']['coordinates']                       
+                coords0=geom['coordinates']                       
                 for i in range(len(coords0)):
                     if flg_outside==1:
                         continue
@@ -175,15 +261,19 @@ for hTile in range(TilesToRun_ij.shape[0]):
                 if flg_outside==1:
                     continue
                 
+                # rasterio burn function requires type field
+                if 'type' not in geom:
+                    geom['type']='MultiPolygon'
+                
                 # Rasterize feature geometry
-                df0=gpd.GeoDataFrame({'ID':[1,1],'geometry':[feat['geometry'],feat['geometry']]})                
+                df0=gpd.GeoDataFrame({'ID':[1,1],'geometry':[geom,geom]})                
                 shapes=((geom,value) for geom,value in zip(df0.geometry,df0.ID))
                       
                 z0=np.zeros(infoTile['X'].shape,dtype=float)
                 burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=trf)
                 #plt.imshow(burned)
                 iKeep=np.where(burned.flatten()>0)[0]
-                    
+  
                 # Only continue if overlap
                 if iKeep.size==0: 
                     continue
@@ -202,7 +292,7 @@ for hTile in range(TilesToRun_ij.shape[0]):
                     data['IdxToGrid'][cnt_inventory]=iKeepK
                     
                     for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
-                        val=feat['properties'][fnam]
+                        val=prp[fnam]
                         if val!=None:
                             if flag==0:
                                 # Numeric variable, leave as is
@@ -215,7 +305,7 @@ for hTile in range(TilesToRun_ij.shape[0]):
                     # Update counter
                     cnt_inventory=cnt_inventory+1
                 
-                #print(cnt_inventory)            
+                #print(cnt_inventory)
         
         # Truncate variables at cnt_inventory
         for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
@@ -253,9 +343,9 @@ for hTile in range(TilesToRun_ij.shape[0]):
             break
     
     # Import geodataframe, drop geometry and convert to dict
-    path=InvLyrInfo[iLyr]['Path'] + '\\' + InvLyrInfo[iLyr]['File Name']
+    path0=InvLyrInfo[iLyr]['Path'] + '\\' + InvLyrInfo[iLyr]['File Name']
     lyr_nam=InvLyrInfo[iLyr]['Layer Name']
-    gdf_pl=gpd.read_file(path,layer=lyr_nam)        
+    gdf_pl=gpd.read_file(path0,layer=lyr_nam)        
     d_pl=gu.DataFrameToDict(gdf_pl.drop(columns='geometry'))
         
     # Open the planting sparse grid
@@ -331,4 +421,41 @@ for hTile in range(TilesToRun_ij.shape[0]):
     # Save    
     gu.opickle(infoTile['PathTileGeospatial'] + '\\RSLT_PLANTING_SVW.pkl',data)
     gu.opickle(infoTile['PathTileGeospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
+
+    #--------------------------------------------------------------------------
+    # Add FC Archive to FC Inventory dictionary
+    #--------------------------------------------------------------------------
+    
+    # Import inputs
+    #meta=gu.ipickle(r'D:\Data\FCI_Projects\SummaryReforestation\Inputs\Metadata.pkl')
+    #meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
+    fcinv=gu.ipickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_INV_SVW.pkl')
+    fcsilv=gu.ipickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_SILV_SVW.pkl')
+    
+    # Save old versions as alterntive names in case you need to redo this/troubleshoot a problem
+    flg=1
+    if flg==1:
+        gu.opickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl',fcinv)
+        gu.opickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl',fcsilv)
+    
+    # Load initial layers
+    flg=0
+    if flg==1:
+        fcinv=gu.ipickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_INV_SVW_before_adding_archive.pkl')
+        fcsilv=gu.ipickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_SILV_SVW_before_adding_archive.pkl')
+    
+    # Run script
+    # *** requires meta - just do a quick and dirty mock up of it and required content to run AddArchive script ***
+    meta={}
+    meta['Paths']=Paths
+    meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
+    fcinv['IdxToSXY']=fcinv['IdxToGrid']
+    fcsilv['IdxToSXY']=fcsilv['IdxToGrid']
+    fcinv,fcsilv=invu.ForestCover_AddArchive(meta,fcinv,fcsilv)
+    fcinv['IdxToGrid']=fcinv['IdxToSXY']
+    fcsilv['IdxToGrid']=fcsilv['IdxToSXY']    
+    
+    # Save
+    gu.opickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_INV_SVW.pkl',fcinv)
+    gu.opickle(infoTile['PathTileGeospatial'] + '\\RSLT_FOREST_COVER_SILV_SVW.pkl',fcsilv)
 

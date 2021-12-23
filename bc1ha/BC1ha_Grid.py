@@ -30,8 +30,8 @@ from shapely.geometry import Point, Polygon
 from shapely import geometry
 import dbfread
 
-import fcgadgets.utilities.utilities_general as gu
-import fcgadgets.utilities.utilities_gis as gis
+import fcgadgets.macgyver.utilities_general as gu
+import fcgadgets.macgyver.utilities_gis as gis
 
 
 #%% DEFINE STANDARD GRID 
@@ -193,7 +193,7 @@ plt.colorbar()
 #%% Rasterize wildfire occurrence by year
 
 # Input path to RESULTS database (downloaded from BC data catalogue)
-pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430\Disturbances.gdb'
+pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20211030\Disturbances.gdb'
 fiona.listlayers(pthin)
 lnam='PROT_HISTORICAL_FIRE_POLYS_SP'
 
@@ -203,9 +203,9 @@ df=gpd.read_file(pthin,layer=lnam)
 # Remove features with no geometry
 df=df[df.geometry!=None]
 
-zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
 
-tv=np.arange(1920,2020,1)
+tv=np.arange(2020,2020,1)
 
 for iT in range(tv.size):
     df0=df[df.FIRE_YEAR==tv[iT]].copy()        

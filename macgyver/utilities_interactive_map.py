@@ -70,14 +70,14 @@ def Add_Openings(m,id,gdf):
     
     return op,op_json,op_geojson
 
-#%% Add forect cover for opening
+#%% Add opening spatial
     
-def Add_ForestCover_ForOpening(m,id,gdf):
+def Add_By_ATU_ID(m,id,gdf):
     op=[]; 
     op_json=[]; 
     op_geojson=[]
     for iOp in range(len(id)):
-        op.append(gdf[gdf.OPENING_ID==id[iOp]])
+        op.append(gdf[gdf.ACTIVITY_TREATMENT_UNIT_ID==id[iOp]])
         op[iOp]=op[iOp].reset_index()
         op_json.append(op[iOp].geometry.__geo_interface__)
         for i in range(len(op_json[iOp]['features'])):
@@ -86,7 +86,33 @@ def Add_ForestCover_ForOpening(m,id,gdf):
                 op_json[iOp]['features'][i]['properties'][key]=op[iOp].loc[i,key]
         
         op_geojson.append(ipyl.GeoJSON(data=op_json[iOp],
-            style={'color':'cyan','weight':1,'dashArray':'3','opacity':1,
+            style={'color':'purple','weight':2,'dashArray':'2','opacity':1,
+            'fillColor':None,'fillOpacity':0.04},name='Opening:' + str(id) ))
+        
+        m.add_layer(op_geojson[iOp])
+    
+    return op,op_json,op_geojson
+
+#%% Add forect cover for opening
+    
+def Add_ForestCover_ForOpening(m,id,gdf):
+    op=[]; 
+    op_json=[]; 
+    op_geojson=[]
+    for iOp in range(len(id)):
+        
+        op.append(gdf[(gdf.OPENING_ID==id[iOp]) & (gdf.SILV_POLYGON_NUMBER=='B')])
+        
+        op[iOp]=op[iOp].reset_index()
+        
+        op_json.append(op[iOp].geometry.__geo_interface__)
+        for i in range(len(op_json[iOp]['features'])):
+            for key in op[iOp].columns:
+                if key=='geometry': continue
+                op_json[iOp]['features'][i]['properties'][key]=op[iOp].loc[i,key]
+        
+        op_geojson.append(ipyl.GeoJSON(data=op_json[iOp],
+            style={'color':'cyan','weight':3,'dashArray':'3','opacity':1,
             'fillColor':None,'fillOpacity':0},name='Opening:' + str(id) ))
         
         m.add_layer(op_geojson[iOp])

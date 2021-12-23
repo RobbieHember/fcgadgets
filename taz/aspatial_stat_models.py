@@ -23,9 +23,10 @@ def SimulateWildfireFromAAO(meta,ba):
     tv_wfss=np.arange(-2000,2201,1)
 
     # Prepare mortality probability coefficients
-    beta_pi=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_pi'],meta['Param']['BE']['Taz']['WF']['p_Low_pi'],meta['Param']['BE']['Taz']['WF']['p_Medium_pi'],meta['Param']['BE']['Taz']['WF']['p_High_pi']])
-    beta_obs=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_obs'],meta['Param']['BE']['Taz']['WF']['p_Low_obs'],meta['Param']['BE']['Taz']['WF']['p_Medium_obs'],meta['Param']['BE']['Taz']['WF']['p_High_obs']])
-                        
+    beta_mort_pi=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_pi'],meta['Param']['BE']['Taz']['WF']['p_Low_pi'],meta['Param']['BE']['Taz']['WF']['p_Medium_pi'],meta['Param']['BE']['Taz']['WF']['p_High_pi']])
+    beta_mort_obs=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_obs'],meta['Param']['BE']['Taz']['WF']['p_Low_obs'],meta['Param']['BE']['Taz']['WF']['p_Medium_obs'],meta['Param']['BE']['Taz']['WF']['p_High_obs']])
+    beta_mort_fut=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_fut'],meta['Param']['BE']['Taz']['WF']['p_Low_fut'],meta['Param']['BE']['Taz']['WF']['p_Medium_fut'],meta['Param']['BE']['Taz']['WF']['p_High_fut']])
+                    
     for iEns in range(meta['Project']['N Ensemble']):
         
         #----------------------------------------------------------------------
@@ -36,33 +37,54 @@ def SimulateWildfireFromAAO(meta,ba):
         rn_sev=np.random.random((meta['Project']['N Time'],meta['Project']['N Stand']))
         
         #----------------------------------------------------------------------
-        # Occurrence (by BGC zone) (the same among scenarios, different by ensemble)
+        # Occurrence
+        # If all project scenarios run the same wildfire scenario, only calculate 
+        # Pocc once outside of scenario loop to save time. If it varies, then 
+        # it needs to be done within the scenario loop
         #----------------------------------------------------------------------
+    
+        # Check to see if only one WF scenario is considered
+        ID_wf_scenario=np.array([])
+        for iScn in range(meta['Project']['N Scenario']):
+            ID_wf_scenario=np.append(ID_wf_scenario,meta['Scenario'][iScn]['Wildfire Scenario ID'])
         
-        P_oc=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']))
+        # Generate a flag
+        if np.unique(ID_wf_scenario).size==1:
+            flag_do_inside=0
+        else:
+            flag_do_inside=1
         
-        # Get unique BGC zone
-        uZone=np.unique(ba['BEC_ZONE_CODE'])
-            
-        for iZone in range(uZone.size):
+        # All WF scenarios are the same, so calculate Pocc once outside of loop
+        if flag_do_inside==0:
+        
+            P_oc=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']))
+        
+            # Get unique BGC zone
+            uZone=np.unique(ba['BEC_ZONE_CODE'])
                 
-            namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]        
-            indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
-            Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(meta['Param']['BE']['Taz']['WF']['Scenario ID']))]
-        
-            for iT in range(meta['Year'].size):
+            for iZone in range(uZone.size):
                     
-                # Adjust shape parameter to match specified annual probability of 
-                # occurrence from the deterministic component
-                ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
-                beta=wfss[namZone]['Beta_Pareto_Cal'].copy()
-                Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
-                beta[1]=-Scale
-                beta[2]=Scale
+                namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]        
+                indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
+                
+                ID_wf_scenario=int(meta['Scenario'][0]['Wildfire Scenario ID'])
+                
+                Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(ID_wf_scenario)]
             
-                # Draw of annual area burned from Pareto distribution
-                N_t=1
-                P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)        
+                for iT in range(meta['Year'].size):
+                        
+                    # Adjust shape parameter to match specified annual probability of 
+                    # occurrence from the deterministic component
+                    ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
+                    beta=wfss[namZone]['Beta_Pareto_Cal'].copy()
+                    Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
+                    beta[1]=-Scale
+                    beta[2]=Scale
+                
+                    # Draw of annual area burned from Pareto distribution
+                    N_t=1
+                    P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)  
+        
         
         #----------------------------------------------------------------------
         # Populate for scenarios
@@ -70,6 +92,41 @@ def SimulateWildfireFromAAO(meta,ba):
         
         for iScn in range(meta['Project']['N Scenario']):
 
+            #----------------------------------------------------------------------
+            # Occurrence (by BGC zone and scenario) 
+            # All WF scenarios are the same, so calculate Pocc once outside of loop
+            #----------------------------------------------------------------------
+            
+            if flag_do_inside==1:                
+                
+                P_oc=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']))
+                
+                # Get unique BGC zone
+                uZone=np.unique(ba['BEC_ZONE_CODE'])
+                    
+                for iZone in range(uZone.size):
+                        
+                    namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]        
+                    indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
+                    
+                    ID_wf_scenario=int(meta['Scenario'][iScn]['Wildfire Scenario ID'])
+                    
+                    Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(ID_wf_scenario)]
+                
+                    for iT in range(meta['Year'].size):
+                            
+                        # Adjust shape parameter to match specified annual probability of 
+                        # occurrence from the deterministic component
+                        ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
+                        beta=wfss[namZone]['Beta_Pareto_Cal'].copy()
+                        Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
+                        beta[1]=-Scale
+                        beta[2]=Scale
+                    
+                        # Draw of annual area burned from Pareto distribution
+                        N_t=1
+                        P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)              
+            
             # Initialize annual probability of occurrence (final with deterministic and
             # random components)
             wf_sim={}
@@ -93,17 +150,26 @@ def SimulateWildfireFromAAO(meta,ba):
                 ind=np.where( (meta['Year']>=meta['Project']['Year Project']) )[0]
                 wf_sim['Occurrence'][ind,:]=0
             
-            # Severity            
+            #------------------------------------------------------------------
+            # Mortality           
+            #------------------------------------------------------------------
+            
             for iT in range(meta['Year'].size):
                 
                 indOc=np.where( (wf_sim['Occurrence'][iT,:]>0) )[0]
                 if indOc.size==0:
                     continue
                 
-                if meta['Year'][iT]<1920:
-                    beta=beta_pi
+                if (meta['Year'][iT]<1920):
+                    beta=beta_mort_pi
+                elif  (meta['Scenario'][iScn]['Wildfire Scenario ID']==1):
+                    beta=beta_mort_pi
+                elif (meta['Year'][iT]>1920) & (meta['Year'][iT]<=meta['Project']['Year Project']) & (meta['Scenario'][iScn]['Wildfire Scenario ID']!=1):
+                    beta=beta_mort_obs
+                elif (meta['Year'][iT]>meta['Project']['Year Project']) & (meta['Scenario'][iScn]['Wildfire Scenario ID']==2):
+                    beta=beta_mort_obs
                 else:
-                    beta=beta_obs
+                    beta=beta_mort_fut
                 
                 # Unburned
                 ind=np.where(rn_sev[iT,indOc]<beta[0])[0]
@@ -134,6 +200,8 @@ def SimulateWildfireFromAAO(meta,ba):
             # Save
             fout=meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl'
             gu.opickle(fout,wf_sim_sparse)
+
+    return
 
 #%% Generate wildfire occurrence and severity from Annual area of occurrence models
 
@@ -448,7 +516,7 @@ def GetMortalityFromIBMSeverity(rn,beta):
 
 def PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,Age):
 
-    beta=[-0.05,300]
+    beta=[-0.05,400]
     
     # Plot function:
     flg=0
@@ -458,7 +526,7 @@ def PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,Age):
         
         fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
         ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
-        ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)',ylabel='Annual probability of breakup')
+        ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Age, years',ylabel='Annual probability of breakup')
         ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
         ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
     
@@ -489,6 +557,7 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
     
     # Saturating annual probability of harvest
     if Period=='Historical':        
+        
         # Historical        
         #f1=0.0014*25**((meta['Year'][iT]-1900)/100)
         #f2=(1/(1+np.exp(0.12*(Year-1950))))
@@ -498,11 +567,35 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
         #f2=(1/(1+np.exp(0.3*(yr-1960))))
         #f1*f2 
         
-        f1=0.0011*35**((meta['Year'][iT]-1900)/100)
-        f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
-        Pa_H_Sat=f1*f2    
+        #f1=0.0011*35**((meta['Year'][iT]-1900)/100)
+        #f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
+        #Pa_H_Sat=f1*f2
+        
+        f1=0.0012*np.maximum(0,(meta['Year'][iT]-1800)/100)**4.2
+        f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))
+        Pa_H_Sat=f1*f2
+        
+        # Plot
+        flg=0
+        if flg==1:
+            # Old
+            t=np.arange(1700,2001,1)
+            f1=0.0011*35**((t-1900)/100)
+            f2=(1/(1+np.exp(0.3*(t-1960))))        
+            Pa_H_Sat=f1*f2
+            plt.close('all')
+            plt.plot(t,Pa_H_Sat,'b-')
+            plt.grid()
+            
+            t=np.arange(1700,2001,1)
+            f1=0.0012*np.maximum(0,(t-1800)/100)**4.2
+            f2=(1/(1+np.exp(0.3*(t-1960))))        
+            Pa_H_Sat=f1*f2
+            plt.plot(t,Pa_H_Sat,'g--')
+        
     else:        
-        # Future        
+        
+        # Future
         if 'Pa Harvest Sat' in meta['Scenario'][iScn]:
                 
             # Default has been overriden with scenario-specific value

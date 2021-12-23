@@ -30,6 +30,7 @@ def opickle(path,data):
     fout=open(path,'wb')
     pickle.dump(data,fout); 
     fout.close()
+    return
 
 #%% PRINT FIGURE
 
@@ -61,7 +62,7 @@ def ReadExcel(*args):
     elif len(args)==2:
         df=pd.read_excel(args[0],sheet_name=args[1])
     elif len(args)==3:
-        df=pd.read_excel(args[0],skiprows=args[2])
+        df=pd.read_excel(args[0],sheet_name=args[1],skiprows=args[2])
     
     #df=df.where(pd.notnull(df),None)
     
@@ -479,4 +480,28 @@ def BlockMean(x,ivl):
     else:
         y='Oops!'
         print('y=Oops, needs revision')        
+    return y
+
+#%% Get confidnece intervals for the difference in two variables with confidence intervals
+
+def GetCIsFromDifference(b_lo,b_hi,p_lo,p_hi):
+    tmp=np.array([p_lo-b_lo,p_lo-b_hi,p_hi-b_lo,p_hi-b_hi]).T
+    try:
+        lo=np.min(tmp,axis=1)
+        hi=np.max(tmp,axis=1)    
+    except:
+        lo=np.min(tmp,axis=0)
+        hi=np.max(tmp,axis=0)
+    
+    return lo,hi
+
+#%% Get clamp
+    
+def Clamp(x,xmin,xmax):
+    
+    if x.size==1:
+        y=np.maximum(np.minimum(xmax,x),xmin)
+    else:
+        y=np.max(np.min(xmax,x),xmin)
+    
     return y
