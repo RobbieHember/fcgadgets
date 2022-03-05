@@ -120,6 +120,12 @@ def axletters(ax,plt,rx,ry,**kwargs):
         if (kwargs['FontWeight']=='Bold') | (kwargs['FontWeight']=='bold'):
             fw='bold'
     
+    # Font weight
+    fcl=plt.rcParams.get('axes.edgecolor')
+    if 'FontColor' in kwargs.keys():
+        print(kwargs['FontColor'])
+        fcl=kwargs['FontColor']
+    
     # Additional labels
     Label=['','','','','','','','','','','','','','']
     if 'Labels' in kwargs.keys():
@@ -144,14 +150,14 @@ def axletters(ax,plt,rx,ry,**kwargs):
                 # Letter
                 x=xl[0]+rx*dxl
                 y=yl[0]+ry*dyl
-                ax[i,j].text(x,y,Letter[c],{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':fw})
+                ax[i,j].text(x,y,Letter[c],{'color':fcl,'fontsize':fs,'fontweight':fw})
                 
                 # Label
                 if Label[c]!='':
                     x=xl[0]+(rx+LabelSpacer)*dxl
                     y=yl[0]+ry*dyl
                     txt=Label[c]
-                    ax[i,j].text(x+LabelSpacer,y,txt,{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':'normal'})
+                    ax[i,j].text(x+LabelSpacer,y,txt,{'color':fcl,'fontsize':fs,'fontweight':'normal'})
 
                 c=c+1
     
@@ -168,14 +174,14 @@ def axletters(ax,plt,rx,ry,**kwargs):
             # Letter
             x=xl[0]+rx*dxl
             y=yl[0]+ry*dyl
-            ax[i].text(x,y,Letter[c],{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':fw})
+            ax[i].text(x,y,Letter[c],{'color':fcl,'fontsize':fs,'fontweight':fw})
             
             # Label
             if Label[c]!='':
                 x=xl[0]+(rx+LabelSpacer)*dxl
                 y=yl[0]+ry*dyl
                 txt=Label[c]
-                ax[i].text(x,y,txt,{'color':plt.rcParams.get('axes.edgecolor'),'fontsize':fs,'fontweight':'normal'})
+                ax[i].text(x,y,txt,{'color':fcl,'fontsize':fs,'fontweight':'normal'})
             
             c=c+1
     

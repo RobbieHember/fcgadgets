@@ -9,31 +9,29 @@ def UpdateStatus(vi,vo,iT,meta,comp):
     # Exctract parameters
     bNA=meta['Param']['BEV']['Nutrient Management']
     
+    # Pull out index to applications
+    iApp=meta['Nutrient Management']['iApplication']
+    
     if comp=='UpdateCounter':
         
-        iApplication=meta['Nutrient Management']['iApplication']
-        
-        meta['Nutrient Management']['ResponseCounter'][iApplication]=meta['Nutrient Management']['ResponseCounter'][iApplication]+1
+        meta['Nutrient Management']['ResponseCounter'][iApp]=meta['Nutrient Management']['ResponseCounter'][iApp]+1
     
     elif (comp=='AbovegroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
 
-        # Need to revise to be based on N
+        # Think about revising to be based on N
         # r_NonUniform_Spatial_Distribution
-        
-        # Index to stands where application occurs
-        iApplication=meta['Nutrient Management']['iApplication']
 
         #----------------------------------------------------------------------
         # Start response counter
         #----------------------------------------------------------------------
         
-        meta['Nutrient Management']['ResponseCounter'][iApplication]=meta['Nutrient Management']['ResponseCounter'][iApplication]+1
+        meta['Nutrient Management']['ResponseCounter'][iApp]=meta['Nutrient Management']['ResponseCounter'][iApp]+1
         
         #----------------------------------------------------------------------
         # Update log-size enhancement factor
         #----------------------------------------------------------------------
         
-        vo['LogSizeEnhancement'][iT:,iApplication]=vo['LogSizeEnhancement'][iT:,iApplication]+1
+        vo['LogSizeEnhancement'][iT:,iApp]=vo['LogSizeEnhancement'][iT:,iApp]+1
         
         #----------------------------------------------------------------------
         # Adjust net growth on treatment area
@@ -65,11 +63,11 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         A_gc=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
         
         # Extract active growth curves, apply scale factor
-        GCA_SP=vi['GC']['Active'][:,iApplication,:].copy().astype(float)*meta['GC']['Scale Factor']
+        GCA_SP=vi['GC']['Active'][:,iApp,:].copy().astype(float)*meta['GC']['Scale Factor']
         
-        for iStand in range(iApplication.size):
+        for iStand in range(iApp.size):
             
-            AgeAtApplication=int(vo['A'][iT,iApplication[iStand]])
+            AgeAtApplication=int(vo['A'][iT,iApp[iStand]])
             
             # Index to the response period that will be alterred
             iResponse=np.where( (A_gc>=AgeAtApplication) & (A_gc<AgeAtApplication+bNA['ResponseDuration']) )[0]
@@ -84,7 +82,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         
             else:
                 em='Error: Nutrient application not implemented - stand age exceeds max age of growth curves.'
-                #print(em)
+                print(em)
                 #print(AgeAtApplication)
             
         # Re-applly scalefactor
@@ -94,16 +92,13 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         GCA_SP=GCA_SP.astype(np.int16)
             
         # Repopulate in input variable dictionary
-        vi['GC']['Active'][:,iApplication,:]=GCA_SP
+        vi['GC']['Active'][:,iApp,:]=GCA_SP
     
     elif (comp=='BelowgroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         
         #----------------------------------------------------------------------
         # Adjust root net growth
         #----------------------------------------------------------------------
-        
-        # Index to stands where application occurs
-        iApplication=meta['Nutrient Management']['iApplication']
         
         iEP=meta['Core']['iEP']
         
@@ -117,24 +112,24 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         
         # Remove the false stimulus that arises from estimating roots from AG
         # biomass  
-        vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]=0.84*vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]
-        vo['C_G_Net'][iT,iApplication,iEP['RootFine']]=0.84*vo['C_G_Net'][iT,iApplication,iEP['RootFine']]
-        #Gnet_RC[iApplication]=0.65*(2-bNA['r_Stemwood'])*Gnet_RC[iApplication]
-        #Gnet_RF[iApplication]=0.65*(2-bNA['r_Stemwood'])*Gnet_RF[iApplication] 
+        vo['C_G_Net'][iT,iApp,iEP['RootCoarse']]=0.84*vo['C_G_Net'][iT,iApp,iEP['RootCoarse']]
+        vo['C_G_Net'][iT,iApp,iEP['RootFine']]=0.84*vo['C_G_Net'][iT,iApp,iEP['RootFine']]
+        #Gnet_RC[iApp]=0.65*(2-bNA['r_Stemwood'])*Gnet_RC[iApp]
+        #Gnet_RF[iApp]=0.65*(2-bNA['r_Stemwood'])*Gnet_RF[iApp] 
         
         # Stimulate root growth from N application
-        #Gnet_RC[iApplication]=rrRC*Gnet_RC[iApplication]
-        #Gnet_RF[iApplication]=rrRF*Gnet_RF[iApplication]        
+        #Gnet_RC[iApp]=rrRC*Gnet_RC[iApp]
+        #Gnet_RF[iApp]=rrRF*Gnet_RF[iApp]        
         
         # Recalculate current-year root biomass where stimulated by N application
-        #vo['C_Eco_Pools'][iT,iApplication,iEP['RootCoarse']]=vo['C_Eco_Pools'][iT-1,iApplication,iEP['RootCoarse']]+Gnet_RC[iApplication]
-        #vo['C_Eco_Pools'][iT,iApplication,iEP['RootFine']]=vo['C_Eco_Pools'][iT-1,iApplication,iEP['RootFine']]+Gnet_RF[iApplication]
+        #vo['C_Eco_Pools'][iT,iApp,iEP['RootCoarse']]=vo['C_Eco_Pools'][iT-1,iApp,iEP['RootCoarse']]+Gnet_RC[iApp]
+        #vo['C_Eco_Pools'][iT,iApp,iEP['RootFine']]=vo['C_Eco_Pools'][iT-1,iApp,iEP['RootFine']]+Gnet_RF[iApp]
         
         # Populate net growth of root biomass
-        vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]=rrRC*vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]
-        vo['C_G_Net'][iT,iApplication,iEP['RootFine']]=rrRF*vo['C_G_Net'][iT,iApplication,iEP['RootFine']]
-        #vo['C_G_Net'][iT,iApplication,iEP['RootCoarse']]=Gnet_RC[iApplication]
-        #vo['C_G_Net'][iT,iApplication,iEP['RootFine']]=Gnet_RF[iApplication]    
+        vo['C_G_Net'][iT,iApp,iEP['RootCoarse']]=rrRC*vo['C_G_Net'][iT,iApp,iEP['RootCoarse']]
+        vo['C_G_Net'][iT,iApp,iEP['RootFine']]=rrRF*vo['C_G_Net'][iT,iApp,iEP['RootFine']]
+        #vo['C_G_Net'][iT,iApp,iEP['RootCoarse']]=Gnet_RC[iApp]
+        #vo['C_G_Net'][iT,iApp,iEP['RootFine']]=Gnet_RF[iApp]    
         
         #----------------------------------------------------------------------
         # Stop stimulation counter when it passes the response duration
@@ -157,7 +152,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         # Adjust mortality
         #----------------------------------------------------------------------
         
-        vo['C_M_Reg'][iT,meta['Nutrient Management']['iApplication'],0:7]=bNA['rPrime_TreeMortality']*vo['C_M_Reg'][iT,meta['Nutrient Management']['iApplication'],0:7] 
+        vo['C_M_Reg'][iT,iApp,0:7]=bNA['rPrime_TreeMortality']*vo['C_M_Reg'][iT,iApp,0:7] 
      
     elif (comp=='Litterfall') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
         
@@ -167,18 +162,18 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         
         iEP=meta['Core']['iEP']
         
-        vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['Foliage']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['Foliage']]
-        vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['Branch']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['Branch']]
-        vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['Bark']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['Bark']]
+        vo['C_LF'][iT,iApp,iEP['Foliage']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,iApp,iEP['Foliage']]
+        vo['C_LF'][iT,iApp,iEP['Branch']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,iApp,iEP['Branch']]
+        vo['C_LF'][iT,iApp,iEP['Bark']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,iApp,iEP['Bark']]
         
-        vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]=bNA['rPrime_TurnoverRootCoarse']*vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['RootCoarse']]
-        vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]=bNA['rPrime_TurnoverRootFine']*vo['C_LF'][iT,meta['Nutrient Management']['iApplication'],iEP['RootFine']]
+        vo['C_LF'][iT,iApp,iEP['RootCoarse']]=bNA['rPrime_TurnoverRootCoarse']*vo['C_LF'][iT,iApp,iEP['RootCoarse']]
+        vo['C_LF'][iT,iApp,iEP['RootFine']]=bNA['rPrime_TurnoverRootFine']*vo['C_LF'][iT,iApp,iEP['RootFine']]
     
     elif comp=='Emissions':
         
         #----------------------------------------------------------------------
         # Emissions from manufacture of ammonia and urea
-        #----------------------------------------------------------------------         
+        #----------------------------------------------------------------------
         
         # Urea dose (kgUrea/ha)
         DoseUrea=bNA['DoseUrea_Standard']
@@ -195,14 +190,14 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         therm_per_app=MMBtu_per_app/bNA['MMBtu_per_therm']
         E_ProdUrea=bNA['EmissionFromUreaProduction_per_therm']*therm_per_app
           
-        vo['E_CO2e_ESC_Comb'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_ESC_Comb'][iT,meta['Nutrient Management']['iApplication']] + \
+        vo['E_CO2e_ESC_OperationsBurnGas'][iT,iApp]=vo['E_CO2e_ESC_OperationsBurnGas'][iT,iApp] + \
             (E_ProdNH3+E_ProdUrea)
         
         #----------------------------------------------------------------------
         # Emissions from transportation (tCO2e/ha)
         #----------------------------------------------------------------------
         
-        vo['E_CO2e_ET_Comb'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_ET_Comb'][iT,meta['Nutrient Management']['iApplication']] + \
+        vo['E_CO2e_ET_OperationsBurnOil'][iT,iApp]=vo['E_CO2e_ET_OperationsBurnOil'][iT,iApp] + \
             (bNA['EmissionFromRailBargeTruck_Workbook']+bNA['EmissionFromHelicopter_SP10'])
 
         #----------------------------------------------------------------------
@@ -210,7 +205,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         # approach, IPCC 2006, 11.4.1 (tCO2e/ha)
         #----------------------------------------------------------------------
         
-        vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + \
+        vo['E_CO2e_LULUCF_Denit'][iT,iApp]=vo['E_CO2e_LULUCF_Denit'][iT,iApp] + \
             (bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4'])
         
         #----------------------------------------------------------------------
@@ -224,9 +219,9 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         
         E_vol=0.3
         
-        vo['E_CO2e_IPPU_Comb'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_IPPU_Comb'][iT,meta['Nutrient Management']['iApplication']] - E_vol
+        vo['E_CO2e_IPPU_BurningGas'][iT,iApp]=vo['E_CO2e_IPPU_BurningGas'][iT,iApp] - E_vol
         
-        vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_LULUCF_EcoOther'][iT,meta['Nutrient Management']['iApplication']] + E_vol
+        vo['E_CO2e_LULUCF_Other'][iT,iApp]=vo['E_CO2e_LULUCF_Other'][iT,iApp] + E_vol
         
         #----------------------------------------------------------------------
         # Exterior area (volatilization/deposition effects)
@@ -275,7 +270,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
             # Subtract from ecosystem LULUCF emissions
             # *** it will crash in the last time step ***
             try:
-                vo['E_CO2e_LULUCF_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]=vo['E_CO2e_LULUCF_EcoOther'][iT+1,meta['Nutrient Management']['iApplication']]-EA_GHG_Benefit
+                vo['E_CO2e_LULUCF_Other'][iT+1,iApp]=vo['E_CO2e_LULUCF_Other'][iT+1,iApp]-EA_GHG_Benefit
             except:
                 pass
             
@@ -286,13 +281,13 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         #----------------------------------------------------------------------
         
         rr=bNA['r_Decomp']
-        meta['R_LitterVF'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_LitterVF'][0,meta['Nutrient Management']['iApplication']]
-        meta['R_LitterF'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_LitterF'][0,meta['Nutrient Management']['iApplication']]
-        meta['R_LitterM'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_LitterM'][0,meta['Nutrient Management']['iApplication']]
-        meta['R_LitterS'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_LitterS'][0,meta['Nutrient Management']['iApplication']]
-        meta['R_SoilVF'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_SoilVF'][0,meta['Nutrient Management']['iApplication']]
-        meta['R_SoilF'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_SoilF'][0,meta['Nutrient Management']['iApplication']]
-        meta['R_SoilS'][0,meta['Nutrient Management']['iApplication']]=rr*meta['R_SoilS'][0,meta['Nutrient Management']['iApplication']]
+        meta['R_LitterVF'][0,iApp]=rr*meta['R_LitterVF'][0,iApp]
+        meta['R_LitterF'][0,iApp]=rr*meta['R_LitterF'][0,iApp]
+        meta['R_LitterM'][0,iApp]=rr*meta['R_LitterM'][0,iApp]
+        meta['R_LitterS'][0,iApp]=rr*meta['R_LitterS'][0,iApp]
+        meta['R_SoilVF'][0,iApp]=rr*meta['R_SoilVF'][0,iApp]
+        meta['R_SoilF'][0,iApp]=rr*meta['R_SoilF'][0,iApp]
+        meta['R_SoilS'][0,iApp]=rr*meta['R_SoilS'][0,iApp]
     
     return vi,vo,meta
 
@@ -300,22 +295,56 @@ def UpdateStatus(vi,vo,iT,meta,comp):
 
 def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
     
-   rn=np.random.random(meta['Project']['Batch Size'][iBat])
-   
-   indS=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
-                 (vo['A'][iT,:]>=10) & \
-                 (vo['A'][iT,:]<=71) & \
-                 (rn<meta['Scenario'][iScn]['Nutrient Application Prob']) & \
-                 (vo['V_StemMerch'][iT,:]>10) & \
-                 (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) )[0]
-
-   if indS.size>0:
-       for i in range(indS.size):
-           iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]        
-           if iAvailable.size>0:
-               iE=iAvailable[0]
-               vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Fertilization Aerial']
-               vi['EC']['MortalityFactor'][iT,indS[i],iE]=np.array(0,dtype='int16')
-               vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
+    # Create a random number
+    rn=np.random.random(meta['Project']['Batch Size'][iBat])
     
-   return vi
+    # Regional probabilities
+    Po_Sat_Coast=0.055
+    Po_Sat_Interior=0.015
+    
+    flg=0
+    if flg==1:
+        vi={}
+        vi['tv']=tv
+        
+        Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.002*np.maximum(1,vi['tv']-2021) )        
+        plt.close('all')
+        plt.plot(vi['tv'],Po_Coast,'r-',lw=1.5 )
+        
+        Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0012*np.maximum(1,vi['tv']-2045) )        
+        plt.close('all')
+        plt.plot(vi['tv'],Po_Interior,'r-',lw=1.5 )
+    
+    # Time-dependent models to compensate for aging forests
+    Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.002*np.maximum(1,vi['tv']-2021) )
+    Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0012*np.maximum(1,vi['tv']-2045) )
+    
+    # Find eligible coastal stands to fertilize
+    indS_Coast=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
+            (vo['A'][iT,:]>=10) & \
+            (vo['A'][iT,:]<=61) & \
+            (rn<Po_Coast[iT]) & \
+            (vo['V_MerchLive'][iT,:]>10) & \
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['Coastal Zones ID'])==True) )[0]
+    
+    indS_Interior=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
+            (vo['A'][iT,:]>=10) & \
+            (vo['A'][iT,:]<=61) & \
+            (rn<Po_Interior[iT]) & \
+            (vo['V_MerchLive'][iT,:]>10) & \
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['Coastal Zones ID'])==False) )[0]
+    
+    indS=np.append(indS_Coast,indS_Interior)
+
+    if indS.size>0:
+        for i in range(indS.size):
+            iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]        
+            if iAvailable.size>0:
+                iE=iAvailable[0]
+                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Fertilization Aerial']
+                vi['EC']['MortalityFactor'][iT,indS[i],iE]=np.array(0,dtype='int16')
+                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
+    
+    return vi

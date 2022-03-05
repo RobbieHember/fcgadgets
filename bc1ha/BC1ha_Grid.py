@@ -3,12 +3,6 @@
 
 BC1ha GRID
 
-Notes:
-    - These rasters were produced from geodatabases in ArcGIS. The polygon area 
-    was used as a priority field. (see BC1ha_RasterizeWithArcpyToolbox.py)
-    - Fire, cutblocks and forest health were done in Python (this script) because
-    ov overlapping polygons
-
 ============================================================================'''
 
 
@@ -32,7 +26,7 @@ import dbfread
 
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
-
+from fcgadgets.macgyver import utilities_inventory as invu
 
 #%% DEFINE STANDARD GRID 
 # Select an existing file that will define the SRS and extent of the BC1ha grid.
@@ -42,7 +36,7 @@ finS=r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
 zS=gis.OpenGeoTiff(finS)
 
 
-#%% TIMBER SUPPLY AREA
+#%% Prepare timber supply area
 
 #------------------------------------------------------------------------------
 # Create TSA Key
@@ -136,7 +130,7 @@ for i in range(len(df_tsa)):
 gdf.to_file(filename=r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 
 
-#%% REVISE EXTENT TO BE CONSISTENT WITH STANDARD RASTER
+#%% Revise the extent of rasters that were created in ArcGIS
 
 # Admin boundaries
 
@@ -189,6 +183,71 @@ plt.figure(4)
 plt.matshow(data[0::5,0::5],clim=(0,150))
 plt.colorbar()
 
+#%% Rasterize land use legal
+
+# Define paths
+meta={}
+meta['Paths']={}
+meta['Paths']['Project']=r''
+#meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210930'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210930'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210930'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210930'
+meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
+meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
+
+meta=invu.Load_LUTs(meta)
+
+# Import TSA raster
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
+
+# Input path to RESULTS database (downloaded from BC data catalogue)
+pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210930\LandUse.gdb'
+pthout=r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover'
+
+fiona.listlayers(pthin)
+lnam='RMP_PLAN_LEGAL_POLY_SVW'
+
+list(meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].keys())
+
+# Open the shapefile
+df=gpd.read_file(pthin,layer=lnam)
+
+# Remove features with no geometry
+df=df[df.geometry!=None]
+
+fn='LEGAL_FEAT_OBJECTIVE'
+
+for val in meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].keys():
+    print(val)
+    #val='Conservation Lands'
+
+    df0=df[df[fn]==val].copy()
+    df0['dummy']=np.ones(len(df0))
+    shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))    
+
+    z0=np.zeros(zTSA['Data'].shape,dtype=float)
+    burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
+    
+    val1=val.replace(":","_")
+    val1=val1.replace("/","_")
+    val1=val1.replace("<","Less Than")
+    
+    zOut=zTSA.copy()
+    zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
+    zOut['Data'][burned>0]=1
+    gis.SaveGeoTiff(zOut,pthout + '\\' + fn + '_' + val1 + '.tif')
+
+
+#plt.matshow(zOut['Data'][::50,::50])
+
+#fout=r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances' + '\\' + lnam + '_' + str(tv[iT]) + '.tif'
+#gis.SaveGeoTiff(zOut,fout)
+
+# Test
+#
+#plt.matshow(z['Data'])
 
 #%% Rasterize wildfire occurrence by year
 
@@ -333,9 +392,6 @@ for iT in range(tv.size):
     zOut['Data'][burned>0]=burned[burned>0]
     fout=r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances' + '\\' + lnam + '_' + str(tv[iT]) + '.tif'
     gis.SaveGeoTiff(zOut,fout)
-
-
-
 
 
 # Open template raster file and copy it's metadata

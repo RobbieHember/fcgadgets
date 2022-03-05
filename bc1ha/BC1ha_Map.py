@@ -47,8 +47,8 @@ meta['crs']=bm['gdf_bm'].crs
 
 #%% Define region of interest
 
-#flg_roi='ByTSA'
-flg_roi='ByLatLon'
+flg_roi='ByTSA'
+#flg_roi='ByLatLon'
 
 if flg_roi=='ByTSA':
     
@@ -63,11 +63,7 @@ if flg_roi=='ByTSA':
     #roi['TSA List']=['100 Mile House TSA']
     #roi['TSA List']=list(tsa['key']['Name'])
     
-    roi=bc1hau.DefineROI(roi,tsa,bm,road)
-    t1=time.time()
-    print((t1-t0)/60)
-    
-if flg_roi=='ByLatLon':
+elif flg_roi=='ByLatLon':
     
     roi={}
     roi['Type']='ByLatLon'
@@ -91,8 +87,11 @@ if flg_roi=='ByLatLon':
     if flg==1:
         roi['Centre']=[-121.07,51.308]
         roi['Radius']=10*1000 # metres
-    
-    roi=bc1hau.DefineROI(roi,tsa,bm,road)
+
+# Prepare region of interest
+roi=bc1hau.DefineROI(roi,tsa,bm,road)
+t1=time.time()
+print((t1-t0)/60)
 
 #%% Import rasters over ROI
 
@@ -115,10 +114,6 @@ if flg_bgcz==1:
 flg_wf=1
 if flg_bgcz==1:
     wf=bc1hau.Import_Raster_Over_ROI(meta,'wf',roi)
-
-flg_wf=1
-if flg_wf==1:
-    wf=bc1hau.Import_Raster_Over_ROI(meta,'wf',roi)
     
 flg_age=1
 if flg_age==1:
@@ -138,13 +133,13 @@ if flg==1:
 #%% Import required vector geodatabases
 
 # Wildfire permimiter
-flg=1
+flg=0
 if flg==1:
     wfp=qv.GetWildfirePerimiter(meta,2017,2022)
     wfp=bc1hau.ClipGDF_ByROI(wfp,roi)
 
 # Non-ob reforestation polygons
-flg=1
+flg=0
 if flg==1:
     atup={}
     atup['gdf']=gpd.read_file(r'D:\Data\FCI_Projects\SummaryReforestationNonOb\Geospatial\atu_polygons.geojson')
@@ -199,7 +194,7 @@ if flg==1:
 plt.close('all')
 fig,ax=bc1hau.Plot_ROI_Mask(meta,roi,lc2,bm)
 wfp.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1,label='Wildfire',alpha=1)
-atup['gdf overlay'].loc[atup['gdf overlay']['Year']>=2018].plot(ax=ax[0],facecolor=[0,0.8,0],edgecolor=[0,0.5,0],linewidth=1.25,label='Planting',alpha=0.25)
+#atup['gdf overlay'].loc[atup['gdf overlay']['Year']>=2018].plot(ax=ax[0],facecolor=[0,0.8,0],edgecolor=[0,0.5,0],linewidth=1.25,label='Planting',alpha=0.25)
 #gu.PrintFig(meta['Paths']['Figures'] + '\\Planted areas','png',900)
 
 #%% Plot BTM
@@ -225,7 +220,7 @@ def Plot_ROI_BTM(btm):
     lab=[]
     for i in range(N_bin):
         try:
-            lab.append(btm['lab1'])
+            lab.append(btm['lab1'][i])
         except:
             lab.append('')
 
@@ -244,13 +239,13 @@ def Plot_ROI_BTM(btm):
     roi['gdf_lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],edgecolor=[0.7*0.82,0.7*0.88,0.7*1],linewidth=0.25,label='Water')
     roi['gdf_rivers'].plot(ax=ax[0],linecolor=[0,0,0.7],label='Water',linewidth=0.25)
     roi['gdf_bound'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
-    roi['gdf_roads'].plot(ax=ax[0],facecolor='none',edgecolor=[0.5,0,0],label='Roads',linewidth=0.75,alpha=1,zorder=1)
+    roi['gdf_roads'].plot(ax=ax[0],facecolor='none',edgecolor=[1,1,0],label='Roads',linewidth=0.75,alpha=1,zorder=1)
     ax[0].set(position=meta['Graphics']['pos1'],xlim=roi['xlim'],ylim=roi['ylim'],aspect='auto')
     ax[0].grid(False)
     #cb=plt.colorbar(im,cax=ax[1])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color,1),ticks=np.arange(0.5,N_color+1.5,1))
-    cb.ax.set(yticklabels=labs)
+    cb.ax.set(yticklabels=lab)
     cb.ax.tick_params(labelsize=6,length=0)
     for i in range(0,N_color):
         ax[1].plot([0,100],[i/N_bin,i/N_bin],'k-',linewidth=0.5)

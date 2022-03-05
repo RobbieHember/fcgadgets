@@ -16,7 +16,7 @@ import matplotlib as mpl
 from matplotlib.patches import Rectangle
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcgadgets.silviculture import economics as econo
+from fcgadgets.hardhat import economics as econo
 from fcgadgets.taz import aspatial_stat_models as asm
 
 #%% Import portfolio inputs from spreadsheet
@@ -26,6 +26,15 @@ def ImportPortfolio(meta):
     meta['Project']={}
     meta['Project']['N Scenario']=2
     meta['Project']['N Portfolio']=3
+    
+    #--------------------------------------------------------------------------
+    # Import portfolio-level parameters
+    #--------------------------------------------------------------------------
+    
+    d=gu.ReadExcel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx','Portfolios')
+    
+    meta['Project']['Portfolio']={}
+    meta['Project']['Portfolio']['Raw']=d
     
     #--------------------------------------------------------------------------
     # Import activity types
@@ -70,7 +79,7 @@ def ImportPortfolio(meta):
     
     meta['Project']['AIL']['Area']=np.nan_to_num(meta['Project']['AIL']['Area'])
     
-    meta['Project']['AIL']['Area']=meta['Project']['AIL']['Area'].astype(int)
+    meta['Project']['AIL']['Area']=meta['Project']['AIL']['Area'].astype(float)
     
     # Activity ID
     meta['Project']['AIL']['ID AT']=np.array(d['data'][0][1:3*12+1],dtype=int)
@@ -703,14 +712,14 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
         
         for iEns in range(meta['Project']['N Ensemble']):
             
+            # Keep track of means to create area-weighted averages
             dmu0={}
             dmu1={}
             dmu2={}
             for k in d0['Sum'].keys():
                 dmu0[k]=np.array([])
                 dmu1[k]=np.array([])
-                dmu2[k]=np.array([])
-            
+                dmu2[k]=np.array([])            
             Area0=np.array([])
             Area1=np.array([])
             Area2=np.array([])
@@ -751,10 +760,6 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
                 
                 # Add to d1 structure
                 d1.update(econ)
-            
-#                # Add cumulative
-#                for k in v_cumu:
-#                    d1[k + '_cumu']=np.cumsum(d1[k],axis=0)
                 
                 # Index to portfolio
                 indBAU=np.where(meta['Project']['Portfolio']['ID Portfolio'][indBat]==0)[0]
@@ -800,6 +805,7 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
                 del d1,ec,inv,econ
                 garc.collect()
             
+                # Add areas
                 if indBAU.size>0:
                     Area0=np.append(Area0,meta['Project']['Portfolio']['Area'][indBat[indBAU]])
                 
@@ -819,10 +825,12 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
                 mos[0][iScn]['Mean'][k]['Ensembles'][:,iEns]=np.sum(y*np.tile(Area0,(tv.size,1)),axis=1)/np.sum(Area0) #/meta['Project']['N Stand per Activity Type']
                 
                 y=copy.copy(dmu1[k])
-                mos[1][iScn]['Mean'][k]['Ensembles'][:,iEns]=np.sum(y*np.tile(Area1,(tv.size,1)),axis=1)/np.sum(Area1) #/meta['Project']['N Stand per Activity Type']
+                if y.size!=0:
+                    mos[1][iScn]['Mean'][k]['Ensembles'][:,iEns]=np.sum(y*np.tile(Area1,(tv.size,1)),axis=1)/np.sum(Area1) #/meta['Project']['N Stand per Activity Type']
                 
                 y=copy.copy(dmu2[k])
-                mos[1][iScn]['Mean'][k]['Ensembles'][:,iEns]=np.sum(y*np.tile(Area1,(tv.size,1)),axis=1)/np.sum(Area1) #/meta['Project']['N Stand per Activity Type']
+                if y.size!=0:
+                    mos[2][iScn]['Mean'][k]['Ensembles'][:,iEns]=np.sum(y*np.tile(Area2,(tv.size,1)),axis=1)/np.sum(Area2) #/meta['Project']['N Stand per Activity Type']
             #del dmu0,dmu1    
             #print(dmu0['A'].shape)
             #print(dmu1['A'].shape)
@@ -1123,7 +1131,7 @@ def ModelOutputStatsByAT(meta,**kwargs):
 
 #%% Plot results
     
-def PlotResults(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
+def Plot_TimeSeries(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
     
     # Scenarios
     iB=0; iP=1
@@ -1161,10 +1169,19 @@ def PlotResults(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
             ddb=1.0
          
         # Full list of variables
-        #ListV=['A', 'V_StemMerch', 'V_StemMerchToMill', 'LogSizeEnhancement', 'C_Biomass_Tot', 'C_Piled_Tot', 'C_Litter_Tot', 'C_DeadWood_Tot', 'C_Soil_Tot', 'C_InUse_Tot', 'C_DumpLandfill_Tot', 'C_M_Dist', 'C_G_Gross_Tot', 'C_G_Net_Tot', 'C_M_Reg_Tot', 'C_LF_Tot', 'C_RH_Tot', 'C_ToMillMerch', 'C_ToMillNonMerch', 'C_ToMillSnagStem', 'C_ToSlashpileBurn', 'C_ToLumber', 'C_ToPlywood', 'C_ToOSB', 'C_ToMDF', 'C_ToPaper', 'C_ToPowerFacilityDom', 'C_ToPowerFacilityFor', 'C_ToPowerGrid', 'C_ToPellets', 'C_ToFirewoodDom', 'C_ToFirewoodFor', 'C_ToLogExport', 'E_CO2e_LULUCF_NEE', 'E_CO2e_LULUCF_Wildfire', 'E_CO2e_LULUCF_OpenBurning', 'E_CO2e_LULUCF_EcoOther', 'E_CO2e_LULUCF_HWP', 'E_CO2e_ESC_Comb', 'E_CO2e_ESC_SubE', 'E_CO2e_ESC_SubBM', 'E_CO2e_ET_Comb', 'E_CO2e_IPPU_Comb', 'C_NPP_Tot', 'C_ToMill', 'E_CO2e_LULUCF_Fire', 'E_CO2e_AGHGB_WSub', 'E_CO2e_AGHGB_WOSub', 'E_CO2e_AGHGB_WSub_cumu', 'E_CO2e_AGHGB_WOSub_cumu', 'E_CO2e_AGHGB_WSub_cumu_from_tref', 'E_CO2e_AGHGB_WOSub_cumu_from_tref', 'Yield Lumber', 'Yield Plywood', 'Yield OSB', 'Yield MDF', 'Yield Paper', 'Yield Pellets', 'Yield PowerGrid', 'Yield PowerFacilityDom', 'Yield FirewoodDom', 'Yield LogExport', 'Price Lumber', 'Price Plywood', 'Price OSB', 'Price MDF', 'Price Newsprint', 'Price PowerFacilityDom', 'Price PowerGrid', 'Price Pellets', 'Price LogExport', 'Price FirewoodDom', 'Exchange Rate US', 'Exchange Rate Euro', 'Cost Roads', 'Cost Harvest Overhead', 'Cost Harvest Felling and Piling', 'Cost Harvest Hauling', 'Cost Harvest Residuals', 'Cost Milling', 'Cost Nutrient Management', 'Cost Planting', 'Cost Survey', 'Cost Knockdown', 'Cost Ripping', 'Cost Slashpile Burn', 'Harvest Vol Merch', 'Harvest Vol Resid', 'Cost Total', 'Revenue Lumber', 'Revenue Plywood', 'Revenue OSB', 'Revenue MDF', 'Revenue Paper', 'Revenue PowerFacilityDom', 'Revenue PowerGrid', 'Revenue Pellets', 'Revenue FirewoodDom', 'Revenue LogExport', 'Revenue Gross', 'Revenue Net', 'Revenue Net Disc', 'Revenue Gross Disc', 'Cost Total Disc', 'Revenue Gross Disc_cumu', 'Revenue Net Disc_cumu', 'Cost Total Disc_cumu', 'Cost Total_cumu', 'Revenue Gross_cumu', 'Revenue Net_cumu']    
+        #ListV=['A','V_MerchLive','V_MerchDead','V_MerchTotal','V_ToMillMerchLive','V_ToMillMerchDead','V_ToMillMerchTotal','V_ToMillNonMerch','LogSizeEnhancement','C_Biomass_Tot','C_Piled_Tot','C_Litter_Tot','C_DeadWood_Tot','C_Soil_Tot','C_InUse_Tot','DM_Buildings_Tot','C_DumpLandfill_Tot','C_M_Dist','C_G_Gross_Tot','C_G_Net_Tot','C_M_Reg_Tot','C_LF_Tot','C_RH_Tot','C_ToMillMerch','C_ToMillNonMerch','C_ToMillSnagStem','C_ToSlashpileBurn','C_ToLumber','C_ToPlywood','C_ToOSB','C_ToMDF','C_ToPaper','C_ToPowerFacilityDom','C_ToPowerFacilityFor','C_ToPowerGrid','C_ToPellets','C_ToFirewoodDom','C_ToFirewoodFor','C_ToLogExport','E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_EcoOther','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Comb','E_CO2e_ESC_SubE','E_CO2e_ESC_SubBM','E_CO2e_ET_Comb','E_CO2e_IPPU_Comb','C_NPP_Tot','C_ToMill','C_Forest','C_HWP','DM_Production_Sawnwood','DM_Production_Panels','E_CO2e_LULUCF_Fire','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub','E_CO2e_AGHGB_WSub_cumu','E_CO2e_AGHGB_WOSub_cumu','E_CO2e_AGHGB_WSub_cumu_from_tref','E_CO2e_AGHGB_WOSub_cumu_from_tref','Yield Lumber','Yield Plywood','Yield OSB','Yield MDF','Yield Paper','Yield Pellets','Yield PowerGrid','Yield PowerFacilityDom','Yield FirewoodDom','Yield LogExport','Price Lumber','Price Plywood','Price OSB','Price MDF','Price Newsprint','Price PowerFacilityDom','Price PowerGrid','Price Pellets','Price LogExport','Price FirewoodDom','Exchange Rate US','Exchange Rate Euro','Cost Roads','Cost Harvest Overhead','Cost Harvest Felling and Piling','Cost Harvest Hauling','Cost Harvest Residuals','Cost Milling','Cost Nutrient Management','Cost Planting','Cost Survey','Cost Knockdown','Cost Ripping','Cost Slashpile Burn','Harvest Vol Merch','Harvest Vol Resid','Cost Total','Revenue Lumber','Revenue Plywood','Revenue OSB','Revenue MDF','Revenue Paper','Revenue PowerFacilityDom','Revenue PowerGrid','Revenue Pellets','Revenue FirewoodDom','Revenue LogExport','Revenue Gross','Revenue Net','Revenue Net Disc','Revenue Gross Disc','Cost Total Disc','Revenue Gross Disc_cumu','Revenue Net Disc_cumu','Cost Total Disc_cumu','Cost Total_cumu','Revenue Gross_cumu','Revenue Net_cumu',
+        #'Production Concrete','Production Steel','Production Aluminum','Production Plastic','E_CO2e_Concrete','E_CO2e_Steel','E_CO2e_Aluminum','E_CO2e_Plastic','E_CO2e_NRBM']
         
         # Condensed list of variables
-        ListV=['A', 'V_StemMerch', 'V_StemMerchToMill','C_Biomass_Tot','C_ToSlashpileBurn','E_CO2e_LULUCF_NEE', 'E_CO2e_LULUCF_Wildfire', 'E_CO2e_LULUCF_OpenBurning','C_NPP_Tot','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub', 'E_CO2e_AGHGB_WSub_cumu', 'E_CO2e_AGHGB_WOSub_cumu', 'E_CO2e_AGHGB_WSub_cumu_from_tref', 'E_CO2e_AGHGB_WOSub_cumu_from_tref', 'Harvest Vol Merch', 'Harvest Vol Resid', 'Cost Total','Revenue Gross', 'Revenue Net', 'Revenue Net Disc', 'Revenue Gross Disc', 'Cost Total Disc', 'Revenue Gross Disc_cumu', 'Revenue Net Disc_cumu', 'Cost Total Disc_cumu', 'Cost Total_cumu', 'Revenue Gross_cumu', 'Revenue Net_cumu','Cost Silviculture Total','Cost Silviculture Total Disc','Cost Silviculture Total Disc_cumu']
+        ListV=['A','V_MerchTotal','V_ToMillMerchTotal','V_ToMillNonMerch','C_Biomass_Tot','C_ToSlashpileBurn','E_CO2e_LULUCF_NEE', 
+               'E_CO2e_LULUCF_Wildfire', 'E_CO2e_LULUCF_OpenBurning','C_NPP_Tot','E_CO2e_SUB_E','E_CO2e_SUB_M',
+               'E_CO2e_Coal','E_CO2e_Oil','E_CO2e_Gas','E_CO2e_SUB_Calcination',
+               'E_CO2e_SUB_Concrete','E_CO2e_SUB_Steel','E_CO2e_SUB_Aluminum','E_CO2e_SUB_Plastic',
+               'E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub','E_CO2e_AGHGB_WSub_cumu_from_tref', 'E_CO2e_AGHGB_WOSub_cumu_from_tref',
+               'Prod_Sawnwood','Prod_Panels','Prod_Concrete','Prod_Steel','Prod_Aluminum','Prod_Plastic',
+               'Cost Total','Revenue Gross', 'Revenue Net', 'Revenue Net Disc', 'Revenue Gross Disc', 'Cost Total Disc', 'Revenue Gross Disc_cumu', 
+               'Revenue Net Disc_cumu', 'Cost Total Disc_cumu', 'Cost Total_cumu', 'Revenue Gross_cumu', 'Revenue Net_cumu','Cost Silviculture Total',
+               'Cost Silviculture Total Disc','Cost Silviculture Total Disc_cumu']
         
         for iV in range(len(ListV)):
             
@@ -1218,8 +1235,10 @@ def PlotResults(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
             # y-axis label
             ind=np.where(ylabs['Name']==k)[0]
             if ind.size==1:
-                if op=='Sum':
-                    lab=ylabs['Y Label Sum'][ind[0]]
+                if (op=='Sum') & (ddb==1e6):
+                    lab=ylabs['Y Label Sum Mt'][ind[0]]
+                elif (op=='Sum') & (ddb==1e9):
+                    lab=ylabs['Y Label Sum Gt'][ind[0]]    
                 else:
                     lab=ylabs['Y Label Mean'][ind[0]]                
             else:
@@ -1263,7 +1282,7 @@ def PlotResults(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
             ax[2].set(position=[0.75,0.08,0.27,0.68],xlim=[tv[iT[0]],tv[iT[-1]]],ylabel='$\Delta$ ' + lab)
             ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both')
             
-            gu.PrintFig(meta['Paths']['Project'] + '\\Outputs\\Figures\\ByPortfolio_' + op + '_' + k,'png',200)
+            gu.PrintFig(meta['Paths']['Figures'] + '\\ByPortfolio_' + op + '_' + k,'png',200)
             
     plt.close('all')   
     
@@ -1271,7 +1290,7 @@ def PlotResults(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
 
 #%% Plot implementation level of each activity type
     
-def PlotImplementationLevel(meta):
+def Plot_AIL_WithAccounting(meta):
 
     # Hatch width
     mpl.rcParams['hatch.linewidth']=1.3 
@@ -1348,6 +1367,67 @@ def PlotImplementationLevel(meta):
         ax.legend(loc='upper left',facecolor=[1,1,1],frameon=False)
         ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
         
-        gu.PrintFig(meta['Paths']['Project'] + '\\Outputs\\Figures\\AIL_' + nameAT,'png',500)
+        gu.PrintFig(meta['Paths']['Figures'] + '\\AIL_' + nameAT,'png',500)
         
     return
+
+#%% Built enviornment
+    
+def BuiltEnvironment(meta,mos):
+    
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    
+    dBM=gu.ipickle(r'C:\Users\rhember\Documents\Data\Built Environment\Building Material Production.pkl')
+    ind0=np.where( (dBM['Year']>=tv[0]) & (dBM['Year']<=tv[-1]) )[0]
+    ind1=np.where( (tv>=dBM['Year'][0]) & (tv<=dBM['Year'][-1]) )[0]
+    
+    # Biophysical parameters
+    dP0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_Biophysical.xlsx')
+    dP={}; cnt=0
+    for k in dP0['Name']:
+        dP[k]=dP0['Value'][cnt]; cnt=cnt+1
+    
+    vnL=['Concrete','Steel','Aluminum','Plastic']
+    typL=['Ensemble Mean','Ensemble CIL','Ensemble CIU']
+    
+    for iPort in range(meta['Project']['N Portfolio']):        
+        for iScn in range(meta['Project']['N Scenario']):
+    
+            #mos[iPort][iScn]['DM_Production_Sawnwood']
+            
+            for vn in vnL:
+                mos[iPort][iScn]['Sum']['Production ' + vn]={}
+                mos[iPort][iScn]['Sum']['E_CO2e_' + vn]={}
+                for typ in typL:
+                    mos[iPort][iScn]['Sum']['Production ' + vn][typ]=np.zeros(tv.size)
+                    mos[iPort][iScn]['Sum']['E_CO2e_' + vn][typ]=np.zeros(tv.size)
+            
+            mos[iPort][iScn]['Sum']['E_CO2e_NRBM']={}
+            for typ in typL:
+                mos[iPort][iScn]['Sum']['E_CO2e_NRBM'][typ]=np.zeros(tv.size)
+
+            mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean'][ind1]=dBM['Production Concrete (t/yr)'][ind0]
+            mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean'][ind1]=dBM['Production Steel (t/yr)'][ind0]
+            mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean'][ind1]=dBM['Production Aluminum (t/yr)'][ind0]
+            mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean'][ind1]=dBM['Production Plastic (t/yr)'][ind0]
+            
+            # Remove wood substitution
+            Wood=(2400/480)*(mos[iPort][iScn]['Sum']['DM_Production_Sawnwood']['Ensemble Mean']+mos[iPort][iScn]['Sum']['DM_Production_Panels']['Ensemble Mean'])
+            
+            mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean']-0.7*Wood
+            mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean']-0.1*Wood
+            mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean']-0.1*Wood
+            mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean']-0.1*Wood
+    
+            mos[iPort][iScn]['Sum']['E_CO2e_Concrete']['Ensemble Mean']=dP['Concrete emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean']
+            mos[iPort][iScn]['Sum']['E_CO2e_Steel']['Ensemble Mean']=dP['Steel emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean']
+            mos[iPort][iScn]['Sum']['E_CO2e_Aluminum']['Ensemble Mean']=dP['Aluminum emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean']
+            mos[iPort][iScn]['Sum']['E_CO2e_Plastic']['Ensemble Mean']=dP['Plastic emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean']
+
+            mos[iPort][iScn]['Sum']['E_CO2e_NRBM']['Ensemble Mean']=mos[iPort][iScn]['Sum']['E_CO2e_Concrete']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_Steel']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_Aluminum']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_Plastic']['Ensemble Mean']
+    
+            mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean']=mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_NRBM']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_ESC_SubE']['Ensemble Mean']
+            mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub_cumu']['Ensemble Mean']=np.cumsum(mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'])
+            mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean']=np.cumsum(mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'])
+    
+    return mos

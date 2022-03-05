@@ -33,7 +33,7 @@ def MeepMeep(meta):
         
         # Loop through scenarios    
         for iScn in ScenariosToRun: 
-        
+
             # Track the current scenario index
             meta['iScn']=iScn
         
@@ -79,6 +79,7 @@ def MeepMeep(meta):
                 iEP=meta['Core']['iEP']
                 
                 # Try to start at a later date and adopt spinup from a previous run
+                #t_start=1
                 if (meta['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
                     
                     #Start from beginning
@@ -147,10 +148,10 @@ def MeepMeep(meta):
                 rt_info['t5']=time.time()
                 
                 # Export simulation results to file
+                #ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
                 if (meta['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
                     # Only save output if it is the first instance of a batch
-                    vo_full=ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
-                    
+                    vo_full=ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)                    
                 else:                   
                     ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
                 
@@ -268,10 +269,15 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #vo['Spc_Percent']=np.zeros((m,n,6),dtype='int8')
     
     # Stemwood merch volume
-    vo['V_StemMerch']=np.zeros((m,n))
+    vo['V_MerchLive']=np.zeros((m,n))
+    vo['V_MerchDead']=np.zeros((m,n))
+    vo['V_MerchTotal']=np.zeros((m,n))
     
     # Stemwood merch volume sent to mill
-    vo['V_StemMerchToMill']=np.zeros((m,n))
+    vo['V_ToMillMerchLive']=np.zeros((m,n))
+    vo['V_ToMillMerchDead']=np.zeros((m,n))
+    vo['V_ToMillMerchTotal']=np.zeros((m,n))
+    vo['V_ToMillNonMerch']=np.zeros((m,n))
     
     # Piece size
     vo['LogSizeEnhancement']=np.zeros((m,n))
@@ -349,22 +355,57 @@ def InitializeStands(meta,iScn,iEns,iBat):
     # LULUCF Sector: Net ecosystem production (polulated upon export)
     vo['E_CO2e_LULUCF_OpenBurning']=np.array([])
     
-    # LULUCF Sector: Denitrification, valatilization
-    vo['E_CO2e_LULUCF_EcoOther']=np.zeros((m,n))
+    # LULUCF Sector: Denitrification
+    vo['E_CO2e_LULUCF_Denit']=np.zeros((m,n))
+    
+    # LULUCF Sector: valatilization and deposition of N
+    vo['E_CO2e_LULUCF_Other']=np.zeros((m,n))
     
     # LULUCF Sector: RH from dumps and landfills
     vo['E_CO2e_LULUCF_HWP']=np.zeros((m,n)) 
     
     # Energy - Stationary Combustion Sector
-    vo['E_CO2e_ESC_Comb']=np.zeros((m,n))
-    vo['E_CO2e_ESC_SubE']=np.zeros((m,n))
-    vo['E_CO2e_ESC_SubBM']=np.zeros((m,n))
+    vo['E_CO2e_ESC_Bioenergy']=np.zeros((m,n))
+    vo['E_CO2e_ESC_OperationsBurnCoal']=np.zeros((m,n))
+    vo['E_CO2e_ESC_OperationsBurnOil']=np.zeros((m,n))
+    vo['E_CO2e_ESC_OperationsBurnGas']=np.zeros((m,n))
     
     # Energy - Transporation Sector
-    vo['E_CO2e_ET_Comb']=np.zeros((m,n))
+    vo['E_CO2e_ET_OperationsBurnCoal']=np.zeros((m,n))
+    vo['E_CO2e_ET_OperationsBurnOil']=np.zeros((m,n))
+    vo['E_CO2e_ET_OperationsBurnGas']=np.zeros((m,n))
     
-    # Inudstrial Produciton and Product Use Sector
-    vo['E_CO2e_IPPU_Comb']=np.zeros((m,n))
+    # Industrial Produciton and Product Use Sector
+    vo['E_CO2e_IPPU_BurningCoal']=np.zeros((m,n))
+    vo['E_CO2e_IPPU_BurningOil']=np.zeros((m,n))
+    vo['E_CO2e_IPPU_BurningGas']=np.zeros((m,n))
+    
+    # Substitution effects
+    vo['E_CO2e_SUB_CoalForBioenergy']=np.zeros((m,n))
+    vo['E_CO2e_SUB_OilForBioenergy']=np.zeros((m,n))
+    vo['E_CO2e_SUB_GasForBioenergy']=np.zeros((m,n))
+    vo['E_CO2e_SUB_CoalForWood']=np.zeros((m,n))
+    vo['E_CO2e_SUB_OilForWood']=np.zeros((m,n))
+    vo['E_CO2e_SUB_GasForWood']=np.zeros((m,n))
+    vo['E_CO2e_SUB_Concrete']=np.zeros((m,n))
+    vo['E_CO2e_SUB_Steel']=np.zeros((m,n))
+    vo['E_CO2e_SUB_Aluminum']=np.zeros((m,n))
+    vo['E_CO2e_SUB_Plastic']=np.zeros((m,n))
+    vo['E_CO2e_SUB_Textile']=np.zeros((m,n))
+    
+    # Production (GJ)
+    vo['Prod_Coal']=np.zeros((m,n))
+    vo['Prod_Oil']=np.zeros((m,n))
+    vo['Prod_Gas']=np.zeros((m,n))
+    
+    # Production (tonnes)
+    vo['Prod_Sawnwood']=np.zeros((m,n))
+    vo['Prod_Panels']=np.zeros((m,n))
+    vo['Prod_Concrete']=np.zeros((m,n))
+    vo['Prod_Steel']=np.zeros((m,n))
+    vo['Prod_Aluminum']=np.zeros((m,n))
+    vo['Prod_Plastic']=np.zeros((m,n))
+    vo['Prod_Textile']=np.zeros((m,n))
     
     if meta['Project']['Biomass Module']=='Sawtooth':
         
@@ -400,29 +441,36 @@ def InitializeStands(meta,iScn,iEns,iBat):
         vo['TreeMean_D']=np.zeros((m,n))
         vo['TreeMean_Csw']=np.zeros((m,n))
         vo['TreeMean_Csw_G']=np.zeros((m,n))
+        
+        # Needed to track dead merch volume
+        vo['V_Merch_M']=np.zeros((m,n))
     
-    # Lables for plotting
-#    HandleLabels=['Stand age (years)','Gross growth (MgC/ha/yr)',
-#             'Net growth (MgC/ha/yr)','Background mortality (MgC/ha/yr)',
-#             'Litterfall (MgC/ha/yr)','NPP (MgC/ha/yr)','RH (MgC/ha/yr)',
-#             'Disturbance mortality (MgC/ha/yr)',
-#             'Removed merch. (MgC/ha/yr)',
-#             'Removed non-merch. (MgC/ha/yr)','Removed dead (MgC/ha/yr)',
-#             'Wildfire emissions as CH4 (MgC/ha/yr)','Wildfire emissions as CO (MgC/ha/yr)',
-#             'Wildfire emissions as CO2 (MgC/ha/yr)','Wildfire emissions as N2O (MgC/ha/yr)',
-#             'Operation emissions as CO2 (MgC/ha/yr)','Merch. volume (m3/ha)',
-#             'Biomass (MgC/ha)','Aboveground biomass (MgC/ha)','Piled (MgC/ha)',
-#             'Litter (MgC/ha)','Dead wood (MgC/ha)',
-#             'Soil (MgC/ha)','Total ecosystem carbon (MgC/ha)','In-use products (MgC/ha)',
-#             'Dump and landfill (MgC/ha)','Product sector E (MgC/ha/yr)']        
-    #'Wildfire mortality (MgC/ha/yr)','Harvest mortality (MgC/ha/yr)',
-    #         'Insect mortality (MgC/ha/yr)','Pathogen mortality (MgC/ha/yr)',
-    #         'Wind mortality (MgC/ha/yr)',
-    #Keys=np.array(list(vo.keys()))
-    #d1={}
-    #for j in range(len(HandleLabels)):
-    #    d1[Keys[j]]=HandleLabels[j]  
-    #meta['Labels Output Variables']=d1
+    #--------------------------------------------------------------------------
+    # Specify a fast-track period that spans the spin-up period for use of Sawtooth
+    # module
+    # *** Not working ***
+    #--------------------------------------------------------------------------
+    
+#    if meta['Project']['Biomass Module']=='Sawtooth':
+#        
+#        meta['Project']['SpinupSpanFastTrack']=[None]*meta['Project']['N Scenario']
+#        
+#        for iScn in range(meta['Project']['N Scenario']):
+#        
+#            # Get spinup event years
+#            ivl_spin=meta['Project']['Spinup Disturbance Return Inverval']
+#            YearRef=meta['Scenario'][iScn]['Year1_DisFromInv']
+#            AgeRef=meta['Scenario'][iScn]['Age1_DisFromInv']
+#            if AgeRef>=0:
+#                Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)
+#            else:
+#                Year1=meta['Project']['Year Start']+ivl_spin
+#                Year2=meta['Project']['Spinup Year End']
+#                Year=np.arange(Year1,Year2+1,meta['Project']['Spinup Disturbance Return Inverval'])
+#    
+#            meta['Project']['SpinupSpanFastTrack'][iScn]={}
+#            meta['Project']['SpinupSpanFastTrack'][iScn]['Start']=Year[3]
+#            meta['Project']['SpinupSpanFastTrack'][iScn]['End']=Year[-2]
     
     #--------------------------------------------------------------------------
     # Configure batch-specific setttings
@@ -435,15 +483,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     # net growth, the fluxes of gross growth and mortality need adjustment. 
     # This flag helps achieve that.    
     meta['FlagNegNetGrowth']=np.zeros(meta['Project']['Batch Size'][iBat])
-    meta['G_Net_PriorToBreakup']=np.zeros((meta['Project']['Batch Size'][iBat],7))    
-    
-#    # Identify the start and end of a fixed spin up disturbance interval
-#    # This is used to fast-track through the spinup period.   
-#    # *** Retired - fast tracking is now automatic. ***
-#    if meta['Project']['Biomass Module']=='Sawtooth':        
-#        d=np.append(0,np.diff(vi['EH'][0]['Year']))
-#        ind=np.where(d==meta['Project']['Spinup Disturbance Return Inverval'])[0]
-#        meta['Project']['SpinupSpanFastTrack']=[np.min(vi['EH'][0]['Year'][ind])+meta['Project']['Spinup Disturbance Return Inverval'],np.max(vi['EH'][0]['Year'][ind])]
+    meta['G_Net_PriorToBreakup']=np.zeros((meta['Project']['Batch Size'][iBat],7))        
     
     #--------------------------------------------------------------------------
     # Generate random numbers for on-the-fly disturbance types
@@ -507,7 +547,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
                 meta['Param']['BE']['Dist'][ID_Type][Variable]=meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type][Variable]
             
     if meta['Project']['Uncertainty Status Substitution']=='On':        
-        for k in meta['Param']['BE']['Substitution'].keys():        
+        for k in meta['Param']['By Ensemble'][iEns]['Substitution'].keys():        
             meta['Param']['BEV']['Substitution'][k]=meta['Param']['By Ensemble'][iEns]['Substitution'][k]
     
     if meta['Project']['Uncertainty Status Nutrient Application']=='On':        
@@ -542,7 +582,97 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
                 meta['Param']['BEV']['Biomass Allometry'][k][ind]=meta['Param']['BEV']['Biomass Allometry']['Raw'][k][1]
       
     #--------------------------------------------------------------------------
-    # Harvested Wood Products
+    # Disturbance - Fate of Felled Material
+    #--------------------------------------------------------------------------
+    
+    # Initialize
+    meta['Param']['BEV']['Felled Fate']={}
+    for k in meta['Param']['BE']['Felled Fate']['Default']['Coast'].keys():
+        meta['Param']['BEV']['Felled Fate'][k]=np.zeros( (meta['Param']['BE']['Felled Fate']['Year'].size,meta['Project']['Batch Size'][iBat]) )
+    
+    # Papulate batch-specific parameters
+    if meta['Project']['Scenario Source']=='Portfolio':
+    
+        indBat=cbu.IndexToBatch(meta,iBat)
+        
+        # Isolate felled fate scenario names within this batch
+        ScenarioName=meta['Project']['Portfolio']['Felled Fate Scenario'][indBat]
+        
+        # Isolate region
+        RegionName=meta['Project']['Portfolio']['Region Name'][indBat]
+        
+        # Unique scenario and region (must be converted to string)
+        SR=np.column_stack((ScenarioName,RegionName))
+        SR=SR.astype(str)
+        u=np.unique(SR,axis=0)
+
+        for iU in range(u.shape[0]):
+            
+            # Index to each scenario
+            scn=u[iU,0]
+            reg=u[iU,1]
+            ind=np.where( (ScenarioName==scn) & (RegionName==reg) )[0]
+            
+            for k in meta['Param']['BE']['Felled Fate'][scn][reg].keys():
+                x=meta['Param']['BE']['Felled Fate'][scn][reg][k]
+                x=np.reshape(x,(-1,1))
+                x=np.tile(x,(1,ind.size))
+                meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
+ 
+    elif meta['Project']['Scenario Source']=='Spreadsheet':
+        
+        # Fate of Felled Scenario
+        scn=meta['Scenario'][meta['iScn']]['Felled Fate Scenario']
+        
+        # Region
+        bgc=meta['Scenario'][meta['iScn']]['BGC Zone Code']
+        if np.isin(bgc,['CWH','CDF','MH'])==True:
+            reg='Coast'
+        else:
+            reg='Interior'
+        
+        for k in meta['Param']['BE']['Felled Fate'][scn][reg].keys():
+            
+            x=meta['Param']['BE']['Felled Fate'][scn][reg][k]
+            x=np.reshape(x,(-1,1))
+            x=np.tile(x,(1,meta['Project']['Batch Size'][iBat]))
+            meta['Param']['BEV']['Felled Fate'][k]=x    
+    
+    else:
+        
+        # Index to batch
+        indBat=cbu.IndexToBatch(meta,iBat)
+        
+        # Isolate felled fate scenario names within this batch
+        ScenarioName=meta['Scenario'][meta['iScn']]['Felled Fate Scenario']
+        
+        id=vi['Inv']['ID_BECZ'].flatten()
+        u=np.unique(id)
+        flg=np.zeros(indBat.size)
+        for iU in range(u.size):
+            cd=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])[0]
+            ind=np.where(id==u[iU])[0]            
+            if np.isin(cd,['CWH','CDF','MH'])==True:
+                flg[ind]=1
+            else:
+                flg[ind]=0
+        
+        ind=np.where( flg==0 )[0]            
+        for k in meta['Param']['BE']['Felled Fate'][ScenarioName]['Interior'].keys():
+            x=meta['Param']['BE']['Felled Fate'][ScenarioName]['Interior'][k]
+            x=np.reshape(x,(-1,1))
+            x=np.tile(x,(1,ind.size))
+            meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
+        
+        ind=np.where( flg==1 )[0]            
+        for k in meta['Param']['BE']['Felled Fate'][ScenarioName]['Coast'].keys():
+            x=meta['Param']['BE']['Felled Fate'][ScenarioName]['Coast'][k]
+            x=np.reshape(x,(-1,1))
+            x=np.tile(x,(1,ind.size))
+            meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
+        
+    #--------------------------------------------------------------------------
+    # Harvested Wood Products - static
     #--------------------------------------------------------------------------
     
     for i in range(len(meta['Param']['BEV']['HWP']['Raw'])):
@@ -556,6 +686,45 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
             Value=1-np.exp(-np.log(2)/Value)        
         
         meta['Param']['BEV']['HWP'][Name]=Value*np.ones(meta['Project']['Batch Size'][iBat])
+    
+    #--------------------------------------------------------------------------
+    # Harvested Wood Products - End Uses
+    #--------------------------------------------------------------------------
+    
+    # Initialize
+    meta['Param']['BEV']['HWP End Use']={}
+    for k in meta['Param']['BE']['HWP End Use']['Default'].keys():
+        meta['Param']['BEV']['HWP End Use'][k]=np.zeros( (meta['Param']['BE']['HWP End Use']['Year'].size,meta['Project']['Batch Size'][iBat]) )
+    
+    # Papulate batch-specific parameters
+    if meta['Project']['Scenario Source']=='Portfolio':
+    
+        indBat=cbu.IndexToBatch(meta,iBat)
+        
+        # Isolate scenario names within this batch
+        ScenarioName=meta['Project']['Portfolio']['HWP End Use Scenario'][indBat]
+        
+        # Unique scenarios
+        uSN=np.unique(ScenarioName)
+        
+        for iU in range(uSN.size):
+            # Index to each scenario
+            sn=uSN[iU]
+            indS=np.where(ScenarioName==sn)[0]
+            for k in meta['Param']['BE']['HWP End Use']['Default'].keys():
+                x=meta['Param']['BE']['HWP End Use'][sn][k]
+                x=np.reshape(x,(-1,1))
+                x=np.tile(x,(1,indS.size))
+                meta['Param']['BEV']['HWP End Use'][k][:,indS]=x
+ 
+    else:
+        
+        for k in meta['Param']['BE']['HWP End Use']['Default'].keys():
+            
+            x=meta['Param']['BE']['HWP End Use']['Default'][k]
+            x=np.reshape(x,(-1,1))
+            x=np.tile(x,(1,meta['Project']['Batch Size'][iBat]))
+            meta['Param']['BEV']['HWP End Use'][k]=x
     
     #--------------------------------------------------------------------------
     # Populate custom harvest parameters with those supplied for project
@@ -615,6 +784,8 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     #--------------------------------------------------------------------------
     
     bB=meta['Param']['BEV']['Biophysical']
+    bS=meta['Param']['BEV']['Substitution']
+    WoodDensity=0.45
     
     #--------------------------------------------------------------------------
     # Isolate time period that will be saved to file
@@ -705,13 +876,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     # Substitution effects
     # This needs to be here so that parameter uncertainty can be considered.
     #--------------------------------------------------------------------------
-    
-    #if meta['Scenario'][iScn]['Substitution Effects Status']=='On':
-    
-    # Extract parameters
-    bS=meta['Param']['BEV']['Substitution']
-    WoodDensity=0.42
-    
+        
     #----------------------------------------------------------------------
     # Domestirc facility power generation (MgC/ha) to (green tonne/ha)    
     #----------------------------------------------------------------------
@@ -719,102 +884,205 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     Yield_PowerFacilityDom=vo['C_ToPowerFacilityDom']/WoodDensity/bB['WoodMoistureContent']
     
     # Yield to energy (GJ/ha)
-    GJ_PowerFacilityDom=bB['Wood Fuel Industrial (50% moisture) (GJ/kg)']*(Yield_PowerFacilityDom*1000)
+    GJ_PowerFacilityDom=bB['Energy Content Wood Fuel Industrial (50% moisture)']*(Yield_PowerFacilityDom*1000)
     
-    E_Coal=bS['PowerFacilityDomFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ_PowerFacilityDom/1000
-    E_Diesel=bS['PowerFacilityDomFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ_PowerFacilityDom/1000
-    E_NatGas=bS['PowerFacilityDomFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ_PowerFacilityDom/1000
-    E_Oil=bS['PowerFacilityDomFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ_PowerFacilityDom/1000
-    E_PowerFacilityDom_Sub=E_Coal+E_Diesel+E_NatGas+E_Oil
+    E_Sub_CoalForBioenergy_PowerFacilityDom=bS['PowerFacilityDomFracDisplacingCoal']*bB['Emission Intensity Coal']*GJ_PowerFacilityDom/1000
+    E_Sub_DieselForBioenergy_PowerFacilityDom=bS['PowerFacilityDomFracDisplacingDiesel']*bB['Emission Intensity Diesel']*GJ_PowerFacilityDom/1000
+    E_Sub_GasForBioenergy_PowerFacilityDom=bS['PowerFacilityDomFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']*GJ_PowerFacilityDom/1000
+    E_Sub_OilForBioenergy_PowerFacilityDom=bS['PowerFacilityDomFracDisplacingOil']*bB['Emission Intensity Oil']*GJ_PowerFacilityDom/1000
     
     #----------------------------------------------------------------------
     # Foreign facility power generation (MgC/ha) to (green tonne/ha)    
     #----------------------------------------------------------------------
     
+    # Yield (green tonnes/ha)
     Yield_PowerFacilityFor=vo['C_ToPowerFacilityDom']/WoodDensity/bB['WoodMoistureContent']
     
     # Yield to energy (GJ/ha)
-    GJ_PowerFacilityFor=bB['Wood Fuel Industrial (50% moisture) (GJ/kg)']*(Yield_PowerFacilityFor*1000)
+    GJ_PowerFacilityFor=bB['Energy Content Wood Fuel Industrial (50% moisture)']*(Yield_PowerFacilityFor*1000)
     
-    E_Coal=bS['PowerFacilityForFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ_PowerFacilityFor/1000
-    E_Diesel=bS['PowerFacilityForFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ_PowerFacilityFor/1000
-    E_NatGas=bS['PowerFacilityForFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ_PowerFacilityFor/1000
-    E_Oil=bS['PowerFacilityForFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ_PowerFacilityFor/1000
-    E_PowerFacilityFor_Sub=E_Coal+E_Diesel+E_NatGas+E_Oil
+    E_Sub_CoalForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingCoal']*bB['Emission Intensity Coal']*GJ_PowerFacilityFor/1000
+    E_Sub_DieselForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingDiesel']*bB['Emission Intensity Diesel']*GJ_PowerFacilityFor/1000
+    E_Sub_GasForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']*GJ_PowerFacilityFor/1000
+    E_Sub_OilForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingOil']*bB['Emission Intensity Oil']*GJ_PowerFacilityFor/1000
     
     #----------------------------------------------------------------------
     # Independent power producers (MgC/ha) to (green tonne/ha)    
     #----------------------------------------------------------------------
     
+    # Yield (green tonnes/ha)
     Yield_PowerGrid=vo['C_ToPowerGrid']/WoodDensity/bB['WoodMoistureContent']
     
     # Yield to energy (GJ/ha)
-    GJ_PowerGrid=bB['Wood Fuel Industrial (50% moisture) (GJ/kg)']*(Yield_PowerGrid*1000)
+    GJ_PowerGrid=bB['Energy Content Wood Fuel Industrial (50% moisture)']*(Yield_PowerGrid*1000)
     
-    E_Coal=bS['PowerGridFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ_PowerGrid/1000
-    E_Diesel=bS['PowerGridFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ_PowerGrid/1000
-    E_NatGas=bS['PowerGridFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ_PowerGrid/1000
-    E_Oil=bS['PowerGridFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ_PowerGrid/1000
-    E_PowerGrid_Sub=E_Coal+E_Diesel+E_NatGas+E_Oil
+    E_Sub_CoalForBioenergy_PowerGrid=bS['PowerGridFracDisplacingCoal']*bB['Emission Intensity Coal']*GJ_PowerGrid/1000
+    E_Sub_DieselForBioenergy_PowerGrid=bS['PowerGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']*GJ_PowerGrid/1000
+    E_Sub_GasForBioenergy_PowerGrid=bS['PowerGridFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']*GJ_PowerGrid/1000
+    E_Sub_OilForBioenergy_PowerGrid=bS['PowerGridFracDisplacingOil']*bB['Emission Intensity Oil']*GJ_PowerGrid/1000
     
     #----------------------------------------------------------------------
     # Pellets (MgC/ha) to (kiln dried tonne/ha)
     #----------------------------------------------------------------------
     
+    # Yield (kiln dired tonnes/ha)
     Yield_Pellet=vo['C_ToPellets']/WoodDensity
     
     # Yield to energy (GJ/ha)
-    GJ_Pellet=bB['Wood Fuel Kiln-dried (GJ/kg)']*(Yield_Pellet*1000)
+    GJ_Pellet=bB['Energy Content Wood Fuel Kiln-dried']*(Yield_Pellet*1000)
     
-    E_Coal=bS['PelletFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ_Pellet/1000
-    E_Diesel=bS['PelletFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ_Pellet/1000
-    E_NatGas=bS['PelletFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ_Pellet/1000
-    E_Oil=bS['PelletFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ_Pellet/1000
-    E_Pellet_Sub=E_Coal+E_Diesel+E_NatGas+E_Oil
+    E_Sub_CoalForBioenergy_Pellets=bS['PelletFracDisplacingCoal']*bB['Emission Intensity Coal']*GJ_Pellet/1000
+    E_Sub_DieselForBioenergy_Pellets=bS['PelletFracDisplacingDiesel']*bB['Emission Intensity Diesel']*GJ_Pellet/1000
+    E_Sub_GasForBioenergy_Pellets=bS['PelletFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']*GJ_Pellet/1000
+    E_Sub_OilForBioenergy_Pellets=bS['PelletFracDisplacingOil']*bB['Emission Intensity Oil']*GJ_Pellet/1000
     
     #----------------------------------------------------------------------
     # Domestic firewood (MgC/ha) to (air dried tonne/ha)
     #----------------------------------------------------------------------
     
+    # Yield (air dried tonnes/ha)
     Yield_FirewoodDom=vo['C_ToFirewoodDom']/WoodDensity
     
     # Yield to energy (GJ/ha)
-    GJ_FirewoodDom=bB['Wood Fuel Residential (0% moisture) (GJ/kg)']*(Yield_FirewoodDom*1000)
+    GJ_FirewoodDom=bB['Energy Content Wood Fuel Residential (0% moisture)']*(Yield_FirewoodDom*1000)
     
-    E_Coal=bS['FirewoodDomFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ_FirewoodDom/1000
-    E_Diesel=bS['FirewoodDomFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ_FirewoodDom/1000
-    E_NatGas=bS['FirewoodDomFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ_FirewoodDom/1000
-    E_Oil=bS['FirewoodDomFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ_FirewoodDom/1000
-    E_FirewoodDom_Sub=E_Coal+E_Diesel+E_NatGas+E_Oil
+    E_Sub_CoalForBioenergy_FirewoodDom=bS['FirewoodDomFracDisplacingCoal']*bB['Emission Intensity Coal']*GJ_FirewoodDom/1000
+    E_Sub_DieselForBioenergy_FirewoodDom=bS['FirewoodDomFracDisplacingDiesel']*bB['Emission Intensity Diesel']*GJ_FirewoodDom/1000
+    E_Sub_GasForBioenergy_FirewoodDom=bS['FirewoodDomFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']*GJ_FirewoodDom/1000
+    E_Sub_OilForBioenergy_FirewoodDom=bS['FirewoodDomFracDisplacingOil']*bB['Emission Intensity Oil']*GJ_FirewoodDom/1000
     
     #----------------------------------------------------------------------
     # Foreign firewood (MgC/ha) to (air dried tonne/ha)
     #----------------------------------------------------------------------
     
+    # Yield (air dried tonnes/ha)
     Yield_FirewoodFor=vo['C_ToFirewoodFor']/WoodDensity
     
     # Yield to energy (GJ/ha)
-    GJ_FirewoodFor=bB['Wood Fuel Residential (0% moisture) (GJ/kg)']*(Yield_FirewoodFor*1000)
+    GJ_FirewoodFor=bB['Energy Content Wood Fuel Residential (0% moisture)']*(Yield_FirewoodFor*1000)
     
-    E_Coal=bS['FirewoodForFracDisplacingCoal']*bB['Coal Emission (kgCO2e/GJ)']*GJ_FirewoodFor/1000
-    E_Diesel=bS['FirewoodForFracDisplacingDiesel']*bB['Diesel Fuel Emission (kgCO2e/GJ)']*GJ_FirewoodFor/1000
-    E_NatGas=bS['FirewoodForFracDisplacingNaturalGas']*bB['Natural gas Emission (kgCO2e/GJ)']*GJ_FirewoodFor/1000
-    E_Oil=bS['FirewoodForFracDisplacingOil']*bB['Oil Emission (kgCO2e/GJ)']*GJ_FirewoodFor/1000
-    E_FirewoodFor_Sub=E_Coal+E_Diesel+E_NatGas+E_Oil
+    E_Sub_CoalForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingCoal']*bB['Emission Intensity Coal']*GJ_FirewoodFor/1000
+    E_Sub_DieselForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingDiesel']*bB['Emission Intensity Diesel']*GJ_FirewoodFor/1000
+    E_Sub_GasForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']*GJ_FirewoodFor/1000
+    E_Sub_OilForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingOil']*bB['Emission Intensity Oil']*GJ_FirewoodFor/1000
     
-    # Sum substitution of power facility, grid, pellets, and firewood
-    vo['E_CO2e_ESC_SubE']=vo['E_CO2e_ESC_SubE'] + (E_PowerFacilityDom_Sub + E_PowerFacilityFor_Sub + \
-      E_PowerGrid_Sub + E_Pellet_Sub + E_FirewoodDom_Sub + E_FirewoodFor_Sub)
+    #--------------------------------------------------------------------------
+    # Substitution of fossil fuels for bioenergy
+    # *** Save as positive and then change sign in post-processing ***
+    #--------------------------------------------------------------------------
+    
+    vo['E_CO2e_SUB_CoalForBioenergy']= \
+        (E_Sub_CoalForBioenergy_PowerFacilityDom + \
+         E_Sub_CoalForBioenergy_PowerFacilityFor + \
+         E_Sub_CoalForBioenergy_PowerGrid + \
+         E_Sub_CoalForBioenergy_Pellets + \
+         E_Sub_CoalForBioenergy_FirewoodDom + \
+         E_Sub_CoalForBioenergy_FirewoodFor)
+    
+    vo['E_CO2e_SUB_OilForBioenergy']= \
+        (E_Sub_OilForBioenergy_PowerFacilityDom + \
+         E_Sub_OilForBioenergy_PowerFacilityFor + \
+         E_Sub_OilForBioenergy_PowerGrid + \
+         E_Sub_OilForBioenergy_Pellets + \
+         E_Sub_OilForBioenergy_FirewoodDom + \
+         E_Sub_OilForBioenergy_FirewoodFor + \
+         E_Sub_DieselForBioenergy_PowerFacilityDom + \
+         E_Sub_DieselForBioenergy_PowerFacilityFor + \
+         E_Sub_DieselForBioenergy_PowerGrid + \
+         E_Sub_DieselForBioenergy_Pellets + \
+         E_Sub_DieselForBioenergy_FirewoodDom + \
+         E_Sub_DieselForBioenergy_FirewoodFor)
+    
+    vo['E_CO2e_SUB_GasForBioenergy']= \
+        (E_Sub_GasForBioenergy_PowerFacilityDom + \
+         E_Sub_GasForBioenergy_PowerFacilityFor + \
+         E_Sub_GasForBioenergy_PowerGrid + \
+         E_Sub_GasForBioenergy_Pellets + \
+         E_Sub_GasForBioenergy_FirewoodDom + \
+         E_Sub_GasForBioenergy_FirewoodFor)
     
     #----------------------------------------------------------------------
-    # Building materials (tCO2e/ha)
+    # Substitution for structural wood produts (tCO2e/ha)
     #----------------------------------------------------------------------
+
+    # Sawnwood (t DM)
+    vo['Prod_Sawnwood']=meta['Param']['BEV']['Econ']['wood_C_to_DM']*vo['C_ToLumber']
+
+    # Panels (t DM)
+    vo['Prod_Panels']=meta['Param']['BEV']['Econ']['wood_C_to_DM']*(vo['C_ToPlywood']+vo['C_ToOSB']+vo['C_ToMDF'])
     
-    E_LumberSub=bB['Ratio_CO2_to_C']*bS['LumberDisplacementFactor']*vo['C_ToLumber']
-    E_PanelSub=bB['Ratio_CO2_to_C']*bS['PanelDisplacementFactor']*(vo['C_ToPlywood']+vo['C_ToOSB']+vo['C_ToMDF'])
+    # Residuals (tonnes)
+    #Residuals=0
+    
+    # Substitution of concrete for structural wood
+    fS=bS['SawnwoodFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForSawnwood']*vo['Prod_Sawnwood']
+    fP=bS['PanelsFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForPanels']*vo['Prod_Panels']
+    fR=0#bS['ResidualsFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForResiduals']*Residuals
+    vo['Prod_Concrete']=vo['Prod_Concrete']+fS+fP#-fR
+    
+    # Substitution of steel for structural wood
+    fS=bS['SawnwoodFracDisplacingSteel']*bS['DisplacementRatio_SteelForSawnwood']*vo['Prod_Sawnwood']
+    fP=bS['PanelsFracDisplacingSteel']*bS['DisplacementRatio_SteelForPanels']*vo['Prod_Panels']
+    fR=0#bS['ResidualsFracDisplacingSteel']*bS['DisplacementRatio_SteelForResiduals']*Residuals
+    vo['Prod_Steel']=vo['Prod_Steel']+fS+fP#-fR
+    
+    # Substitution of aluminum for structural wood
+    fS=bS['SawnwoodFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForSawnwood']*vo['Prod_Sawnwood']
+    fP=bS['PanelsFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForPanels']*vo['Prod_Panels']
+    fR=0#bS['ResidualsFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForResiduals']*Residuals
+    vo['Prod_Aluminum']=vo['Prod_Aluminum']+fS+fP#-fR
+    
+    # Substitution of plastics for structural wood
+    fS=bS['SawnwoodFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForSawnwood']*vo['Prod_Sawnwood']
+    fP=bS['PanelsFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForPanels']*vo['Prod_Panels']
+    fR=0#bS['ResidualsFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForResiduals']*Residuals
+    vo['Prod_Plastic']=vo['Prod_Plastic']+fS+fP#-fR
+    
+    # Substitution of textiles for structural wood
+    fS=bS['SawnwoodFracDisplacingTextile']*bS['DisplacementRatio_TextileForSawnwood']*vo['Prod_Sawnwood']
+    fP=bS['PanelsFracDisplacingTextile']*bS['DisplacementRatio_TextileForPanels']*vo['Prod_Panels']
+    fR=0#bS['ResidualsFracDisplacingTextile']*bS['DisplacementRatio_TextileForResiduals']*Residuals
+    vo['Prod_Textile']=vo['Prod_Textile']+fS+fP#-fR
+
+    # Emissions from productoin of structural materials
+    vo['E_CO2e_SUB_Concrete']=bB['Emission Intensity Concrete']*vo['Prod_Concrete']
+    vo['E_CO2e_SUB_Steel']=bB['Emission Intensity Steel']*vo['Prod_Steel']
+    vo['E_CO2e_SUB_Aluminum']=bB['Emission Intensity Aluminum']*vo['Prod_Aluminum']
+    vo['E_CO2e_SUB_Plastic']=bB['Emission Intensity Plastic']*vo['Prod_Plastic']
+    vo['E_CO2e_SUB_Textile']=bB['Emission Intensity Textile']*vo['Prod_Textile']
+
+    # Emissions from structural matierials, tallied by feedstock (and calcination)
+    vo['E_CO2e_SUB_CoalForWood']= \
+        bS['FracConcreteEmissionsFromCoal']*vo['E_CO2e_SUB_Concrete']+ \
+        bS['FracSteelEmissionsFromCoal']*vo['E_CO2e_SUB_Steel']+ \
+        bS['FracAluminumEmissionsFromCoal']*vo['E_CO2e_SUB_Aluminum']+ \
+        bS['FracPlasticEmissionsFromCoal']*vo['E_CO2e_SUB_Plastic']+ \
+        bS['FracTextileEmissionsFromCoal']*vo['E_CO2e_SUB_Textile']
+    
+    vo['E_CO2e_SUB_OilForWood']= \
+        bS['FracConcreteEmissionsFromOil']*vo['E_CO2e_SUB_Concrete']+ \
+        bS['FracSteelEmissionsFromOil']*vo['E_CO2e_SUB_Steel']+ \
+        bS['FracAluminumEmissionsFromOil']*vo['E_CO2e_SUB_Aluminum']+ \
+        bS['FracPlasticEmissionsFromOil']*vo['E_CO2e_SUB_Plastic']+ \
+        bS['FracTextileEmissionsFromOil']*vo['E_CO2e_SUB_Textile']
+    
+    vo['E_CO2e_SUB_GasForWood']= \
+        bS['FracConcreteEmissionsFromGas']*vo['E_CO2e_SUB_Concrete']+ \
+        bS['FracSteelEmissionsFromGas']*vo['E_CO2e_SUB_Steel']+ \
+        bS['FracAluminumEmissionsFromGas']*vo['E_CO2e_SUB_Aluminum']+ \
+        bS['FracPlasticEmissionsFromGas']*vo['E_CO2e_SUB_Plastic']+ \
+        bS['FracTextileEmissionsFromGas']*vo['E_CO2e_SUB_Textile']
+        
+    vo['E_CO2e_SUB_Calcination']=bS['FracConcreteEmissionsFromCalcination']*vo['E_CO2e_SUB_Concrete']
     
     # Sum substitution of building materials
-    vo['E_CO2e_ESC_SubBM']=vo['E_CO2e_ESC_SubBM']+(E_LumberSub+E_PanelSub)
+    #vo['E_CO2e_ESC_SubBM']=vo['E_CO2e_ESC_SubBM']+(E_LumberSub+E_PanelSub)
+
+    #--------------------------------------------------------------------------
+    # Back-calculate production of fossil fuel consumption from operational use
+    # and substitution effects (GJ)
+    # *** Moved to post-processing ***
+    #--------------------------------------------------------------------------
     
     #--------------------------------------------------------------------------
     # Sum pools and fluxes if "Save Biomass Pools" is Off
@@ -831,7 +1099,8 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         vo['C_DeadWood_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)
         vo['C_Soil_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)
         vo['C_InUse_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['InUse']],axis=2)
-        vo['C_DumpLandfill_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['DumpLandfill']],axis=2)
+        vo['DM_Buildings_Tot']=2*np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['Buildings'] ],axis=2)
+        vo['C_DumpLandfill_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['DumpLandfill']],axis=2)        
         
         # Remove pools
         del vo['C_Eco_Pools']
@@ -850,7 +1119,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         del vo['C_M_Reg']
         del vo['C_LF']
         del vo['C_RH']
-        
+    
     #--------------------------------------------------------------------------
     # Apply scale factor to data
     #--------------------------------------------------------------------------    
@@ -880,27 +1149,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         if np.max(vo['C_M_ByAgent'][k]<32767):
             vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype('int16')
         else:
-            vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype(int)  
-    
-    #--------------------------------------------------------------------------  
-    # Sawtooth variables
-    #--------------------------------------------------------------------------  
-    
-#    if meta['Project']['Biomass Module']=='Sawtooth':
-#        dat['N']=vo['N'][it,:]
-#        dat['N_M']=vo['N_M_Tot'][it,:]
-#        dat['N_R']=vo['N_R'][it,:]
-#        dat['C_M_Sim_Reg']=vo['C_M_Sim_Reg'][it,:]
-#        dat['C_M_Sim_Fir']=vo['C_M_Sim_Fir'][it,:]
-#        dat['C_M_Sim_Har']=vo['C_M_Sim_Har'][it,:]
-#        dat['C_M_Sim_Ins']=vo['C_M_Sim_Ins'][it,:]
-#        dat['C_M_Sim_Pat']=vo['C_M_Sim_Pat'][it,:]
-#        dat['C_M_Sim_Win']=vo['C_M_Sim_Win'][it,:]
-#        dat['TreeMean_A']=vo['TreeMean_A'][it,:]
-#        dat['TreeMean_Csw']=vo['TreeMean_Csw'][it,:]
-#        dat['TreeMean_Csw_G']=vo['TreeMean_Csw_G'][it,:]
-#        dat['TreeMean_D']=vo['TreeMean_D'][it,:]
-#        dat['TreeMean_H']=vo['TreeMean_H'][it,:]
+            vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype(int)
     
     #--------------------------------------------------------------------------  
     # Save data

@@ -139,8 +139,9 @@ def SaveGeoTiff(z,fout):
     ds_out=driver.Create(fout,z['n'],z['m'],N_band,dtype,[ 'COMPRESS=LZW' ])
     ds_out.SetProjection(z['Projection'])
     ds_out.SetGeoTransform(z['gt'])
-    ds_out.GetRasterBand(1).WriteArray(z['Data'])    
-    
+    ds_out.GetRasterBand(1).WriteArray(z['Data'])
+   
+    return
 
 '''============================================================================
 CLIP RASTER

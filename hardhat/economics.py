@@ -126,8 +126,8 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Cost Ripping']=np.zeros(v1['A'].shape)
     d['Cost PAS Deactivation']=np.zeros(v1['A'].shape)
     d['Cost Slashpile Burn']=np.zeros(v1['A'].shape)
-    d['Harvest Vol Merch']=np.zeros(v1['A'].shape)
-    d['Harvest Vol Resid']=np.zeros(v1['A'].shape)
+    #d['Harvest Vol Merch']=np.zeros(v1['A'].shape)
+    #d['Harvest Vol Resid']=np.zeros(v1['A'].shape)
         
     for iStand in range(v1['A'].shape[1]):
         
@@ -313,9 +313,10 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
                 # Merchantable wood
                 
-                Removed_C=v1['C_ToMillMerch'][it1,iStand]+v1['C_ToMillSnagStem'][it1,iStand]                
-                Removed_DM=b['wood_C_to_DM']*Removed_C                
-                Removed_V=b['wood_DM_to_m3']*Removed_DM                
+                #Removed_C=v1['C_ToMillMerch'][it1,iStand]+v1['C_ToMillSnagStem'][it1,iStand]  
+                #Removed_DM=b['wood_C_to_DM']*Removed_C                
+                #Removed_V=b['wood_DM_to_m3']*Removed_DM
+                Removed_V=v1['V_ToMillMerchTotal'][it1,iStand]
                 Removed_mbf=b['wood_m3_to_bd_ft']*(1/1000)*Removed_V
                     
                 # Log-size effect
@@ -338,7 +339,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
                     lsef_skidding=0.9
                     lsef_roads=0.85
                 
-                d['Harvest Vol Merch'][it1,iStand]=Removed_V
+                #d['Harvest Vol Merch'][it1,iStand]=Removed_V
 
                 if (inv['ID_BECZ'][0,iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | (inv['ID_BECZ'][0,iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']):
                     
@@ -362,14 +363,14 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
                 
                 # Residual fibre
                 
-                Removed_C=v1['C_ToMillNonMerch'][it1,iStand]
-                Removed_DM=b['wood_C_to_DM']*Removed_C                
-                Removed_V=b['wood_DM_to_m3']*Removed_DM                
+                #Removed_C=v1['C_ToMillNonMerch'][it1,iStand]
+                #Removed_DM=b['wood_C_to_DM']*Removed_C
+                #Removed_V=b['wood_DM_to_m3']*Removed_DM                
                 #Removed_mbf=b['wood_m3_to_bd_ft']*(1/1000)*Removed_V
                 
-                d['Harvest Vol Resid'][it1,iStand]=Removed_V
+                #d['Harvest Vol Resid'][it1,iStand]=Removed_V
                 
-                d['Cost Harvest Residuals'][it1,iStand]=dCost['Cost Residual Haul and Grind (CDN$/m3)'][it0]*Removed_V
+                d['Cost Harvest Residuals'][it1,iStand]=dCost['Cost Residual Haul and Grind (CDN$/m3)'][it0]*v1['V_ToMillNonMerch'][it1,iStand]
         
         #----------------------------------------------------------------------
         # Slashpile burning

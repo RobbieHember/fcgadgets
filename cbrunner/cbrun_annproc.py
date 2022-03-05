@@ -3,8 +3,9 @@
 
 import numpy as np
 from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcgadgets.silviculture import nutrient_application as napp
+from fcgadgets.hardhat import nutrient_application as napp
 from fcgadgets.taz import aspatial_stat_models as asm
+import warnings
 
 #%% Biomass dynamics
 
@@ -56,9 +57,15 @@ def Biomass_FromTIPSYorTASS(iScn,iBat,iT,vi,vo,meta,iEP):
     vo['C_G_Net'][iT,:,iEP['RootCoarse']]=(1-0.072)*G_Net_Root_Total
     vo['C_G_Net'][iT,:,iEP['RootFine']]=0.072*G_Net_Root_Total
     
-    # Update stemwood merchantable volume
-    vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT-1,:]+NetGrowth[:,5]#.astype(float)*meta['GC']['Scale Factor']      
-
+    # Update live stemwood merchantable volume
+    vo['V_MerchLive'][iT,:]=vo['V_MerchLive'][iT-1,:]+NetGrowth[:,5]#.astype(float)*meta['GC']['Scale Factor']      
+    
+    # Update dead stemwood merchantable volume
+    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT-1,:]
+    
+    # Update total (live+dead) stemwood merchantable volume
+    vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
+    
     #--------------------------------------------------------------------------
     # Nutrient application effects to net growth
     #--------------------------------------------------------------------------
@@ -232,6 +239,9 @@ def Biomass_FromTIPSYorTASS(iScn,iBat,iT,vi,vo,meta,iEP):
 
 def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
     
+    # Turn warnings off to avoid divide by zero warning
+    warnings.filterwarnings('ignore')
+    
     # *************************************************************************
     # What if we only track the current and previous time step - memory useage would
     # be low enough to vectorize stands
@@ -239,149 +249,103 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
     # of each time step.
     #**************************************************************************
     
+    # Define demensions    
+    N_time=meta['Project']['N Time']
     
-    #--------------------------------------------------------------------------
-    # Define demensions
-    #--------------------------------------------------------------------------
+    # Maximum number of trees per stand
+    N_tree=meta['Param']['BE']['Sawtooth']['Core']['Max SPH'].astype(int)
     
-    N_t=meta['N Time']
-    N_tree=meta['Project']['Max Num Trees Per Stand']
-        
-    #--------------------------------------------------------------------------
-    # A vector of zeros
-    #--------------------------------------------------------------------------
-    
-    ZerosYear=np.zeros((1,N_tree))
-    
-    #--------------------------------------------------------------------------
-    # Function for calculating the difference
-    #--------------------------------------------------------------------------
-    
-    def diff(x):    
-        d=x[1:,:]-x[0:-1,:]
-        y=np.concatenate((ZerosYear,d))
-        return y
-    
-    #--------------------------------------------------------------------------
-    # Multiplier to convert kg C to Mg C
-    #--------------------------------------------------------------------------
-    
+    # Multiplier to convert kg C to Mg C    
     cm=1000
     
     #--------------------------------------------------------------------------
     # Initialize tree-level variables
     #--------------------------------------------------------------------------
     
-    tl_ID_Srs=np.zeros((N_t,N_tree),dtype=np.int)
-    tl_ID_Decid=np.zeros((N_t,N_tree),dtype=np.int)
-    tl_A=np.zeros((N_t,N_tree))
-    tl_H=np.zeros((N_t,N_tree))
-    tl_D=np.zeros((N_t,N_tree))
-    tl_N_R=np.zeros((N_t,N_tree))
-    tl_N_M_Inv_Fir=np.zeros((N_t,N_tree))
-    tl_N_M_Inv_Ins=np.zeros((N_t,N_tree))
-    tl_N_M_Inv_Pat=np.zeros((N_t,N_tree))
-    tl_N_M_Inv_Har=np.zeros((N_t,N_tree))
-    tl_N_M_Inv_Win=np.zeros((N_t,N_tree))
-    tl_N_M_Sim_Reg=np.zeros((N_t,N_tree))
-    tl_N_M_Sim_Fir=np.zeros((N_t,N_tree))
-    tl_N_M_Sim_Ins=np.zeros((N_t,N_tree))
-    tl_N_M_Sim_Pat=np.zeros((N_t,N_tree))
-    tl_N_M_Sim_Har=np.zeros((N_t,N_tree))
-    tl_N_M_Sim_Win=np.zeros((N_t,N_tree))             
-    tl_Csw=np.nan*np.zeros((N_t,N_tree))
-    tl_Csw_Larger=np.nan*np.zeros((N_t,N_tree))
-    tl_Csw_G=np.nan*np.zeros((N_t,N_tree))
-    tl_Cf=np.zeros((N_t,N_tree))
-    tl_Cbk=np.zeros((N_t,N_tree))
-    tl_Cbr=np.zeros((N_t,N_tree))
-    tl_Crc=np.zeros((N_t,N_tree))
-    tl_Crf=np.zeros((N_t,N_tree))
+    vL=['ID_SRS','ID_Decid','A','H','D','N_R','Csw','Csw_Larger','Csw_G',
+        'N_M_Reg','N_M_Fir','N_M_Ins','N_M_Pat','N_M_Har','N_M_Win',
+        'Csw_M_Reg','Csw_M_Fir','Csw_M_Ins','Csw_M_Pat','Csw_M_Har','Csw_M_Win']
+    
+    tl={}
+    for v in vL:
+        if v[0:2]=='ID':
+            tl[v]=np.zeros((N_time,N_tree),dtype=np.int)
+        else:
+            tl[v]=np.zeros((N_time,N_tree),dtype=np.float)
     
     #--------------------------------------------------------------------------
     # Populate species ID
     #--------------------------------------------------------------------------
     
+    # Generate random number vector
     rp=np.random.permutation(N_tree).astype(int)
     
     # Species 1
-    n1=np.ceil(vi['Inv']['Srs1_Pct'][0,iS]/100*N_tree).astype(int)
-    tl_ID_Srs[:,rp[0:n1]]=vi['Inv']['Srs1_ID'][0,iS]
+    n1=np.ceil(vi['Inv']['SRS1_PCT'][0,iS]/100*N_tree).astype(int)    
+    tl['ID_SRS'][:,rp[0:n1]]=vi['Inv']['SRS1_ID'][0,iS]
+    
     # Species 2
-    if vi['Inv']['Srs2_Pct'][0,iS]>0:
-        n2=np.ceil(vi['Inv']['Srs2_Pct'][0,iS]/100*N_tree).astype(int)
-        tl_ID_Srs[:,rp[n1:n2]]=vi['Inv']['Srs2_ID'][0,iS]
+    if vi['Inv']['SRS2_PCT'][0,iS]>0:
+        n2=np.ceil(vi['Inv']['SRS2_Pct'][0,iS]/100*N_tree).astype(int)
+        tl['ID_SRS'][:,rp[n1:n2]]=vi['Inv']['SRS2_ID'][0,iS]
+    
     # Species 3
-    if vi['Inv']['Srs3_Pct'][0,iS]>0:
-        tl_ID_Srs[:,rp[n2:]]=vi['Inv']['Srs3_ID'][0,iS]
+    if vi['Inv']['SRS3_PCT'][0,iS]>0:
+        tl['ID_SRS'][:,rp[n2:]]=vi['Inv']['SRS3_ID'][0,iS]
     
     #--------------------------------------------------------------------------
     # Initialize parameter vectors
     #--------------------------------------------------------------------------
     
-    # Extract stand-level parameters from metadata structure
-    #ptl=Bunch(meta['ptl'])
+    bA={}
+    for k in meta['Param']['BE']['Sawtooth']['Allom'].keys():
+        bA[k]=np.zeros(N_tree)
     
-    # Allometry
-    bA=Bunch(ptl.Allom[0])
-    for k in bA.__dict__.keys():
-        setattr(bA,k,np.zeros((1,N_tree))) 
+    bR={}
+    for k in meta['Param']['BE']['Sawtooth']['Eq R'][ meta['Scenario'][iScn]['Eq R CD'] ].keys():
+        bR[k]=np.zeros(N_tree)
     
-    # Recruitment
-    iEqR=np.where(np.asarray(ptl.R_Type)==meta['Scenario'][iScn]['EquationSet_R_CD'])[0][0]
-    bR=Bunch(ptl.R_Coef[iEqR][0])
-    for k in bR.__dict__.keys():
-        setattr(bR,k,np.zeros((1,N_tree)))
-     
-    # Mortality
-    iEqM=np.where(np.asarray(ptl.M_Type)==meta['Scenario'][iScn]['EquationSet_M_CD'])[0][0]
-    bM=Bunch(ptl.M_Coef[iEqM][0])
-    for k in bM.__dict__.keys():
-        setattr(bM,k,np.zeros((1,N_tree)))
+    bM={}
+    for k in meta['Param']['BE']['Sawtooth']['Eq M'][ meta['Scenario'][iScn]['Eq M CD'] ].keys():
+        bM[k]=np.zeros(N_tree)
     
-    # Growth
-    iEqG=np.where(np.asarray(ptl.G_Type)==meta['Scenario'][iScn]['EquationSet_G_CD'])[0][0]
-    bG=Bunch(ptl.G_Coef[iEqG][0])
-    for k in bG.__dict__.keys():
-        setattr(bG,k,np.zeros((1,N_tree)))
+    bG={}
+    for k in meta['Param']['BE']['Sawtooth']['Eq G'][ meta['Scenario'][iScn]['Eq G CD'] ].keys():
+        bG[k]=np.zeros(N_tree)
     
     #--------------------------------------------------------------------------
     # Populate parameter vectors based on species to each tree based on fractions 
     # from inventory.
     #--------------------------------------------------------------------------
     
-    uS=np.unique(tl_ID_Srs)
-    for i in range(0,len(uS)):
+    uS=np.unique(tl['ID_SRS'])
+    for iU in range(uS.size):
         
-        ind=np.where(tl_ID_Srs[0,:]==uS[i])[0]
+        ind0=np.where(tl['ID_SRS'][0,:]==uS[iU])[0]
         
-        # Allometry
-        for k in bA.__dict__.keys():
-            if k!='SRS_CD':
-                tmp=getattr(bA,k)
-                tmp[0,ind]=ptl.Allom[uS[i]-1][k]
-                setattr(bA,k,tmp)
+        ind1=np.where(meta['Param']['BE']['Sawtooth']['Allom']['SRS_ID']==uS[iU])[0]
+        for k in bA.keys():
+            if (k=='SRS_ID') | (k=='SRS_CD'):
+                continue
+            bA[k][ind0]=meta['Param']['BE']['Sawtooth']['Allom'][k][ind1]
+
+        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq R'][ meta['Scenario'][iScn]['Eq R CD'] ]['SRS_ID']==uS[iU])[0]
+        for k in bR.keys():
+            if (k=='SRS_ID') | (k=='SRS_CD'):
+                continue
+            bR[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq R'][ meta['Scenario'][iScn]['Eq R CD'] ][k][ind1]
         
-        # Recruitment
-        for k in bR.__dict__.keys():
-            if k!='SRS_CD':
-                tmp=getattr(bR,k)
-                tmp[0,ind]=ptl.R_Coef[iEqR][uS[i]-1][k]
-                setattr(bR,k,tmp)
+        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq M'][ meta['Scenario'][iScn]['Eq M CD'] ]['SRS_ID']==uS[iU])[0]
+        for k in bM.keys():
+            if (k=='SRS_ID') | (k=='SRS_CD'):
+                continue
+            bM[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq M'][ meta['Scenario'][iScn]['Eq M CD'] ][k][ind1]
         
-        # Mortality
-        for k in bM.__dict__.keys():
-            if k!='SRS_CD':
-                tmp=getattr(bM,k)
-                tmp[0,ind]=ptl.M_Coef[iEqM][uS[i]-1][k]
-                setattr(bM,k,tmp)
-        
-        # Growth
-        for k in bG.__dict__.keys():
-            if k!='SRS_CD':
-                tmp=getattr(bG,k)
-                tmp[0,ind]=ptl.G_Coef[iEqG][uS[i]-1][k]
-                setattr(bG,k,tmp)
+        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq G'][ meta['Scenario'][iScn]['Eq G CD'] ]['SRS_ID']==uS[iU])[0]
+        for k in bG.keys():
+            if (k=='SRS_ID') | (k=='SRS_CD'):
+                continue
+            bG[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq G'][ meta['Scenario'][iScn]['Eq G CD'] ][k][ind1]
         
     #--------------------------------------------------------------------------
     # Germination
@@ -400,69 +364,126 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
     # seed_mu=0.06; % (kg C tree-1)
     
     # Natural:
-    seed_n=200
-    seed_mu=0.001 # (kg C tree-1)
-    seed_cf=10 # (%)
-    seed_mx=0.000001
-    Csw_seed=np.random.normal(seed_mu,seed_mu*(10/100),(1,seed_n))    
-    Csw_seed=np.maximum(seed_mx,Csw_seed)
-    tl_Csw[0,0:seed_n]=Csw_seed
+    seed_n=meta['Param']['BE']['Sawtooth']['Core']['Natural Germinant SPH'].astype(int)
+    seed_mass_mu=meta['Param']['BE']['Sawtooth']['Core']['Natural Germinant Mass Mean'] # (kg C tree-1)
+    seed_mass_sd=meta['Param']['BE']['Sawtooth']['Core']['Natural Germinant Mass SD'] # (kg C tree-1)
+    seed_min=meta['Param']['BE']['Sawtooth']['Core']['Natural Germinant Mass Min'] # (kg C tree-1)
+    Csw_seed=np.random.normal(seed_mass_mu,seed_mass_sd,(1,seed_n))    
+    Csw_seed=np.maximum(seed_min,Csw_seed)
+    
+    # Populate
+    tl['Csw'][0,0:seed_n]=Csw_seed
     
     # *** This needs updating ***
-    tl_H[0,0:seed_n]=bA.Cag2H1[0,0:seed_n]*((1-np.exp(-bA.Cag2H2[0,0:seed_n]*tl_Csw[0,0:seed_n])))**(1/(1-bA.Cag2H3[0,0:seed_n]))
+    tl['H'][0,0:seed_n]=bA['Cag2H1'][0:seed_n]*((1-np.exp(-bA['Cag2H2'][0:seed_n]*tl['Csw'][0,0:seed_n])))**(1/(1-bA['Cag2H3'][0:seed_n]))    
+    
+    #--------------------------------------------------------------------------
+    # Reshape allometric parameters
+    #--------------------------------------------------------------------------
+    
+    # Foliage biomass
+    Csw2Cf1=np.tile( np.reshape(bA['Csw2Cf1'],(1,-1)),(N_time,1) )
+    Csw2Cf2=np.tile( np.reshape(bA['Csw2Cf2'],(1,-1)),(N_time,1) )
+    
+    # Branch biomass
+    Csw2Cbk1=np.tile( np.reshape(bA['Csw2Cbk1'],(1,-1)),(N_time,1) )
+    Csw2Cbk2=np.tile( np.reshape(bA['Csw2Cbk2'],(1,-1)),(N_time,1) )
   
+    # Branch biomass
+    Csw2Cbr1=np.tile( np.reshape(bA['Csw2Cbr1'],(1,-1)),(N_time,1) )
+    Csw2Cbr2=np.tile( np.reshape(bA['Csw2Cbr2'],(1,-1)),(N_time,1) )
+    
     #--------------------------------------------------------------------------
-    # Populate tree matrix with environmental variables for stand, s  
+    # Function for calculating total biomass from stemwood biomass
     #--------------------------------------------------------------------------
     
-    # Working on it...
-    
+    def ExpandBiomass(Csw_tot,Csw_merch):
         
+        # Merchantable stemwood
+        SWm=Csw_merch*meta['Param']['BE']['Sawtooth']['Core']['Merch Stemwood Fraction']
+        
+        # Non-merchantable stemwood
+        SWnm=Csw_tot-SWm
+        
+        # Foliage biomass
+        F=Csw_tot*Csw2Cf1*Csw_tot**Csw2Cf2
+        
+        # Bark biomass
+        Bk=Csw_tot*Csw2Cbk1*Csw_tot**Csw2Cbk2
+      
+        # Branch biomass
+        Br=Csw_tot*Csw2Cbr1*Csw_tot**Csw2Cbr2
+        
+        # Total aboveground biomass
+        AG=Csw_tot+F+Bk+Br
+        
+        # Total root biomass (Li et al. 2003)  
+      
+        # Conifer
+        R=0.222*AG
+      
+        # Deciduous (equation from Li et al. XXXX)
+        ind=np.where(tl['ID_Decid']==1)[0]
+        if ind.size!=0:
+            R[ind]=1.576*AG[ind]**0.615  
+      
+        # Fine root biomass (equation from Li et al. XXXX)
+        Rf=R*(0.072+0.354*np.exp(-0.06*(2*R)))
+      
+        # Coarse root biomass
+        Rc=R-Rf
+      
+        # Total biomass
+        Tot=AG+R
+        
+        return SWm,SWnm,F,Bk,Br,Rc,Rf,Tot
+    
     #--------------------------------------------------------------------------
     # Loop through time intervals (start in second time step)
     #--------------------------------------------------------------------------
     
-    for iT in range(1,N_t):
+    for iT in range(1,N_time):
         
         #----------------------------------------------------------------------
         # Apply first disturbance cycle to subsequent disturbance cycles during 
         # the spinup period to save time.
         #----------------------------------------------------------------------
         
-        if (vi['tv'][iT]>meta['SpinupSpanFastTrack'][0]+1) & (vi['tv'][iT]<=meta['SpinupSpanFastTrack'][1]+1):
-            
-            iT0=iT-meta['Spinup Disturbance Return Inverval']
-            
-            tl_A[iT,:]=tl_A[iT0,:]
-            tl_H[iT,:]=tl_H[iT0,:]
-            tl_D[iT,:]=tl_D[iT0,:]
-            tl_N_R[iT,:]=tl_N_R[iT0,:]
-            tl_N_M_Inv_Fir[iT,:]=tl_N_M_Inv_Fir[iT0,:]
-            tl_N_M_Inv_Ins[iT,:]=tl_N_M_Inv_Ins[iT0,:]
-            tl_N_M_Inv_Pat[iT,:]=tl_N_M_Inv_Pat[iT0,:]
-            tl_N_M_Inv_Har[iT,:]=tl_N_M_Inv_Har[iT0,:]
-            tl_N_M_Inv_Win[iT,:]=tl_N_M_Inv_Win[iT0,:]
-            tl_N_M_Sim_Reg[iT,:]=tl_N_M_Sim_Reg[iT0,:]
-            tl_N_M_Sim_Fir[iT,:]=tl_N_M_Sim_Fir[iT0,:]
-            tl_N_M_Sim_Ins[iT,:]=tl_N_M_Sim_Ins[iT0,:]
-            tl_N_M_Sim_Pat[iT,:]=tl_N_M_Sim_Pat[iT0,:]
-            tl_N_M_Sim_Har[iT,:]=tl_N_M_Sim_Har[iT0,:]
-            tl_N_M_Sim_Win[iT,:]=tl_N_M_Sim_Win[iT0,:]
-            tl_Csw[iT,:]=tl_Csw[iT0,:]
-            tl_Csw_Larger[iT,:]=tl_Csw_Larger[iT0,:]
-            tl_Csw_G[iT,:]=tl_Csw_G[iT0,:]         
-            vo['A'][iT,iS]=vo['A'][iT0,iS]
-            
-            continue
+#        if (vi['tv'][iT]>meta['Project']['SpinupSpanFastTrack'][iScn]['Start']+1) & (vi['tv'][iT]<=meta['Project']['SpinupSpanFastTrack'][iScn]['End']+1):
+#            
+#            iT0=iT-meta['Project']['Spinup Disturbance Return Inverval']
+#            
+#            tl['A'][iT,:]=tl['A'][iT0,:]
+#            tl['H'][iT,:]=tl['H'][iT0,:]
+#            tl['D'][iT,:]=tl['D'][iT0,:]
+#            tl['N_R'][iT,:]=tl['N_R'][iT0,:]
+#            tl['N_M_Inv_Fir'][iT,:]=tl['N_M_Inv_Fir'][iT0,:]
+#            tl['N_M_Inv_Ins'][iT,:]=tl['N_M_Inv_Ins'][iT0,:]
+#            tl['N_M_Inv_Pat'][iT,:]=tl['N_M_Inv_Pat'][iT0,:]
+#            tl['N_M_Inv_Har'][iT,:]=tl['N_M_Inv_Har'][iT0,:]
+#            tl_N_M_Inv_Win[iT,:]=tl_N_M_Inv_Win[iT0,:]
+#            tl['N_M_Sim_Reg'][iT,:]=tl['N_M_Sim_Reg'][iT0,:]
+#            tl['N_M_Sim_Fir'][iT,:]=tl['N_M_Sim_Fir'][iT0,:]
+#            tl['N_M_Sim_Ins'][iT,:]=tl['N_M_Sim_Ins'][iT0,:]
+#            tl['N_M_Sim_Pat'][iT,:]=tl['N_M_Sim_Pat'][iT0,:]
+#            tl['N_M_Sim_Har'][iT,:]=tl['N_M_Sim_Har'][iT0,:]
+#            tl['N_M_Sim_Win'][iT,:]=tl['N_M_Sim_Win'][iT0,:]
+#            tl['Csw'][iT,:]=tl['Csw'][iT0,:]
+#            tl['Csw_Larger'][iT,:]=tl['Csw_Larger'][iT0,:]
+#            tl['Csw_G'][iT,:]=tl['Csw_G'][iT0,:]         
+#            vo['A'][iT,iS]=vo['A'][iT0,iS]
+#            
+#            continue
         
         #----------------------------------------------------------------------
         
         # Index to live trees    
-        iLive=np.array(np.where(~np.isnan(tl_Csw[iT-1,:]))).flatten()
+        iLive=np.array(np.where(~np.isnan(tl['Csw'][iT-1,:]))).flatten()
         nLive=iLive.size
             
-        # Index to dead trees    
-        iDead=np.array(np.where(np.isnan(tl_Csw[iT-1,:])))
+        # Index to dead trees
+        #iDead=np.array(np.where(np.isnan(tl['Csw'][iT-1,:])))
+        iDead=np.where(np.isnan(tl['Csw'][iT-1,:])==True)[0]
         nDead=iDead.size
         
         # Create random number vectors that will be used for calculation of 
@@ -474,7 +495,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         vo['A'][iT,iS]=vo['A'][iT-1,iS]+1
     
         # Update tree age    
-        tl_A[iT,iLive]=tl_A[iT-1,iLive]+1
+        tl['A'][iT,iLive]=tl['A'][iT-1,iLive]+1
         
         #----------------------------------------------------------------------
         # Calculate predictor variables used in the equations of recruitment, 
@@ -482,23 +503,23 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         #----------------------------------------------------------------------
         
         # Tree age
-        A=tl_A[iT-1,:]
+        A=tl['A'][iT-1,:]
     
         # Aboveground biomass of individual trees from t-1 (kg C tree-1)
-        Csw=tl_Csw[iT-1,:]
+        Csw=tl['Csw'][iT-1,:]
     
         # Tree height (m)
-        H=tl_H[iT-1,:]
-    
+        H=tl['H'][iT-1,:]
+        
         # Stand age
-        SA=np.nanmean(tl_A[iT-1,:])
-    
+        SA=np.nanmean(tl['A'][iT-1,:])
+        
         # Stand-level biomass from t-1 (Mg C ha-1)
-        SCsw=np.nansum(tl_Csw[iT-1,:])/cm
+        SCsw=np.nansum(tl['Csw'][iT-1,:])/cm
         
         # Stand density from t-1 (stems ha-1)
         SN=nLive
-          
+
         # Biomass of larger trees (Mg C ha-1)        
         ListToSort=np.zeros((N_tree,2))
         ListToSort[:,0]=np.arange(0,N_tree,1)
@@ -508,11 +529,11 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         tmp=np.reshape(np.nancumsum(SortedList[:,1])-SortedList[:,1]/1000,(N_tree,1))
         SortedList2=np.append(SortedList,tmp,axis=1)
         
-        Csw_Larger=np.zeros((1,N_tree))
-        Csw_Larger[0,SortedList2[:,0].astype(int)]=SortedList2[:,2]
+        Csw_Larger=np.zeros(N_tree)
+        Csw_Larger[SortedList2[:,0].astype(int)]=SortedList2[:,2]
         
-        tl_Csw_Larger[iT,:]=Csw_Larger
-    
+        tl['Csw_Larger'][iT,:]=Csw_Larger
+        
         #----------------------------------------------------------------------
         # Probability of recruitment
         #----------------------------------------------------------------------
@@ -520,37 +541,38 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         # Only do this if there are living trees
         if iDead.size!=0:
                  
-            if meta['Scenario'][iScn]['EquationSet_R_CD']=='Def1':                
-                SCsw_z=(SCsw-bR.SB_mu)/bR.SB_sig
-                lgit=bR.Int+bR.SB*SCsw_z
+            if meta['Scenario'][iScn]['Eq R CD']=='Def1':                
+                SCsw_z=(SCsw-bR['SB_mu'])/bR['SB_sig']
+                lgit=bR['Int']+bR['SB']*SCsw_z
                 Pr=(np.exp(lgit)/(1+np.exp(lgit)))
                 
             # Establish trees based on annual probability of recruitment.
             # Initial values of biomass and height are set low, arbitrary until
             # they can be set according to actual observations 
             # at end of first year.
-      
-            iRec=np.where(Pr[0,iDead]>=rDead)[1]
-            tl_A[iT:,iDead[0,iRec]]=1
-            tl_H[iT:,iDead[0,iRec]]=0.1
-            tl_Csw[iT:,iDead[0,iRec]]=0.05
-            tl_N_R[iT,iDead[0,iRec]]=1
-         
+            
+            iRec=np.where(Pr[iDead]>=rDead)[0]
+            
+            tl['A'][iT:,iDead[iRec]]=1
+            tl['H'][iT:,iDead[iRec]]=0.1
+            tl['Csw'][iT:,iDead[iRec]]=0.05
+            tl['N_R'][iT,iDead[iRec]]=1
+        
         #----------------------------------------------------------------------    
         # Growth of stemwood biomass (kg C tree-1 yr-1)
         #----------------------------------------------------------------------
         
-        if meta['Scenario'][iScn]['EquationSet_G_CD']=='Def1':
+        if meta['Scenario'][iScn]['Eq G CD']=='Def1':
             
             # Standardization
-            LnCsw_z=(np.log(Csw)-bG.LnB_mu)/bG.LnB_sig
-            Csw_z=(Csw-bG.B_mu)/bG.B_sig
-            SA_z=(A-bG.SA_mu)/bG.SA_sig
-            SCswLT_z=(Csw_Larger-bG.SBLT_mu)/bG.SBLT_sig
-            SCsw_z=(SCsw-bG.SB_mu)/bG.SB_sig                
+            LnCsw_z=(np.log(Csw)-bG['LnB_mu'])/bG['LnB_sig']
+            Csw_z=(Csw-bG['B_mu'])/bG['B_sig']
+            SA_z=(A-bG['SA_mu'])/bG['SA_sig']
+            SCswLT_z=(Csw_Larger-bG['SBLT_mu'])/bG['SBLT_sig']
+            SCsw_z=(SCsw-bG['SB_mu'])/bG['SB_sig']
                
             # Add all effects to intercept
-            yhat=bG.Int + bG.LnB*LnCsw_z + bG.B*Csw_z + bG.SA*SA_z + bG.SBLT*SCswLT_z + bG.SB*SCsw_z
+            yhat=bG['Int'] + bG['LnB']*LnCsw_z + bG['B']*Csw_z + bG['SA']*SA_z + bG['SBLT']*SCswLT_z + bG['SB']*SCsw_z
           
             # Back-transform and apply log correction
             yhat=np.exp(yhat)
@@ -559,51 +581,39 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
             #yhat[yhat>G_max]=G_max
         
             # Populate tree level structure with growth predictions
-            tl_Csw_G[iT,iLive]=yhat[0,iLive]
-            
-            #******************************************************************
-            # SPECIAL ORDER
-            # Growth modifier for EP703 study
-            
-            #if iScn==1:
-            #    try:
-            #        gf=meta['Scenario'][iScn]['Growth factor'][iT,1]*1000/iLive.size
-            #    except:
-            #        gf=1
-            #    tl_Csw_G[iT,iLive]=tl_Csw_G[iT,iLive]+gf             
-            
-            # END SPECIAL ORDER
-            #******************************************************************
-            
+            tl['Csw_G'][iT,iLive]=yhat[iLive]
         
         #----------------------------------------------------------------------    
         # Update state variables
         #----------------------------------------------------------------------    
         
         # Update stemwood biomass (kg C tree-1)
-        tl_Csw[iT,iLive]=tl_Csw[iT-1,iLive]+tl_Csw_G[iT,iLive]
+        tl['Csw'][iT,iLive]=tl['Csw'][iT-1,iLive]+tl['Csw_G'][iT,iLive]
     
         # Update tree height (m)   
         # *** This needs updating ***
-        tl_H[iT,:]=bA.Cag2H1*((1-np.exp(-bA.Cag2H2*tl_Csw[iT,:]))**(1/(1-bA.Cag2H3)))
+        tl['H'][iT,:]=bA['Cag2H1']*((1-np.exp(-bA['Cag2H2']*tl['Csw'][iT,:]))**(1/(1-bA['Cag2H3'])))
+        
+        # Update diameter (cm)
+        tl['D'][iT,:]=(tl['Csw'][iT,:]/0.5/meta['Param']['BE']['Sawtooth']['Core']['D_to_Bsw_b0'])**(1/meta['Param']['BE']['Sawtooth']['Core']['D_to_Bsw_b1'])
         
         #----------------------------------------------------------------------    
-        # Probability of tree mortality
+        # Probability of tree mortality (regular)
         #----------------------------------------------------------------------    
         
-        if meta['Scenario'][iScn]['EquationSet_M_CD']=='Def1':
-            
-            Csw_z=(Csw-bM.B_mu)/bM.B_sig
-            Csw2_z=(Csw**2-bM.B2_mu)/bM.B2_sig
-            SA_z=(A-bM.SA_mu)/bM.SA_sig
-            SCswLT_z=(Csw_Larger-bM.SBLT_mu)/bM.SBLT_sig
-            SCsw_z=(SCsw-bM.SB_mu)/bM.SB_sig
+        if meta['Scenario'][iScn]['Eq M CD']=='Def1':
+   
+            Csw_z=(Csw-bM['B_mu'])/bM['B_sig']
+            Csw2_z=(Csw**2-bM['B2_mu'])/bM['B2_sig']
+            SA_z=(A-bM['SA_mu'])/bM['SA_sig']
+            SCswLT_z=(Csw_Larger-bM['SBLT_mu'])/bM['SBLT_sig']
+            SCsw_z=(SCsw-bM['SB_mu'])/bM['SB_sig']
 
-            lgit=bM.Int + bM.B*Csw_z + bM.B2*Csw2_z + bM.SA*SA_z + bM.SBLT*SCswLT_z + bM.SB*SCsw_z
+            lgit=bM['Int'] + bM['B']*Csw_z + bM['B2']*Csw2_z + bM['SA']*SA_z + bM['SBLT']*SCswLT_z + bM['SB']*SCsw_z
             
-            Pm_Sim_Reg=np.exp(lgit)/(1+np.exp(lgit))
-            Pm_Sim_Ins=np.zeros((1,N_tree))
-            Pm_Sim_Pat=np.zeros((1,N_tree))
+            Pm_Sim_Reg=0.5*(np.exp(lgit)/(1+np.exp(lgit)))
+            Pm_Sim_Ins=np.zeros(N_tree)
+            Pm_Sim_Pat=np.zeros(N_tree)
         
         #---------------------------------------------------------------------- 
         # Remove biomass of trees that died
@@ -611,372 +621,283 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         
         # Remove biomass of trees that died directly from competition and 
         # environmental conditions
-        iKill=np.where(Pm_Sim_Reg[0,iLive]>=rLive)
-        tl_A[iT:,iLive[iKill]]=np.nan
-        tl_D[iT:,iLive[iKill]]=np.nan
-        tl_H[iT:,iLive[iKill]]=np.nan
-        tl_Csw[iT:,iLive[iKill]]=np.nan
-        tl_N_M_Sim_Reg[iT,iLive[iKill]]=1   
+        iKill=np.where(Pm_Sim_Reg[iLive]>=rLive)[0]
+        Csw_M=tl['Csw'][iT,iLive[iKill]].copy()
+        tl['Csw_M_Reg'][iT,iLive[iKill]]=Csw_M
+        tl['N_M_Reg'][iT,iLive[iKill]]=1
+        tl['A'][iT:,iLive[iKill]]=np.nan
+        tl['H'][iT:,iLive[iKill]]=np.nan
+        tl['D'][iT+1:,iLive[iKill]]=np.nan
+        tl['Csw'][iT:,iLive[iKill]]=np.nan
         rLive[iKill]=10; # Update rLive to avoid double-counting mortality
         
-        # Remove biomass of trees that die due to insect attack    
-        iKill=np.where(Pm_Sim_Ins[0,iLive]>=rLive)
-        tl_A[iT:,iLive[iKill]]=np.nan
-        tl_D[iT:,iLive[iKill]]=np.nan
-        tl_H[iT:,iLive[iKill]]=np.nan
-        tl_Csw[iT:,iLive[iKill]]=np.nan
-        tl_N_M_Sim_Ins[iT,iLive[iKill]]=1
+        # Remove biomass of trees that die due to insect attack
+        iKill=np.where(Pm_Sim_Ins[iLive]>=rLive)[0]
+        Csw_M=tl['Csw'][iT,iLive[iKill]].copy()
+        tl['Csw_M_Ins'][iT,iLive[iKill]]=Csw_M
+        tl['N_M_Ins'][iT,iLive[iKill]]=1
+        tl['A'][iT:,iLive[iKill]]=np.nan
+        tl['H'][iT:,iLive[iKill]]=np.nan
+        tl['D'][iT+1:,iLive[iKill]]=np.nan
+        tl['Csw'][iT:,iLive[iKill]]=np.nan
         rLive[iKill]=10
     
         # Remove biomass of trees that die due to pathogen infection    
-        iKill=np.where(Pm_Sim_Pat[0,iLive]>=rLive)
-        tl_A[iT:,iLive[iKill]]=np.nan
-        tl_D[iT:,iLive[iKill]]=np.nan
-        tl_H[iT:,iLive[iKill]]=np.nan
-        tl_Csw[iT:,iLive[iKill]]=np.nan
-        tl_N_M_Sim_Pat[iT,iLive[iKill]]=1
+        iKill=np.where(Pm_Sim_Pat[iLive]>=rLive)[0]
+        Csw_M=tl['Csw'][iT,iLive[iKill]].copy()
+        tl['Csw_M_Pat'][iT,iLive[iKill]]=Csw_M
+        tl['N_M_Pat'][iT,iLive[iKill]]=1
+        tl['A'][iT:,iLive[iKill]]=np.nan
+        tl['H'][iT:,iLive[iKill]]=np.nan
+        tl['D'][iT+1:,iLive[iKill]]=np.nan
+        tl['Csw'][iT:,iLive[iKill]]=np.nan
         rLive[iKill]=10
         
         #---------------------------------------------------------------------- 
         # Mortality from inventory data sources
         #---------------------------------------------------------------------- 
         
-        iDist=np.where((vi['EH'][iS]['Year']==vi['tv'][iT]) & (np.isnan(vi['EH'][iS]['MortalityFactor'])==False))[0]
-        if iDist.size!=0:            
-            
-            iLive=np.where(np.isnan(tl_Csw[iT,:])==False)[0]
-            
-            nKill=int(vi['EH'][iS]['MortalityFactor'][iDist]/100*iLive.size)
-                        
-            if vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Wildfire']:
-                # Wildfire
-                iKill=np.arange(0,nKill)
-                tl_N_M_Inv_Fir[iT,iLive[iKill]]=1
-                vo['A'][iT,iS]=0
-                
-            elif (vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Harvest']) | (vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Harvest and Slashpile Burn']):
-                iKill=np.arange(0,nKill)
-                tl_N_M_Inv_Har[iT,iLive[iKill]]=1
-                vo['A'][iT,iS]=0
-                               
-            elif (vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Beetles']) | (vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Defoliators']):
-                # Insects
-                iKill=np.arange(0,nKill)
-                tl_N_M_Inv_Ins[iT,iLive[iKill]]=1
-                
-            elif (vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Planting']):
-                # Do nothing
-                pass
-                
-            elif (vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Fertilization Aerial']):
-                # Do nothing
-                pass
-            
-            #elif vi['EH'][iS]['ID_Type'][iDist]==meta['LUT']['Dist']['Wind']:
-            #    # Wind
-            #    iKill=np.arange(0,nKill)
-            #    tl_N_M_Inv_Win[iT,iLive[iKill]]=1
-            #    vo['A'][iT,iS]=0
-                
-            else:
-                pass
-            
-            # Update tree variables
-            tl_A[iT:,iLive[iKill]]=0
-            tl_D[iT:,iLive[iKill]]=np.nan
-            tl_H[iT:,iLive[iKill]]=np.nan
-            tl_Csw[iT:,iLive[iKill]]=np.nan
+        # Loop through events in year
+        for iE in range(meta['Core']['Max Events Per Year']):
         
-    #--------------------------------------------------------------------------
-    # Biomass of other tissues
-    #--------------------------------------------------------------------------
-    
-    # Merchantable stemwood fraction
-    msf=0.82
-    
-    # Merchantable stemwood
-    tl_Csw_Merch=msf*tl_Csw
-    
-    # Non-merchantable stemwood
-    tl_Csw_NonMerch=(1-msf)*tl_Csw
-    
-    # Foliage biomass
-    tl_Cf=tl_Csw*np.tile(bA.Csw2Cf1,(N_t,1))*tl_Csw**np.tile(bA.Csw2Cf2,(N_t,1))
-    
-    # Branch biomass
-    tl_Cbk=tl_Csw*np.tile(bA.Csw2Cbk1,(N_t,1))*tl_Csw**np.tile(bA.Csw2Cbk2,(N_t,1))
-  
-    # Branch biomass
-    tl_Cbr=tl_Csw*np.tile(bA.Csw2Cbr1,(N_t,1))*tl_Csw**np.tile(bA.Csw2Cbr2,(N_t,1))
-    
-    # Total aboveground biomass
-    tl_Cag=tl_Csw+tl_Cf+tl_Cbk+tl_Cbr
-    
-    # Total root biomass (Li et al. 2003)  
-  
-    # Conifer
-    tl_Cr=0.222*tl_Cag
-  
-    # Deciduous (equation from Li et al. XXXX)
-    ind=np.where(tl_ID_Decid==1)[0]
-    if ind.size!=0:
-        tl_Cr[ind]=1.576*tl_Cag[ind]**0.615  
-  
-    # Fine root biomass (equation from Li et al. XXXX)
-    tl_Crf=tl_Cr*(0.072+0.354*np.exp(-0.06*(2*tl_Cr)))
-  
-    # Coarse root biomass
-    tl_Crc=tl_Cr-tl_Crf
-  
-    # Total biomass
-    tl_Ctot=tl_Cag+tl_Cr
-  
-    #--------------------------------------------------------------------------
-    # Biomass loss due to tree mortality (by tissue)
-    #--------------------------------------------------------------------------
-    
-    # Derive variables needed to calculate tree mortality  
-    indM=np.where(np.isnan(tl_Ctot)==True)
+            # Event type IDs for the iE'th event of the year
+            ID_Type=vi['EC']['ID_Type'][iT,iS,iE].copy()
         
-    # Calculate total demographic mortality
-    N_M=tl_N_M_Sim_Reg+tl_N_M_Sim_Fir+tl_N_M_Sim_Ins+tl_N_M_Sim_Pat+ \
-        tl_N_M_Sim_Win+tl_N_M_Sim_Har+tl_N_M_Inv_Fir+tl_N_M_Inv_Ins+ \
-        tl_N_M_Inv_Pat+tl_N_M_Inv_Win+tl_N_M_Inv_Har
-    N_M=np.minimum(1,N_M)
-    
-    # Create a vector that contains the biomass that will be lost due to
-    # mortality
-    Cx=tl_Csw_Merch
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0    
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
-    tl_Csw_Merch_M=N_M*C_M
-    
-    Cx=tl_Csw_NonMerch
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0    
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
-    tl_Csw_NonMerch_M=N_M*C_M
-    
-    Cx=tl_Cf
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0    
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
-    tl_Cf_M=N_M*C_M
-    
-    Cx=tl_Cbr
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0      
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
-    tl_Cbr_M=N_M*C_M
-    
-    Cx=tl_Cbk
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0      
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
-    tl_Cbk_M=N_M*C_M
-    
-    Cx=tl_Crc
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0    
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
-    tl_Crc_M=N_M*C_M
-    
-    Cx=tl_Crf
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0       
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
-    tl_Crf_M=N_M*C_M
+            # Total affected biomass carbon
+            MF=vi['EC']['MortalityFactor'][iT,iS,iE].copy()
+            
+            if MF>0:
+                
+                iLive=np.where(np.isnan(tl['Csw'][iT,:])==False)[0]
+                
+                nKill=int(MF*iLive.size)
+                            
+                if ID_Type==meta['LUT']['Dist']['Wildfire']:
+                    
+                    # Wildfire
+                    iKill=np.arange(0,nKill)
+                    Csw_M=tl['Csw'][iT,iLive[iKill]].copy()
+                    tl['Csw_M_Fir'][iT,iLive[iKill]]=Csw_M
+                    tl['N_M_Fir'][iT,iLive[iKill]]=1
+                    vo['A'][iT,iS]=0
+                    
+                elif (ID_Type==meta['LUT']['Dist']['Harvest']) | (ID_Type==meta['LUT']['Dist']['Harvest Salvage']):
+                    
+                    # Harvest
+                    iKill=np.arange(0,nKill)
+                    Csw_M=tl['Csw'][iT,iLive[iKill]].copy()
+                    tl['Csw_M_Har'][iT,iLive[iKill]]=Csw_M
+                    tl['N_M_Har'][iT,iLive[iKill]]=1
+                    vo['A'][iT,iS]=0
+                    
+                elif (ID_Type==meta['LUT']['Dist']['Sawtooth Commercial Thinning']):
+                    
+                    # Commercial thinning
+                    
+                    idx_sorted=np.flip(np.argsort(tl['Csw'][iT,iLive]))
+                    
+                    iKill=idx_sorted[0:nKill]
+                    Csw_M=tl['Csw'][iT,iLive[iKill]].copy()
+                    tl['Csw_M_Har'][iT,iLive[iKill]]=Csw_M
+                    tl['N_M_Har'][iT,iLive[iKill]]=1
+                   
+                elif (ID_Type==meta['LUT']['Dist']['Beetles']) | (ID_Type==meta['LUT']['Dist']['IBM']) | (ID_Type==meta['LUT']['Dist']['Defoliators']):
+                    
+                    # Insects
+                    iKill=np.arange(0,nKill)
+                    Csw_M=tl['Csw'][iT,iLive[iKill]].copy()
+                    tl['Csw_M_Ins'][iT,iLive[iKill]]=Csw_M
+                    tl['N_M_Ins'][iT,iLive[iKill]]=1
+                    
+                else:
+                    pass
+                
+                # Update tree variables
+                tl['A'][iT:,iLive[iKill]]=0
+                tl['H'][iT:,iLive[iKill]]=np.nan
+                tl['D'][iT+1:,iLive[iKill]]=np.nan
+                tl['Csw'][iT:,iLive[iKill]]=np.nan
     
     #--------------------------------------------------------------------------
-    # Biomass loss due to tree mortality (by causal factor)
+    # Calculate biomass of other tissues from stemwood biomass
     #--------------------------------------------------------------------------
-       
-    # Create a vector that contains the biomass that will be lost due to
-    # mortality  
-    Cx=tl_Ctot
-    Cx[indM[0],indM[1]]=0
-    #Cx[np.unravel_index(indM,Cx.shape,'C')]=0    
-    C_M=np.concatenate((ZerosYear,np.diff(Cx,axis=0)),axis=0)
-    C_M[C_M>0]=0
-    C_M=-C_M
+    
+    # Calculate merch stemwood biomass
+    iMerch=np.where(tl['D']>12.5)
+
+    Csw_merch=np.zeros(tl['Csw'].shape); Csw_merch[iMerch]=tl['Csw'][iMerch]    
+    Csw_merch_M_Reg=np.zeros(tl['Csw'].shape); Csw_merch_M_Reg[iMerch]=tl['Csw_M_Reg'][iMerch]
+    Csw_merch_M_Fir=np.zeros(tl['Csw'].shape); Csw_merch_M_Fir[iMerch]=tl['Csw_M_Fir'][iMerch]
+    Csw_merch_M_Ins=np.zeros(tl['Csw'].shape); Csw_merch_M_Ins[iMerch]=tl['Csw_M_Ins'][iMerch]
+    Csw_merch_M_Pat=np.zeros(tl['Csw'].shape); Csw_merch_M_Pat[iMerch]=tl['Csw_M_Pat'][iMerch]
+    Csw_merch_M_Har=np.zeros(tl['Csw'].shape); Csw_merch_M_Har[iMerch]=tl['Csw_M_Har'][iMerch]
+    
+    # Standing biomass
+    tl['Cswm'],tl['Cswnm'],tl['Cf'],tl['Cbk'],tl['Cbr'],tl['Crc'],tl['Crf'],tl['Ctot']=ExpandBiomass(tl['Csw'],Csw_merch)
   
-    tl_Ctot_M_Sim_Reg=tl_N_M_Sim_Reg*C_M
-    tl_Ctot_M_Sim_Fir=tl_N_M_Sim_Fir*C_M
-    tl_Ctot_M_Sim_Ins=tl_N_M_Sim_Ins*C_M
-    tl_Ctot_M_Sim_Pat=tl_N_M_Sim_Pat*C_M
-    tl_Ctot_M_Sim_Win=tl_N_M_Sim_Win*C_M
-    tl_Ctot_M_Sim_Har=tl_N_M_Sim_Har*C_M
-  
-    tl_Ctot_M_Inv_Fir=tl_N_M_Inv_Fir*C_M
-    tl_Ctot_M_Inv_Ins=tl_N_M_Inv_Ins*C_M
-    tl_Ctot_M_Inv_Pat=tl_N_M_Inv_Pat*C_M
-    tl_Ctot_M_Inv_Win=tl_N_M_Inv_Win*C_M
-    tl_Ctot_M_Inv_Har=tl_N_M_Inv_Har*C_M
+    # Biomass loss due to regular mortality    
+    tl['Cswm_M_Reg'],tl['Cswnm_M_Reg'],tl['Cf_M_Reg'],tl['Cbk_M_Reg'],tl['Cbr_M_Reg'],tl['Crc_M_Reg'],tl['Crf_M_Reg'],tl['Ctot_M_Reg']=ExpandBiomass(tl['Csw_M_Reg'],Csw_merch_M_Reg)
+    
+    # Biomass loss due to wildfire
+    tl['Cswm_M_Fir'],tl['Cswnm_M_Fir'],tl['Cf_M_Fir'],tl['Cbk_M_Fir'],tl['Cbr_M_Fir'],tl['Crc_M_Fir'],tl['Crf_M_Fir'],tl['Ctot_M_Fir']=ExpandBiomass(tl['Csw_M_Fir'],Csw_merch_M_Fir)
+    
+    # Biomass loss due to insects
+    tl['Cswm_M_Ins'],tl['Cswnm_M_Ins'],tl['Cf_M_Ins'],tl['Cbk_M_Ins'],tl['Cbr_M_Ins'],tl['Crc_M_Ins'],tl['Crf_M_Ins'],tl['Ctot_M_Ins']=ExpandBiomass(tl['Csw_M_Ins'],Csw_merch_M_Ins)
+    
+    # Biomass loss due to pathogens
+    tl['Cswm_M_Pat'],tl['Cswnm_M_Pat'],tl['Cf_M_Pat'],tl['Cbk_M_Pat'],tl['Cbr_M_Pat'],tl['Crc_M_Pat'],tl['Crf_M_Pat'],tl['Ctot_M_Pat']=ExpandBiomass(tl['Csw_M_Pat'],Csw_merch_M_Pat)
+    
+    # Biomass loss due to harvest
+    tl['Cswm_M_Har'],tl['Cswnm_M_Har'],tl['Cf_M_Har'],tl['Cbk_M_Har'],tl['Cbr_M_Har'],tl['Crc_M_Har'],tl['Crf_M_Har'],tl['Ctot_M_Har']=ExpandBiomass(tl['Csw_M_Har'],Csw_merch_M_Har)
+    
+    # Biomass loss due to wind
+    #tl['Cswm_M_Win'],tl['Cswnm_M_Win'],tl['Cf_M_Win'],tl['Cbk_M_Win'],tl['Cbr_M_Win'],tl['Crc_M_Win'],tl['Crf_M_Win'],tl['Ctot_M_Win']=ExpandBiomass(tl['Csw_M_Win'])
     
     #--------------------------------------------------------------------------
     # Biomass turnover (litterfall)
     #--------------------------------------------------------------------------
     
     # Foliage turnover
-    tl_Cf_LF=0.100*tl_Cf
+    tl['Cf_LF']=0.100*tl['Cf']
     
     # Branch turnover
-    tl_Cbr_LF=0.035*tl_Cbr
+    tl['Cbr_LF']=0.035*tl['Cbr']
     
     # Bark turnover
-    tl_Cbk_LF=0.035*tl_Cbk
+    tl['Cbk_LF']=0.035*tl['Cbk']
     
     # Fine root turnover
-    tl_Crf_LF=0.641*tl_Crf
+    tl['Crf_LF']=0.641*tl['Crf']
         
     # Coarse root turnover
-    tl_Crc_LF=0.02*tl_Crc
+    tl['Crc_LF']=0.02*tl['Crc']
             
     #--------------------------------------------------------------------------
     # Populate stand variables (individual-tree statistics)
     #--------------------------------------------------------------------------
   
     # Mean tree age
-    vo['TreeMean_A'][:,iS]=np.nanmean(tl_A,axis=1) 
+    vo['TreeMean_A'][:,iS]=np.nanmean(tl['A'],axis=1) 
     
     # Mean tree diamter at breast height
-    vo['TreeMean_D'][:,iS]=np.nanmean(tl_D,axis=1)
+    vo['TreeMean_D'][:,iS]=np.nanmean(tl['D'],axis=1)
     
     # Mean tree height (m)
-    vo['TreeMean_H'][:,iS]=np.nanmean(tl_H,axis=1)
+    vo['TreeMean_H'][:,iS]=np.nanmean(tl['H'],axis=1)
     
     # Mean tree stemwood biomass (kg C)
-    vo['TreeMean_Csw'][:,iS]=np.nanmean(tl_Csw,axis=1) 
+    vo['TreeMean_Csw'][:,iS]=np.maximum(0,np.nanmean(tl['Csw'],axis=1))
     
     # Mean stemwood biomass growth (kg C yr-1)
-    vo['TreeMean_Csw_G'][:,iS]=np.nanmean(tl_Csw_G,axis=1)
+    vo['TreeMean_Csw_G'][:,iS]=np.maximum(0,np.nanmean(tl['Csw_G'],axis=1))
     
     #--------------------------------------------------------------------------
-    # Populate stand demographics
+    # Populate stand-level demographics
     #--------------------------------------------------------------------------
     
     # Stand density (stems ha-1)    
-    vo['N'][:,iS]=np.sum(~np.isnan(tl_Csw),axis=1)
+    vo['N'][:,iS]=np.sum(~np.isnan(tl['Csw']),axis=1)
     
     # Stand density at beginning of time step
-    N_t0=np.append(vo['N'][0,iS],vo['N'][0:-1,iS])
+    N_time0=np.append(vo['N'][0,iS],vo['N'][0:-1,iS])
     
     # Demographic recruitment rate (% yr-1)
-    vo['N_R'][:,iS]=np.minimum(100,np.sum(tl_N_R,axis=1)/N_t0*100)
+    vo['N_R'][:,iS]=np.minimum(100,np.sum(tl['N_R'],axis=1)/N_time0*100)
   
     # Demographic mortality rate (% yr-1)
           
     # Need to update N0 or else stand-replacing disturbances will have lower
     # relative mortality rate
     # *** The other solution is to move the prescribed disturbances above the
-    # background mortality, but perhaps GCBM will do this anyways ***
+    # background mortality ***
     #N0=N0-Sum_N_M_Sim_Reg-Sum_N_M_Sim_Ins-Sum_N_M_Sim_Pat;
     
-    N_M_Tot=tl_N_M_Sim_Reg+tl_N_M_Sim_Fir+tl_N_M_Sim_Ins+tl_N_M_Sim_Pat+ \
-        tl_N_M_Sim_Win+tl_N_M_Sim_Har+tl_N_M_Inv_Fir+tl_N_M_Inv_Ins+ \
-        tl_N_M_Inv_Pat+tl_N_M_Inv_Win+tl_N_M_Inv_Har
+    N_M_Tot=tl['N_M_Reg']+tl['N_M_Fir']+tl['N_M_Ins']+tl['N_M_Pat']+tl['N_M_Har']+tl['N_M_Win']
     
-    vo['N_M_Tot'][:,iS]=np.minimum(100,np.sum(N_M_Tot,axis=1)/N_t0*100)
+    vo['N_M_Tot'][:,iS]=np.maximum(0,np.minimum(100,np.sum(N_M_Tot,axis=1)/N_time0*100))
     
-    vo['N_M_Sim_Reg'][:,iS]=np.maximum(0,np.sum(tl_N_M_Sim_Reg,axis=1)/N_t0*100)
-    vo['N_M_Sim_Fir'][:,iS]=np.maximum(0,np.sum(tl_N_M_Sim_Fir,axis=1)/N_t0*100)
-    vo['N_M_Sim_Ins'][:,iS]=np.maximum(0,np.sum(tl_N_M_Sim_Ins,axis=1)/N_t0*100)
-    vo['N_M_Sim_Pat'][:,iS]=np.maximum(0,np.sum(tl_N_M_Sim_Pat,axis=1)/N_t0*100)
-    vo['N_M_Sim_Win'][:,iS]=np.maximum(0,np.sum(tl_N_M_Sim_Win,axis=1)/N_t0*100)
-    vo['N_M_Sim_Har'][:,iS]=np.maximum(0,np.sum(tl_N_M_Sim_Har,axis=1)/N_t0*100)
-  
-    vo['N_M_Inv_Fir'][:,iS]=np.maximum(0,np.sum(tl_N_M_Inv_Fir,axis=1)/N_t0*100)
-    vo['N_M_Inv_Ins'][:,iS]=np.maximum(0,np.sum(tl_N_M_Inv_Ins,axis=1)/N_t0*100)
-    vo['N_M_Inv_Pat'][:,iS]=np.maximum(0,np.sum(tl_N_M_Inv_Pat,axis=1)/N_t0*100)
-    vo['N_M_Inv_Win'][:,iS]=np.maximum(0,np.sum(tl_N_M_Inv_Win,axis=1)/N_t0*100)
-    vo['N_M_Inv_Har'][:,iS]=np.maximum(0,np.sum(tl_N_M_Inv_Har,axis=1)/N_t0*100)
+#    vo['N_M_Reg'][:,iS]=np.maximum(0,np.sum(tl['N_M_Reg'],axis=1)/N_time0*100)
+#    vo['N_M_Fir'][:,iS]=np.maximum(0,np.sum(tl['N_M_Fir'],axis=1)/N_time0*100)
+#    vo['N_M_Ins'][:,iS]=np.maximum(0,np.sum(tl['N_M_Ins'],axis=1)/N_time0*100)
+#    vo['N_M_Pat'][:,iS]=np.maximum(0,np.sum(tl['N_M_Pat'],axis=1)/N_time0*100)
+#    vo['N_M_Win'][:,iS]=np.maximum(0,np.sum(tl['N_M_Win'],axis=1)/N_time0*100)
+#    vo['N_M_Har'][:,iS]=np.maximum(0,np.sum(tl['N_M_Har'],axis=1)/N_time0*100)
     
     #--------------------------------------------------------------------------
-    # Populate stand gross growth of biomass (Mg C ha-1 yr-1)
+    # Populate stand-level biomass
     #--------------------------------------------------------------------------
     
-    vo['C_G_Gross'][:,iS,0]=np.nansum(np.maximum(0,diff(tl_Csw_Merch)),axis=1)/cm
-    vo['C_G_Gross'][:,iS,1]=np.nansum(np.maximum(0,diff(tl_Csw_NonMerch)),axis=1)/cm
-    vo['C_G_Gross'][:,iS,2]=np.nansum(np.maximum(0,diff(tl_Cf)),axis=1)/cm
-    vo['C_G_Gross'][:,iS,3]=np.nansum(np.maximum(0,diff(tl_Cbr)),axis=1)/cm
-    vo['C_G_Gross'][:,iS,4]=np.nansum(np.maximum(0,diff(tl_Cbk)),axis=1)/cm
-    vo['C_G_Gross'][:,iS,5]=np.nansum(np.maximum(0,diff(tl_Crc)),axis=1)/cm
-    vo['C_G_Gross'][:,iS,6]=np.nansum(np.maximum(0,diff(tl_Crf)),axis=1)/cm
+    # Gross growth of biomass (Mg C ha-1 yr-1)    
+    vo['C_G_Gross'][1:,iS,0]=np.nansum(np.maximum(0,np.diff(tl['Cswm'],axis=0)),axis=1)/cm
+    vo['C_G_Gross'][1:,iS,1]=np.nansum(np.maximum(0,np.diff(tl['Cswnm'],axis=0)),axis=1)/cm
+    vo['C_G_Gross'][1:,iS,2]=np.nansum(np.maximum(0,np.diff(tl['Cf'],axis=0)),axis=1)/cm
+    vo['C_G_Gross'][1:,iS,3]=np.nansum(np.maximum(0,np.diff(tl['Cbr'],axis=0)),axis=1)/cm
+    vo['C_G_Gross'][1:,iS,4]=np.nansum(np.maximum(0,np.diff(tl['Cbk'],axis=0)),axis=1)/cm
+    vo['C_G_Gross'][1:,iS,5]=np.nansum(np.maximum(0,np.diff(tl['Crc'],axis=0)),axis=1)/cm
+    vo['C_G_Gross'][1:,iS,6]=np.nansum(np.maximum(0,np.diff(tl['Crf'],axis=0)),axis=1)/cm
     
-    #--------------------------------------------------------------------------
-    # Populate stand biomass turnover (Mg C ha-1 yr-1)
-    #--------------------------------------------------------------------------
+    # Biomass turnover (Mg C ha-1 yr-1)    
+    vo['C_LF'][:,iS,2]=np.nansum(tl['Cf_LF'],axis=1)/cm
+    vo['C_LF'][:,iS,3]=np.nansum(tl['Cbr_LF'],axis=1)/cm
+    vo['C_LF'][:,iS,4]=np.nansum(tl['Cbk_LF'],axis=1)/cm   
+    vo['C_LF'][:,iS,5]=np.nansum(tl['Crc_LF'],axis=1)/cm
+    vo['C_LF'][:,iS,6]=np.nansum(tl['Crf_LF'],axis=1)/cm
     
-    vo['C_LF'][:,iS,2]=np.nansum(tl_Cf_LF,axis=1)/cm
-    vo['C_LF'][:,iS,3]=np.nansum(tl_Cbr_LF,axis=1)/cm
-    vo['C_LF'][:,iS,4]=np.nansum(tl_Cbk_LF,axis=1)/cm   
-    vo['C_LF'][:,iS,5]=np.nansum(tl_Crc_LF,axis=1)/cm
-    vo['C_LF'][:,iS,6]=np.nansum(tl_Crf_LF,axis=1)/cm
+    # Biomass loss due to mortality (Mg C ha-1 yr-1)    
+    vo['C_M_Reg'][:,iS,0]=np.nansum(tl['Cswm_M_Reg'],axis=1)/cm
+    vo['C_M_Reg'][:,iS,1]=np.nansum(tl['Cswnm_M_Reg'],axis=1)/cm
+    vo['C_M_Reg'][:,iS,2]=np.nansum(tl['Cf_M_Reg'],axis=1)/cm
+    vo['C_M_Reg'][:,iS,3]=np.nansum(tl['Cbr_M_Reg'],axis=1)/cm
+    vo['C_M_Reg'][:,iS,4]=np.nansum(tl['Cbk_M_Reg'],axis=1)/cm
+    vo['C_M_Reg'][:,iS,5]=np.nansum(tl['Crc_M_Reg'],axis=1)/cm
+    vo['C_M_Reg'][:,iS,6]=np.nansum(tl['Crf_M_Reg'],axis=1)/cm
     
-    #--------------------------------------------------------------------------
-    # Populate stand biomass loss due to mortality (Mg C ha-1 yr-1)
-    #--------------------------------------------------------------------------
+#    vo['C_M_Fir'][:,iS]=np.nansum(tl['Ctot_M_Fir'],axis=1)/cm
+#    vo['C_M_Ins'][:,iS]=np.nansum(tl['Ctot_M_Ins'],axis=1)/cm
+#    vo['C_M_Pat'][:,iS]=np.nansum(tl['Ctot_M_Pat'],axis=1)/cm
+#    vo['C_M_Win'][:,iS]=np.nansum(tl['Ctot_M_Win'],axis=1)/cm
+#    vo['C_M_Har'][:,iS]=np.nansum(tl['Ctot_M_Har'],axis=1)/cm
+
+    # NPP by tissue (Mg C ha-1 yr-1)    
+    #vo['C_NPP'][:,iS,0:7]=vo['C_G_Gross'][:,iS,0:7]+vo['C_LF'][:,iS,0:7]
     
-    vo['C_M_Reg'][:,iS,0]=np.nansum(tl_Csw_Merch_M,axis=1)/cm
-    vo['C_M_Reg'][:,iS,1]=np.nansum(tl_Csw_NonMerch_M,axis=1)/cm
-    vo['C_M_Reg'][:,iS,2]=np.nansum(tl_Cf_M,axis=1)/cm
-    vo['C_M_Reg'][:,iS,3]=np.nansum(tl_Cbr_M,axis=1)/cm
-    vo['C_M_Reg'][:,iS,4]=np.nansum(tl_Cbk_M,axis=1)/cm
-    vo['C_M_Reg'][:,iS,5]=np.nansum(tl_Crc_M,axis=1)/cm
-    vo['C_M_Reg'][:,iS,6]=np.nansum(tl_Crf_M,axis=1)/cm
-    
-    vo['C_M_Sim_Reg'][:,iS]=np.nansum(tl_Ctot_M_Sim_Reg,axis=1)/cm
-    vo['C_M_Sim_Fir'][:,iS]=np.nansum(tl_Ctot_M_Sim_Fir,axis=1)/cm
-    vo['C_M_Sim_Ins'][:,iS]=np.nansum(tl_Ctot_M_Sim_Ins,axis=1)/cm
-    vo['C_M_Sim_Pat'][:,iS]=np.nansum(tl_Ctot_M_Sim_Pat,axis=1)/cm
-    vo['C_M_Sim_Win'][:,iS]=np.nansum(tl_Ctot_M_Sim_Win,axis=1)/cm
-    vo['C_M_Sim_Har'][:,iS]=np.nansum(tl_Ctot_M_Sim_Har,axis=1)/cm
-  
-    vo['C_M_Inv_Fir'][:,iS]=np.nansum(tl_Ctot_M_Inv_Fir,axis=1)/cm
-    vo['C_M_Inv_Ins'][:,iS]=np.nansum(tl_Ctot_M_Inv_Ins,axis=1)/cm
-    vo['C_M_Inv_Pat'][:,iS]=np.nansum(tl_Ctot_M_Inv_Pat,axis=1)/cm
-    vo['C_M_Inv_Win'][:,iS]=np.nansum(tl_Ctot_M_Inv_Win,axis=1)/cm
-    vo['C_M_Inv_Har'][:,iS]=np.nansum(tl_Ctot_M_Inv_Har,axis=1)/cm
-            
-    #--------------------------------------------------------------------------
-    # Populate stand NPP by tissue (Mg C ha-1 yr-1)
-    #--------------------------------------------------------------------------
-    
-    vo['C_NPP'][:,iS,0:7]=vo['C_G_Gross'][:,iS,0:7]+vo['C_LF'][:,iS,0:7]
-    
-    #--------------------------------------------------------------------------
-    # Populate stand net growth by tissue (Mg C ha-1 yr-1)
-    #--------------------------------------------------------------------------
-    
+    # Net growth by tissue (Mg C ha-1 yr-1)
     vo['C_G_Net'][:,iS,0:7]=vo['C_G_Gross'][:,iS,0:7]-vo['C_M_Reg'][:,iS,0:7]
     
+    # Ecosystem carbon pools by tissue (Mg C ha-1 yr-1)    
+    vo['C_Eco_Pools'][:,iS,0]=np.maximum(0,np.nansum(tl['Cswm'],axis=1))/cm
+    vo['C_Eco_Pools'][:,iS,1]=np.maximum(0,np.nansum(tl['Cswnm'],axis=1))/cm
+    vo['C_Eco_Pools'][:,iS,2]=np.maximum(0,np.nansum(tl['Cf'],axis=1))/cm
+    vo['C_Eco_Pools'][:,iS,3]=np.maximum(0,np.nansum(tl['Cbr'],axis=1))/cm
+    vo['C_Eco_Pools'][:,iS,4]=np.maximum(0,np.nansum(tl['Cbk'],axis=1))/cm
+    vo['C_Eco_Pools'][:,iS,5]=np.maximum(0,np.nansum(tl['Crc'],axis=1))/cm
+    vo['C_Eco_Pools'][:,iS,6]=np.maximum(0,np.nansum(tl['Crf'],axis=1))/cm
+    
     #--------------------------------------------------------------------------
-    # Populate ecosystem carbon pools by tissue (Mg C ha-1 yr-1)
+    # Populate stand-level merch stemwood volume
     #--------------------------------------------------------------------------
     
-    vo['C_Eco_Pools'][:,iS,0]=np.maximum(0,np.nansum(tl_Csw_Merch,axis=1))/cm
-    vo['C_Eco_Pools'][:,iS,1]=np.maximum(0,np.nansum(tl_Csw_NonMerch,axis=1))/cm
-    vo['C_Eco_Pools'][:,iS,2]=np.maximum(0,np.nansum(tl_Cf,axis=1))/cm
-    vo['C_Eco_Pools'][:,iS,3]=np.maximum(0,np.nansum(tl_Cbr,axis=1))/cm
-    vo['C_Eco_Pools'][:,iS,4]=np.maximum(0,np.nansum(tl_Cbk,axis=1))/cm
-    vo['C_Eco_Pools'][:,iS,5]=np.maximum(0,np.nansum(tl_Crc,axis=1))/cm
-    vo['C_Eco_Pools'][:,iS,6]=np.maximum(0,np.nansum(tl_Crf,axis=1))/cm
-        
+    # Merchantable stemwood volume of live trees
+    vo['V_MerchLive'][:,iS]=np.maximum(0,np.nansum(tl['Cswm'],axis=1))/cm/meta['Param']['BEV']['Biophysical']['Ratio_Wood_C_to_DM']/0.45
+    
+    # Merchantable stemwood volume mortality
+    # *** Exclude harvesting because the fibre is removed, not transferred to snags ***
+    Cswm_M=tl['Cswm_M_Reg']+tl['Cswm_M_Fir']+tl['Cswm_M_Ins']+tl['Cswm_M_Pat']
+    vo['V_Merch_M'][:,iS]=np.maximum(0,np.nansum(Cswm_M,axis=1))/cm/meta['Param']['BEV']['Biophysical']['Ratio_Wood_C_to_DM']/0.45
+    
+    # Total merchantable stemwood volume
+    #vo['V_MerchTotal'][:,iS]=vo['V_MerchLive'][:,iS]+vo['V_MerchDead'][:,iS]
+    
+    #--------------------------------------------------------------------------
+    # Populate stand-level mill transfers
+    #--------------------------------------------------------------------------
+    
+    # To mill
+    #vo['C_ToMillMerch'][:,iS]=np.sum(tl['Cswm_M_Har'],axis=1)/cm
+    
+    # To mill
+    #vo['V_ToMillMerchLive'][:,iS]=np.sum(tl['Cswm_M_Har'],axis=1)/cm/meta['Param']['BEV']['Biophysical']['Ratio_Wood_C_to_DM']/0.45
+    
     return vo
 
 #%% STAND DEAD ORGANIC MATTER DYNAMICS
@@ -1040,7 +961,7 @@ def DOM_like_CBM08(iT,iBat,vi,vo,iEP,meta):
         bIPF['RootCoarseMorToSoilF']*vo['C_M_Reg'][iT,:,iEP['RootCoarse']]
         
     # Transfer biomass turnover to slow soil pool
-    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT-1,:,iEP['SoilS']]    
+    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT-1,:,iEP['SoilS']]
     
     #--------------------------------------------------------------------------
     # Update piles
@@ -1159,6 +1080,23 @@ def DOM_like_CBM08(iT,iBat,vi,vo,iEP,meta):
     vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+PT_SnagStem
     
     #--------------------------------------------------------------------------
+    # Dead volume
+    #--------------------------------------------------------------------------
+    
+    if meta['Project']['Biomass Module']=='Sawtooth':
+    
+        # Decomposition
+        R_V_MerchDead=meta['R_SnagStem']/meta['Param']['BEV']['Biophysical']['Ratio_Wood_C_to_DM']/0.45
+        
+        # Adjust decomp just to get the merch component
+        R_V_MerchDead=meta['Param']['BE']['Sawtooth']['Core']['Merch Stemwood Fraction']*R_V_MerchDead
+        
+        # Physical transfer
+        PT_V_MerchDead=bDec['SnagStem_PhysTransRate']*vo['V_MerchDead'][iT,:]
+    
+        vo['V_MerchDead'][iT,:]=np.maximum(0,vo['V_MerchDead'][iT-1,:]+vo['V_Merch_M'][iT,:]-PT_V_MerchDead)
+    
+    #--------------------------------------------------------------------------
     # litter decomposition
     # *** Added for fertilization study ***
     #--------------------------------------------------------------------------
@@ -1179,14 +1117,16 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
     if meta['Scenario'][iScn]['Harvest Status Historical']=='On':
         if vi['tv'][iT]<meta['Scenario'][iScn]['Harvest Year Transition']:
             Period='Historical'
-            Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
+            #Volume=vo['V_MerchLive'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
+            Volume=vo['V_MerchTotal'][iT,:]
             vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period)
     
     # Predict future harvesting (on the fly)
     if meta['Scenario'][iScn]['Harvest Status Future']=='On':
         if vi['tv'][iT]>=meta['Scenario'][iScn]['Harvest Year Transition']:
             Period='Future'
-            Volume=vo['V_StemMerch'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
+            #Volume=vo['V_MerchLive'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
+            Volume=vo['V_MerchTotal'][iT,:]
             vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period) 
     
     # Predict future nutrient application (on the fly)
@@ -1203,14 +1143,17 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         # Event type IDs for the iE'th event of the year
         ID_Type=vi['EC']['ID_Type'][iT,:,iE].copy()
         
-        # Record stands with aerial nutrient application
-        iApp=np.where(ID_Type==meta['LUT']['Dist']['Fertilization Aerial'])[0]
-        flag_nutrient_application[iApp]=1
-        
         # Total affected biomass carbon
         MortalityFactor=vi['EC']['MortalityFactor'][iT,:,iE].copy()
-                
-        # Get event-specific parameters        
+        
+        # Record stands with aerial nutrient application
+        iApp=np.where(ID_Type==meta['LUT']['Dist']['Fertilization Aerial'])[0]
+        flag_nutrient_application[iApp]=1        
+            
+        #----------------------------------------------------------------------
+        # Get event-specific parameters
+        #----------------------------------------------------------------------
+        
         u,idx,inver=np.unique(ID_Type,return_index=True,return_inverse=True)        
         b={}
         for k in meta['Param']['BEV']['Dist'][1].keys():
@@ -1222,47 +1165,43 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
             b[k]=bU[inver]
         
         #----------------------------------------------------------------------
-        # Region-specific utilization
-        # Parameter table lists interior values, adjust coastal values here.
+        # Adjust event-specific parameters to reflect time- and region-specific 
+        # Fate of Felled material
         #----------------------------------------------------------------------
+        
+        # Index to time-dependent fate of felled materials
+        iT_P=np.where(meta['Param']['BE']['Felled Fate']['Year']==meta['Year'][iT])[0]
+        
+        # Simulations may exceed the timeframe of the felled fate parameters
+        # If so, set to the last year
+        if iT_P.size==0:
+            iT_P=-1
+        
+        # Index to harvesting
+        iHarvest=np.where( (ID_Type==meta['LUT']['Dist']['Harvest']) | (ID_Type==meta['LUT']['Dist']['Harvest Salvage']) )[0]
 
-#        # Index to coastal stands
-#        iCoast=np.where( (ID_Type==meta['LUT']['Dist']['Harvest']) & (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | \
-#            (ID_Type==meta['LUT']['Dist']['Harvest']) & (vi['Inv']['ID_BECZ']==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']) )[0]
-#            
-#        if iCoast.size>0:
-#            
-#            # Fraction removed
-#            # FPB 2010 - update for 2018 suggests provincial average waste fraction of 0.04
-#            # so the FPB 2010 estimates are probably still representative.
-#            b['BiomassMerch_Removed'][iCoast]=0.88
-#            b['BiomassMerch_LeftOnSite'][iCoast]=0.12*(1.00-0.52)
-#            b['BiomassMerch_Piled'][iCoast]=0.12*0.52
-#            
-#            b['BiomassNonMerch_Removed'][iCoast]=0.00
-#            b['BiomassNonMerch_LeftOnSite'][iCoast]=(1.00-0.52)            
-#            b['BiomassNonMerch_Piled'][iCoast]=0.52
-#            
-#            b['Snags_Removed'][iCoast]=0.88
-#            b['Snags_LeftOnSite'][iCoast]=0.12*(1.00-0.52)
-#            b['Snags_Piled'][iCoast]=0.12*0.52
+        # Adjust parameters        
+        if iHarvest.size>0:
+            for k in meta['Param']['BEV']['Felled Fate'].keys():
+                b[k][iHarvest]=meta['Param']['BEV']['Felled Fate'][k][iT_P,iHarvest]
 
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
         #----------------------------------------------------------------------
 
-        BiomassMerchAffectedFrac=b['BiomassMerch_Affected']*MortalityFactor
-        BiomassNonMerchAffectedFrac=b['BiomassNonMerch_Affected']*MortalityFactor
-        SnagsAffectedFrac=b['Snags_Affected']*MortalityFactor
+        # Fractions
+        FracBiomassMerchAffected=b['BiomassMerch_Affected']*MortalityFactor
+        FracBiomassNonMerchAffected=b['BiomassNonMerch_Affected']*MortalityFactor
+        FracSnagsAffected=b['Snags_Affected']*MortalityFactor
 
         # Biomass carbon
-        Affected_StemMerch=BiomassMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]
-        Affected_StemNonMerch=BiomassNonMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]
-        Affected_Foliage=BiomassNonMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['Foliage']]
-        Affected_Branch=BiomassNonMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['Branch']]
-        Affected_Bark=BiomassNonMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['Bark']]            
-        Affected_RootCoarse=BiomassNonMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]
-        Affected_RootFine=BiomassNonMerchAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
+        Affected_StemMerch=FracBiomassMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]
+        Affected_StemNonMerch=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]
+        Affected_Foliage=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['Foliage']]
+        Affected_Branch=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['Branch']]
+        Affected_Bark=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['Bark']]            
+        Affected_RootCoarse=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]
+        Affected_RootFine=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
                         
         # Partition bark into merch and non-merch components
         Affected_BarkMerch=0.85*Affected_Bark
@@ -1272,14 +1211,17 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         Affected_TotNonMerch=Affected_StemNonMerch+Affected_Branch+Affected_BarkNonMerch
             
         # Snags           
-        Affected_SnagStem=SnagsAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-        Affected_SnagBranch=SnagsAffectedFrac*vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]
+        Affected_SnagStem=FracSnagsAffected*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
+        Affected_SnagBranch=FracSnagsAffected*vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]
             
         # All carbon
         Affected_All=Affected_StemMerch+Affected_StemNonMerch+Affected_Foliage+Affected_Branch+Affected_Bark+Affected_RootCoarse+Affected_RootFine
         
-        # Stemwood merch. volume
-        Affected_VolumeStemMerch=BiomassMerchAffectedFrac*vo['V_StemMerch'][iT,:]
+        # Live merch. stemwood volume
+        Affected_VolumeStemMerchLive=FracBiomassMerchAffected*vo['V_MerchLive'][iT,:]
+        
+        # Dead merch. stemwood volume
+        Affected_VolumeStemMerchDead=FracSnagsAffected*vo['V_MerchDead'][iT,:]
         
         #----------------------------------------------------------------------
         # Calculate mortality
@@ -1314,15 +1256,12 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]-Affected_SnagBranch
             
         # Remove stemwood merch volume
-        vo['V_StemMerch'][iT,:]=np.maximum(0,vo['V_StemMerch'][iT,:]-Affected_VolumeStemMerch)
-        #vo['V_StemMerch'][iT,:]=vo['V_StemMerch'][iT,:]-Affected_VolumeStemMerch
+        vo['V_MerchLive'][iT,:]=np.maximum(0,vo['V_MerchLive'][iT,:]-Affected_VolumeStemMerchLive)
+        vo['V_MerchDead'][iT,:]=np.maximum(0,vo['V_MerchDead'][iT,:]-Affected_VolumeStemMerchDead)
         
         #----------------------------------------------------------------------
         # Carbon that is removed (ie sent to mills)
         #----------------------------------------------------------------------
-        
-        # Merch stemwood volume removed
-        vo['V_StemMerchToMill'][iT,:]=vo['V_StemMerchToMill'][iT,:]+b['BiomassMerch_Removed']*Affected_VolumeStemMerch
         
         # Merch biomass to mill - of the total amount of biomass affected, 
         # Add bark
@@ -1342,6 +1281,39 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         # Snag branches to mill
         SnagBranch_Removed=b['Snags_Removed']*Affected_SnagBranch
         vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+SnagBranch_Removed
+        
+        #----------------------------------------------------------------------
+        # Volume that is removed (ie sent to mills)
+        #----------------------------------------------------------------------
+        
+        # Live merch stemwood volume removed
+        vo['V_ToMillMerchLive'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+b['BiomassMerch_Removed']*Affected_VolumeStemMerchLive
+        
+        #if meta['Project']['Biomass Module']=='Sawtooth':
+        #    vo['V_ToMillMerchLive'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+vo['V_Merch_H'][iT,:]
+        
+        # Dead merch stemwood volume removed
+        vo['V_ToMillMerchDead'][iT,:]=vo['V_ToMillMerchDead'][iT,:]+b['Snags_Removed']*Affected_VolumeStemMerchDead
+        
+        # Total merch stemwood volume removed
+        vo['V_ToMillMerchTotal'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+vo['V_ToMillMerchDead'][iT,:]
+        
+        # Non-mech volume removed
+        vo['V_ToMillNonMerch'][iT,:]=meta['Param']['BEV']['Econ']['wood_DM_to_m3']*meta['Param']['BEV']['Econ']['wood_C_to_DM']*vo['C_ToMillNonMerch'][iT,:]
+        
+        #----------------------------------------------------------------------
+        # Add operational emissions from harvest (Klein et al. 2015)
+        #----------------------------------------------------------------------
+        
+        if iHarvest.size>0:
+            
+            EI_Harvest=meta['Param']['BEV']['Biophysical']['Emission Intensity of Harvesting']
+            
+            E=EI_Harvest*(vo['V_ToMillMerchTotal'][iT,iHarvest]+vo['V_ToMillNonMerch'][iT,iHarvest])
+            
+            vo['E_CO2e_ET_OperationsBurnOil'][iT,iHarvest]=0.5*E
+            
+            vo['E_CO2e_ESC_OperationsBurnOil'][iT,iHarvest]=0.5*E
         
         #----------------------------------------------------------------------
         # Carbon that is left dispersed on site (after felling or wind storms)
@@ -1438,6 +1410,13 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['C_E_WildfireAsCO'][iT,:]=vo['C_E_WildfireAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
         
         #----------------------------------------------------------------------
+        # Update total stemwood volume
+        #----------------------------------------------------------------------
+        
+        #vo['V_MerchDead'][iT,:]=meta['Param']['BEV']['Econ']['wood_DM_to_m3']*meta['Param']['BEV']['Econ']['wood_C_to_DM']*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
+        vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
+        
+        #----------------------------------------------------------------------
         # Update stand age
         #----------------------------------------------------------------------
             
@@ -1479,7 +1458,14 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
                 ind=np.where( (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Aerial']) )[0]
                 
                 if ind.size>0:
-                    vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['GC']['ID GC Unique'][iGC] ][:,ind,:]
+                    try:
+                        vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['GC']['ID GC Unique'][iGC] ][:,ind,:]
+                    except:
+                        print(ind.shape)
+                        print(vi['GC']['Active'][:,ind,:].shape)
+                        print(len(vi['GC']))
+                        print(vi['GC'][ meta['GC']['ID GC Unique'][iGC] ].shape)
+                        
                     vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC Unique'][iGC])
     
         #----------------------------------------------------------------------
@@ -1642,6 +1628,20 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
                             meta['Param']['BEV']['HWP'][k][iStands]=meta['Harvest Custom'][ID_HC][k]/100
     
     #--------------------------------------------------------------------------
+    # Index to time-dependent HWP End Use variables
+    #--------------------------------------------------------------------------
+    
+    iTDV=np.where(meta['Param']['BE']['HWP End Use']['Year']==meta['Year'][iT])[0]
+
+    dTDV={}
+    for k in meta['Param']['BEV']['HWP End Use'].keys():
+        if iTDV.size!=0:
+            dTDV[k]=meta['Param']['BEV']['HWP End Use'][k][iTDV,:].flatten()
+        else:
+            # Simulations may extend beyond the 2100 limit of the time-dependent HWP variables
+            dTDV[k]=meta['Param']['BEV']['HWP End Use'][k][-1,:].flatten()
+
+    #--------------------------------------------------------------------------
     # Forest to mills or direct to end-uses
     #--------------------------------------------------------------------------
     
@@ -1672,10 +1672,6 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     C_MDFMill=meta['Param']['BEV']['HWP']['RemovedMerchToMDFMill']*vo['C_ToMillMerch'][iT,:] + \
                  meta['Param']['BEV']['HWP']['RemovedNonMerchToMDFMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  meta['Param']['BEV']['HWP']['RemovedSnagStemToMDFMill']*vo['C_ToMillSnagStem'][iT,:]
-    
-    C_FirewoodDom=meta['Param']['BEV']['HWP']['RemovedMerchToFirewood']*vo['C_ToMillMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedNonMerchToFirewood']*vo['C_ToMillNonMerch'][iT,:] + \
-                 meta['Param']['BEV']['HWP']['RemovedSnagStemToFirewood']*vo['C_ToMillSnagStem'][iT,:]
     
     C_LogExport=meta['Param']['BEV']['HWP']['RemovedMerchToLogExport']*vo['C_ToMillMerch'][iT,:] + \
                  meta['Param']['BEV']['HWP']['RemovedNonMerchToLogExport']*vo['C_ToMillNonMerch'][iT,:] + \
@@ -1737,10 +1733,10 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Facility power 
     #--------------------------------------------------------------------------
     
-    C_PowerFacilityDom=meta['Param']['BEV']['HWP']['SawMillToPowerFacility']*C_SawMill + \
+    C_PowerFacilityDom=dTDV['SawMillToPowerFacility']*C_SawMill + \
         meta['Param']['BEV']['HWP']['PulpMillToPowerFacility']*C_PulpMill + \
-        meta['Param']['BEV']['HWP']['PlywoodMillToPowerFacility']*C_PlywoodMill + \
-        meta['Param']['BEV']['HWP']['OSBMillToPowerFacility']*C_OSBMill
+        dTDV['PlywoodMillToPowerFacility']*C_PlywoodMill + \
+        dTDV['OSBMillToPowerFacility']*C_OSBMill
     
     C_PowerFacilityFor=meta['Param']['BEV']['HWP']['LogExportToPowerFacility']*C_LogExport
     
@@ -1748,10 +1744,10 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Independent power producers
     #--------------------------------------------------------------------------
     
-    C_PowerGrid=C_PowerGrid+meta['Param']['BEV']['HWP']['SawMillToIPP']*C_SawMill + \
+    C_PowerGrid=C_PowerGrid+dTDV['SawMillToIPP']*C_SawMill + \
         meta['Param']['BEV']['HWP']['PulpMillToIPP']*C_PulpMill + \
-        meta['Param']['BEV']['HWP']['PlywoodMillToIPP']*C_PlywoodMill + \
-        meta['Param']['BEV']['HWP']['OSBMillToIPP']*C_OSBMill
+        dTDV['PlywoodMillToIPP']*C_PlywoodMill + \
+        dTDV['OSBMillToIPP']*C_OSBMill
     
     #--------------------------------------------------------------------------
     # Log-size effect
@@ -1788,10 +1784,10 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of single-family homes
     #--------------------------------------------------------------------------
     
-    SawMillToSFH=C_SawMill*meta['Param']['BEV']['HWP']['SawMillToSFH']
-    PlywoodMillToSFH=C_PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToSFH']
-    OSBMillToSFH=C_OSBMill*meta['Param']['BEV']['HWP']['OSBMillToSFH']
-    MDFMillToSFH=C_MDFMill*meta['Param']['BEV']['HWP']['MDFMillToSFH']
+    SawMillToSFH=C_SawMill*dTDV['SawMillToSFH']
+    PlywoodMillToSFH=C_PlywoodMill*dTDV['PlywoodMillToSFH']
+    OSBMillToSFH=C_OSBMill*dTDV['OSBMillToSFH']
+    MDFMillToSFH=C_MDFMill*dTDV['MDFMillToSFH']
     LogExportToSFH=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToSFH']
     #ShakeShingleToSFH=C_ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToSFH']
 
@@ -1799,10 +1795,10 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of multi-family homes
     #--------------------------------------------------------------------------
     
-    SawMillToMFH=C_SawMill*meta['Param']['BEV']['HWP']['SawMillToMFH']
-    PlywoodMillToMFH=C_PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToMFH']
-    OSBMillToMFH=C_OSBMill*meta['Param']['BEV']['HWP']['OSBMillToMFH']    
-    MDFMillToMFH=C_MDFMill*meta['Param']['BEV']['HWP']['MDFMillToMFH']
+    SawMillToMFH=C_SawMill*dTDV['SawMillToMFH']
+    PlywoodMillToMFH=C_PlywoodMill*dTDV['PlywoodMillToMFH']
+    OSBMillToMFH=C_OSBMill*dTDV['OSBMillToMFH']    
+    MDFMillToMFH=C_MDFMill*dTDV['MDFMillToMFH']
     LogExportToMFH=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToMFH']
     #ShakeShingleToMFH=C_ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToMFH']
     
@@ -1810,10 +1806,10 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of commercial buildings
     #--------------------------------------------------------------------------
     
-    SawMillToCom=C_SawMill*meta['Param']['BEV']['HWP']['SawMillToCom']
-    PlywoodMillToCom=C_PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToCom']
-    OSBMillToCom=C_OSBMill*meta['Param']['BEV']['HWP']['OSBMillToCom']
-    MDFMillToCom=C_MDFMill*meta['Param']['BEV']['HWP']['MDFMillToCom']
+    SawMillToCom=C_SawMill*dTDV['SawMillToCom']
+    PlywoodMillToCom=C_PlywoodMill*dTDV['PlywoodMillToCom']
+    OSBMillToCom=C_OSBMill*dTDV['OSBMillToCom']
+    MDFMillToCom=C_MDFMill*dTDV['MDFMillToCom']
     LogExportToCom=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToCom']
     #ShakeShingleToCom=C_ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToCom']
     
@@ -1821,40 +1817,40 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of furniture
     #--------------------------------------------------------------------------
     
-    SawMillToFurn=C_SawMill*meta['Param']['BEV']['HWP']['SawMillToFurn']
-    PlywoodMillToFurn=C_PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToFurn']
-    OSBMillToFurn=C_OSBMill*meta['Param']['BEV']['HWP']['OSBMillToFurn']
-    MDFMillToFurn=C_MDFMill*meta['Param']['BEV']['HWP']['MDFMillToFurn']
+    SawMillToFurn=C_SawMill*dTDV['SawMillToFurn']
+    PlywoodMillToFurn=C_PlywoodMill*dTDV['PlywoodMillToFurn']
+    OSBMillToFurn=C_OSBMill*dTDV['OSBMillToFurn']
+    MDFMillToFurn=C_MDFMill*dTDV['MDFMillToFurn']
     LogExportToFurn=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToFurn']
     
     #--------------------------------------------------------------------------
     # Production of shipping containers
     #--------------------------------------------------------------------------
     
-    SawMillToShip=C_SawMill*meta['Param']['BEV']['HWP']['SawMillToShip']
-    PlywoodMillToShip=C_PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToShip']
-    OSBMillToShip=C_OSBMill*meta['Param']['BEV']['HWP']['OSBMillToShip']
-    MDFMillToShip=C_MDFMill*meta['Param']['BEV']['HWP']['MDFMillToShip']
+    SawMillToShip=C_SawMill*dTDV['SawMillToShip']
+    PlywoodMillToShip=C_PlywoodMill*dTDV['PlywoodMillToShip']
+    OSBMillToShip=C_OSBMill*dTDV['OSBMillToShip']
+    MDFMillToShip=C_MDFMill*dTDV['MDFMillToShip']
     LogExportToShip=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToShip']
     
     #--------------------------------------------------------------------------
     # Production of repairs
     #--------------------------------------------------------------------------
     
-    SawMillToRepairs=C_SawMill*meta['Param']['BEV']['HWP']['SawMillToRepairs']
-    PlywoodMillToRepairs=C_PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToRepairs']
-    OSBMillToRepairs=C_OSBMill*meta['Param']['BEV']['HWP']['OSBMillToRepairs']
-    MDFMillToRepairs=C_MDFMill*meta['Param']['BEV']['HWP']['MDFMillToRepairs']
+    SawMillToRepairs=C_SawMill*dTDV['SawMillToRepairs']
+    PlywoodMillToRepairs=C_PlywoodMill*dTDV['PlywoodMillToRepairs']
+    OSBMillToRepairs=C_OSBMill*dTDV['OSBMillToRepairs']
+    MDFMillToRepairs=C_MDFMill*dTDV['MDFMillToRepairs']
     LogExportToRepairs=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToRepairs']
     
     #--------------------------------------------------------------------------
     # Production of other
     #--------------------------------------------------------------------------
     
-    SawMillToOther=C_SawMill*meta['Param']['BEV']['HWP']['SawMillToOther']
-    PlywoodMillToOther=C_PlywoodMill*meta['Param']['BEV']['HWP']['PlywoodMillToOther']  
-    OSBMillToOther=C_OSBMill*meta['Param']['BEV']['HWP']['OSBMillToOther']
-    MDFMillToOther=C_MDFMill*meta['Param']['BEV']['HWP']['MDFMillToOther']
+    SawMillToOther=C_SawMill*dTDV['SawMillToOther']
+    PlywoodMillToOther=C_PlywoodMill*dTDV['PlywoodMillToOther']  
+    OSBMillToOther=C_OSBMill*dTDV['OSBMillToOther']
+    MDFMillToOther=C_MDFMill*dTDV['MDFMillToOther']
     LogExportToOther=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToOther']
     #PolePostMillToOther=PolePostMill*meta['Param']['BEV']['HWP']['PolePostMillToOther']
     
@@ -1876,7 +1872,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     vo['C_ToPowerFacilityFor'][iT,:]=C_PowerFacilityFor
     vo['C_ToPowerGrid'][iT,:]=C_PowerGrid
     vo['C_ToPellets'][iT,:]=C_Pellet
-    vo['C_ToFirewoodDom'][iT,:]=C_FirewoodDom
+    #vo['C_ToFirewoodDom'][iT,:]=C_FirewoodDom # *** There is firewood being added upon piling (see events function)
     vo['C_ToFirewoodFor'][iT,:]=C_FirewoodFor
     vo['C_ToLogExport'][iT,:]=C_LogExport
     
@@ -1960,8 +1956,8 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + C_PowerFacilityFor
     
     # Transfer domestic firewood to domestic firewood pool
-    ip=meta['Core']['iPP']['FirewoodDom']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + C_FirewoodDom
+    #ip=meta['Core']['iPP']['FirewoodDom']
+    #vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip] + C_FirewoodDom
     
     # Transfer foreign firewood to foreign firewood pool
     ip=meta['Core']['iPP']['FirewoodFor']
@@ -2180,7 +2176,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Emissions
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
-    vo['E_CO2e_LULUCF_HWP'][iT,:]=vo['E_CO2e_LULUCF_HWP'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
     
     #--------------------------------------------------------------------------
     # Emissions from combustion during foreign power generation
@@ -2196,7 +2192,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Emissions
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
-    vo['E_CO2e_LULUCF_HWP'][iT,:]=vo['E_CO2e_LULUCF_HWP'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
     
     #--------------------------------------------------------------------------
     # Emissions from combustion of pellets
@@ -2212,7 +2208,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Emissions
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
-    vo['E_CO2e_LULUCF_HWP'][iT,:]=vo['E_CO2e_LULUCF_HWP'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
     
     #--------------------------------------------------------------------------
     # Emissions from combustion of domestic firewood
@@ -2228,7 +2224,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Emissions
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
-    vo['E_CO2e_LULUCF_HWP'][iT,:]=vo['E_CO2e_LULUCF_HWP'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
       
     #--------------------------------------------------------------------------
     # Emissions from combustion of foreign firewood
@@ -2244,10 +2240,10 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Emissions
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
-    vo['E_CO2e_LULUCF_HWP'][iT,:]=vo['E_CO2e_LULUCF_HWP'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
     
     #--------------------------------------------------------------------------
-    # Emissions from combustion of pulp effluent
+    # Emissions from pulp effluent
     #--------------------------------------------------------------------------
          
     # Emissions from pulp effluent (CO2 from aerobic decomposition)
@@ -2280,7 +2276,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip]+c_emitted
     
     #--------------------------------------------------------------------------
-    # Decompositoin of dump paper
+    # Decomposition of dump paper
     #--------------------------------------------------------------------------
     
     # Turnover
@@ -2294,7 +2290,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     vo['E_CO2e_LULUCF_HWP'][iT,:]=vo['E_CO2e_LULUCF_HWP'][iT,:] + meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*C_emitted
     
     #--------------------------------------------------------------------------
-    # Decomposion of landfill degradable wood
+    # Decomposition of landfill degradable wood
     #--------------------------------------------------------------------------
                
     # Turnover

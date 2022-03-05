@@ -1156,7 +1156,10 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
             iStand=iStand0
         
         # Indices to stand
-        indS_atu=idx['atu'][iStand]
+        try:
+            indS_atu=idx['atu'][iStand]
+        except:
+            print(iStand)
         indS_pl=idx['pl'][iStand]
         indS_op=idx['op'][iStand]
         indS_burnsev=idx['burnsev'][iStand]
@@ -2146,7 +2149,7 @@ def Clean_Species_Composition(meta,dmec,vri,fcinv):
 
 #%% CREATE BEST AVAILABLE INVENTORY
 
-def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
+def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
 
     #--------------------------------------------------------------------------
     # Initialize best-available (gap-filled) inventory
@@ -2322,24 +2325,24 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
     spl={}
     spl['SI_SPL']=-999*np.ones(meta['Project']['N Stand'])
     
-    if 'xlim' in sxy:
+    if 'xlim' in geos:
         
         # Tiled project, we can just clip rasters to tile boundaries -> goes super fast
         
         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Fd.tif')
-        z=gis.ClipRaster(z,sxy['xlim'],sxy['ylim'])
+        z=gis.ClipRaster(z,geos['xlim'],geos['ylim'])
         Site_Prod_Fd=z['Data'].flatten()
         del z
         garc.collect()
     
         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Pl.tif')
-        z=gis.ClipRaster(z,sxy['xlim'],sxy['ylim'])    
+        z=gis.ClipRaster(z,geos['xlim'],geos['ylim'])    
         Site_Prod_Pl=z['Data'].flatten()
         del z
         garc.collect()
     
         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Sx.tif')
-        z=gis.ClipRaster(z,sxy['xlim'],sxy['ylim'])    
+        z=gis.ClipRaster(z,geos['xlim'],geos['ylim'])    
         Site_Prod_Sx=z['Data'].flatten()
         del z
         garc.collect()
@@ -2397,8 +2400,8 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,sxy):
             else:
                 iStand=iStand0
         
-            adx=np.abs(sxy['x'][iStand]-x)
-            ady=np.abs(sxy['y'][iStand]-y)
+            adx=np.abs(geos['Sparse']['X'][iStand]-x)
+            ady=np.abs(geos['Sparse']['Y'][iStand]-y)
             ix=np.where(adx==np.min(adx))[0]
             iy=np.where(ady==np.min(ady))[0]
             ind=np.ix_(iy,ix)
@@ -2810,9 +2813,11 @@ def PutEventsInOrder(dmec,meta):
 
 #%% Timber harvesting land base 
 
+# I was putting this as a dictionary in the meta structure, but it is too big
+
 def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     
-    meta['Project']['THLB']={}
+    thlb={}
     
     #------------------------------------------------------------------------------
     # Fix for tiled
@@ -2829,17 +2834,17 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     #------------------------------------------------------------------------------
 
     # Initially assume everything is in the THLB
-    meta['Project']['THLB']['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']))
+    thlb['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']),dtype=np.int16)
 
     # Define second THLB with areas that have been removed due to value diversification
-    meta['Project']['THLB']['Baseline']=meta['Project']['THLB']['Actual'].copy()
+    thlb['Baseline']=thlb['Actual'].copy()
 
     # Index to stands that are uneconomic
     iUneconomic=np.where(ba['SI']<=5)[0]
 
     # Remove uneconomic stands from THLB
-    meta['Project']['THLB']['Actual'][:,iUneconomic]=0
-    meta['Project']['THLB']['Baseline'][:,iUneconomic]=0
+    thlb['Actual'][:,iUneconomic]=0
+    thlb['Baseline'][:,iUneconomic]=0
 
     # Idenify stands that have been harvested
     has_been_harvested=np.zeros(meta['Project']['N Stand'])
@@ -2865,10 +2870,10 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
 
     # Random prediction of whether it will evade harvesting
     iRem=np.where(np.random.random(iNoHarv.size)<p_evade)[0]
-    meta['Project']['THLB']['Actual'][:,iNoHarv[iRem]]=0
-    meta['Project']['THLB']['Baseline'][:,iNoHarv[iRem]]=0
+    thlb['Actual'][:,iNoHarv[iRem]]=0
+    thlb['Baseline'][:,iNoHarv[iRem]]=0
 
-    # np.sum(meta['Project']['THLB']['Actual'][0,:])/meta['Project']['N Stand']
+    # np.sum(thlb['Actual'][0,:])/meta['Project']['N Stand']
 
     #------------------------------------------------------------------------------
     # Define the year of transition from THLB to non-THLB for specific LU types
@@ -2928,32 +2933,32 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     for j in range(thlb_YearTransitionOut.size):
         if thlb_YearTransitionOut[j]>0:
             it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
-            meta['Project']['THLB']['Actual'][it,j]=0
+            thlb['Actual'][it,j]=0
 
     # Adjust the baseline so that simulated harvesting between 1995 and 2020 only
     # occurs in areas where the THLB was affected by value diversification
     for year in range(1990,2021,1):
         iT=np.where(meta['Year']==year)[0]
-        iS=np.where( (meta['Project']['THLB']['Baseline'][iT,:]==1) & (meta['Project']['THLB']['Actual'][iT,:]==1) )[1]
-        meta['Project']['THLB']['Baseline'][iT,iS]=0
+        iS=np.where( (thlb['Baseline'][iT,:]==1) & (thlb['Actual'][iT,:]==1) )[1]
+        thlb['Baseline'][iT,iS]=0
 
     flg=0
     if flg==1:
         plt.figure(2)
-        plt.plot(np.sum(meta['Project']['THLB']['Actual'],axis=1)/meta['Project']['N Stand'])
-        plt.plot(np.sum(meta['Project']['THLB']['Baseline'],axis=1)/meta['Project']['N Stand'],'--')
+        plt.plot(np.sum(thlb['Actual'],axis=1)/meta['Project']['N Stand'])
+        plt.plot(np.sum(thlb['Baseline'],axis=1)/meta['Project']['N Stand'],'--')
         
-    return meta
+    return thlb
 
 #%% Load sparse geospatiatial inputs
 
 def LoadSparseGeospatialInputs(meta):
     
     try:        
-        sxy=gu.ipickle(meta['Paths']['Geospatial'] + '\\sxy.pkl')
+        geos=gu.ipickle(meta['Paths']['Geospatial'] + '\\geos.pkl')
     except:
         # Make this work for tiled projects as well
-        sxy=[]    
+        geos=[]    
     atu=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
     op=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_OPENING_SVW.pkl')
     burnsev=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_BURN_SEVERITY_SP.pkl')
@@ -2969,7 +2974,7 @@ def LoadSparseGeospatialInputs(meta):
     park=gu.ipickle(meta['Paths']['Geospatial'] + '\\TA_PARK_ECORES_PA_SVW.pkl')
     ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
 
-    return sxy,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal
+    return geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal
 
 #%% Load index to sparse grid
     
@@ -3428,7 +3433,7 @@ def ExportSummaryActivities_BySXY(meta,par,atu_multipolygons,sxy,atu,op,burnsev,
     # Loop through and populate
     #--------------------------------------------------------------------------
     
-    for iSXY in range(sxy['x'].size):
+    for iSXY in range(geos['Sparse']['X'].size):
         
         #----------------------------------------------------------------------
         # ATU
@@ -4102,7 +4107,7 @@ def ExportSummaryAttributes_BySXY(meta,sxy,atu_multipolygons,vri):
     d['STC']=np.array(['' for _ in range(n_init)],dtype=object)
     d['SMC']=np.array(['' for _ in range(n_init)],dtype=object)
     
-    for iSXY in range(sxy['x'].size):        
+    for iSXY in range(geos['Sparse']['X'].size):        
         d['ID_SXY'][cnt]=iSXY
         d['ID_Multipolygon'][cnt]=sxy['ID_atu_multipolygons'][iSXY]
         d['OPENING_ID'][cnt]=sxy['OPENING_ID'][iSXY]

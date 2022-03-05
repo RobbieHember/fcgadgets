@@ -25,76 +25,86 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 meta={}
 meta['Paths']={}
-meta['Paths']['Project']=r'D:\Data\FCI_Projects\FCI_SparseGrid'
+meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryQuesnel'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SparseGrid_HighRes'
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401'
-meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401'
-meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401'
-meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210401'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210930'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210930'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210930'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210930'
+meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
 # Save
 gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Metadata.pkl',meta)
 
-#%% Define sparse grid sample
+#%% Define geospatial variables
 
-# Import TSA maps
+# Import raster grids
 zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
 lut_tsa=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx')
 tsa_boundaries=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
-
-# Import land cover
 zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 
+#ind=np.where(zLC2['Data'].flatten()==4)[0]
+#ind.size
+#58257054
+
+# Initialize geospatial info structure
+geos={}
+
 # Define regular grid sampling frequency
-sfreq=100 # 10 km
-#sfreq=50 # 5 km
-#sfreq=20 # High res
+#geos['rgsf']=200 # 20 km
+#geos['rgsf']=100 # 10 km
+#geos['rgsf']=50 # 5 km
+geos['rgsf']=40 # 4 km High res
+#geos['rgsf']=20 # 2 km High res
+#geos['rgsf']=10 # 1 km
 
 # Extract subgrid
-zTSA['X']=zTSA['X'][0::sfreq,0::sfreq]
-zTSA['Y']=zTSA['Y'][0::sfreq,0::sfreq]
-zTSA['m'],zTSA['n']=zTSA['X'].shape
-zTSA['Data']=zTSA['Data'][0::sfreq,0::sfreq]
-zLC2['Data']=zLC2['Data'][0::sfreq,0::sfreq]
+zTSA['Data']=zTSA['Data'][0::geos['rgsf'],0::geos['rgsf']]
+zLC2['Data']=zLC2['Data'][0::geos['rgsf'],0::geos['rgsf']]
+
+# Populate geospatial structure with grid attributes
+geos['X']=zTSA['X'][0::geos['rgsf'],0::geos['rgsf']]
+geos['Y']=zTSA['Y'][0::geos['rgsf'],0::geos['rgsf']]
+geos['m'],geos['n']=geos['X'].shape
+geos['Mask']=np.zeros((geos['m'],geos['n']),dtype=np.int8)
 
 # Define additional inclusion criteria
-
-# Treed, province-wide
-iIreg=np.where( (zLC2['Data']==4) )
-
-# Treed, Williams Lake TSA only
-#iTSA=lut_tsa.loc[lut_tsa.Name=='Williams Lake TSA','VALUE'].values
-#ind=np.where( (zLC2.Data==4) & (zTSA.Data==iTSA) )
-
-# Save grid
-flg=0
+flg=2
 if flg==1:
-    z=zTSA.copy()
-    z['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
-    z['Data'][iIreg]=1 # Treed = 1
-    gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\GridSXY.tiff')
-    plt.matshow(z['Data'])
+    # Treed
+    geos['iMask']=np.where( (zLC2['Data']==4) )
+elif flg==2:
+    # Treed, Williams Lake TSA only
+    iTSA=lut_tsa.loc[lut_tsa.Name=='Quesnel TSA','VALUE'].values
+    geos['iMask']=np.where( (zLC2['Data']==4) & (zTSA['Data']==iTSA) )
 
-#%% Generate sparse grid
+# Revise mask
+geos['Mask'][geos['iMask']]=1
 
-# Apply filters to BC1ha grid 
-sxy={}
-sxy['x']=zTSA['X'][iIreg]
-sxy['y']=zTSA['Y'][iIreg]
-sxy['ID_TSA']=zTSA['Data'][iIreg]
+# Generate sparse grid
+geos['Sparse']={}
+geos['Sparse']['X']=geos['X'][geos['iMask']]
+geos['Sparse']['Y']=geos['Y'][geos['iMask']]
+geos['Sparse']['ID_TSA']=zTSA['Data'][geos['iMask']]
 
 # Save to pickle file
-gu.opickle(meta['Paths']['Geospatial'] + '\\sxy.pkl',sxy)
+gu.opickle(meta['Paths']['Geospatial'] + '\\geos.pkl',geos)
 
-# Save as geojson
+# Save mask as geotiff
+#gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\geos_grid.tiff')
+#plt.matshow(geos['Mask'])
+
+# Save sparse points to geojson
 flg=1
 if flg==1:
     points=[]
-    for k in range(sxy['x'].size):
-        points.append(Point(sxy['x'][k],sxy['y'][k]))
-    gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':sxy['ID_TSA']})
+    for k in range(geos['Sparse']['X'].size):
+        points.append(Point(geos['Sparse']['X'][k],geos['Sparse']['Y'][k]))
+    gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':geos['Sparse']['ID_TSA']})
     gdf_sxy.crs=tsa_boundaries.crs  
     gdf_sxy.to_file(meta['Paths']['Geospatial'] + '\\sxy.geojson',driver='GeoJSON')
 
@@ -109,7 +119,7 @@ fig,ax=plt.subplots(figsize=gu.cm2inch(7.8,6.6))
 #mngr.window.setGeometry(700,20,620,600)
 gdf_bm.plot(ax=ax,facecolor=[0.8,0.8,0.8],edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
 tsa_boundaries.plot(ax=ax,facecolor='none',edgecolor=[0,0,0],linewidth=0.25)
-gdf_sxy.plot(ax=ax,markersize=1,facecolor=[0,0,0.75],edgecolor=None,linewidth=0.75,alpha=1)
+gdf_sxy.plot(ax=ax,markersize=1,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1)
 ax.grid(color='k',linestyle='-',linewidth=0.25)
 
 #iP=2000
@@ -179,7 +189,7 @@ for iLyr in range(len(InvLyrInfo)):
         continue
         
     # Initialize index to inventory
-    IdxToInv=[None]*sxy['x'].size
+    IdxToInv=[None]*geos['Sparse']['X'].size
         
     # Initialize inventory dictionary
     L=5000000
@@ -295,24 +305,24 @@ for iLyr in range(len(InvLyrInfo)):
                     y_feat=coords2[:,1]
                     
                     # This should speed it up a bit
-                    if np.max(x_feat)<np.min(sxy['x']):
+                    if np.max(x_feat)<np.min(geos['Sparse']['X']):
                         continue
-                    if np.min(x_feat)>np.max(sxy['x']):
+                    if np.min(x_feat)>np.max(geos['Sparse']['X']):
                         continue
-                    if np.max(y_feat)<np.min(sxy['y']): 
+                    if np.max(y_feat)<np.min(geos['Sparse']['Y']): 
                         continue
-                    if np.min(y_feat)>np.max(sxy['y']): 
+                    if np.min(y_feat)>np.max(geos['Sparse']['Y']): 
                         continue
         
                     # Isolate cells within bounding box of the feature polygon
-                    iBB=np.where( (sxy['x']>=np.min(x_feat)-1000) & (sxy['x']<=np.max(x_feat)+1000) & (sxy['y']>=np.min(y_feat)-1000) & (sxy['y']<=np.max(y_feat)+1000) )[0]
+                    iBB=np.where( (geos['Sparse']['X']>=np.min(x_feat)-1000) & (geos['Sparse']['X']<=np.max(x_feat)+1000) & (geos['Sparse']['Y']>=np.min(y_feat)-1000) & (geos['Sparse']['Y']<=np.max(y_feat)+1000) )[0]
                     
                     # Only continue if overlaop
                     if iBB.size==0:
                         continue
         
                     # Isolate cells within the polygon
-                    InPoly=gis.InPolygon(sxy['x'][iBB],sxy['y'][iBB],x_feat,y_feat)
+                    InPoly=gis.InPolygon(geos['Sparse']['X'][iBB],geos['Sparse']['Y'][iBB],x_feat,y_feat)
                     
                     iInPoly=np.where(InPoly==1)[0]
         
@@ -415,7 +425,7 @@ for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
         pl[fnam]=-999*np.ones(L,dtype=dtype)
 
 # Initialize index to inventory
-IdxToInv=[None]*sxy['x'].size
+IdxToInv=[None]*geos['Sparse']['X'].size
     
 # Populate planting layer
 cnt_inventory=0
