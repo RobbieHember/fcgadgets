@@ -268,140 +268,122 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
         iReg=kwargs['iReg']
     else:
         iReg=0
+        
+    if 'sum_mult' in kwargs.keys():
+        sum_mult=kwargs['sum_mult']
+    else:
+        sum_mult=1.0
     
-    for iScn in range(meta['Project']['N Scenario']):
+    if (meta['Project']['Scenario Source']!='Portfolio'):
         
-        VL=['A',
-            'LogSizeEnhancement',
-            'V_MerchLive',
-            'V_MerchDead',
-            'V_MerchTotal',
-            'V_ToMillMerchLive',
-            'V_ToMillMerchDead',
-            'V_ToMillMerchTotal',
-            'C_Forest',
-            'C_Biomass_Tot',
-            'C_DeadWood_Tot',
-            'C_DumpLandfill_Tot',
-            'C_Piled_Tot',
-            'C_G_Gross_Tot',
-            'C_G_Net_Tot',
-            'C_HWP',
-            'C_InUse_Tot',
-            'C_LF_Tot',
-            'C_Litter_Tot',
-            'C_M_Reg_Tot',
-            'C_NPP_Tot',
-            'C_RH_Tot',
-            'C_Soil_Tot',
-            'C_ToFirewoodDom',
-            'C_ToFirewoodFor',
-            'C_ToLogExport',
-            'C_ToLumber',
-            'C_ToMDF',
-            'C_ToMill',
-            'C_ToMillMerch',
-            'C_ToMillNonMerch',
-            'C_ToMillSnagStem',
-            'C_ToOSB',
-            'C_ToPaper',
-            'C_ToPellets',
-            'C_ToPlywood',
-            'C_ToPowerFacilityDom',
-            'C_ToPowerFacilityFor',
-            'C_ToPowerGrid',
-            'C_ToSlashpileBurn',
-            'E_CO2e_LULUCF_NEE',
-            'E_CO2e_LULUCF_Denit',
-            'E_CO2e_LULUCF_Other',
-            'E_CO2e_LULUCF_OpenBurning',
-            'E_CO2e_LULUCF_Wildfire',
-            'E_CO2e_LULUCF_Fire',
-            'E_CO2e_LULUCF_HWP',
-            'E_CO2e_ESC_Bioenergy',
-            'E_CO2e_ESC_Operations',
-            'E_CO2e_ET_Operations',
-            'E_CO2e_IPPU_Operations',
-            'E_CO2e_SUB_E',
-            'E_CO2e_SUB_M',
-            'E_CO2e_SUB_Coal',
-            'E_CO2e_SUB_Oil',
-            'E_CO2e_SUB_Gas',
-            'E_CO2e_SUB_Calcination',
-            'E_CO2e_AGHGB_WOSub',
-            'E_CO2e_AGHGB_WOSub_cumu',
-            'E_CO2e_AGHGB_WSub',
-            'E_CO2e_AGHGB_WSub_cumu',
-            'Prod_Coal',
-            'Prod_Oil',
-            'Prod_Gas',
-            'Prod_Sawnwood',
-            'Prod_Panels',
-            'Prod_Concrete',
-            'Prod_Steel',
-            'Prod_Aluminum',
-            'Prod_Plastic',
-            'Prod_Textile',
-            'Yield FirewoodDom',
-            'Yield LogExport',
-            'Yield Lumber',
-            'Yield MDF',
-            'Yield OSB',
-            'Yield Paper',
-            'Yield Pellets',
-            'Yield Plywood',
-            'Yield PowerFacilityDom',
-            'Yield PowerGrid',
-            'Cost Roads',
-            'Cost Knockdown',
-            'Cost Ripping',
-            'Cost Nutrient Management',
-            'Cost PAS Deactivation',
-            'Cost Harvest Felling and Piling',
-            'Cost Harvest Hauling',
-            'Cost Harvest Overhead',
-            'Cost Harvest Residuals',
-            'Cost Milling',
-            'Cost Slashpile Burn',
-            'Cost Planting',
-            'Cost Survey',
-            'Cost Silviculture Total',
-            'Cost Total',            
-            'Cost Total Disc',
-            'Cost Total Disc_cumu',
-            'Revenue FirewoodDom',
-            'Revenue LogExport',
-            'Revenue Lumber',
-            'Revenue MDF',
-            'Revenue OSB',
-            'Revenue Paper',
-            'Revenue Pellets',
-            'Revenue Plywood',
-            'Revenue PowerFacilityDom',
-            'Revenue PowerGrid',
-            'Revenue Gross',
-            'Revenue Gross Disc',
-            'Revenue Gross Disc_cumu',
-            'Revenue Net',
-            'Revenue Net Disc',
-            'Revenue Net Disc_cumu']
+        for iScn in range(meta['Project']['N Scenario']):
+            
+            d={}
+            
+            for k in meta['Core']['Output Variable List']:
+                d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos['Scenarios'][iScn]['Sum'][k]['Ensemble Mean'][iT,iPT,iReg]),decimals=2)
+            
+            for k in meta['Core']['Output Variable List']:
+                d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPT,iReg]),decimals=2)
+       
+            for k in meta['Core']['Output Variable List']:
+                d['Per-hectare mean ' + k]=np.round(np.mean(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPT,iReg]),decimals=2)
+            
+            if iScn==0:
+                df=pd.DataFrame().from_dict(d,orient='index');
+            else:
+                df0=pd.DataFrame().from_dict(d,orient='index');
+                df=pd.concat([df,df0],axis=1);
+                
+    else:
         
-        d={}        
-        for k in VL:
-            try:
-                d['Sum ' + k]=np.round(np.sum(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPT,iReg]),decimals=2)
-            except:
-                d['Sum ' + k]=np.round(np.sum(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPT,iReg]),decimals=2)
+        for iPort in range(meta['Project']['N Portfolio']):
+            
+            for iScn in range(meta['Project']['N Scenario']):
+            
+                d={}
+                
+                for k in meta['Core']['Output Variable List']:
+                    d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[iPort][iScn]['Sum'][k]['Ensemble Mean'][iT]),decimals=2)
+                
+                for k in meta['Core']['Output Variable List']:
+                    d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+           
+                for k in meta['Core']['Output Variable List']:
+                    d['Per-hectare mean ' + k]=np.round(np.mean(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+                
+                if (iPort==0) & (iScn==0):
+                    df=pd.DataFrame().from_dict(d,orient='index');
+                else:
+                    df0=pd.DataFrame().from_dict(d,orient='index');
+                    df=pd.concat([df,df0],axis=1);
+    
+    df.columns=[np.arange(1,df.columns.size+1)];
+    
+    df.to_excel(meta['Paths']['Project'] + '\\Outputs\\TabularSummary_' + str(t_start) + '-' + str(t_end) + '_ProjectType' + str(iPT) + '_Region' + str(iReg) + '.xlsx');
+    
+    return df
+
+#%% Custome scenario comparison tabular export
+
+# Exmaple:
+# tabNam='ScenarioComparisons1'
+# thL=[50,100]
+# vL=['Mean*IntSum*V_ToMillMerchTotal','Mean*Inst*E_CO2e_AGHGB_WSub_cumu_from_tref']
+# udem.ExportDeltaTable(meta,mos,tabNam,thL,vL)
+
+def ExportDeltaTable(meta,mos,t_start,tabNam,thL,vL,**kwargs):
+    
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    
+    # Key word arguments
+    if 'iPT' in kwargs.keys():
+        iPT=kwargs['iPT']
+    else:
+        iPT=0
         
-        for k in VL:
-            try:
-                d['Mean ' + k]=np.round(np.mean(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPT,iReg]),decimals=2)
-            except:
-                d['Mean ' + k]=np.round(np.mean(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPT,iReg]),decimals=2)
+    if 'iReg' in kwargs.keys():
+        iReg=kwargs['iReg']
+    else:
+        iReg=0
+    
+    if 'sum_mult' in kwargs.keys():
+        sum_mult=kwargs['sum_mult']
+    else:
+        sum_mult=1.0
+    
+    df=pd.DataFrame()
+    
+    for sc in mos['Delta'].keys():
         
-        if iScn==0:
-            df=pd.DataFrame().from_dict(d,orient='index')
-        else:
+        for th in thL:
+            
+            iT=np.where( (tv>=t_start) & (tv<=t_start+th-1) )[0]
+            
+            d={}        
+            for v in vL:
+                
+                ind0=v.find('*')
+                ind1=v.rfind('*')
+                op0=v[0:ind0]
+                op1=v[ind0+1:ind1]
+                vnam=v[ind1+1:]
+                
+                if op1=='Inst':
+                    # Instantaneous
+                    y=sum_mult*mos['Delta'][sc]['ByPT'][op0][vnam]['Ensemble Mean'][iT[-1],iPT,iReg]
+                elif op1=='IntSum':
+                    # Integrated sum
+                    y=sum_mult*np.sum(mos['Delta'][sc]['ByPT'][op0][vnam]['Ensemble Mean'][iT,iPT,iReg])
+                elif op1=='MeanAnnualSumOverArea':
+                    # Mean annual sum
+                    y=sum_mult*np.mean(mos['Delta'][sc]['ByPT'][op0][vnam]['Ensemble Mean'][iT,iPT,iReg])
+                else:
+                    # Integrated mean
+                    y=np.mean(mos['Delta'][sc]['ByPT'][op0][vnam]['Ensemble Mean'][iT,iPT,iReg])
+
+                d[vnam]=np.round(y,decimals=2)
+              
             df0=pd.DataFrame().from_dict(d,orient='index')
             df=pd.concat([df,df0],axis=1)
     
@@ -409,7 +391,7 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
     df.columns=[np.arange(1,df.columns.size+1)]
     #df=df.sort_index(axis=0)
     
-    df.to_excel(meta['Paths']['Project'] + '\\Outputs\\TabularSummary_' + str(t_start) + '-' + str(t_end) + '_ProjectType' + str(iPT) + '_Region' + str(iReg) + '.xlsx')
+    df.to_excel(meta['Paths']['Project'] + '\\Outputs\\TabularSummaryDelta_' + tabNam + '.xlsx')
     
     return df
 
@@ -619,9 +601,12 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     
     ax.set(position=[0,0,1,1],visible='Off',xticks=[],yticks=[])
     
-    if meta['Print Figures']=='On':
+    try:
+        if meta['Print Figures']=='On':
+            gu.PrintFig(meta['Paths']['Figures'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
+    except:
         gu.PrintFig(meta['Paths']['Figures'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
-    
+        
     return
 
 #%% Plot Cashflow
@@ -661,95 +646,158 @@ def PlotCashflow(meta,mos,iB,iP,t_start,t_end):
 
 #%%
     
-def PlotPools(meta,mos,tv,iT):
+def PlotPools(meta,mos,tv,iT,**kwargs):
     
     iPT=0
     iReg=0
+    
     vs=['C_Biomass_Tot','C_DeadWood_Tot','C_Litter_Tot','C_Soil_Tot','C_InUse_Tot','C_DumpLandfill_Tot']
     vs2=['Biomass','Dead Wood','Litter','Soil','In-use Products','Dump and Landfill']
     
-    for k in mos['Delta'].keys():
-        
-        iB=mos['Delta'][k]['iB']
-        iP=mos['Delta'][k]['iP']
+    cl=np.array([[0,0.5,1],[0,0.6,0],[0.5,0,1],[0,1,1]])
+    symb=['-','--','-.',':','-']
     
+    if 'Custom Scenario List' not in kwargs.keys():
+    
+        # Generate one figure per scenario comparison
+        
+        for k in mos['Delta'].keys():
+            cnt=0
+            fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
+            sL=[mos['Delta'][k]['iB'],mos['Delta'][k]['iP']]            
+            for i in range(3):
+                for j in range(2):
+    
+                    for iScn in range(len(sL)):
+                        be=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPT,iReg]
+                        lo=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPT,iReg]
+                        hi=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPT,iReg]
+                        lo2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPT,iReg]
+                        hi2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPT,iReg]
+                        
+                        ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                        ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                        ax[i,j].plot(tv[iT],be,symb[iScn],color=cl[iScn,:],lw=1,label='Scenario ' + str(iScn+1))
+    
+                    if (i==0) & (j==0):
+                        ax[i,j].legend(loc="lower left")
+                    ax[i,j].set(ylabel=vs2[cnt] + ' (MgC/ha)')
+                    cnt=cnt+1
+        
+            gu.axletters(ax,plt,0.035,0.9)
+            
+            if meta['Print Figures']=='On':
+                gu.PrintFig(meta['Paths']['Figures'] + '\\Pools_' + k,'png',900)
+    
+    else:
+        
+        # Generate one figure for a custom set of scenarios
+        
         cnt=0
         fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
-        for i in range(3):
-            for j in range(2):
-
-                be=mos['Scenarios'][iB]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPT,iReg]
-                lo=mos['Scenarios'][iB]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPT,iReg]
-                hi=mos['Scenarios'][iB]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPT,iReg]
-                ax[i,j].fill_between(tv[iT],lo,hi,color=[0,0.5,1],alpha=Alpha,linewidth=0)
-                ax[i,j].plot(tv[iT],be,'-',color=(0,0.5,1),lw=1,label='Baseline')
-
-                be=mos['Scenarios'][iP]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPT,iReg]
-                lo=mos['Scenarios'][iP]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPT,iReg]
-                hi=mos['Scenarios'][iP]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPT,iReg]
-                ax[i,j].fill_between(tv[iT],lo,hi,color=[0,0.6,0],alpha=Alpha,linewidth=0)
-                ax[i,j].plot(tv[iT],be,'-.',color=(0,0.6,0),lw=1,label='Actual')
-
-                if (i==0) & (j==0):
-                    ax[i,j].legend(loc="lower left")
-                ax[i,j].set(ylabel=vs2[cnt] + ' (MgC/ha)')
-                cnt=cnt+1
+        
+        for iScn in range(len(kwargs['Custom Scenario List'])):
+            s=kwargs['Custom Scenario List'][iScn]
+            for i in range(3):
+                for j in range(2):
+                    be=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPT,iReg]
+                    lo=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPT,iReg]
+                    hi=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPT,iReg]
+                    lo2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPT,iReg]
+                    hi2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPT,iReg]
+                    
+                    ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                    ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                    ax[i,j].plot(tv[iT],be,symb[iScn],color=cl[iScn,:],lw=1,label='Scenario ' + str(iScn+1))
     
+                    if (i==0) & (j==0):
+                        ax[i,j].legend(loc="lower left")
+                    ax[i,j].set(ylabel=vs2[cnt] + ' (MgC/ha)')
+            cnt=cnt+1
+        
         gu.axletters(ax,plt,0.035,0.9)
-        
+            
         if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\Pools','png',900)
-
-        fig.suptitle(k)
-        
+            gu.PrintFig(meta['Paths']['Figures'] + '\\Pools_CustomScenarioList','png',900)
+    
     return
 
 #%%
     
-def PlotFluxes(meta,mos,tv,iT):
+def PlotFluxes(meta,mos,tv,iT,**kwargs):
     
     iPT=0
     iReg=0
-    str_var=['C_NPP_Tot','C_G_Net_Tot','C_RH_Tot','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_HWP','E_CO2e_SUB_Tot','E_CO2e_AGHGB_WSub']
     
-    for k in mos['Delta'].keys():
+    vs=['C_NPP_Tot','C_G_Net_Tot','C_RH_Tot','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_HWP','E_CO2e_SUB_Tot','E_CO2e_AGHGB_WSub']
+    vs2=['NPP (tCO2e/ha/yr)','Net growth (tCO2e/ha/yr)','RH (tCO2e/ha/yr)','Open burning (tCO2e/ha/yr)','Wildfire (tCO2e/ha/yr)','HWP (tCO2e/ha/yr)','Substitutions (tCO2e/ha/yr)','GHG balance (tCO2e/ha/yr)']
+
+    cl=np.array([[0,0.5,1],[0,0.6,0],[0.5,0,1],[0,1,1]])
+    symb=['-','--','-.',':','-']
+    
+    if 'Custom Scenario List' not in kwargs.keys():
+    
+        # Generate one figure per scenario comparison
         
-        iB=mos['Delta'][k]['iB']
-        iP=mos['Delta'][k]['iP']
+        for k in mos['Delta'].keys():
+            cnt=0
+            fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
+            sL=[mos['Delta'][k]['iB'],mos['Delta'][k]['iP']]            
+            for i in range(3):
+                for j in range(2):
     
+                    for iScn in range(len(sL)):
+                        be=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPT,iReg]
+                        lo=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPT,iReg]
+                        hi=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPT,iReg]
+                        lo2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPT,iReg]
+                        hi2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPT,iReg]
+                        
+                        ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                        ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                        ax[i,j].plot(tv[iT],be,symb[iScn],color=cl[iScn,:],lw=1,label='Scenario ' + str(iScn+1))
+    
+                    if (i==0) & (j==0):
+                        ax[i,j].legend(loc="lower left")
+                    ax[i,j].set(ylabel=vs2[cnt] + ' (MgC/ha)')
+                    cnt=cnt+1
+        
+            gu.axletters(ax,plt,0.035,0.9)
+            
+            if meta['Print Figures']=='On':
+                gu.PrintFig(meta['Paths']['Figures'] + '\\Fluxes_' + k,'png',900)
+    
+    else:
+        
+        # Generate one figure for a custom set of scenarios
+        
         cnt=0
-        fig,ax=plt.subplots(4,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
-        for i in range(4):
-            for j in range(2):
-
-                be=mos['Scenarios'][iB]['Mean'][str_var[cnt]]['Ensemble Mean'][iT,iPT,iReg]
-                lo=mos['Scenarios'][iB]['Mean'][str_var[cnt]]['Ensemble P025'][iT,iPT,iReg]
-                hi=mos['Scenarios'][iB]['Mean'][str_var[cnt]]['Ensemble P975'][iT,iPT,iReg]
-                ax[i,j].fill_between(tv[iT],lo,hi,color=[0,0.5,1],alpha=Alpha,linewidth=0)
-                ax[i,j].plot(tv[iT],be,'-',color=(0,0.5,1),lw=1,label='Harvest')
-
-                be=mos['Scenarios'][iP]['Mean'][str_var[cnt]]['Ensemble Mean'][iT,iPT,iReg]
-                lo=mos['Scenarios'][iP]['Mean'][str_var[cnt]]['Ensemble P025'][iT,iPT,iReg]
-                hi=mos['Scenarios'][iP]['Mean'][str_var[cnt]]['Ensemble P975'][iT,iPT,iReg]
-                ax[i,j].fill_between(tv[iT],lo,hi,color=[0,0.6,0],alpha=Alpha,linewidth=0)
-                ax[i,j].plot(tv[iT],be,'-.',color=(0,0.6,0),lw=1,label='No harvest')
-
-                if (i==0) & (j==0):
-                    ax[i,j].legend(loc="lower left")
-                try:
-                    ylab=meta['Labels GHG Balance'][str_var[cnt]]
-                except:
-                    ylab='Fire emissions (tCO2e/ha/yr)'
-                ax[i,j].set(ylabel=str_var[cnt])
-                cnt=cnt+1
+        fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
+        
+        for iScn in range(len(kwargs['Custom Scenario List'])):
+            s=kwargs['Custom Scenario List'][iScn]
+            for i in range(3):
+                for j in range(2):
+                    be=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPT,iReg]
+                    lo=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPT,iReg]
+                    hi=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPT,iReg]
+                    lo2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPT,iReg]
+                    hi2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPT,iReg]
+                    
+                    ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                    ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
+                    ax[i,j].plot(tv[iT],be,symb[iScn],color=cl[iScn,:],lw=1,label='Scenario ' + str(iScn+1))
     
+                    if (i==0) & (j==0):
+                        ax[i,j].legend(loc="lower left")
+                    ax[i,j].set(ylabel=vs2[cnt])
+            cnt=cnt+1
+        
         gu.axletters(ax,plt,0.035,0.9)
-        
+            
         if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\Fluxes','png',900)
-
-        fig.suptitle(k)
-        
+            gu.PrintFig(meta['Paths']['Figures'] + '\\Fluxes_CustomScenarioList','png',900)
+    
     return
 
 #%%
@@ -758,8 +806,6 @@ def PlotGHGB(meta,mos,tv,iT):
     
     iPT=0
     iReg=0
-    
-    str_var=['C_NPP_Tot','C_G_Net_Tot','C_RH_Tot','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_HWP','E_CO2e_AGHGB_WSub']
 
     for k in mos['Delta'].keys():
         
@@ -773,8 +819,8 @@ def PlotGHGB(meta,mos,tv,iT):
                 ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both')
                 ax[i,j].plot(tv[iT],0*np.ones(tv[iT].shape),'-',lw=3,color=(0.8,0.8,0.8),label='')
             
-        ax[0,0].plot(tv[iT],mos['Scenarios'][iB]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPT,iReg],'-',color=(0,0.5,1),label='Harvest')
-        ax[0,0].plot(tv[iT],mos['Scenarios'][iP]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPT,iReg],'--',color=(0,0.6,0),label='No harvest')
+        ax[0,0].plot(tv[iT],mos['Scenarios'][iB]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPT,iReg],'-',color=(0,0.5,1),label='Baseline')
+        ax[0,0].plot(tv[iT],mos['Scenarios'][iP]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPT,iReg],'--',color=(0,0.6,0),label='Project')
         ax[0,0].legend(loc="upper right",frameon=0)
         ax[0,0].set(ylabel='AGHGB (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
 
@@ -784,21 +830,27 @@ def PlotGHGB(meta,mos,tv,iT):
         
         lo=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P025'][iT,iPT,iReg]
         hi=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P975'][iT,iPT,iReg]
-        ax[1,0].fill_between(tv[iT],lo,hi,color=[0.15,0,0.75],alpha=Alpha,linewidth=0,label='2 x S.E.')        
-        ax[1,0].plot(tv[iT],mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPT,iReg],'-',color=(0.5,0,1),label='Project minus baseline')
+        lo2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P250'][iT,iPT,iReg]
+        hi2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P750'][iT,iPT,iReg]
+        ax[1,0].fill_between(tv[iT],lo,hi,color=[0.15,0,0.75],alpha=Alpha,linewidth=0,label='95 C.I.')        
+        ax[1,0].fill_between(tv[iT],lo2,hi2,color=[0.05,0,0.6],alpha=Alpha,linewidth=0,label='50 C.I.')
+        ax[1,0].plot(tv[iT],mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPT,iReg],'-',color=(0.5,0,1),label='Best estimate')
         ax[1,0].legend(loc="upper right",frameon=0)
         ax[1,0].set(ylabel='$\Delta$ AGHGB (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years',ylim=[np.min(lo),np.max(hi)]);
         
         lo=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P025'][iT,iPT,iReg]
         hi=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P975'][iT,iPT,iReg]
-        ax[1,1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0)
-        ax[1,1].plot(tv[iT],mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][iT,iPT,iReg],'-',color=(0.5,0,1),label='Project minus baseline')
+        lo2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P250'][iT,iPT,iReg]
+        hi2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P750'][iT,iPT,iReg]
+        ax[1,1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
+        ax[1,1].fill_between(tv[iT],lo2,hi2,color=[0.05,0,0.6],alpha=Alpha,linewidth=0,label='50 C.I.')
+        ax[1,1].plot(tv[iT],mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][iT,iPT,iReg],'-',color=(0.5,0,1),label='Best estimate')
         ax[1,1].set(ylabel='Cumulative $\Delta$ AGHGB (tCO$_2$e ha$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
 
         gu.axletters(ax,plt,0.03,0.89)
         
         if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\GHG_Balance','png',900)
+            gu.PrintFig(meta['Paths']['Figures'] + '\\GHG_Balance_' + k,'png',900)
 
         fig.suptitle(k)
         
@@ -806,57 +858,47 @@ def PlotGHGB(meta,mos,tv,iT):
 
 #%%
 
-def ExportDeltaTable(meta,mos,tabNam,thL,vL,**kwargs):
+def PlotGHGBenefit(meta,mos,tv,iT):
     
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    iPT=0
+    iReg=0
     
-    # Key word arguments
-    if 'iPT' in kwargs.keys():
-        iPT=kwargs['iPT']
-    else:
-        iPT=0
+    cl=np.array([[0,0.5,1],[0,0.6,0],[0,1,1],[0.5,0,1]])
+    symb=['-','--','-.',':','-']
         
-    if 'iReg' in kwargs.keys():
-        iReg=kwargs['iReg']
-    else:
-        iReg=0
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(16,6)); Alpha=0.09
     
-    df=pd.DataFrame()
+    for i in range(0,2):
+        ax[i].yaxis.set_ticks_position('both'); ax[i].xaxis.set_ticks_position('both')
+        ax[i].plot(tv[iT],0*np.ones(tv[iT].shape),'-',lw=3,color=(0.8,0.8,0.8),label='')
     
-    for sc in mos['Delta'].keys():
+    cnt=0
+    for k in mos['Delta'].keys():
+        lo=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P025'][iT,iPT,iReg]
+        hi=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P975'][iT,iPT,iReg]
+        lo2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P250'][iT,iPT,iReg]
+        hi2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P750'][iT,iPT,iReg]
+        ax[0].fill_between(tv[iT],lo,hi,color=cl[cnt,:],alpha=Alpha,linewidth=0)
+        ax[0].fill_between(tv[iT],lo2,hi2,color=cl[cnt,:],alpha=Alpha,linewidth=0)
+        ax[0].plot(tv[iT],mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPT,iReg],symb[cnt],color=cl[cnt,:],label='SC ' + str(cnt+1) )
+        ax[0].legend(loc="upper right",frameon=0)
+        ax[0].set(ylabel='$\Delta$GHG (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]], \
+                  xlabel='Time, years',ylim=[np.min(lo),np.max(hi)]);
         
-        for th in thL:
-            
-            iT=np.where( (tv>=meta['Project']['Year Project']) & (tv<=meta['Project']['Year Project']+th-1) )[0]
-            
-            d={}        
-            for v in vL:
-                
-                ind0=v.find('*')
-                ind1=v.rfind('*')
-                op0=v[0:ind0]
-                op1=v[ind0+1:ind1]
-                vnam=v[ind1+1:]
-                
-                if op1=='Inst':
-                    # Instantaneous
-                    y=mos['Delta'][sc]['ByPT'][op0][vnam]['Ensemble Mean'][iT[-1],iPT,iReg]
-                elif op1=='IntSum':
-                    # Integrated sum
-                    y=np.sum(mos['Delta'][sc]['ByPT'][op0][vnam]['Ensemble Mean'][iT,iPT,iReg])
-                else:
-                    # Integrated mean
-                    y=np.mean(mos['Delta'][sc]['ByPT'][op0][vnam]['Ensemble Mean'][iT,iPT,iReg])
+        lo=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P025'][iT,iPT,iReg]
+        hi=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P975'][iT,iPT,iReg]
+        lo2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P250'][iT,iPT,iReg]
+        hi2=mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P750'][iT,iPT,iReg]
+        ax[1].fill_between(tv[iT],lo,hi,color=cl[cnt,:],alpha=Alpha,linewidth=0)
+        ax[1].fill_between(tv[iT],lo2,hi2,color=cl[cnt,:],alpha=Alpha,linewidth=0)
+        ax[1].plot(tv[iT],mos['Delta'][k]['ByPT']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][iT,iPT,iReg],symb[cnt],color=cl[cnt,:],label='SC ' + str(cnt+1))
+        ax[1].set(ylabel='Cumulative $\Delta$GHG (tCO$_2$e ha$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
+        cnt=cnt+1
+        
+    gu.axletters(ax,plt,0.035,0.92)
+        
+    if meta['Print Figures']=='On':
+        gu.PrintFig(meta['Paths']['Figures'] + '\\GHG_Benefit','png',900)
+        
+    return
 
-                d[vnam]=np.round(y,decimals=2)
-              
-            df0=pd.DataFrame().from_dict(d,orient='index')
-            df=pd.concat([df,df0],axis=1)
-    
-    #df.index.name='Variable'
-    df.columns=[np.arange(1,df.columns.size+1)]
-    #df=df.sort_index(axis=0)
-    
-    df.to_excel(meta['Paths']['Project'] + '\\Outputs\\TabularSummaryDelta_' + tabNam + '.xlsx')
-    
-    return df

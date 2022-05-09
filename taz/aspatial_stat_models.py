@@ -36,6 +36,9 @@ def SimulateWildfireFromAAO(meta,ba):
         rn_oc=np.random.random((meta['Project']['N Time'],meta['Project']['N Stand']))
         rn_sev=np.random.random((meta['Project']['N Time'],meta['Project']['N Stand']))
         
+        # Random draw of wildfire scenario
+        rn_scn=np.random.random(1)
+        
         #----------------------------------------------------------------------
         # Occurrence
         # If all project scenarios run the same wildfire scenario, only calculate 
@@ -69,7 +72,15 @@ def SimulateWildfireFromAAO(meta,ba):
                 
                 ID_wf_scenario=int(meta['Scenario'][0]['Wildfire Scenario ID'])
                 
-                Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(ID_wf_scenario)]
+                if ID_wf_scenario==23:
+                    # Consider both high and low historical wildfire
+                    if rn_scn<0.5:
+                        Po_Det=wfss[namZone]['Po_Det_WF_Scn2']
+                    else:
+                        Po_Det=wfss[namZone]['Po_Det_WF_Scn3']
+                else:
+                    # Use the specified scenario
+                    Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(ID_wf_scenario)]
             
                 for iT in range(meta['Year'].size):
                         
@@ -78,13 +89,12 @@ def SimulateWildfireFromAAO(meta,ba):
                     ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
                     beta=wfss[namZone]['Beta_Pareto_Cal'].copy()
                     Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
-                    beta[1]=-Scale
-                    beta[2]=Scale
+                    beta[1]=-np.abs(Scale)
+                    beta[2]=np.abs(Scale)
                 
                     # Draw of annual area burned from Pareto distribution
                     N_t=1
-                    P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)  
-        
+                    P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
         
         #----------------------------------------------------------------------
         # Populate for scenarios
@@ -111,7 +121,15 @@ def SimulateWildfireFromAAO(meta,ba):
                     
                     ID_wf_scenario=int(meta['Scenario'][iScn]['Wildfire Scenario ID'])
                     
-                    Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(ID_wf_scenario)]
+                    if ID_wf_scenario==23:
+                        # Consider both high and low historical wildfire
+                        if rn_scn<0.5:
+                            Po_Det=wfss[namZone]['Po_Det_WF_Scn2']
+                        else:
+                            Po_Det=wfss[namZone]['Po_Det_WF_Scn3']
+                    else:
+                        # Use the specified scenario
+                        Po_Det=wfss[namZone]['Po_Det_WF_Scn' + str(ID_wf_scenario)]
                 
                     for iT in range(meta['Year'].size):
                             
@@ -119,9 +137,9 @@ def SimulateWildfireFromAAO(meta,ba):
                         # occurrence from the deterministic component
                         ind_scn=np.where(tv_wfss==meta['Year'][iT])[0]
                         beta=wfss[namZone]['Beta_Pareto_Cal'].copy()
-                        Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
-                        beta[1]=-Scale
-                        beta[2]=Scale
+                        #Scale=wfss[namZone]['Pareto_scale_to_match_Po_mu'][1]*Po_Det[ind_scn]+wfss[namZone]['Pareto_scale_to_match_Po_mu'][0]
+                        #beta[1]=-Scale
+                        #beta[2]=Scale
                     
                         # Draw of annual area burned from Pareto distribution
                         N_t=1

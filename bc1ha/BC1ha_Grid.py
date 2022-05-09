@@ -183,6 +183,81 @@ plt.figure(4)
 plt.matshow(data[0::5,0::5],clim=(0,150))
 plt.colorbar()
 
+#%% Rasterize BCTS
+
+# Import TSA raster
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
+
+# Input path to RESULTS database (downloaded from BC data catalogue)
+pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422\LandUse.gdb'
+
+lnam='BCTS_OPERATING_AREAS_SP'
+
+# Open the shapefile
+df=gpd.read_file(pthin,layer=lnam)
+
+# Remove features with no geometry
+df=df[df.geometry!=None]
+
+df0=df.copy()
+df0['dummy']=np.ones(len(df0))
+shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))    
+
+z0=np.zeros(zTSA['Data'].shape,dtype=float)
+burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
+
+zOut=zTSA.copy()
+zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
+zOut['Data'][burned>0]=1
+gis.SaveGeoTiff(zOut,r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\bcts_op_area.tif')
+
+
+#%% Rasterize select openings
+
+# List of openings to rasterize
+dOp=gu.ipickle(r'C:\Users\rhember\Documents\Data\Waste Wood\WasteSummary_UniqueOpenings2006On.pkl')
+
+# Import TSA raster
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
+
+# Input path to RESULTS database (downloaded from BC data catalogue)
+pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422\Results.gdb'
+
+lnam='RSLT_OPENING_SVW'
+
+# Open the shapefile
+df=gpd.read_file(pthin,layer=lnam)
+
+# Remove features with no geometry
+df=df[df.geometry!=None]
+
+# Keep select openings
+
+op=df['OPENING_ID'].to_numpy()
+
+#u,idx,inv=np.unique(ar,return_index=True,return_inverse=True)
+c,ia,ib=np.intersect1d(op,dOp['OPENING_ID'],return_indices=True)
+
+df['Flag']=np.zeros(df['OPENING_ID'].size)
+df['Flag'].iloc[ia]=1
+
+df0=df.copy()
+df0=df0[df0.Flag==1]
+
+#df0=df.copy()
+df0['dummy']=np.ones(len(df0))
+shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))    
+
+z0=np.zeros(zTSA['Data'].shape,dtype=float)
+burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
+
+zOut=zTSA.copy()
+zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
+zOut['Data'][burned>0]=1
+gis.SaveGeoTiff(zOut,r'C:\Users\rhember\Documents\Data\Waste Wood\openings.tif')
+
+#plt.matshow(burned)
+
 #%% Rasterize land use legal
 
 # Define paths
@@ -286,7 +361,7 @@ for iT in range(tv.size):
 #%% Rasterize AOS occurrence by year
 
 # Input path to RESULTS database (downloaded from BC data catalogue)
-pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20200430\Disturbances.gdb'
+pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210930\Disturbances.gdb'
 fiona.listlayers(pthin)
 lnam='PEST_INFESTATION_POLY'
 fnam='PEST_SPECIES_CODE'
@@ -305,6 +380,7 @@ uPest=np.unique(df.PEST_SPECIES_CODE)
 #df0.to_excel(pthout + '\\' + lnam + '_PEST_SPECIES_CODE.xlsx')
 
 # Save code list
+#ind=np.where(df['PEST_SPECIES_CODE']=='IDW')[0]
 u_Severity=np.unique(df.PEST_SEVERITY_CODE)
 #u_Severity=np.array(['T','L','M','S','V','G'])
 #df0=pd.DataFrame(data=np.arange(1,u_Severity.size+1,1),columns=['ID'])
@@ -316,14 +392,16 @@ for i in range(len(u_Severity)):
     ind=np.where(df['PEST_SEVERITY_CODE']==u_Severity[i])[0]
     df.loc[ind,'PSC']=i+1
 
-zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
 
-tv=np.arange(1950,2020,1)
+tv=np.arange(1950,2021,1)
 
-fcd=['IDL','IBM','IBD','IBS','IDW','DFL']
-for iP in range(0,1):#len(fcd)):
+#fcd=['IDL','IBM','IBD','IBS','IDW','DFL']
+fcd=['IDW']
+
+for iP in range(len(fcd)):
     for iT in range(tv.size):
-    
+        print(tv[iT])
         zOut=zTSA.copy()
         zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
     
@@ -336,14 +414,39 @@ for iP in range(0,1):#len(fcd)):
             burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
             zOut['Data']=burned.astype('int16')
             
-        fout=r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances' + '\\' + lnam + '_' + fcd[iP] + '_SeverityClass_' + str(tv[iT]) + '.tif'
+        fout=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances' + '\\' + lnam + '_' + fcd[iP] + '_SeverityClass_' + str(tv[iT]) + '.tif'
         gis.SaveGeoTiff(zOut,fout)
 
 # Test
-#z=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\test1.tif')
+#z=gis.OpenGeoTiff(fout)
 #plt.matshow(z['Data'])
 
+#%% Rasterize aerial spray treatment
 
+gdf_spray=gpd.read_file(r'C:\Users\rhember\Documents\Data\Aerial Btk Spray\Processed\btk_spray_comp.geojson')
+
+tv=np.arange(1950,2021,1)
+
+zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
+
+for iT in range(tv.size):
+    print(tv[iT])
+    zOut=zTSA.copy()
+    zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
+
+    df0=gdf_spray[ (gdf_spray['Year']==tv[iT]) ].copy() 
+    df0=df0[df0.geometry!=None]
+    df0['Dummy']=1
+    
+    if len(df0)>0:
+        shapes=((geom,value) for geom, value in zip(df0.geometry,df0['Dummy']))    
+        z0=np.zeros(zTSA['Data'].shape,dtype=float)
+        burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
+        zOut['Data']=burned.astype('int16')
+        
+    fout=r'C:\Users\rhember\Documents\Data\BC1ha\Management' + '\\btk_spray_' + str(tv[iT]) + '.tif'
+    gis.SaveGeoTiff(zOut,fout)
+    
 
 #%% Rasterize burn severity
 
@@ -534,10 +637,6 @@ for i in range(8):
     exec('a=zs' + str(i+1) + '.astype(np.int16).copy()')
     out.write_band(1,a); out.close()
 
-
-
-
-
 #%% RASTERIZE VRI VARIABLES
 # *** Gave up on this- takes too long ***
 
@@ -625,8 +724,6 @@ out.close()
 out=rasterio.open(pthout + '\\' + lnam + '_year1.tif', 'w', **meta)
 out.write_band(1,z1.astype(np.int16))
 out.close()
-
-
 
 
 #%% Import climate from old BC1ha project in matlab

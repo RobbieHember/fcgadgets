@@ -25,14 +25,21 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 meta={}
 meta['Paths']={}
-meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryQuesnel'
+
+meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryWaste'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBCTS_5k'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC5k'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryQuesnel'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC5k_HAR'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k_NA'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SparseGrid_HighRes'
+
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210930'
-meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210930'
-meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210930'
-meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210930'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422'
 meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
@@ -47,6 +54,7 @@ lut_tsa=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx
 tsa_boundaries=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 
+# Explore size
 #ind=np.where(zLC2['Data'].flatten()==4)[0]
 #ind.size
 #58257054
@@ -55,12 +63,14 @@ zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 geos={}
 
 # Define regular grid sampling frequency
-#geos['rgsf']=200 # 20 km
-#geos['rgsf']=100 # 10 km
-#geos['rgsf']=50 # 5 km
-geos['rgsf']=40 # 4 km High res
-#geos['rgsf']=20 # 2 km High res
+
+geos['rgsf']=5 # 500 m
 #geos['rgsf']=10 # 1 km
+#geos['rgsf']=20 # 2 km High res
+#geos['rgsf']=40 # 4 km High res
+#geos['rgsf']=50 # 5 km
+#geos['rgsf']=100 # 10 km
+#geos['rgsf']=200 # 20 km
 
 # Extract subgrid
 zTSA['Data']=zTSA['Data'][0::geos['rgsf'],0::geos['rgsf']]
@@ -73,15 +83,34 @@ geos['m'],geos['n']=geos['X'].shape
 geos['Mask']=np.zeros((geos['m'],geos['n']),dtype=np.int8)
 
 # Define additional inclusion criteria
-flg=2
-if flg==1:
-    # Treed
+
+#flg='Treed'
+flg='Waste'
+#flg='BCTS'
+
+if flg=='Treed':
+    
+    # Treed, global
     geos['iMask']=np.where( (zLC2['Data']==4) )
-elif flg==2:
+    
+elif flg=='Quesnel':
+    
     # Treed, Williams Lake TSA only
     iTSA=lut_tsa.loc[lut_tsa.Name=='Quesnel TSA','VALUE'].values
     geos['iMask']=np.where( (zLC2['Data']==4) & (zTSA['Data']==iTSA) )
 
+elif flg=='BCTS':
+    
+    zBCTS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\bcts_op_area.tif')
+    zBCTS['Data']=zBCTS['Data'][0::geos['rgsf'],0::geos['rgsf']]
+    geos['iMask']=np.where( (zLC2['Data']==4) & (zBCTS['Data']>0) )
+
+elif flg=='Waste':
+    
+    zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\Waste Wood\openings.tif')
+    zW['Data']=zW['Data'][0::geos['rgsf'],0::geos['rgsf']]
+    geos['iMask']=np.where( (zW['Data']>0) )
+    
 # Revise mask
 geos['Mask'][geos['iMask']]=1
 
@@ -106,7 +135,7 @@ if flg==1:
         points.append(Point(geos['Sparse']['X'][k],geos['Sparse']['Y'][k]))
     gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':geos['Sparse']['ID_TSA']})
     gdf_sxy.crs=tsa_boundaries.crs  
-    gdf_sxy.to_file(meta['Paths']['Geospatial'] + '\\sxy.geojson',driver='GeoJSON')
+    gdf_sxy.to_file(meta['Paths']['Geospatial'] + '\\geos.geojson',driver='GeoJSON')
 
 #%% Plot
 
@@ -129,28 +158,6 @@ ax.grid(color='k',linestyle='-',linewidth=0.25)
 
 ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
 #plt.savefig(PathProject + '\\SparseGrid_Map.png',format='png',dpi=900)
-
-##%% Get N deposition time series for each sparse grid cell
-#
-#tv=np.arange(1971,2021,1)
-#ndep=np.zeros((tv.size,len(gdf_sxy)))
-#for iMP in range(len(nddat)):
-#    print(iMP)
-#    it=np.where(tv==nddat[iMP][0]['Year'])[0]
-#    if it.size==0:
-#        continue
-#    FlagDone=np.zeros(len(gdf_sxy))
-#    for iD in range(len(nddat[iMP])):
-#        InPoly=gdf_sxy.within(nddat[iMP][iD]['Geometry'])
-#        ind=np.where( (InPoly==True) & (FlagDone==0) )[0]
-#        #gdf_sxy.loc[InPoly].plot(ax=ax,markersize=1,facecolor=[1,0,0.25],edgecolor=None,linewidth=0.75,alpha=1)
-#        if ind.size>0:
-#            ndep[it,ind]=ndep[it,ind]+nddat[iMP][iD]['N deposition']
-#            FlagDone[ind]=1
-#
-#plt.plot(tv,np.prctile(ndep,axis=1),'-k.')
-#
-#gu.opickle(r'C:\Users\rhember\Documents\Data\FCI_Projects\FertilizationSummaryNdep\Geospatial\ndep.pkl',ndep)
 
 
 #%% Open crosswalk between missing AT geometries and opening geometries

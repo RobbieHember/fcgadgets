@@ -95,12 +95,16 @@ def OpenGeoTiff(pthin):
     # Transform
     Transform=from_origin(xmin,ymax,Cellsize,Cellsize)
     
+    # y-x ratio
+    yxrat=data.shape[0]/data.shape[1]
+    
     z={'gt':gt,
        'Data':data,
        'X':x,
        'Y':y,
        'm':data.shape[0],
        'n':data.shape[1],
+       'yxrat':yxrat,
        'xmin':xmin,
        'xmax':xmax,
        'ymin':ymin,
@@ -129,7 +133,7 @@ def SaveGeoTiff(z,fout):
     if z['Data'].dtype=='int8':
         dtype=gdal.GDT_Int8
     elif z['Data'].dtype=='int16':
-        dtype=gdal.GDT_Int16    
+        dtype=gdal.GDT_Int16
     elif z['Data'].dtype=='int32':
         dtype=gdal.GDT_Int32
     elif z['Data'].dtype=='float32':
@@ -197,6 +201,7 @@ def ReprojectGeoTiff(pthin,pthout,crs_dst):
                     dst_crs=crs_dst,
                     resampling=Resampling.nearest)
 
+    return
 
 '''============================================================================
 POLYGON AREA

@@ -33,6 +33,8 @@ def DefineROI(roi,tsa,bm,road):
         roi['xlim']=[np.min(tsa['grd']['X'][ind])-5000,np.max(tsa['grd']['X'][ind])+5000]
         roi['ylim']=[np.min(tsa['grd']['Y'][ind])-5000,np.max(tsa['grd']['Y'][ind])+5000]
 
+        roi['yxrat']=np.diff(roi['ylim'])[0]/np.diff(roi['xlim'])[0]
+
         # Clip mask
         roi['Mask']=gis.ClipRaster(roi['Mask'],roi['xlim'],roi['ylim'])
         gc.collect()
@@ -45,10 +47,13 @@ def DefineROI(roi,tsa,bm,road):
         roi['gdf_rivers']=gpd.overlay(bm['gdf_bm'][(bm['gdf_bm']['TAG']=='river')],tsa['gdf_bound'][np.isin(tsa['gdf_bound'].Name,roi['TSA List'])],how='intersection')
     
         try:
-            roi['gdf_roads']=road['gdf'].cx[roi['Mask']['xmin']:roi['Mask']['xmax'],roi['Mask']['ymin']:roi['Mask']['ymax']]
-            roi['gdf_roads']=roi['gdf_roads'].reset_index(drop=True)
-            roi['gdf_roads']=gpd.sjoin(roi['gdf_roads'],roi['gdf_bound'],how='left')
-            roi['gdf_roads']=roi['gdf_roads'].groupby('index_right')
+            if type(road)!=list:
+                roi['gdf_roads']=road['gdf'].cx[roi['Mask']['xmin']:roi['Mask']['xmax'],roi['Mask']['ymin']:roi['Mask']['ymax']]
+                roi['gdf_roads']=roi['gdf_roads'].reset_index(drop=True)
+                roi['gdf_roads']=gpd.sjoin(roi['gdf_roads'],roi['gdf_bound'],how='left')
+                roi['gdf_roads']=roi['gdf_roads'].groupby('index_right')
+            else:
+                roi['gdf_roads']=[]                
         except:
             roi['gdf_roads']=[]
     
@@ -62,7 +67,9 @@ def DefineROI(roi,tsa,bm,road):
         # Define extent based on mask
         roi['xlim']=[xc-roi['Radius'],xc+roi['Radius']]
         roi['ylim']=[yc-roi['Radius'],yc+roi['Radius']]
-    
+        
+        roi['yxrat']=np.diff(roi['ylim'])[0]/np.diff(roi['xlim'])[0]
+        
         roi['Mask']=gis.ClipRaster(tsa['grd'],roi['xlim'],roi['ylim'])
         roi['Mask']['Data']=0*roi['Mask']['Data']+1
         
@@ -446,10 +453,8 @@ def Plot_ROI_Mask(meta,roi,lc2,bm):
     # Colormap
     cm=np.vstack( ((0.7,0.7,0.7,1),(0.8,0.8,0.8,1),(0.93,0.93,0.93,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
-
-    fig,ax=plt.subplots(1,2)
-    mngr=plt.get_current_fig_manager()
-    mngr.window.setGeometry(100,100,meta['Graphics']['figsize1'][0],meta['Graphics']['figsize1'][1])
+    
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,N_color),extent=lc2['grd']['Extent'],cmap=cm)
     bm['gdf_bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     roi['gdf_lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],edgecolor=[0.7*0.82,0.7*0.88,0.7*1],linewidth=0.25,label='Water')
@@ -463,17 +468,18 @@ def Plot_ROI_Mask(meta,roi,lc2,bm):
     except:
         # No roads exist in areas
         pass
-    ax[0].set(position=meta['Graphics']['pos1'],xlim=roi['xlim'],ylim=roi['ylim'],aspect='auto')
-    ax[0].grid(False)
-    ax[0].yaxis.set_ticks_position('both')
+    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['xlim'],ylim=roi['ylim'],aspect='auto')
+    ax[0].yaxis.set_ticks_position('both'); 
     ax[0].xaxis.set_ticks_position('both')
+    ax[0].grid(meta['Graphics']['ax1 gridvis'])
+    ax[0].axis(meta['Graphics']['ax1 vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color-1,1),ticks=np.arange(0.5,N_color+1.5,1))
     cb.ax.set(yticklabels=lab)
     cb.ax.tick_params(labelsize=6,length=0)
     for i in range(0,N_color):
         ax[1].plot([0,100],[i/(N_color-N_hidden),i/(N_color-N_hidden)],'k-',linewidth=0.5)
-    pos2=meta['Graphics']['pos2']
+    pos2=meta['Graphics']['ax2 pos']
     pos2[1]=0.8
     pos2[3]=0.1
     ax[1].set(position=pos2)

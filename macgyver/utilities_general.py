@@ -229,7 +229,8 @@ def ImportMat(pth,vnam):
     d={n: mat[vnam][n][0, 0] for n in mat[vnam].dtype.names}
     return d
 
-#%% INTERSECT ARRAYS
+#%% INTERSECT ARRAYS (RETURNING ALL INDICES)
+# *** doesn't work! *** 
 
 def intersect(a,b):
     a1,ia=np.unique(a,return_index=True)

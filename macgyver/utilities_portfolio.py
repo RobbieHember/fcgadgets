@@ -25,7 +25,7 @@ def ImportPortfolio(meta):
 
     meta['Project']={}
     meta['Project']['N Scenario']=2
-    meta['Project']['N Portfolio']=3
+    meta['Project']['N Portfolio']=4
     
     #--------------------------------------------------------------------------
     # Import portfolio-level parameters
@@ -66,14 +66,15 @@ def ImportPortfolio(meta):
     
     meta['Project']['AIL']['Year']=np.arange(d['data'][1][0],d['data'][-1][0]+1,1,dtype=int)
     
-    meta['Project']['AIL']['ID Portfolio']=np.zeros(3*12,dtype=int)
+    meta['Project']['AIL']['ID Portfolio']=np.zeros(meta['Project']['N Portfolio']*12,dtype=int)
     meta['Project']['AIL']['ID Portfolio'][12:]=1
     meta['Project']['AIL']['ID Portfolio'][24:]=2
+    meta['Project']['AIL']['ID Portfolio'][36:]=3
     
-    meta['Project']['AIL']['Area']=np.zeros((meta['Project']['AIL']['Year'].size,3*12))
+    meta['Project']['AIL']['Area']=np.zeros((meta['Project']['AIL']['Year'].size,meta['Project']['N Portfolio']*12))
     for i in range(0,meta['Project']['AIL']['Year'].size):
         cnt=0
-        for j in range(1,3*12+1):
+        for j in range(1,meta['Project']['N Portfolio']*12+1):
             meta['Project']['AIL']['Area'][i,cnt]=d['data'][i+1][j]
             cnt=cnt+1
     
@@ -82,10 +83,10 @@ def ImportPortfolio(meta):
     meta['Project']['AIL']['Area']=meta['Project']['AIL']['Area'].astype(float)
     
     # Activity ID
-    meta['Project']['AIL']['ID AT']=np.array(d['data'][0][1:3*12+1],dtype=int)
+    meta['Project']['AIL']['ID AT']=np.array(d['data'][0][1:meta['Project']['N Portfolio']*12+1],dtype=int)
     
     # Activity ID Unique
-    meta['Project']['AIL']['ID AT Unique']=np.arange(1,3*12+1,1).astype(int)
+    meta['Project']['AIL']['ID AT Unique']=np.arange(1,meta['Project']['N Portfolio']*12+1,1).astype(int)
     
     #--------------------------------------------------------------------------
     # Number of activities and years
@@ -356,39 +357,7 @@ def PrepareInventory(meta):
 #%% Prepare event chronology
 
 def PrepareEventChronology(meta):
-    
-    #--------------------------------------------------------------------------
-    # Import custom harvest inputs
-    #--------------------------------------------------------------------------
-    
-#    meta['Harvest Custom']={}
-#    for iA in range( meta['Project']['Activities']['Activity ID'].size):
-#        d={}
-#        d['BiomassMerch_Affected']=meta['Project']['Activities']['% of biomass affected by Current event'][iA]
-#        d['BiomassMerch_Removed']=meta['Project']['Activities']['% removed (merch biomass)'][iA]
-#        d['BiomassMerch_Burned']=meta['Project']['Activities']['% burned on site (merch biomass)'][iA]
-#        d['BiomassMerch_LeftOnSite']=meta['Project']['Activities']['% left to decay on site (merch biomass)'][iA]
-#        d['BiomassNonMerch_Affected']=meta['Project']['Activities']['% of biomass affected by Current event'][iA]
-#        d['BiomassNonMerch_Removed']=meta['Project']['Activities']['% removed (non merch biomass)'][iA]
-#        d['BiomassNonMerch_Burned']=meta['Project']['Activities']['% burned on site (non merch biomass)'][iA]
-#        d['BiomassNonMerch_LeftOnSite']=meta['Project']['Activities']['% left to decay on site (non merch biomass)'][iA]
-#        d['Snags_Affected']=meta['Project']['Activities']['% of biomass affected by Current event'][iA]
-#        d['Snags_Removed']=meta['Project']['Activities']['% removed (snags)'][iA]
-#        d['Snags_Burned']=meta['Project']['Activities']['% burned on site (snags)'][iA]
-#        d['Snags_LeftOnSite']=meta['Project']['Activities']['% left to decay on site (snags)'][iA]
-#        d['RemovedMerchToSawMill']=meta['Project']['Activities']['RemovedMerchToSawMill'][iA]
-#        d['RemovedMerchToPulpMill']=meta['Project']['Activities']['RemovedMerchToPulpMill'][iA]
-#        d['RemovedMerchToPelletMill']=meta['Project']['Activities']['RemovedMerchToPelletMill'][iA]
-#        d['RemovedMerchToPlywoodMill']=meta['Project']['Activities']['RemovedMerchToPlywoodMill'][iA]
-#        d['RemovedMerchToOSBMill']=meta['Project']['Activities']['RemovedMerchToOSBMill'][iA]
-#        d['RemovedMerchToMDFMill']=meta['Project']['Activities']['RemovedMerchToMDFMill'][iA]
-#        d['RemovedMerchToFirewood']=meta['Project']['Activities']['RemovedMerchToFirewood'][iA]
-#        d['RemovedMerchToIPP']=meta['Project']['Activities']['RemovedMerchToIPP'][iA]
-#        d['RemovedMerchToLogExport']=meta['Project']['Activities']['RemovedMerchToLogExport'][iA]
-#        
-#        # Populate custom harvest event
-#        meta['Harvest Custom'][int(iA+1)]=d
-    
+
     #--------------------------------------------------------------------------
     # Simulate wildfire
     #--------------------------------------------------------------------------    
@@ -516,35 +485,72 @@ def PrepareEventChronology(meta):
                     # Post 1 event
                     #----------------------------------------------------------
                     
-                    type=meta['Project']['Activities']['Post1 event type'][iAT]                    
-                    if (iScn>0) & (type!='None'):                        
-                        yr=meta['Project']['AIL']['Year'][iY]+meta['Project']['Activities']['Years between Current and Post1 event'][iAT]
-                        iT=np.where(tv==yr)[0] 
-                        if iT.size>0:
-                            iOpenSpot=np.where(ec['ID_Type'][iT,iS,:]==0)[0]
-                            if iOpenSpot.size>0: 
-                                iOpenSpot=iOpenSpot[0]                        
-                                ec['ID_Type'][iT,iS,iOpenSpot]=meta['LUT']['Dist'][type]
-                                ec['MortalityFactor'][iT,iS,iOpenSpot]=meta['Project']['Activities']['% of biomass affected by Post1 event'][iAT]
-                                ec['GrowthFactor'][iT,iS,iOpenSpot]=0
-                                ec['ID_GrowthCurve'][iT,iS,iOpenSpot]=meta['Project']['Activities']['Growth curve ID following Post1 event (project)'][iAT]
+                    type=meta['Project']['Activities']['Post1 event type'][iAT] 
+                    if (type!='None'):
+                        
+                        if meta['Project']['Activities']['Post1 scenarios affected (All or Project Only)'][iAT]=='Project Only':
+                            
+                            # Only add for project scenario
+                            if (iScn>0):                        
+                                yr=meta['Project']['AIL']['Year'][iY]+meta['Project']['Activities']['Years between Current and Post1 event'][iAT]
+                                iT=np.where(tv==yr)[0] 
+                                if iT.size>0:
+                                    iOpenSpot=np.where(ec['ID_Type'][iT,iS,:]==0)[0]
+                                    if iOpenSpot.size>0: 
+                                        iOpenSpot=iOpenSpot[0]                        
+                                        ec['ID_Type'][iT,iS,iOpenSpot]=meta['LUT']['Dist'][type]
+                                        ec['MortalityFactor'][iT,iS,iOpenSpot]=meta['Project']['Activities']['% of biomass affected by Post1 event'][iAT]
+                                        ec['GrowthFactor'][iT,iS,iOpenSpot]=0
+                                        ec['ID_GrowthCurve'][iT,iS,iOpenSpot]=meta['Project']['Activities']['Growth curve ID following Post1 event (project)'][iAT]
+                        else:
+                            
+                            # Add for baseline and project scenario
+                            yr=meta['Project']['AIL']['Year'][iY]+meta['Project']['Activities']['Years between Current and Post1 event'][iAT]
+                            iT=np.where(tv==yr)[0] 
+                            if iT.size>0:
+                                iOpenSpot=np.where(ec['ID_Type'][iT,iS,:]==0)[0]
+                                if iOpenSpot.size>0: 
+                                    iOpenSpot=iOpenSpot[0]                        
+                                    ec['ID_Type'][iT,iS,iOpenSpot]=meta['LUT']['Dist'][type]
+                                    ec['MortalityFactor'][iT,iS,iOpenSpot]=meta['Project']['Activities']['% of biomass affected by Post1 event'][iAT]
+                                    ec['GrowthFactor'][iT,iS,iOpenSpot]=0
+                                    ec['ID_GrowthCurve'][iT,iS,iOpenSpot]=meta['Project']['Activities']['Growth curve ID following Post1 event (project)'][iAT]        
                     
                     #----------------------------------------------------------
                     # Post 2 event
                     #----------------------------------------------------------
                     
-                    type=meta['Project']['Activities']['Post2 event type'][iAT]                    
-                    if (iScn>0) & (type!='None'):                        
-                        yr=meta['Project']['AIL']['Year'][iY]+meta['Project']['Activities']['Years between Current and Post2 event'][iAT]
-                        iT=np.where(tv==yr)[0]                        
-                        if iT.size>0:
-                            iOpenSpot=np.where(ec['ID_Type'][iT,iS,:]==0)[0]
-                            if iOpenSpot.size>0: 
-                                iOpenSpot=iOpenSpot[0]                        
-                                ec['ID_Type'][iT,iS,iOpenSpot]=meta['LUT']['Dist'][type]
-                                ec['MortalityFactor'][iT,iS,iOpenSpot]=meta['Project']['Activities']['% of biomass affected by Post2 event'][iAT]
-                                ec['GrowthFactor'][iT,iS,iOpenSpot]=0
-                                ec['ID_GrowthCurve'][iT,iS,iOpenSpot]=meta['Project']['Activities']['Growth curve ID following Post2 event (project)'][iAT]
+                    type=meta['Project']['Activities']['Post2 event type'][iAT]
+                    if (type!='None'):
+                        
+                        if meta['Project']['Activities']['Post1 scenarios affected (All or Project Only)'][iAT]=='Project Only':
+                            
+                            # Only add for project scenario
+                            if (iScn>0):                        
+                                yr=meta['Project']['AIL']['Year'][iY]+meta['Project']['Activities']['Years between Current and Post2 event'][iAT]
+                                iT=np.where(tv==yr)[0]                        
+                                if iT.size>0:
+                                    iOpenSpot=np.where(ec['ID_Type'][iT,iS,:]==0)[0]
+                                    if iOpenSpot.size>0: 
+                                        iOpenSpot=iOpenSpot[0]                        
+                                        ec['ID_Type'][iT,iS,iOpenSpot]=meta['LUT']['Dist'][type]
+                                        ec['MortalityFactor'][iT,iS,iOpenSpot]=meta['Project']['Activities']['% of biomass affected by Post2 event'][iAT]
+                                        ec['GrowthFactor'][iT,iS,iOpenSpot]=0
+                                        ec['ID_GrowthCurve'][iT,iS,iOpenSpot]=meta['Project']['Activities']['Growth curve ID following Post2 event (project)'][iAT]
+                                        
+                        else:
+                            
+                            # Add for baseline and project scenario
+                            yr=meta['Project']['AIL']['Year'][iY]+meta['Project']['Activities']['Years between Current and Post2 event'][iAT]
+                            iT=np.where(tv==yr)[0]                        
+                            if iT.size>0:
+                                iOpenSpot=np.where(ec['ID_Type'][iT,iS,:]==0)[0]
+                                if iOpenSpot.size>0: 
+                                    iOpenSpot=iOpenSpot[0]                        
+                                    ec['ID_Type'][iT,iS,iOpenSpot]=meta['LUT']['Dist'][type]
+                                    ec['MortalityFactor'][iT,iS,iOpenSpot]=meta['Project']['Activities']['% of biomass affected by Post2 event'][iAT]
+                                    ec['GrowthFactor'][iT,iS,iOpenSpot]=0
+                                    ec['ID_GrowthCurve'][iT,iS,iOpenSpot]=meta['Project']['Activities']['Growth curve ID following Post2 event (project)'][iAT]
             
                     #----------------------------------------------------------
                     # Add simulated wildfire from Taz
@@ -716,13 +722,16 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
             dmu0={}
             dmu1={}
             dmu2={}
+            dmu3={}
             for k in d0['Sum'].keys():
                 dmu0[k]=np.array([])
                 dmu1[k]=np.array([])
-                dmu2[k]=np.array([])            
+                dmu2[k]=np.array([])
+                dmu3[k]=np.array([])
             Area0=np.array([])
             Area1=np.array([])
             Area2=np.array([])
+            Area3=np.array([])
             
             for iBat in range(meta['Project']['N Batch']):
                 
@@ -765,6 +774,7 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
                 indBAU=np.where(meta['Project']['Portfolio']['ID Portfolio'][indBat]==0)[0]
                 indCAPa=np.where(meta['Project']['Portfolio']['ID Portfolio'][indBat]==1)[0]
                 indCAPb=np.where(meta['Project']['Portfolio']['ID Portfolio'][indBat]==2)[0]
+                indCAPc=np.where(meta['Project']['Portfolio']['ID Portfolio'][indBat]==3)[0]
                 
                 # Populate mos structure
                 for k in d1.keys():                     
@@ -800,6 +810,15 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
                             dmu2[k]=np.append(dmu2[k],y[:,indCAPb],axis=1)
                         except:
                             dmu2[k]=y[:,indCAPb]
+                    
+                    if indCAPc.size>0:
+                        
+                        mos[3][iScn]['Sum'][k]['Ensembles'][:,iEns]=mos[3][iScn]['Sum'][k]['Ensembles'][:,iEns]+np.sum(Area[:,indCAPc]*y[:,indCAPc],axis=1)/meta['Project']['N Stand per Activity Type']
+                        
+                        try:
+                            dmu3[k]=np.append(dmu3[k],y[:,indCAPc],axis=1)
+                        except:
+                            dmu3[k]=y[:,indCAPc]
                         
                 # Delete variables from workspace
                 del d1,ec,inv,econ
@@ -814,6 +833,9 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
                 
                 if indCAPb.size>0:
                     Area2=np.append(Area2,meta['Project']['Portfolio']['Area'][indBat[indCAPb]])
+                
+                if indCAPc.size>0:
+                    Area3=np.append(Area3,meta['Project']['Portfolio']['Area'][indBat[indCAPc]])
             
             # Area weighted average
             for k in dmu0.keys():
@@ -874,13 +896,13 @@ def ModelOutputStatsByPortfolio(meta,**kwargs):
     # Delete individual ensembles
     #----------------------------------------------------------------------
     
-#    for iPort in range(meta['Project']['N Portfolio']):
-#        for iScn in range(meta['Project']['N Scenario']):
-#            for k in mos[iPort][iScn].keys():
-#                try:
-#                    del mos[iPort][iScn][k]['Ensembles']
-#                except:
-#                    print(k)
+    #    for iPort in range(meta['Project']['N Portfolio']):
+    #        for iScn in range(meta['Project']['N Scenario']):
+    #            for k in mos[iPort][iScn].keys():
+    #                try:
+    #                    del mos[iPort][iScn][k]['Ensembles']
+    #                except:
+    #                    print(k)
 
     #--------------------------------------------------------------------------
     # Save
@@ -925,7 +947,7 @@ def ModelOutputStatsByAT(meta,**kwargs):
                 d0['Sum']={}
                 d0['Mean']={}
                 
-                if (iPort==0) & (iAT==0) & (iScn==0):
+                if (iAT==0) & (iScn==0):
                     
                     # Import example output
                     d1=cbu.LoadSingleOutputFile(meta,0,0,0)
@@ -1173,15 +1195,24 @@ def Plot_TimeSeries(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
         #'Production Concrete','Production Steel','Production Aluminum','Production Plastic','E_CO2e_Concrete','E_CO2e_Steel','E_CO2e_Aluminum','E_CO2e_Plastic','E_CO2e_NRBM']
         
         # Condensed list of variables
-        ListV=['A','V_MerchTotal','V_ToMillMerchTotal','V_ToMillNonMerch','C_Biomass_Tot','C_ToSlashpileBurn','E_CO2e_LULUCF_NEE', 
-               'E_CO2e_LULUCF_Wildfire', 'E_CO2e_LULUCF_OpenBurning','C_NPP_Tot','E_CO2e_SUB_E','E_CO2e_SUB_M',
+        ListV=['A','V_MerchTotal','V_ToMillMerchTotal','V_ToMillNonMerch','C_Biomass_Tot',
+               'C_ToMillMerch','C_ToMillNonMerch','C_ToMillSnagStem',
+               'C_Buildings_Tot','C_NonBuildings_Tot','C_ToSlashpileBurn','C_ToPowerFacilityDom',
+               'E_CO2e_ESC_Bioenergy','E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire', 
+               'E_CO2e_LULUCF_OpenBurning','C_NPP_Tot','E_CO2e_SUB_E','E_CO2e_OPER','E_CO2e_SUB_M',
                'E_CO2e_Coal','E_CO2e_Oil','E_CO2e_Gas','E_CO2e_SUB_Calcination',
-               'E_CO2e_SUB_Concrete','E_CO2e_SUB_Steel','E_CO2e_SUB_Aluminum','E_CO2e_SUB_Plastic',
-               'E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub','E_CO2e_AGHGB_WSub_cumu_from_tref', 'E_CO2e_AGHGB_WOSub_cumu_from_tref',
-               'Prod_Sawnwood','Prod_Panels','Prod_Concrete','Prod_Steel','Prod_Aluminum','Prod_Plastic',
-               'Cost Total','Revenue Gross', 'Revenue Net', 'Revenue Net Disc', 'Revenue Gross Disc', 'Cost Total Disc', 'Revenue Gross Disc_cumu', 
-               'Revenue Net Disc_cumu', 'Cost Total Disc_cumu', 'Cost Total_cumu', 'Revenue Gross_cumu', 'Revenue Net_cumu','Cost Silviculture Total',
-               'Cost Silviculture Total Disc','Cost Silviculture Total Disc_cumu']
+               'E_CO2e_SUB_Concrete','E_CO2e_SUB_Steel','E_CO2e_SUB_Aluminum',
+               'E_CO2e_SUB_Plastic','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub',
+               'E_CO2e_AGHGB_WSub_cumu_from_tref','E_CO2e_AGHGB_WOSub_cumu_from_tref',
+               'Yield Sawnwood','Yield Panels','Yield Concrete','Yield Steel','Yield Aluminum',
+               'Yield Plastic','Yield Lumber','Yield Plywood','Yield OSB','Yield MDF',
+               'Yield Paper','Yield Pellets','Yield PowerGrid','Yield PowerFacilityDom',
+               'Yield Firewood','Yield LogExport',
+               'Revenue Gross','Revenue Net','Revenue Net Disc','Revenue Gross Disc',
+               'Revenue Gross Disc_cumu','Revenue Net Disc_cumu',
+               'Revenue Gross_cumu','Revenue Net_cumu',
+               'Cost Total','Cost Total Disc','Cost Total Disc_cumu','Cost Total_cumu',
+               'Cost Silviculture Total','Cost Silviculture Total Disc','Cost Silviculture Total Disc_cumu']
         
         for iV in range(len(ListV)):
             
@@ -1371,63 +1402,143 @@ def Plot_AIL_WithAccounting(meta):
         
     return
 
-#%% Built enviornment
+#%% Plot results by AT
     
-def BuiltEnvironment(meta,mos):
+def PlotResultsByAT(meta,mosAT,t_start,t_end,iBAU,iCAP):
+    
+    iB=0
+    iP=1
+    
+    # Import ylabels
+    ylabs=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\LabelYAxis.xlsx')
     
     tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
     
-    dBM=gu.ipickle(r'C:\Users\rhember\Documents\Data\Built Environment\Building Material Production.pkl')
-    ind0=np.where( (dBM['Year']>=tv[0]) & (dBM['Year']<=tv[-1]) )[0]
-    ind1=np.where( (tv>=dBM['Year'][0]) & (tv<=dBM['Year'][-1]) )[0]
+    iT=np.where( (tv>=t_start) & (tv<=t_end) )[0]
     
-    # Biophysical parameters
-    dP0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_Biophysical.xlsx')
-    dP={}; cnt=0
-    for k in dP0['Name']:
-        dP[k]=dP0['Value'][cnt]; cnt=cnt+1
+    cl_b=[0,0,0.5]; 
+    cl_p=[1,0.2,0.2]; 
     
-    vnL=['Concrete','Steel','Aluminum','Plastic']
-    typL=['Ensemble Mean','Ensemble CIL','Ensemble CIU']
+    cl_b2=[0,0,0.5]; 
+    cl_p2=[1,0.2,0.2]; 
     
-    for iPort in range(meta['Project']['N Portfolio']):        
-        for iScn in range(meta['Project']['N Scenario']):
+    cl_d=[0.4,0.8,0]
+    cl_d2=[0.2,0.4,0]
     
-            #mos[iPort][iScn]['DM_Production_Sawnwood']
+    Alpha=0.08
+    
+    ListOp=['Sum','Mean']
+    #ListOp=['Sum']
+    
+    for op in ListOp:
+        
+        if op=='Sum':
+            ddb=meta['Project']['Display divide by']
+        else:
+            ddb=1.0
+         
+        # Full list of variables
+        #ListV=['A', 'V_StemMerch', 'V_StemMerchToMill', 'LogSizeEnhancement', 'C_Biomass_Tot', 'C_Piled_Tot', 'C_Litter_Tot', 'C_DeadWood_Tot', 'C_Soil_Tot', 'C_InUse_Tot', 'C_DumpLandfill_Tot', 'C_M_Dist', 'C_G_Gross_Tot', 'C_G_Net_Tot', 'C_M_Reg_Tot', 'C_LF_Tot', 'C_RH_Tot', 'C_ToMillMerch', 'C_ToMillNonMerch', 'C_ToMillSnagStem', 'C_ToSlashpileBurn', 'C_ToLumber', 'C_ToPlywood', 'C_ToOSB', 'C_ToMDF', 'C_ToPaper', 'C_ToPowerFacilityDom', 'C_ToPowerFacilityFor', 'C_ToPowerGrid', 'C_ToPellets', 'C_ToFirewoodDom', 'C_ToFirewoodFor', 'C_ToLogExport', 'E_CO2e_LULUCF_NEE', 'E_CO2e_LULUCF_Wildfire', 'E_CO2e_LULUCF_OpenBurning', 'E_CO2e_LULUCF_EcoOther', 'E_CO2e_LULUCF_HWP', 'E_CO2e_ESC_Comb', 'E_CO2e_ESC_SubE', 'E_CO2e_ESC_SubBM', 'E_CO2e_ET_Comb', 'E_CO2e_IPPU_Comb', 'C_NPP_Tot', 'C_ToMill', 'E_CO2e_LULUCF_Fire', 'E_CO2e_AGHGB_WSub', 'E_CO2e_AGHGB_WOSub', 'E_CO2e_AGHGB_WSub_cumu', 'E_CO2e_AGHGB_WOSub_cumu', 'E_CO2e_AGHGB_WSub_cumu_from_tproj', 'E_CO2e_AGHGB_WOSub_cumu_from_tproj', 'Yield Lumber', 'Yield Plywood', 'Yield OSB', 'Yield MDF', 'Yield Paper', 'Yield Pellets', 'Yield PowerGrid', 'Yield PowerFacilityDom', 'Yield FirewoodDom', 'Yield LogExport', 'Price Lumber', 'Price Plywood', 'Price OSB', 'Price MDF', 'Price Newsprint', 'Price PowerFacilityDom', 'Price PowerGrid', 'Price Pellets', 'Price LogExport', 'Price FirewoodDom', 'Exchange Rate US', 'Exchange Rate Euro', 'Cost Roads', 'Cost Harvest Overhead', 'Cost Harvest Felling and Piling', 'Cost Harvest Hauling', 'Cost Harvest Residuals', 'Cost Milling', 'Cost Nutrient Management', 'Cost Planting', 'Cost Survey', 'Cost Knockdown', 'Cost Ripping', 'Cost Slashpile Burn', 'Harvest Vol Merch', 'Harvest Vol Resid', 'Cost Total', 'Revenue Lumber', 'Revenue Plywood', 'Revenue OSB', 'Revenue MDF', 'Revenue Paper', 'Revenue PowerFacilityDom', 'Revenue PowerGrid', 'Revenue Pellets', 'Revenue FirewoodDom', 'Revenue LogExport', 'Revenue Gross', 'Revenue Net', 'Revenue Net Disc', 'Revenue Gross Disc', 'Cost Total Disc', 'Revenue Gross Disc_cumu', 'Revenue Net Disc_cumu', 'Cost Total Disc_cumu', 'Cost Total_cumu', 'Revenue Gross_cumu', 'Revenue Net_cumu']    
+        
+        # Condensed list of variables
+        ListV=['A', 'V_StemMerch', 'V_StemMerchToMill','C_Biomass_Tot','C_ToSlashpileBurn','E_CO2e_LULUCF_NEE', 'E_CO2e_LULUCF_Wildfire', 'E_CO2e_LULUCF_OpenBurning','C_NPP_Tot','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub', 'E_CO2e_AGHGB_WSub_cumu', 'E_CO2e_AGHGB_WOSub_cumu', 'E_CO2e_AGHGB_WSub_cumu_from_tproj', 'E_CO2e_AGHGB_WOSub_cumu_from_tproj', 'Harvest Vol Merch', 'Harvest Vol Resid', 'Cost Total','Revenue Gross', 'Revenue Net', 'Revenue Net Disc', 'Revenue Gross Disc', 'Cost Total Disc', 'Revenue Gross Disc_cumu', 'Revenue Net Disc_cumu', 'Cost Total Disc_cumu', 'Cost Total_cumu', 'Revenue Gross_cumu', 'Revenue Net_cumu','Cost Silviculture Total','Cost Silviculture Total Disc','Cost Silviculture Total Disc_cumu']
+        
+        for iV in range(len(ListV)):
             
-            for vn in vnL:
-                mos[iPort][iScn]['Sum']['Production ' + vn]={}
-                mos[iPort][iScn]['Sum']['E_CO2e_' + vn]={}
-                for typ in typL:
-                    mos[iPort][iScn]['Sum']['Production ' + vn][typ]=np.zeros(tv.size)
-                    mos[iPort][iScn]['Sum']['E_CO2e_' + vn][typ]=np.zeros(tv.size)
-            
-            mos[iPort][iScn]['Sum']['E_CO2e_NRBM']={}
-            for typ in typL:
-                mos[iPort][iScn]['Sum']['E_CO2e_NRBM'][typ]=np.zeros(tv.size)
+            k=ListV[iV]
 
-            mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean'][ind1]=dBM['Production Concrete (t/yr)'][ind0]
-            mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean'][ind1]=dBM['Production Steel (t/yr)'][ind0]
-            mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean'][ind1]=dBM['Production Aluminum (t/yr)'][ind0]
-            mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean'][ind1]=dBM['Production Plastic (t/yr)'][ind0]
+            for iAT in range(meta['Project']['Activities']['Activity ID'].size):
             
-            # Remove wood substitution
-            Wood=(2400/480)*(mos[iPort][iScn]['Sum']['DM_Production_Sawnwood']['Ensemble Mean']+mos[iPort][iScn]['Sum']['DM_Production_Panels']['Ensemble Mean'])
-            
-            mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean']-0.7*Wood
-            mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean']-0.1*Wood
-            mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean']-0.1*Wood
-            mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean']=mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean']-0.1*Wood
-    
-            mos[iPort][iScn]['Sum']['E_CO2e_Concrete']['Ensemble Mean']=dP['Concrete emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Concrete']['Ensemble Mean']
-            mos[iPort][iScn]['Sum']['E_CO2e_Steel']['Ensemble Mean']=dP['Steel emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Steel']['Ensemble Mean']
-            mos[iPort][iScn]['Sum']['E_CO2e_Aluminum']['Ensemble Mean']=dP['Aluminum emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Aluminum']['Ensemble Mean']
-            mos[iPort][iScn]['Sum']['E_CO2e_Plastic']['Ensemble Mean']=dP['Plastic emission intensity (tCO2e/t)']*mos[iPort][iScn]['Sum']['Production Plastic']['Ensemble Mean']
+                nameAT=meta['Project']['Activities']['Activity description'][iAT]
+                
+                # An activity may not be in BAU portfolio
+                try:
+                    be_b_bau=mosAT[iBAU][iAT][iB][op][k]['Ensemble Mean'][iT]/ddb
+                    #lo_b_bau=mosAT[iBAU][iAT][iB][op][k]['Ensemble CIL'][iT]/ddb
+                    #hi_b_bau=mosAT[iBAU][iAT][iB][op][k]['Ensemble CIU'][iT]/ddb
 
-            mos[iPort][iScn]['Sum']['E_CO2e_NRBM']['Ensemble Mean']=mos[iPort][iScn]['Sum']['E_CO2e_Concrete']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_Steel']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_Aluminum']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_Plastic']['Ensemble Mean']
+                    be_p_bau=mosAT[iBAU][iAT][iP][op][k]['Ensemble Mean'][iT]/ddb
+                    #lo_p_bau=mosAT[iBAU][iAT][iP][op][k]['Ensemble CIL'][iT]/ddb
+                    #hi_p_bau=mosAT[iBAU][iAT][iP][op][k]['Ensemble CIU'][iT]/ddb
+
+                    be_d_bau=be_p_bau-be_b_bau
+                    #lo_d_bau,hi_d_bau=gu.GetCIsFromDifference(lo_b_bau,hi_b_bau,lo_p_bau,hi_p_bau)
+                except:
+                    be_b_bau=np.zeros(iT.size)
+                    be_p_bau=np.zeros(iT.size)
+                    be_d_bau=np.zeros(iT.size)
+                
+                # An activity may not be in CAP portfolio
+                try:
+                    be_b_cap=mosAT[iCAP][iAT][iB][op][k]['Ensemble Mean'][iT]/ddb
+                    #lo_b_cap=mosAT[iCAP][iAT][iB][op][k]['Ensemble CIL'][iT]/ddb
+                    #hi_b_cap=mosAT[iCAP][iAT][iB][op][k]['Ensemble CIU'][iT]/ddb
+
+                    be_p_cap=mosAT[iCAP][iAT][iP][op][k]['Ensemble Mean'][iT]/ddb
+                    #lo_p_cap=mosAT[iCAP][iAT][iP][op][k]['Ensemble CIL'][iT]/ddb
+                    #hi_p_cap=mosAT[iCAP][iAT][iP][op][k]['Ensemble CIU'][iT]/ddb
+
+                    be_d_cap=be_p_cap-be_b_cap
+                    #lo_d_cap,hi_d_cap=gu.GetCIsFromDifference(lo_b_cap,hi_b_cap,lo_p_cap,hi_p_cap)
+
+                    be_p_d=be_p_cap-be_p_bau            
+                    #lo_p_d,hi_p_d=gu.GetCIsFromDifference(lo_p_bau,hi_p_bau,lo_p_cap,hi_p_cap)
+                except:
+                    be_b_bau=np.zeros(iT.size)
+                    be_p_bau=np.zeros(iT.size)
+                    be_d_bau=np.zeros(iT.size)
+                    
+                # y-axis label
+                ind=np.where(ylabs['Name']==k)[0]
+                if ind.size==1:
+                    if (op=='Sum') & (ddb==1e6):
+                        lab=ylabs['Y Label Sum Mt'][ind[0]]
+                    elif (op=='Sum') & (ddb==1e9):
+                        lab=ylabs['Y Label Sum Gt'][ind[0]]    
+                    else:
+                        lab=ylabs['Y Label Mean'][ind[0]]                
+                else:
+                    lab=k
+
+                # Plot
+                plt.close('all')
+                fig,ax=plt.subplots(1,3,figsize=gu.cm2inch(17,7.5))
+
+                ax[0].plot(tv[iT],np.zeros(iT.size),'-',lw=2,color=[0.8,0.8,0.8])
+                #ax[0].fill_between(tv[iT],lo_b_bau,hi_b_bau,color=cl_b,alpha=Alpha,lw=0)
+                #ax[0].fill_between(tv[iT],lo_p_bau,hi_p_bau,color=cl_p,alpha=Alpha,lw=0)            
+                #ax[0].fill_between(tv[iT],lo_b_cap,hi_b_cap,color=cl_b,alpha=Alpha,lw=0)
+                #ax[0].fill_between(tv[iT],lo_p_cap,hi_p_cap,color=cl_p,alpha=Alpha,lw=0)            
+                ax[0].plot(tv[iT],be_b_bau,'-',color=cl_b,label='BAU Baseline')
+                ax[0].plot(tv[iT],be_p_bau,'-.',color=cl_p,label='BAU Project')            
+                ax[0].plot(tv[iT],be_b_cap,'--',color=cl_b2,label='CAP Baseline')
+                ax[0].plot(tv[iT],be_p_cap,':',color=cl_p2,label='CAP Project')            
+                ax[0].set(position=[0.06,0.08,0.27,0.7],xlim=[tv[iT[0]],tv[iT[-1]]],ylabel=lab)
+                ax[0].legend(loc='upper center',ncol=2,bbox_to_anchor=(0.5,1.14),frameon=False,facecolor=None)
+                ax[0].yaxis.set_ticks_position('both'); 
+                ax[0].xaxis.set_ticks_position('both')
+
+                ax[1].plot(tv[iT],np.zeros(iT.size),'-',lw=2,color=[0.8,0.8,0.8])
+                #ax[1].fill_between(tv[iT],lo_d_bau,hi_d_bau,color=cl_d,alpha=Alpha,lw=0)
+                #ax[1].fill_between(tv[iT],lo_d_cap,hi_d_cap,color=cl_d2,alpha=Alpha,lw=0)
+                ax[1].plot(tv[iT],be_d_bau,'-',color=cl_d,label='BAU Project minus BAU Baseline ')
+                ax[1].plot(tv[iT],be_d_cap,'--',color=cl_d2,label='CAP Project minus CAP Baseline')
+                ax[1].legend(loc='upper center',bbox_to_anchor=(0.5,1.15),frameon=False,facecolor=None)
+                ax[1].set(position=[0.4,0.08,0.27,0.7],xlim=[tv[iT[0]],tv[iT[-1]]],ylabel='$\Delta$ ' + lab)
+                ax[1].yaxis.set_ticks_position('both'); 
+                ax[1].xaxis.set_ticks_position('both')
+
+                ax[2].plot(tv[iT],np.zeros(iT.size),'-',lw=2,color=[0.8,0.8,0.8])
+                #ax[2].fill_between(tv[iT],lo_p_d,hi_p_d,color=cl_d,alpha=Alpha,lw=0)
+                #ax[2].plot(tv[iT],be_p_d,'-',color=cl_d,label='CAP Project minus BAU Project')
+                ax[2].plot(tv[iT],be_d_cap-be_d_bau,'-',color=cl_d,label='$\Delta$ CAP minus $\Delta$ BAU')            
+                ax[2].legend(loc='upper center',bbox_to_anchor=(0.5,1.15),frameon=False,facecolor=None)
+                ax[2].set(position=[0.75,0.08,0.27,0.7],xlim=[tv[iT[0]],tv[iT[-1]]],ylabel='$\Delta$ ' + lab)
+                ax[2].yaxis.set_ticks_position('both'); 
+                ax[2].xaxis.set_ticks_position('both')
+
+                gu.PrintFig(meta['Paths']['Figures'] + '\\ByAT_' + nameAT + '_' + op + '_' + k,'png',200)
+                #gu.PrintFig(meta['Paths']['Figures'] + '\\ByAT_' + op + '_' + k,'png',200)
+    plt.close('all')   
     
-            mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean']=mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_NRBM']['Ensemble Mean']+mos[iPort][iScn]['Sum']['E_CO2e_ESC_SubE']['Ensemble Mean']
-            mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub_cumu']['Ensemble Mean']=np.cumsum(mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'])
-            mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean']=np.cumsum(mos[iPort][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'])
-    
-    return mos
+    return

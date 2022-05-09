@@ -23,10 +23,15 @@ from fcgadgets.macgyver import utilities_general as gu
 # List layers
 flg=0
 if flg==1:
-    #path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb'
+    path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422\Results.gdb'
     #path=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401\VRI.gdb'
-    path=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
+    #path=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
+    #path=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422\LandUse.gdb'
     fiona.listlayers(path)
+
+with fiona.open(path,layer='RSLT_OPENING_SVW') as source:
+    for feat in source:
+        break
 
 #%% Query wildfire perimiter
     

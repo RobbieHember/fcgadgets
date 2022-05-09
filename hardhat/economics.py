@@ -68,7 +68,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     # Convert power carbon (MgC/ha) to yield (MWh/ha)
     d['Yield PowerFacilityDom']=b['wood_C_to_DM']*v1['C_ToPowerFacilityDom']*b['GJ per ODT']*b['MWh per GJ']
     
-    # Convert domestic firewood carbon (MgC/ha) to yield (?)
+    # Convert domestic firewood carbon (MgC/ha) to yield (ODT)
     d['Yield FirewoodDom']=b['wood_C_to_DM']*v1['C_ToFirewoodDom']
     
     # Convert log export carbon (MgC/ha) to yield (m3/ha)

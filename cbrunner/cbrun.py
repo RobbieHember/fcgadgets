@@ -54,6 +54,7 @@ def MeepMeep(meta):
                         flag_WorkingOnBatch=1
                     else:
                         if flag_WorkingOnBatch==0:
+                            print(pth_WorkingOnBatch)
                             continue
             
                 # Report progress
@@ -70,7 +71,7 @@ def MeepMeep(meta):
                 rt_info['t2']=time.time()
                 
                 # Set location-specific parameters
-                meta,vi=PrepareParametersForBatch(meta,vi,iEns,iBat)
+                meta,vi=PrepareParametersForBatch(meta,vi,iEns,iBat,iScn)
                 
                 # Track time
                 rt_info['t3']=time.time()
@@ -132,6 +133,10 @@ def MeepMeep(meta):
                         
                         # Biomass from BatchTIPSY.exe (or TASS)
                         vo=annproc.Biomass_FromTIPSYorTASS(iScn,iBat,iT,vi,vo,meta,iEP)
+                    
+                    # Grassland dynamics
+                    if (meta['Scenario'][iScn]['Grass Module Status']=='On') & (meta['Year'][iT]>=meta['Scenario'][iScn]['Grass Module Year Start']):
+                        vo=annproc.Biomass_FromGrasses(iScn,iBat,iT,vi,vo,meta,iEP)
                     
                     # Calculate annual dead organic matter dynamics
                     vo=annproc.DOM_like_CBM08(iT,iBat,vi,vo,iEP,meta)
@@ -394,27 +399,24 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['E_CO2e_SUB_Textile']=np.zeros((m,n))
     
     # Production (GJ)
-    vo['Prod_Coal']=np.zeros((m,n))
-    vo['Prod_Oil']=np.zeros((m,n))
-    vo['Prod_Gas']=np.zeros((m,n))
+    vo['Yield Coal']=np.zeros((m,n))
+    vo['Yield Oil']=np.zeros((m,n))
+    vo['Yield Gas']=np.zeros((m,n))
     
     # Production (tonnes)
-    vo['Prod_Sawnwood']=np.zeros((m,n))
-    vo['Prod_Panels']=np.zeros((m,n))
-    vo['Prod_Concrete']=np.zeros((m,n))
-    vo['Prod_Steel']=np.zeros((m,n))
-    vo['Prod_Aluminum']=np.zeros((m,n))
-    vo['Prod_Plastic']=np.zeros((m,n))
-    vo['Prod_Textile']=np.zeros((m,n))
+    vo['Yield Sawnwood']=np.zeros((m,n))
+    vo['Yield Panels']=np.zeros((m,n))
+    vo['Yield Concrete']=np.zeros((m,n))
+    vo['Yield Steel']=np.zeros((m,n))
+    vo['Yield Aluminum']=np.zeros((m,n))
+    vo['Yield Plastic']=np.zeros((m,n))
+    vo['Yield Textile']=np.zeros((m,n))
     
     if meta['Project']['Biomass Module']=='Sawtooth':
         
-        vo['C_M_Sim_Reg']=np.zeros((m,n))
-        vo['C_M_Sim_Fir']=np.zeros((m,n))
-        vo['C_M_Sim_Ins']=np.zeros((m,n))
-        vo['C_M_Sim_Pat']=np.zeros((m,n))
-        vo['C_M_Sim_Har']=np.zeros((m,n))
-        vo['C_M_Sim_Win']=np.zeros((m,n))   
+        meta['Core']['Sawtooth']={}
+        meta['Core']['Sawtooth']['DBH Classes']=np.linspace(0,100,50)
+        vo['DBH_Class']=np.zeros((m,n,meta['Core']['Sawtooth']['DBH Classes'].size))
         
         # Stand density
         vo['N']=np.zeros((m,n))
@@ -423,17 +425,6 @@ def InitializeStands(meta,iScn,iEns,iBat):
         vo['N_R']=np.zeros((m,n))
         vo['N_M_Tot']=np.zeros((m,n))
         vo['N_M_Reg']=np.zeros((m,n))
-        vo['N_M_Inv_Fir']=np.zeros((m,n))
-        vo['N_M_Inv_Ins']=np.zeros((m,n))
-        vo['N_M_Inv_Pat']=np.zeros((m,n))
-        vo['N_M_Inv_Har']=np.zeros((m,n))
-        vo['N_M_Inv_Win']=np.zeros((m,n))
-        vo['N_M_Sim_Reg']=np.zeros((m,n))
-        vo['N_M_Sim_Fir']=np.zeros((m,n))
-        vo['N_M_Sim_Ins']=np.zeros((m,n))
-        vo['N_M_Sim_Pat']=np.zeros((m,n))
-        vo['N_M_Sim_Har']=np.zeros((m,n))
-        vo['N_M_Sim_Win']=np.zeros((m,n))
         
         # Mean of tree attributes
         vo['TreeMean_A']=np.zeros((m,n))
@@ -441,6 +432,9 @@ def InitializeStands(meta,iScn,iEns,iBat):
         vo['TreeMean_D']=np.zeros((m,n))
         vo['TreeMean_Csw']=np.zeros((m,n))
         vo['TreeMean_Csw_G']=np.zeros((m,n))
+        
+        # Needed to supply affected carbon to disturbance module
+        vo['C_M_Tot']=np.zeros((m,n,o)) 
         
         # Needed to track dead merch volume
         vo['V_Merch_M']=np.zeros((m,n))
@@ -512,7 +506,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
 
 #%% Import parameters
 
-def PrepareParametersForBatch(meta,vi,iEns,iBat):
+def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
       
     #--------------------------------------------------------------------------
     # Populate final parameters with initial best estimates
@@ -582,12 +576,12 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
                 meta['Param']['BEV']['Biomass Allometry'][k][ind]=meta['Param']['BEV']['Biomass Allometry']['Raw'][k][1]
       
     #--------------------------------------------------------------------------
-    # Disturbance - Fate of Felled Material
+    # Fate of Felled Material
     #--------------------------------------------------------------------------
     
     # Initialize
     meta['Param']['BEV']['Felled Fate']={}
-    for k in meta['Param']['BE']['Felled Fate']['Default']['Coast'].keys():
+    for k in meta['Param']['BE']['Felled Fate']['BaseCase']['Coast'].keys():
         meta['Param']['BEV']['Felled Fate'][k]=np.zeros( (meta['Param']['BE']['Felled Fate']['Year'].size,meta['Project']['Batch Size'][iBat]) )
     
     # Papulate batch-specific parameters
@@ -596,13 +590,13 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
         indBat=cbu.IndexToBatch(meta,iBat)
         
         # Isolate felled fate scenario names within this batch
-        ScenarioName=meta['Project']['Portfolio']['Felled Fate Scenario'][indBat]
+        Scenario=meta['Project']['Portfolio']['Felled Fate Scenario'][indBat]
         
         # Isolate region
-        RegionName=meta['Project']['Portfolio']['Region Name'][indBat]
+        Region=meta['Project']['Portfolio']['Region Code'][indBat]
         
         # Unique scenario and region (must be converted to string)
-        SR=np.column_stack((ScenarioName,RegionName))
+        SR=np.column_stack((Scenario,Region))
         SR=SR.astype(str)
         u=np.unique(SR,axis=0)
 
@@ -611,7 +605,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
             # Index to each scenario
             scn=u[iU,0]
             reg=u[iU,1]
-            ind=np.where( (ScenarioName==scn) & (RegionName==reg) )[0]
+            ind=np.where( (Scenario==scn) & (Region==reg) )[0]
             
             for k in meta['Param']['BE']['Felled Fate'][scn][reg].keys():
                 x=meta['Param']['BE']['Felled Fate'][scn][reg][k]
@@ -621,22 +615,13 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
  
     elif meta['Project']['Scenario Source']=='Spreadsheet':
         
-        # Fate of Felled Scenario
-        scn=meta['Scenario'][meta['iScn']]['Felled Fate Scenario']
-        
-        # Region
-        bgc=meta['Scenario'][meta['iScn']]['BGC Zone Code']
-        if np.isin(bgc,['CWH','CDF','MH'])==True:
-            reg='Coast'
-        else:
-            reg='Interior'
-        
-        for k in meta['Param']['BE']['Felled Fate'][scn][reg].keys():
-            
-            x=meta['Param']['BE']['Felled Fate'][scn][reg][k]
+        Scenario=meta['Scenario'][meta['iScn']]['Felled Fate Scenario']
+        Region=meta['Scenario'][meta['iScn']]['Region Code']
+        for k in meta['Param']['BE']['Felled Fate'][Scenario][Region].keys():            
+            x=meta['Param']['BE']['Felled Fate'][Scenario][Region][k]
             x=np.reshape(x,(-1,1))
             x=np.tile(x,(1,meta['Project']['Batch Size'][iBat]))
-            meta['Param']['BEV']['Felled Fate'][k]=x    
+            meta['Param']['BEV']['Felled Fate'][k]=x
     
     else:
         
@@ -644,32 +629,79 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
         indBat=cbu.IndexToBatch(meta,iBat)
         
         # Isolate felled fate scenario names within this batch
-        ScenarioName=meta['Scenario'][meta['iScn']]['Felled Fate Scenario']
+        Scenario=meta['Scenario'][meta['iScn']]['Felled Fate Scenario']
         
-        id=vi['Inv']['ID_BECZ'].flatten()
-        u=np.unique(id)
-        flg=np.zeros(indBat.size)
-        for iU in range(u.size):
-            cd=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])[0]
-            ind=np.where(id==u[iU])[0]            
-            if np.isin(cd,['CWH','CDF','MH'])==True:
-                flg[ind]=1
-            else:
-                flg[ind]=0
+        for reg in meta['LUT']['Region'].keys():
+            ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
+            for k in meta['Param']['BE']['Felled Fate'][Scenario][reg].keys():
+                x=meta['Param']['BE']['Felled Fate'][Scenario][reg][k]
+                x=np.reshape(x,(-1,1))
+                x=np.tile(x,(1,ind.size))
+                meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
+     
+    #--------------------------------------------------------------------------
+    # Removed Fate
+    #--------------------------------------------------------------------------
+    
+    # Initialize
+    meta['Param']['BEV']['Removed Fate']={}
+    for k in meta['Param']['BE']['Removed Fate']['BaseCase']['Coast'].keys():
+        meta['Param']['BEV']['Removed Fate'][k]=np.zeros( (meta['Param']['BE']['Removed Fate']['Year'].size,meta['Project']['Batch Size'][iBat]) )
+    
+    # Papulate batch-specific parameters
+    if meta['Project']['Scenario Source']=='Portfolio':
+    
+        indBat=cbu.IndexToBatch(meta,iBat)
         
-        ind=np.where( flg==0 )[0]            
-        for k in meta['Param']['BE']['Felled Fate'][ScenarioName]['Interior'].keys():
-            x=meta['Param']['BE']['Felled Fate'][ScenarioName]['Interior'][k]
+        # Isolate Removal Fate scenario names within this batch
+        Scenario=meta['Project']['Portfolio']['Removed Fate Scenario'][indBat]
+        
+        # Isolate region
+        Region=meta['Project']['Portfolio']['Region Code'][indBat]
+        
+        # Unique scenario and region (must be converted to string)
+        SR=np.column_stack( (Scenario,Region) )
+        SR=SR.astype(str)
+        u=np.unique(SR,axis=0)
+
+        for iU in range(u.shape[0]):
+            
+            # Index to each scenario
+            scn=u[iU,0]
+            reg=u[iU,1]
+            ind=np.where( (Scenario==scn) & (Region==reg) )[0]
+            
+            for k in meta['Param']['BE']['Removed Fate'][scn][reg].keys():
+                x=meta['Param']['BE']['Removed Fate'][scn][reg][k]
+                x=np.reshape(x,(-1,1))
+                x=np.tile(x,(1,ind.size))
+                meta['Param']['BEV']['Removed Fate'][k][:,ind]=x                    
+ 
+    elif meta['Project']['Scenario Source']=='Spreadsheet':
+        
+        Scenario=meta['Scenario'][meta['iScn']]['Removed Fate Scenario']
+        Region=meta['Scenario'][meta['iScn']]['Region Code']        
+        for k in meta['Param']['BE']['Removed Fate'][Scenario][Region].keys():
+            x=meta['Param']['BE']['Removed Fate'][Scenario][Region][k]
             x=np.reshape(x,(-1,1))
-            x=np.tile(x,(1,ind.size))
-            meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
+            x=np.tile(x,(1,meta['Project']['Batch Size'][iBat]))
+            meta['Param']['BEV']['Removed Fate'][k]=x
+    
+    else:
         
-        ind=np.where( flg==1 )[0]            
-        for k in meta['Param']['BE']['Felled Fate'][ScenarioName]['Coast'].keys():
-            x=meta['Param']['BE']['Felled Fate'][ScenarioName]['Coast'][k]
-            x=np.reshape(x,(-1,1))
-            x=np.tile(x,(1,ind.size))
-            meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
+        # Index to batch
+        indBat=cbu.IndexToBatch(meta,iBat)
+        
+        # Isolate Removal Fate scenario names within this batch
+        Scenario=meta['Scenario'][meta['iScn']]['Removed Fate Scenario']
+        
+        for reg in meta['LUT']['Region'].keys():
+            ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
+            for k in meta['Param']['BE']['Felled Fate'][Scenario][reg].keys():
+                x=meta['Param']['BE']['Felled Fate'][Scenario][reg][k]
+                x=np.reshape(x,(-1,1))
+                x=np.tile(x,(1,ind.size))
+                meta['Param']['BEV']['Felled Fate'][k][:,ind]=x   
         
     #--------------------------------------------------------------------------
     # Harvested Wood Products - static
@@ -678,7 +710,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
     for i in range(len(meta['Param']['BEV']['HWP']['Raw'])):
         
         Name=meta['Param']['BEV']['HWP']['Raw']['Name'].iloc[i]
-        Value=meta['Param']['BEV']['HWP']['Raw']['Best Estimate'].iloc[i]
+        Value=meta['Param']['BEV']['HWP']['Raw']['Coast'].iloc[i]
         
         # Convert half life to turnover rate
         if Name[-2:]=='hl':            
@@ -688,12 +720,27 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
         meta['Param']['BEV']['HWP'][Name]=Value*np.ones(meta['Project']['Batch Size'][iBat])
     
     #--------------------------------------------------------------------------
+    # Override mill transfers (for salvage logging)
+    # Shift transfers to pulp in salvage logging projects
+    #--------------------------------------------------------------------------
+    
+    if 'Salvage Mill Transfers' in meta['Scenario'][iScn]:
+        if meta['Scenario'][iScn]['Salvage Mill Transfers']=='On':
+            y=meta['Param']['BEV']['HWP']['RemovedMerchToSawMill'].copy()
+            meta['Param']['BEV']['HWP']['RemovedMerchToSawMill']=0.0*y
+            meta['Param']['BEV']['HWP']['RemovedMerchToPulpMill']=meta['Param']['BEV']['HWP']['RemovedMerchToPulpMill']+1.0*y
+            
+            y=meta['Param']['BEV']['HWP']['RemovedSnagStemToSawMill'].copy()
+            meta['Param']['BEV']['HWP']['RemovedSnagStemToSawMill']=0.0*y
+            meta['Param']['BEV']['HWP']['RemovedSnagStemToPulpMill']=meta['Param']['BEV']['HWP']['RemovedSnagStemToPulpMill']+1.0*y
+    
+    #--------------------------------------------------------------------------
     # Harvested Wood Products - End Uses
     #--------------------------------------------------------------------------
     
     # Initialize
     meta['Param']['BEV']['HWP End Use']={}
-    for k in meta['Param']['BE']['HWP End Use']['Default'].keys():
+    for k in meta['Param']['BE']['HWP End Use']['BaseCase']['Coast'].keys():
         meta['Param']['BEV']['HWP End Use'][k]=np.zeros( (meta['Param']['BE']['HWP End Use']['Year'].size,meta['Project']['Batch Size'][iBat]) )
     
     # Papulate batch-specific parameters
@@ -702,45 +749,71 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat):
         indBat=cbu.IndexToBatch(meta,iBat)
         
         # Isolate scenario names within this batch
-        ScenarioName=meta['Project']['Portfolio']['HWP End Use Scenario'][indBat]
+        Scenario=meta['Project']['Portfolio']['HWP End Use Scenario'][indBat]
         
-        # Unique scenarios
-        uSN=np.unique(ScenarioName)
+        # Isolate region
+        Region=meta['Project']['Portfolio']['Region Code'][indBat]
         
-        for iU in range(uSN.size):
-            # Index to each scenario
-            sn=uSN[iU]
-            indS=np.where(ScenarioName==sn)[0]
-            for k in meta['Param']['BE']['HWP End Use']['Default'].keys():
-                x=meta['Param']['BE']['HWP End Use'][sn][k]
-                x=np.reshape(x,(-1,1))
-                x=np.tile(x,(1,indS.size))
-                meta['Param']['BEV']['HWP End Use'][k][:,indS]=x
- 
-    else:
-        
-        for k in meta['Param']['BE']['HWP End Use']['Default'].keys():
+        # Unique scenario and region (must be converted to string)
+        SR=np.column_stack( (Scenario,Region) )
+        SR=SR.astype(str)
+        u=np.unique(SR,axis=0)
+
+        for iU in range(u.shape[0]):
             
-            x=meta['Param']['BE']['HWP End Use']['Default'][k]
+            # Index to each scenario
+            scn=u[iU,0]
+            reg=u[iU,1]
+            ind=np.where( (Scenario==scn) & (Region==reg) )[0]
+            
+            for k in meta['Param']['BE']['HWP End Use'][scn][reg].keys():
+                x=meta['Param']['BE']['HWP End Use'][scn][reg][k]
+                x=np.reshape(x,(-1,1))
+                x=np.tile(x,(1,ind.size))
+                meta['Param']['BEV']['HWP End Use'][k][:,ind]=x  
+ 
+    elif meta['Project']['Scenario Source']=='Spreadsheet':
+        
+        Scenario=meta['Scenario'][meta['iScn']]['HW End Use Scenario']
+        Region=meta['Scenario'][meta['iScn']]['Region Code']        
+        for k in meta['Param']['BE']['HWP End Use'][Scenario][Region].keys():
+            x=meta['Param']['BE']['HWP End Use'][Scenario][Region][k]
             x=np.reshape(x,(-1,1))
             x=np.tile(x,(1,meta['Project']['Batch Size'][iBat]))
             meta['Param']['BEV']['HWP End Use'][k]=x
     
+    else:
+        
+        # Index to batch
+        indBat=cbu.IndexToBatch(meta,iBat)
+        
+        # Isolate Removal Fate scenario names within this batch
+        Scenario=meta['Scenario'][meta['iScn']]['HWP End Use Scenario']
+        
+        for reg in meta['LUT']['Region'].keys():
+            ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
+            for k in meta['Param']['BE']['HWP End Use'][Scenario][reg].keys():
+                x=meta['Param']['BE']['HWP End Use'][Scenario][reg][k]
+                x=np.reshape(x,(-1,1))
+                x=np.tile(x,(1,ind.size))
+                meta['Param']['BEV']['HWP End Use'][k][:,ind]=x  
+    
     #--------------------------------------------------------------------------
     # Populate custom harvest parameters with those supplied for project
+    # *** Retired ***
     #--------------------------------------------------------------------------
     
-    if 'Harvest Custom' in meta:
-        
-        for iHC in range(10):
-            
-            if int(iHC+1) in meta['Harvest Custom']:
-                
-                for k in meta['Harvest Custom'][int(iHC+1)].keys():
-                    
-                    if k[0:7]!='Removed':
-                        id=meta['LUT']['Dist']['Harvest Custom ' + str(int(iHC+1))]
-                        meta['Param']['BEV']['Dist'][id][k]=meta['Harvest Custom'][int(iHC+1)][k]/100 
+    #    if 'Harvest Custom' in meta:
+    #        
+    #        for iHC in range(10):
+    #            
+    #            if int(iHC+1) in meta['Harvest Custom']:
+    #                
+    #                for k in meta['Harvest Custom'][int(iHC+1)].keys():
+    #                    
+    #                    if k[0:7]!='Removed':
+    #                        id=meta['LUT']['Dist']['Harvest Custom ' + str(int(iHC+1))]
+    #                        meta['Param']['BEV']['Dist'][id][k]=meta['Harvest Custom'][int(iHC+1)][k]/100 
 
     return meta,vi
 
@@ -1006,50 +1079,50 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     #----------------------------------------------------------------------
 
     # Sawnwood (t DM)
-    vo['Prod_Sawnwood']=meta['Param']['BEV']['Econ']['wood_C_to_DM']*vo['C_ToLumber']
+    vo['Yield Sawnwood']=meta['Param']['BEV']['Econ']['wood_C_to_DM']*vo['C_ToLumber']
 
     # Panels (t DM)
-    vo['Prod_Panels']=meta['Param']['BEV']['Econ']['wood_C_to_DM']*(vo['C_ToPlywood']+vo['C_ToOSB']+vo['C_ToMDF'])
+    vo['Yield Panels']=meta['Param']['BEV']['Econ']['wood_C_to_DM']*(vo['C_ToPlywood']+vo['C_ToOSB']+vo['C_ToMDF'])
     
     # Residuals (tonnes)
     #Residuals=0
     
     # Substitution of concrete for structural wood
-    fS=bS['SawnwoodFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForSawnwood']*vo['Prod_Sawnwood']
-    fP=bS['PanelsFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForPanels']*vo['Prod_Panels']
+    fS=bS['SawnwoodFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForSawnwood']*vo['Yield Sawnwood']
+    fP=bS['PanelsFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForPanels']*vo['Yield Panels']
     fR=0#bS['ResidualsFracDisplacingConcrete']*bS['DisplacementRatio_ConcreteForResiduals']*Residuals
-    vo['Prod_Concrete']=vo['Prod_Concrete']+fS+fP#-fR
+    vo['Yield Concrete']=vo['Yield Concrete']+fS+fP#-fR
     
     # Substitution of steel for structural wood
-    fS=bS['SawnwoodFracDisplacingSteel']*bS['DisplacementRatio_SteelForSawnwood']*vo['Prod_Sawnwood']
-    fP=bS['PanelsFracDisplacingSteel']*bS['DisplacementRatio_SteelForPanels']*vo['Prod_Panels']
+    fS=bS['SawnwoodFracDisplacingSteel']*bS['DisplacementRatio_SteelForSawnwood']*vo['Yield Sawnwood']
+    fP=bS['PanelsFracDisplacingSteel']*bS['DisplacementRatio_SteelForPanels']*vo['Yield Panels']
     fR=0#bS['ResidualsFracDisplacingSteel']*bS['DisplacementRatio_SteelForResiduals']*Residuals
-    vo['Prod_Steel']=vo['Prod_Steel']+fS+fP#-fR
+    vo['Yield Steel']=vo['Yield Steel']+fS+fP#-fR
     
     # Substitution of aluminum for structural wood
-    fS=bS['SawnwoodFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForSawnwood']*vo['Prod_Sawnwood']
-    fP=bS['PanelsFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForPanels']*vo['Prod_Panels']
+    fS=bS['SawnwoodFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForSawnwood']*vo['Yield Sawnwood']
+    fP=bS['PanelsFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForPanels']*vo['Yield Panels']
     fR=0#bS['ResidualsFracDisplacingAluminum']*bS['DisplacementRatio_AluminumForResiduals']*Residuals
-    vo['Prod_Aluminum']=vo['Prod_Aluminum']+fS+fP#-fR
+    vo['Yield Aluminum']=vo['Yield Aluminum']+fS+fP#-fR
     
     # Substitution of plastics for structural wood
-    fS=bS['SawnwoodFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForSawnwood']*vo['Prod_Sawnwood']
-    fP=bS['PanelsFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForPanels']*vo['Prod_Panels']
+    fS=bS['SawnwoodFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForSawnwood']*vo['Yield Sawnwood']
+    fP=bS['PanelsFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForPanels']*vo['Yield Panels']
     fR=0#bS['ResidualsFracDisplacingPlastic']*bS['DisplacementRatio_PlasticForResiduals']*Residuals
-    vo['Prod_Plastic']=vo['Prod_Plastic']+fS+fP#-fR
+    vo['Yield Plastic']=vo['Yield Plastic']+fS+fP#-fR
     
     # Substitution of textiles for structural wood
-    fS=bS['SawnwoodFracDisplacingTextile']*bS['DisplacementRatio_TextileForSawnwood']*vo['Prod_Sawnwood']
-    fP=bS['PanelsFracDisplacingTextile']*bS['DisplacementRatio_TextileForPanels']*vo['Prod_Panels']
+    fS=bS['SawnwoodFracDisplacingTextile']*bS['DisplacementRatio_TextileForSawnwood']*vo['Yield Sawnwood']
+    fP=bS['PanelsFracDisplacingTextile']*bS['DisplacementRatio_TextileForPanels']*vo['Yield Panels']
     fR=0#bS['ResidualsFracDisplacingTextile']*bS['DisplacementRatio_TextileForResiduals']*Residuals
-    vo['Prod_Textile']=vo['Prod_Textile']+fS+fP#-fR
+    vo['Yield Textile']=vo['Yield Textile']+fS+fP#-fR
 
     # Emissions from productoin of structural materials
-    vo['E_CO2e_SUB_Concrete']=bB['Emission Intensity Concrete']*vo['Prod_Concrete']
-    vo['E_CO2e_SUB_Steel']=bB['Emission Intensity Steel']*vo['Prod_Steel']
-    vo['E_CO2e_SUB_Aluminum']=bB['Emission Intensity Aluminum']*vo['Prod_Aluminum']
-    vo['E_CO2e_SUB_Plastic']=bB['Emission Intensity Plastic']*vo['Prod_Plastic']
-    vo['E_CO2e_SUB_Textile']=bB['Emission Intensity Textile']*vo['Prod_Textile']
+    vo['E_CO2e_SUB_Concrete']=bB['Emission Intensity Concrete']*vo['Yield Concrete']
+    vo['E_CO2e_SUB_Steel']=bB['Emission Intensity Steel']*vo['Yield Steel']
+    vo['E_CO2e_SUB_Aluminum']=bB['Emission Intensity Aluminum']*vo['Yield Aluminum']
+    vo['E_CO2e_SUB_Plastic']=bB['Emission Intensity Plastic']*vo['Yield Plastic']
+    vo['E_CO2e_SUB_Textile']=bB['Emission Intensity Textile']*vo['Yield Textile']
 
     # Emissions from structural matierials, tallied by feedstock (and calcination)
     vo['E_CO2e_SUB_CoalForWood']= \
@@ -1099,7 +1172,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         vo['C_DeadWood_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)
         vo['C_Soil_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)
         vo['C_InUse_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['InUse']],axis=2)
-        vo['DM_Buildings_Tot']=2*np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['Buildings'] ],axis=2)
+        vo['C_Buildings_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['Buildings'] ],axis=2)
         vo['C_DumpLandfill_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['DumpLandfill']],axis=2)        
         
         # Remove pools

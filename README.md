@@ -54,16 +54,8 @@ will match that originally predicted by the GY model.
 	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 
-### HWP_From_BCHWP12: 
-* Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems 
-* This module aims to capture the dynamics described by the [BC Harvested Wood Products model version 1 (Dymond, 2012)](https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/natural-resources-climate-change-mitigation/tools-resources)
-* Driven by province-wide default parameters or user-specified parameters indicating product profiles
-
-### HWP_From_BCHWP12_Update21: 
-* Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems (Dymond, 2012)
-* Modifications made to include flow of fibre through chipper mills, post & pole mills, and firewood collection
-* Modifications made to represent domestric power generation, pellets
-* Modifications made to capture regional differences in harvest utilization levels
+### HWP_Update21: 
+* Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems
 
 ### Organizational structure of cbrunner
 The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
@@ -155,8 +147,8 @@ scenarios, consistent across project studies, and supported by documentation.
 ### onset_spread_models.py
 * Spatially explicit simulations of events based on annual probability of onset and spread
 
-## SILVICULTURE
-The **silviculture** toolbox contains resources for representing effects of forest management on forest sector GHG balance.
+## HARDHAT
+The **hardhat** toolbox contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_application.py
 * Representation of GHG balance responses to aerial applications of Urea
 * Schedule aerial nutrient applications with specified stand selection criteria

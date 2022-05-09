@@ -20,11 +20,11 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Project name
 
-#project_name='FCI_RollupFCI_Inv'
+project_name='FCI_RollupFCI_Inv_2022'
 #project_name='SummaryNutrientManagement'
 #project_name='SummaryNutrientManagementFull'
 #project_name='SummaryReforestationNonOb'
-project_name='SummaryReforestation'
+#project_name='SummaryReforestation'
 #project_name='SummarySurvey'
 
 #%% Define paths
@@ -32,27 +32,27 @@ project_name='SummaryReforestation'
 meta={}
 meta['Paths']={}
 meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
-meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
-#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210930'
-meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210930'
-meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210930'
-meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210930'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
 #%% Define subsampling frequency
 # Some projects are way too big to collect 1-hectare coverage - subsample randomly
 
-if project_name=='FCI_RollupFCI_Inv':    
+if (project_name=='FCI_RollupFCI_Inv_2022'):
     
     meta['subsampling_frequency']=0.25
     
     #FES recipients sometimes use the funding source code, "FES", for FCI-funded
     #projects. To include them in the query, import the FCI project list.    
-    meta['Paths']['FCI DB File']=r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv\FCI_RollupProjects_01_Admin.xlsx'
-    dAdmin=gu.ReadExcel(meta['Paths']['FCI DB File'])
-
+    meta['Paths']['FCI DB File']=meta['Paths']['Project'] + '\\FCI_RollupProjects_01_Admin.xlsx'
+    dAdmin=gu.ReadExcel(meta['Paths']['FCI DB File'],'Sheet1')
+    
     # Unique PP numbers in the database
     uPP=np.unique(dAdmin['PP Number'])
     
@@ -177,11 +177,12 @@ list_atu_polygons=[None]*5000000
 #%% Initialize sparse grid coordinate dictionary
 
 L=20000000
-sxy={}
-sxy['x']=-999*np.ones(L)
-sxy['y']=-999*np.ones(L)
-sxy['ID_atu_multipolygons']=-999*np.ones(L,dtype=int)
-sxy['ID_atu_polygons']=-999*np.ones(L,dtype=int)
+geos={}
+geos['Sparse']={}
+geos['Sparse']['X']=-999*np.ones(L)
+geos['Sparse']['Y']=-999*np.ones(L)
+geos['Sparse']['ID_atu_multipolygons']=-999*np.ones(L,dtype=int)
+geos['Sparse']['ID_atu_polygons']=-999*np.ones(L,dtype=int)
 cnt_sxy=0
 
 #%% Get polygons from file
@@ -284,12 +285,7 @@ with fiona.open(path,layer=lyr_nam) as source:
             
             # Do subsampling to save time
             if np.isin(prp['ACTIVITY_TREATMENT_UNIT_ID'],ail['id_atu_subsample'])==False:
-                continue
-        
-        elif project_name=='FESBC':
-            
-            if (prp['RESULTS_IND']!='Y') | (prp['SILV_FUND_SOURCE_CODE']!='FES') | (prp['SILV_BASE_CODE']=='SU'):
-                continue   
+                continue  
         
         elif project_name=='SummarySurvey':
             
@@ -300,7 +296,7 @@ with fiona.open(path,layer=lyr_nam) as source:
             if (Year<2018):
                 continue
         
-        elif project_name=='FCI_RollupFCI_Inv':
+        elif project_name=='FCI_RollupFCI_Inv_2022':
             
             # FCI query
             if prp['RESULTS_IND']=='N':
@@ -539,10 +535,10 @@ with fiona.open(path,layer=lyr_nam) as source:
                         y_ikp=y_ikp[ind]
                 
                 for i in range(x_ikp.size):
-                    sxy['x'][cnt_sxy]=x_ikp[i]
-                    sxy['y'][cnt_sxy]=y_ikp[i]                                
-                    sxy['ID_atu_multipolygons'][cnt_sxy]=cnt_atu_multipolygons
-                    sxy['ID_atu_polygons'][cnt_sxy]=prp['polys'][iPoly]['ID_atu_polygons']
+                    geos['Sparse']['X'][cnt_sxy]=x_ikp[i]
+                    geos['Sparse']['Y'][cnt_sxy]=y_ikp[i]                                
+                    geos['Sparse']['ID_atu_multipolygons'][cnt_sxy]=cnt_atu_multipolygons
+                    geos['Sparse']['ID_atu_polygons'][cnt_sxy]=prp['polys'][iPoly]['ID_atu_polygons']
                     cnt_sxy=cnt_sxy+1
             else:
                 # If no grid cells fall within the project area, don't use the 
@@ -577,10 +573,10 @@ with fiona.open(path,layer=lyr_nam) as source:
                             x_ikp0=x_ikp0[ind]
                             y_ikp0=y_ikp0[ind]
                     
-                    sxy['x'][cnt_sxy]=x_ikp0
-                    sxy['y'][cnt_sxy]=y_ikp0
-                    sxy['ID_atu_multipolygons'][cnt_sxy]=cnt_atu_multipolygons
-                    sxy['ID_atu_polygons'][cnt_sxy]=prp['polys'][iPoly]['ID_atu_polygons']
+                    geos['Sparse']['X'][cnt_sxy]=x_ikp0
+                    geos['Sparse']['Y'][cnt_sxy]=y_ikp0
+                    geos['Sparse']['ID_atu_multipolygons'][cnt_sxy]=cnt_atu_multipolygons
+                    geos['Sparse']['ID_atu_polygons'][cnt_sxy]=prp['polys'][iPoly]['ID_atu_polygons']
                     cnt_sxy=cnt_sxy+1
                 
         # Update counter for multipolygon
@@ -595,8 +591,8 @@ atu_multipolygons=atu_multipolygons[0:cnt_atu_multipolygons]
 list_atu_polygons=list_atu_polygons[0:cnt_atu_polygons]
 
 # Sparse sample points
-for k in sxy.keys():
-    sxy[k]=sxy[k][0:cnt_sxy]
+for k in geos['Sparse'].keys():
+    geos['Sparse'][k]=geos['Sparse'][k][0:cnt_sxy]
 
 #%% Remove duplicate cells
 # Notes: This means that some values of ID_atu_multipolygons may not exist in
@@ -604,10 +600,10 @@ for k in sxy.keys():
 # overlapping multipolygons. 
               
 # Unique cells (ind_xy is the index to the first instance of each unique row)
-uxy,ind_xy,inv_xy=np.unique(np.column_stack((sxy['x'],sxy['y'])),return_index=True,return_inverse=True,axis=0)
+uxy,ind_xy,inv_xy=np.unique(np.column_stack((geos['Sparse']['X'],geos['Sparse']['Y'])),return_index=True,return_inverse=True,axis=0)
 
-for k in sxy.keys():
-    sxy[k]=sxy[k][ind_xy]
+for k in geos['Sparse'].keys():
+    geos['Sparse'][k]=geos['Sparse'][k][ind_xy]
 
 #%% Check lengths and make note of (expected) discrepency in length between unique
 # IDs from sxy dictionary and unique IDs from list of multipolygons
@@ -623,7 +619,7 @@ if flg==1:
     u_mp=np.unique(np.array(a))
     print(u_mp.size)
 
-    u_sxy=np.unique(sxy['ID_atu_multipolygons'])
+    u_sxy=np.unique(geos['Sparse']['ID_atu_multipolygons'])
     print(u_sxy.size)
 
     c=0
@@ -632,19 +628,19 @@ if flg==1:
             for j in range(len(atu_multipolygons[i]['polys'])):
                 plt.plot(atu_multipolygons[i]['polys'][j]['x'],atu_multipolygons[i]['polys'][j]['y'],'b-')
                 #c=c+1
-            ind=np.where(sxy['ID_atu_multipolygons']==atu_multipolygons[i]['ID_atu_multipolygons'])[0]
+            ind=np.where(geos['Sparse']['ID_atu_multipolygons']==atu_multipolygons[i]['ID_atu_multipolygons'])[0]
             c=c+ind.size
-            plt.plot(sxy['x'][ind],sxy['y'][ind],'.')    
+            plt.plot(geos['Sparse']['X'][ind],geos['Sparse']['Y'][ind],'.')    
 
 #%% Add TSA ID
 
-sxy['ID_TSA']=0*sxy['x']
-for i in range(sxy['x'].size):
-    ix=np.where(zTSA['X'][0,:]==sxy['x'][i])[0]
-    iy=np.where(zTSA['Y'][:,0]==sxy['y'][i])[0]
+geos['Sparse']['ID_TSA']=0*geos['Sparse']['X']
+for i in range(geos['Sparse']['X'].size):
+    ix=np.where(zTSA['X'][0,:]==geos['Sparse']['X'][i])[0]
+    iy=np.where(zTSA['Y'][:,0]==geos['Sparse']['Y'][i])[0]
     id_tsa=zTSA['Data'][iy,ix]
     if id_tsa.size>0:
-        sxy['ID_TSA'][i]=id_tsa
+        geos['Sparse']['ID_TSA'][i]=id_tsa
     #ind=np.where(lut_tsa['VALUE']==id_tsa)[0]
     #lut_tsa['Name'][ind]
 
@@ -675,7 +671,6 @@ if flg==1:
     df=pd.DataFrame(List[0])
     #gdf=gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
     gdf=gpd.GeoDataFrame(df,geometry=df.geometry)
-    
     
     
     List=[None]*len(atu_multipolygons)
@@ -722,32 +717,32 @@ gdf_atu_polygons.to_file(filename=fnam,driver='ESRI Shapefile')
 #%% Save sparse grid sample to file
 
 # Add opening id to SXY dictionary before saving
-sxy['OPENING_ID']=np.zeros(sxy['ID_atu_multipolygons'].size)
+geos['Sparse']['OPENING_ID']=np.zeros(geos['Sparse']['ID_atu_multipolygons'].size)
 for iMP in range(len(atu_multipolygons)):
-    ind=np.where(sxy['ID_atu_multipolygons']==iMP)[0]
-    sxy['OPENING_ID'][ind]=atu_multipolygons[iMP]['OPENING_ID']
+    ind=np.where(geos['Sparse']['ID_atu_multipolygons']==iMP)[0]
+    geos['Sparse']['OPENING_ID'][ind]=atu_multipolygons[iMP]['OPENING_ID']
 
 # Save sparse sample file
-gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\sxy.pkl',sxy)
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\geos.pkl',geos)
 
 # Save sparse grid as shapefile
 flg=1
 if flg==1:
 
     points=[]
-    for k in range(sxy['x'].size):
-        points.append(Point(sxy['x'][k],sxy['y'][k]))
+    for k in range(geos['Sparse']['X'].size):
+        points.append(Point(geos['Sparse']['X'][k],geos['Sparse']['Y'][k]))
         
     gdf_sxy=gpd.GeoDataFrame( {
         'geometry':points,
-        'ID_atu_multipolygons':sxy['ID_atu_multipolygons'],
-        'ID_atu_polygons':sxy['ID_atu_polygons'],
-        'OPENING_ID':sxy['OPENING_ID'],
-        'ID_TSA':sxy['ID_TSA']} )
+        'ID_atu_multipolygons':geos['Sparse']['ID_atu_multipolygons'],
+        'ID_atu_polygons':geos['Sparse']['ID_atu_polygons'],
+        'OPENING_ID':geos['Sparse']['OPENING_ID'],
+        'ID_TSA':geos['Sparse']['ID_TSA']} )
     
     gdf_sxy=gdf_sxy.set_geometry('geometry')
     gdf_sxy.crs=gdf_bm.crs   
-    gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\sxy.geojson',driver='GeoJSON')
+    gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\geos.geojson',driver='GeoJSON')
 
 #gdf_atu_polygons=gdf_atu_polygons.set_geometry('geometry')
 # #gdf_atu_polygons=gdf_atu_polygons.to_crs({'init':'epsg:4326'})
@@ -777,10 +772,10 @@ for iLyr in range(len(InvLyrInfo)):
         continue
      
     # Initialize index to inventory
-    IdxToInv=[None]*sxy['x'].size
+    IdxToInv=[None]*geos['Sparse']['X'].size
 
     # Initialize inventory dictionary
-    L=20*sxy['x'].size
+    L=20*geos['Sparse']['X'].size
     data={}
     data['IdxToSXY']=np.zeros(L,dtype=int)
     for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
@@ -908,24 +903,24 @@ for iLyr in range(len(InvLyrInfo)):
                     #plt.plot(x_feat,y_feat,'-',linewidth=5)
                     
                     # This should speed it up a bit
-                    if np.max(x_feat)<np.min(sxy['x']):
+                    if np.max(x_feat)<np.min(geos['Sparse']['X']):
                         continue
-                    if np.min(x_feat)>np.max(sxy['x']):
+                    if np.min(x_feat)>np.max(geos['Sparse']['X']):
                         continue
-                    if np.max(y_feat)<np.min(sxy['y']): 
+                    if np.max(y_feat)<np.min(geos['Sparse']['Y']): 
                         continue
-                    if np.min(y_feat)>np.max(sxy['y']): 
+                    if np.min(y_feat)>np.max(geos['Sparse']['Y']): 
                         continue
         
                     # Isolate cells within bounding box of the feature polygon
-                    iBB=np.where( (sxy['x']>=np.min(x_feat)-1000) & (sxy['x']<=np.max(x_feat)+1000) & (sxy['y']>=np.min(y_feat)-1000) & (sxy['y']<=np.max(y_feat)+1000) )[0]
+                    iBB=np.where( (geos['Sparse']['X']>=np.min(x_feat)-1000) & (geos['Sparse']['X']<=np.max(x_feat)+1000) & (geos['Sparse']['Y']>=np.min(y_feat)-1000) & (geos['Sparse']['Y']<=np.max(y_feat)+1000) )[0]
                     
                     # Only continue if overlaop
                     if iBB.size==0:
                         continue
         
                     # Isolate cells within the polygon
-                    InPoly=gis.InPolygon(sxy['x'][iBB],sxy['y'][iBB],x_feat,y_feat)
+                    InPoly=gis.InPolygon(geos['Sparse']['X'][iBB],geos['Sparse']['Y'][iBB],x_feat,y_feat)
                     
                     iInPoly=np.where(InPoly==1)[0]
         
@@ -973,7 +968,7 @@ for iLyr in range(len(InvLyrInfo)):
     #--------------------------------------------------------------------------
     
     # Truncate index to inventory
-    IdxToInv=IdxToInv[0:sxy['x'].size+1]
+    IdxToInv=IdxToInv[0:geos['Sparse']['X'].size+1]
             
     # Truncate variables at cnt_inventory
     data['IdxToSXY']=data['IdxToSXY'][0:cnt_inventory]
@@ -1004,7 +999,7 @@ for iLyr in range(len(InvLyrInfo)):
 t0=time.time()
 
 # Import coordinates   
-sxy=gu.ipickle(meta['Paths']['Geospatial'] + '\\sxy.pkl')
+geos=gu.ipickle(meta['Paths']['Geospatial'] + '\\geos.pkl')
  
 # Get planting lyaer id
 for iLyr in range(len(InvLyrInfo)):
@@ -1034,7 +1029,7 @@ pl_code=InvLyrInfo[0]['LUT']['SILV_BASE_CODE']['PL']
 ind_at=np.where(atu['SILV_BASE_CODE']==pl_code)[0]
 
 # Initialize dictionary
-L=20*sxy['x'].size
+L=20*geos['Sparse']['X'].size
 pl={}
 pl['IdxToSXY']=np.zeros(L,dtype=int)
 for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
@@ -1044,7 +1039,7 @@ for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
         pl[fnam]=-999*np.ones(L,dtype=dtype)
 
 # Initialize index to inventory
-IdxToInv=[None]*sxy['x'].size
+IdxToInv=[None]*geos['Sparse']['X'].size
     
 # Populate planting layer
 cnt_inventory=0
@@ -1125,7 +1120,7 @@ gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW.p
 gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW.pkl',fcsilv)
 
 # Add forest health to forest cover
-fcinv=ForestCover_AddForestHealth(meta,fcinv)
+fcinv=invu.ForestCover_AddForestHealth(meta,fcinv)
 
 # Save
 gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW.pkl',fcinv)
@@ -1144,7 +1139,7 @@ def Get_FC_Polygons_ForMap():
         opid_atu[i]=atu_multipolygons[i]['OPENING_ID']
     opid_atu=np.unique(opid_atu)
 
-    fin=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb'
+    fin=meta['Paths']['Results'] + '\\Results.gdb'
     a=[None]*int(1e5)
     cnt=0
     with fiona.open(fin,layer='RSLT_FOREST_COVER_INV_SVW') as source:
@@ -1173,10 +1168,10 @@ def Get_FC_Polygons_ForMap():
 def Get_HarvestProject_Intersection():
 
     # Import project polygons
-    gdf=gpd.read_file(r'C:\Users\rhember\Documents\Data\FCI_Projects\FCI_RollupFCI_Inv\Geospatial\atu_polygons.geojson')
+    gdf=gpd.read_file(meta['Paths']['Project'] + '\\Geospatial\\atu_polygons.geojson')
 
     # Import harvest after 2017
-    gdf_cb=gpd.read_file(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb',layer='VEG_CONSOLIDATED_CUT_BLOCKS_SP')
+    gdf_cb=gpd.read_file(meta['Paths']['Disturbances'] + '\\Disturbances.gdb',layer='VEG_CONSOLIDATED_CUT_BLOCKS_SP')
     gdf_cb1=gdf_cb[gdf_cb['HARVEST_YEAR']>=2018]
 
     # Overlay
