@@ -1138,7 +1138,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         MortalityFactor=vi['EC']['MortalityFactor'][iT,:,iE].copy()
         
         # Record stands with aerial nutrient application
-        iApp=np.where(ID_Type==meta['LUT']['Dist']['Fertilization Aerial'])[0]
+        iApp=np.where( (ID_Type==meta['LUT']['Dist']['Fertilization Aerial']) | (ID_Type==meta['LUT']['Dist']['Fertilization Hand']) )[0]
         flag_nutrient_application[iApp]=1        
             
         #----------------------------------------------------------------------
@@ -1160,22 +1160,23 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         # fate of felled material and fate of removed fibre
         #----------------------------------------------------------------------
         
-        # Index to time-dependent fate of felled materials
-        iT_P=np.where(meta['Param']['BE']['Felled Fate']['Year']==meta['Year'][iT])[0]
-        
-        # Simulations may exceed the timeframe of the felled fate parameters
-        # If so, set to the last year
-        if iT_P.size==0:
-            iT_P=-1
-        
         # Index to harvesting
         iHarvest=np.where( (ID_Type==meta['LUT']['Dist']['Harvest']) | (ID_Type==meta['LUT']['Dist']['Harvest Salvage']) )[0]
 
         # Adjust fate of felled material parameters
         if iHarvest.size>0:
+            
+            # Index to time-dependent fate of felled materials
+            iT_P=np.where(meta['Param']['BE']['Felled Fate']['Year']==meta['Year'][iT])[0]
+        
+            # Simulations may exceed the timeframe of the felled fate parameters
+            # If so, set to the last year
+            if iT_P.size==0:
+                iT_P=-1
+            
             for k in meta['Param']['BEV']['Felled Fate'].keys():
                 b[k][iHarvest]=meta['Param']['BEV']['Felled Fate'][k][iT_P,iHarvest]
-        
+                
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
         #----------------------------------------------------------------------
@@ -1456,7 +1457,8 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
             for iGC in range(meta['GC']['N Growth Curves']):
                 
                 # Don't alter growth curve for fertilization
-                ind=np.where( (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Aerial']) )[0]
+                ind=np.where( (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Aerial']) | \
+                              (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Hand']) )[0]
                 
                 if ind.size>0:
                     try:

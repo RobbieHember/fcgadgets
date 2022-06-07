@@ -595,32 +595,34 @@ def PrepareEventChronology(meta):
     return
 
 #%% Export tabular results
-    
-def ExportResultsTabular(meta,vAT,tv,t_start,t_end):
-    
-    #vList=['Year Calendar','Sec_NGHGB','Revenue Net','Revenue Gross','Cost Total']
-    sList=['BAU','CAP']
 
-    iT=np.where( (tv>=t_start) & (tv<=t_end) )[0]
-
-    for iScn in range(meta['Project']['N Scenario']):
-
-        for iAT in range(meta['Project']['N AT']):
-            d={}
-            d['Year Calendar']=tv[iT]
-            for k in vAT[iScn]['Sum'].keys():
-                d[k]=vAT[iScn]['Sum'][k][iT,iAT]
-            df=pd.DataFrame.from_dict(d)
-            df.to_excel(meta['Paths']['Project'] + '\\Outputs\\Scenario_' + sList[iScn] + '_Activity' + str(iAT+1) + '_Sum.xlsx')
-            
-            d={}
-            d['Year Calendar']=tv[iT]
-            for k in vAT[iScn]['Mean'].keys():
-                d[k]=vAT[iScn]['Mean'][k][iT,iAT]
-            df=pd.DataFrame.from_dict(d)
-            df.to_excel(meta['Paths']['Project'] + '\\Outputs\\Scenario_' + sList[iScn] + '_Activity' + str(iAT+1) + '_PerHa.xlsx')
-    
-    return
+# *** Out of date ***
+ 
+#def ExportResultsTabular(meta,vAT,tv,t_start,t_end):
+#    
+#    #vList=['Year Calendar','Sec_NGHGB','Revenue Net','Revenue Gross','Cost Total']
+#    sList=['BAU','CAP']
+#
+#    iT=np.where( (tv>=t_start) & (tv<=t_end) )[0]
+#
+#    for iScn in range(meta['Project']['N Scenario']):
+#
+#        for iAT in range(meta['Project']['N AT']):
+#            d={}
+#            d['Year Calendar']=tv[iT]
+#            for k in vAT[iScn]['Sum'].keys():
+#                d[k]=vAT[iScn]['Sum'][k][iT,iAT]
+#            df=pd.DataFrame.from_dict(d)
+#            df.to_excel(meta['Paths']['Project'] + '\\Outputs\\Scenario_' + sList[iScn] + '_Activity' + str(iAT+1) + '_Sum.xlsx')
+#            
+#            d={}
+#            d['Year Calendar']=tv[iT]
+#            for k in vAT[iScn]['Mean'].keys():
+#                d[k]=vAT[iScn]['Mean'][k][iT,iAT]
+#            df=pd.DataFrame.from_dict(d)
+#            df.to_excel(meta['Paths']['Project'] + '\\Outputs\\Scenario_' + sList[iScn] + '_Activity' + str(iAT+1) + '_PerHa.xlsx')
+#    
+#    return
 
 
 #%% Model Output Statistics (by portfolio)
@@ -1208,6 +1210,7 @@ def Plot_TimeSeries(meta,mos,t_start,t_end,iBAU,iCAPa,iCAPb):
                'Yield Plastic','Yield Lumber','Yield Plywood','Yield OSB','Yield MDF',
                'Yield Paper','Yield Pellets','Yield PowerGrid','Yield PowerFacilityDom',
                'Yield Firewood','Yield LogExport',
+               'Revenue Paper',
                'Revenue Gross','Revenue Net','Revenue Net Disc','Revenue Gross Disc',
                'Revenue Gross Disc_cumu','Revenue Net Disc_cumu',
                'Revenue Gross_cumu','Revenue Net_cumu',

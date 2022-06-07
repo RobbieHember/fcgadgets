@@ -120,7 +120,7 @@ def axletters(ax,plt,rx,ry,**kwargs):
         if (kwargs['FontWeight']=='Bold') | (kwargs['FontWeight']=='bold'):
             fw='bold'
     
-    # Font weight
+    # Font color
     fcl=plt.rcParams.get('axes.edgecolor')
     if 'FontColor' in kwargs.keys():
         print(kwargs['FontColor'])

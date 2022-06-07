@@ -26,12 +26,13 @@ from fcgadgets.cbrunner import cbrun_utilities
 meta={}
 meta['Paths']={}
 
-meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryWaste'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryWaste'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBCTS_5k'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC5k'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryQuesnel'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC5k_HAR'
+meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k_H'
+#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k_HAR'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k_NA'
 #meta['Paths']['Project']=r'D:\Data\FCI_Projects\SparseGrid_HighRes'
 
@@ -64,13 +65,13 @@ geos={}
 
 # Define regular grid sampling frequency
 
-geos['rgsf']=5 # 500 m
+#geos['rgsf']=5 # 500 m
 #geos['rgsf']=10 # 1 km
 #geos['rgsf']=20 # 2 km High res
 #geos['rgsf']=40 # 4 km High res
 #geos['rgsf']=50 # 5 km
 #geos['rgsf']=100 # 10 km
-#geos['rgsf']=200 # 20 km
+geos['rgsf']=200 # 20 km
 
 # Extract subgrid
 zTSA['Data']=zTSA['Data'][0::geos['rgsf'],0::geos['rgsf']]
@@ -84,8 +85,8 @@ geos['Mask']=np.zeros((geos['m'],geos['n']),dtype=np.int8)
 
 # Define additional inclusion criteria
 
-#flg='Treed'
-flg='Waste'
+flg='Treed'
+#flg='Waste'
 #flg='BCTS'
 
 if flg=='Treed':
@@ -158,7 +159,7 @@ ax.grid(color='k',linestyle='-',linewidth=0.25)
 
 ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
 #plt.savefig(PathProject + '\\SparseGrid_Map.png',format='png',dpi=900)
-
+plt.close('all')
 
 #%% Open crosswalk between missing AT geometries and opening geometries
 # If this doesn't work, you need to run the script that creates the crosswalk

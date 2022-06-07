@@ -1719,23 +1719,12 @@ def MOS_FromPoints_ByProjAndReg_GHG(meta,**kwargs):
     # Time series of saved results
     tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
     
-    # All (excluding 'C_M_ByAgent' and 'Year','C_M_Dist')
-    v2include=['A','V_MerchLive','V_MerchDead','V_MerchTotal','V_ToMillMerchLive','V_ToMillMerchDead','V_ToMillMerchTotal','V_ToMillNonMerch',
-               'LogSizeEnhancement','C_Forest_Tot','C_HWP_Tot','C_NPP_Tot','C_ToMill','C_Biomass_Tot','C_Piled_Tot','C_Litter_Tot','C_DeadWood_Tot',
-               'C_Soil_Tot','C_InUse_Tot','C_DumpLandfill_Tot','C_G_Gross_Tot','C_G_Net_Tot','C_M_Reg_Tot','C_LF_Tot','C_RH_Tot',
-               'C_ToMillMerch','C_ToMillNonMerch','C_ToMillSnagStem','C_ToSlashpileBurn','C_ToLumber','C_ToPlywood','C_ToOSB','C_ToMDF',
-               'C_ToPaper','C_ToPowerFacilityDom','C_ToPowerFacilityFor','C_ToPowerGrid','C_ToPellets','C_ToFirewoodDom',
-               'C_ToFirewoodFor','C_ToLogExport',
-               'E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Denit','E_CO2e_LULUCF_Other','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning',
-               'E_CO2e_LULUCF_Fire','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy',
-               'E_CO2e_ESC_Operations','E_CO2e_ET_Operations','E_CO2e_IPPU_Operations',
-               'E_CO2e_Coal','E_CO2e_Oil','E_CO2e_Gas',
-               'E_CO2e_SUB_Coal','E_CO2e_SUB_Oil','E_CO2e_SUB_Gas','E_CO2e_SUB_Calcination','E_CO2e_SUB_E','E_CO2e_SUB_M','E_CO2e_SUB_Tot',
-               'E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub','E_CO2e_AGHGB_WSub_cumu','E_CO2e_AGHGB_WOSub_cumu',
-               'E_CO2e_AGHGB_WSub_cumu_from_tref','E_CO2e_AGHGB_WOSub_cumu_from_tref',
-               'Yield Coal','Yield Oil','Yield Gas','Yield Sawnwood','Yield Panels','Yield Concrete',
-               'Yield Steel','Yield Aluminum','Yield Plastic','Yield Textile']
-    
+    # All non-economic values
+    d1=LoadSingleOutputFile(meta,0,0,0)
+    del d1['C_M_ByAgent']
+    del d1['Year']
+    v2include=list(d1.keys())    
+        
     # Add Sawtooth variables
     if meta['Project']['Biomass Module']=='Sawtooth':
         v2include=v2include+['N','N_R','N_M_Tot','N_M_Reg','TreeMean_A','TreeMean_H','TreeMean_D','TreeMean_Csw','TreeMean_Csw_G']
@@ -1776,7 +1765,7 @@ def MOS_FromPoints_ByProjAndReg_GHG(meta,**kwargs):
                 indBat=IndexToBatch(meta,iBat)
             
                 d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
-                
+
                 for k in v2include:
                     
                     DataSXY[k][:,indBat[iKeepStands]]=d1[k][:,iKeepStands].copy()
@@ -2162,7 +2151,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
     uPT=np.unique(meta['Project']['ByMP']['Project Type'])
     
     # Unique regions
-    uReg=np.unique(meta['Project']['ByMP']['Region'])
+    uReg=np.unique(meta['Project']['ByMP']['Region ID'])
 
     # Create listed index (faster than indexing on the fly)
     Crosswalk_sxy_to_mp=[None]*uMP.size
@@ -2180,7 +2169,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
         ProjectType[iMP]=meta['Project']['ByMP']['Project Type'][uMP[iMP]]
         ProjectArea[iMP]=meta['Project']['ByMP']['Project Area'][uMP[iMP]]
         ProjectYear[iMP]=meta['Project']['ByMP']['Project Year'][uMP[iMP]]
-        Region[iMP]=meta['Project']['ByMP']['Region'][uMP[iMP]]
+        Region[iMP]=meta['Project']['ByMP']['Region ID'][uMP[iMP]]
 
     # Time series of saved results
     tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
@@ -2331,7 +2320,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
     uPT=np.unique(meta['Project']['ByMP']['Project Type'])
     
     # Unique regions
-    uReg=np.unique(meta['Project']['ByMP']['Region'])
+    uReg=np.unique(meta['Project']['ByMP']['Region ID'])
 
     # Create listed index (faster than indexing on the fly)
     Crosswalk_sxy_to_mp=[None]*uMP.size
@@ -2349,7 +2338,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
         ProjectType[iMP]=meta['Project']['ByMP']['Project Type'][uMP[iMP]]
         ProjectArea[iMP]=meta['Project']['ByMP']['Project Area'][uMP[iMP]]
         ProjectYear[iMP]=meta['Project']['ByMP']['Project Year'][uMP[iMP]]
-        Region[iMP]=meta['Project']['ByMP']['Region'][uMP[iMP]]
+        Region[iMP]=meta['Project']['ByMP']['Region ID'][uMP[iMP]]
 
     # Time series of saved results
     tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
@@ -2515,20 +2504,23 @@ def Import_Scenario_Data_FromPoints(meta):
             
             d=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeAndReg_' + oper + '_Scn' + str(iS+1) + '_FromPoints.pkl')
             
+            # RH has an outlier 1 in 500 times
+            ikp=np.where(np.mean(d['C_RH_Tot'],axis=0)>0)[0]
+            
             for k in d.keys():
                 
                 #d[k]=d[k].astype(float)/ScaleFactor
                 
                 Data[iS][oper][k]={}
-                Data[iS][oper][k]['Ensemble Mean']=np.mean(d[k],axis=1)
-                Data[iS][oper][k]['Ensemble SD']=np.std(d[k],axis=1)
-                Data[iS][oper][k]['Ensemble SE']=np.std(d[k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
-                Data[iS][oper][k]['Ensemble P005']=np.percentile(d[k],0.5,axis=1)
-                Data[iS][oper][k]['Ensemble P025']=np.percentile(d[k],2.5,axis=1)
-                Data[iS][oper][k]['Ensemble P250']=np.percentile(d[k],25,axis=1)
-                Data[iS][oper][k]['Ensemble P750']=np.percentile(d[k],75,axis=1)
-                Data[iS][oper][k]['Ensemble P975']=np.percentile(d[k],97.5,axis=1)
-                Data[iS][oper][k]['Ensemble P995']=np.percentile(d[k],99.5,axis=1)
+                Data[iS][oper][k]['Ensemble Mean']=np.mean(d[k][:,ikp],axis=1)
+                Data[iS][oper][k]['Ensemble SD']=np.std(d[k][:,ikp],axis=1)
+                Data[iS][oper][k]['Ensemble SE']=np.std(d[k][:,ikp],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                Data[iS][oper][k]['Ensemble P005']=np.percentile(d[k][:,ikp],0.5,axis=1)
+                Data[iS][oper][k]['Ensemble P025']=np.percentile(d[k][:,ikp],2.5,axis=1)
+                Data[iS][oper][k]['Ensemble P250']=np.percentile(d[k][:,ikp],25,axis=1)
+                Data[iS][oper][k]['Ensemble P750']=np.percentile(d[k][:,ikp],75,axis=1)
+                Data[iS][oper][k]['Ensemble P975']=np.percentile(d[k][:,ikp],97.5,axis=1)
+                Data[iS][oper][k]['Ensemble P995']=np.percentile(d[k][:,ikp],99.5,axis=1)
 
             #------------------------------------------------------------------
             # Economics
@@ -2538,18 +2530,18 @@ def Import_Scenario_Data_FromPoints(meta):
             
             for k in d.keys():
                 
-                #d[k]=d[k].astype(float)/ScaleFactor
+                #d[k][:,ikp]=d[k][:,ikp].astype(float)/ScaleFactor
                 
                 Data[iS][oper][k]={}
-                Data[iS][oper][k]['Ensemble Mean']=np.mean(d[k],axis=1)
-                Data[iS][oper][k]['Ensemble SD']=np.std(d[k],axis=1)
-                Data[iS][oper][k]['Ensemble SE']=np.std(d[k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
-                Data[iS][oper][k]['Ensemble P005']=np.percentile(d[k],0.5,axis=1)
-                Data[iS][oper][k]['Ensemble P025']=np.percentile(d[k],2.5,axis=1)
-                Data[iS][oper][k]['Ensemble P250']=np.percentile(d[k],25,axis=1)
-                Data[iS][oper][k]['Ensemble P750']=np.percentile(d[k],75,axis=1)
-                Data[iS][oper][k]['Ensemble P975']=np.percentile(d[k],97.5,axis=1)
-                Data[iS][oper][k]['Ensemble P995']=np.percentile(d[k],99.5,axis=1)
+                Data[iS][oper][k]['Ensemble Mean']=np.mean(d[k][:,ikp],axis=1)
+                Data[iS][oper][k]['Ensemble SD']=np.std(d[k][:,ikp],axis=1)
+                Data[iS][oper][k]['Ensemble SE']=np.std(d[k][:,ikp],axis=1)/ikp.size
+                Data[iS][oper][k]['Ensemble P005']=np.percentile(d[k][:,ikp],0.5,axis=1)
+                Data[iS][oper][k]['Ensemble P025']=np.percentile(d[k][:,ikp],2.5,axis=1)
+                Data[iS][oper][k]['Ensemble P250']=np.percentile(d[k][:,ikp],25,axis=1)
+                Data[iS][oper][k]['Ensemble P750']=np.percentile(d[k][:,ikp],75,axis=1)
+                Data[iS][oper][k]['Ensemble P975']=np.percentile(d[k][:,ikp],97.5,axis=1)
+                Data[iS][oper][k]['Ensemble P995']=np.percentile(d[k][:,ikp],99.5,axis=1)
     
     mos={}
     mos['Scenarios']=Data
@@ -3105,7 +3097,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
     # Overwrite existing data entries with empty cells
     # *** This is really important - failing to wipe it clean first will lead to 
     # weird parameters ***
-    for i in range(ugc['Unique'].shape[0]):
+    for i in range(int(1.5*ugc['Unique'].shape[0])):
         for j in range(len(gy_labels)):
             sheet.cell(row=i+1+N_headers,column=j+1).value=''
 

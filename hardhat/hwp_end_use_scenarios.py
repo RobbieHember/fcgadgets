@@ -55,7 +55,7 @@ for reg in regL:
     #------------------------------------------------------------------------------
             
     # Assumed change in building output
-    tStart=2022
+    tStart=2021
     tEnd=2030
     
     # Change in building materials
@@ -219,7 +219,7 @@ for reg in regL:
     #------------------------------------------------------------------------------
             
     # Assumed change in building output
-    tStart=2022
+    tStart=2021
     tEnd=2030
     
     # Change in building materials
@@ -572,13 +572,13 @@ ax[0].plot(tv,yBD,'b-',label='BaseCase',lw=lw)
 ax[0].plot(tv,yBS1,'g--',label='Scenario 1',lw=lw)
 ax[0].plot(tv,yBS2,'r-.',label='Scenario 2',lw=lw)
 ax[0].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Building material fraction',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both')
+ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=1.5)
 ax[0].legend(loc='lower left',facecolor=[1,1,1],frameon=False)
 ax[1].plot(tv,yNBD,'b-',label='BaseCase',lw=lw)
 ax[1].plot(tv,yNBS1,'g--',label='Scenario 1',lw=lw)
 ax[1].plot(tv,yNBS2,'r-.',label='Scenario 2',lw=lw)
 ax[1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Non-building material fraction',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both')
+ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=1.5)
 
 gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') # 
 

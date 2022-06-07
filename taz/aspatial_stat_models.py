@@ -589,27 +589,30 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
         #f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))        
         #Pa_H_Sat=f1*f2
         
-        f1=0.0012*np.maximum(0,(meta['Year'][iT]-1800)/100)**4.2
-        f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))
-        Pa_H_Sat=f1*f2
+        bH=[0.00055,4.9,0.32,1967]
         
         # Plot
         flg=0
         if flg==1:
+            
             # Old
             t=np.arange(1700,2001,1)
             f1=0.0011*35**((t-1900)/100)
-            f2=(1/(1+np.exp(0.3*(t-1960))))        
+            f2=(1/(1+np.exp(0.3*(t-1960))))
             Pa_H_Sat=f1*f2
             plt.close('all')
-            plt.plot(t,Pa_H_Sat,'b-')
+            plt.plot(t,Pa_H_Sat,'b-',lw=1.5)
             plt.grid()
             
             t=np.arange(1700,2001,1)
-            f1=0.0012*np.maximum(0,(t-1800)/100)**4.2
-            f2=(1/(1+np.exp(0.3*(t-1960))))        
+            f1=bH[0]*np.maximum(0,(t-1800)/100)**bH[1]
+            f2=(1/(1+np.exp(bH[2]*(t-bH[3]))))
             Pa_H_Sat=f1*f2
-            plt.plot(t,Pa_H_Sat,'g--')
+            plt.plot(t,Pa_H_Sat,'c--',lw=1.5)
+        
+        f1=bH[0]*np.maximum(0,(meta['Year'][iT]-1800)/100)**bH[1]
+        f2=(1/(1+np.exp(bH[2]*(meta['Year'][iT]-bH[3]))))
+        Pa_H_Sat=f1*f2
         
     else:        
         

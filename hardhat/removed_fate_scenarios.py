@@ -56,20 +56,24 @@ for scn in scnL:
 
 sc='S1'
 
+# Fractional reduction in direct transfers from forest ecosystem to pulp mill
+# and pellet mill
+fChange=0.5
+
 # Phase in period
-tStart=2020
+tStart=2021
 tEnd=2030
     
 for reg in regL:
-  
+      
     #--------------------------------------------------------------------------
     # Merch
     #--------------------------------------------------------------------------
     
-    # Assumed change in Pulp input
+    # Change in Pulp input
     nam='RemovedMerchToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
-    y1_Pulp=0.5*d['BaseCase'][reg][nam][0]
+    y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
     d['S1'][reg][nam]=d['BaseCase'][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
     d['S1'][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
@@ -81,10 +85,10 @@ for reg in regL:
     #plt.plot(tv,dS1[nam],'b-')
     # plt.plot(tv,1-yDelta,'b-')
     
-    # Assumed change in pellet input
+    # Change in pellet input
     nam='RemovedMerchToPelletMill'
     y0_Pellet=d['BaseCase'][reg][nam][0].copy()
-    y1_Pellet=0.0*d['BaseCase'][reg][nam][0]
+    y1_Pellet=fChange*d['BaseCase'][reg][nam][0]
     d['S1'][reg][nam]=d['BaseCase'][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
     d['S1'][reg][nam][iT]=np.linspace(y0_Pellet,y1_Pellet,iT.size)
@@ -116,7 +120,7 @@ for reg in regL:
     # Assumed change in Pulp input
     nam='RemovedSnagStemToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
-    y1_Pulp=0.25*d['BaseCase'][reg][nam][0]
+    y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
     d['S1'][reg][nam]=d['S1'][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
     d['S1'][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
@@ -131,7 +135,7 @@ for reg in regL:
     # Assumed change in pellet input
     nam='RemovedSnagStemToPelletMill'
     y0_Pellet=d['BaseCase'][reg][nam][0].copy()
-    y1_Pellet=0.0*d['BaseCase'][reg][nam][0]
+    y1_Pellet=fChange*d['BaseCase'][reg][nam][0]
     d['S1'][reg][nam]=d['BaseCase'][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
     d['S1'][reg][nam][iT]=np.linspace(y0_Pellet,y1_Pellet,iT.size)
@@ -171,7 +175,7 @@ gu.opickle(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameter
 #%% Plot
 
 reg='Interior'
-reg='GFS22'
+#reg='GFS22'
 
 plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(16,10)); ms=3; lw=1.25
 ax[0,0].plot(tv,d['BaseCase'][reg]['RemovedMerchToSawMill'],'b-',label='BaseCase',lw=lw)

@@ -33,6 +33,7 @@ import fiona
 import gdal
 import time
 import gc as garc
+import matplotlib.pyplot as plt
 from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
@@ -1872,7 +1873,7 @@ def Exclude_Duplicate_Events(meta,dmec):
         if dmec[iStand]==None:
             continue
         for key in meta['LUT']['Dist'].keys():
-            indType=np.where(dmec[iStand]['ID_Type']==meta['LUT']['Dist'][key])[0]
+            indType=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist'][key]) )[0]
             if indType.size==0:
                 continue            
             uYear=np.unique(np.floor(dmec[iStand]['Year'][indType]))
@@ -1892,6 +1893,45 @@ def Exclude_Unidentified_Events(meta,dmec):
         for key in dmec[iStand]:
             dmec[iStand][key]=dmec[iStand][key][ind]
             
+    return dmec
+
+#%% Exclude back to back harvesting
+# 45% of harvest events span multiple years (this keeps the first year)
+    
+def Exclude_BackToBack_Harvesting(meta,dmec):
+ 
+    # If harvesting exceeds this interval, its ok
+    th_harvest=2
+    
+    for iStand in range(meta['Project']['N Stand']):
+        
+        if dmec[iStand]==None:
+            continue
+        
+        # Index to harvesting
+        iH=np.where( (dmec[iStand]['ID_Type']==meta['LUT']['Dist']['Harvest']) | (dmec[iStand]['ID_Type']==meta['LUT']['Dist']['Harvest Salvage']) )[0]
+        
+        if iH.size<=1:
+            continue
+
+        flag=np.ones(dmec[iStand]['ID_Type'].size)
+        
+        uYear=np.unique(np.floor(dmec[iStand]['Year'][iH]))
+        
+        d=np.abs(np.diff(uYear))
+        for iD in range(d.size):
+            if d[iD]<th_harvest:
+                flag[iH[iD]]=0
+        
+        ikp=np.where(flag==1)[0]
+    
+        for key in dmec[iStand]:
+            
+            if (key=='ScnAffected') | (key=='ID_GC'):
+                continue
+            
+            dmec[iStand][key]=dmec[iStand][key][ikp]
+
     return dmec
 
 #%% REMOVE SLASHPILE BURNS IN SELECT BGC ZONES
@@ -2879,9 +2919,7 @@ def PutEventsInOrder(dmec,meta):
 
 #%% Timber harvesting land base 
 
-# I was putting this as a dictionary in the meta structure, but it is too big
-
-def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
+def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr):
     
     thlb={}
     
@@ -2901,16 +2939,18 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
 
     # Initially assume everything is in the THLB
     thlb['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']),dtype=np.int16)
-
-    # Define second THLB with areas that have been removed due to value diversification
-    thlb['Baseline']=thlb['Actual'].copy()
+    thlb['Baseline']=thlb['Actual'].copy()    
+    thlb['Actual WithDef']=thlb['Actual'].copy()
+    thlb['Baseline WithDef']=thlb['Actual'].copy()
 
     # Index to stands that are uneconomic
     iUneconomic=np.where(ba['SI']<=5)[0]
 
     # Remove uneconomic stands from THLB
     thlb['Actual'][:,iUneconomic]=0
+    thlb['Actual WithDef'][:,iUneconomic]=0
     thlb['Baseline'][:,iUneconomic]=0
+    thlb['Baseline WithDef'][:,iUneconomic]=0
 
     # Idenify stands that have been harvested
     has_been_harvested=np.zeros(meta['Project']['N Stand'])
@@ -2937,7 +2977,9 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     # Random prediction of whether it will evade harvesting
     iRem=np.where(np.random.random(iNoHarv.size)<p_evade)[0]
     thlb['Actual'][:,iNoHarv[iRem]]=0
+    thlb['Actual WithDef'][:,iNoHarv[iRem]]=0
     thlb['Baseline'][:,iNoHarv[iRem]]=0
+    thlb['Baseline WithDef'][:,iNoHarv[iRem]]=0
 
     # np.sum(thlb['Actual'][0,:])/meta['Project']['N Stand']
 
@@ -2972,6 +3014,9 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     # Add legal OGMAs
     A=A+ogmal['IdxToSXY'].size
     
+    # Add OG deferral
+    A=A+ogsr['IdxToSXY'].size
+    
     #print(A)
     print(str(A/meta['Project']['N Stand']*100) + '% of the sample transitioned to non-THLB.')
 
@@ -2980,6 +3025,10 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
     for k in meta['LUT']['FC_R']['SILV_RESERVE_CODE'].keys():
         ind=np.where(fcres['SILV_RESERVE_CODE']==meta['LUT']['FC_R']['SILV_RESERVE_CODE'][k])[0]
         N[k]=ind.size
+
+    #------------------------------------------------------------------------------
+    # Actual
+    #------------------------------------------------------------------------------
 
     # Initialize year of transition
     thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand'])
@@ -2994,19 +3043,47 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park):
 
     # Define year of transition from legal old-growth OGMAs
     thlb_YearTransitionOut[ogmal['IdxToSXY']]=2010
+    
+    # Define year of transition from OG deferrals
+    #thlb_YearTransitionOut[ogsr['IdxToSXY']]=2022
 
     # Apply transition to actual THLB
     for j in range(thlb_YearTransitionOut.size):
         if thlb_YearTransitionOut[j]>0:
             it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
             thlb['Actual'][it,j]=0
+            thlb['Actual WithDef'][it,j]=0
+            
+    #------------------------------------------------------------------------------
+    # Actual (with deferrals)
+    #------------------------------------------------------------------------------
+  
+    thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand'])
+    
+    # Define year of transition from OG deferrals
+    thlb_YearTransitionOut[ogsr['IdxToSXY']]=2022
 
-    # Adjust the baseline so that simulated harvesting between 1995 and 2020 only
+    # Apply transition to actual THLB
+    for j in range(thlb_YearTransitionOut.size):
+        if thlb_YearTransitionOut[j]>0:
+            it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
+            thlb['Actual WithDef'][it,j]=0
+
+    #------------------------------------------------------------------------------
+    # Baselines
+    #------------------------------------------------------------------------------
+
+    # Adjust the baseline so that simulated harvesting between 1995 and 2022 only
     # occurs in areas where the THLB was affected by value diversification
-    for year in range(1990,2021,1):
+    for year in range(1990,2023,1):
+        
         iT=np.where(meta['Year']==year)[0]
+        
         iS=np.where( (thlb['Baseline'][iT,:]==1) & (thlb['Actual'][iT,:]==1) )[1]
         thlb['Baseline'][iT,iS]=0
+    
+        iS=np.where( (thlb['Baseline WithDef'][iT,:]==1) & (thlb['Actual WithDef'][iT,:]==1) )[1]
+        thlb['Baseline WithDef'][iT,iS]=0
 
     flg=0
     if flg==1:
@@ -3025,6 +3102,7 @@ def LoadSparseGeospatialInputs(meta):
     except:
         # Make this work for tiled projects as well
         geos=[]
+    
     atu=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_ACTIVITY_TREATMENT_SVW.pkl')
     op=gu.ipickle(meta['Paths']['Geospatial'] + '\\RSLT_OPENING_SVW.pkl')
     burnsev=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_BURN_SEVERITY_SP.pkl')
@@ -3038,12 +3116,13 @@ def LoadSparseGeospatialInputs(meta):
     cut=gu.ipickle(meta['Paths']['Geospatial'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP.pkl')
     lul=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_PLAN_LEGAL_POLY_SVW.pkl')
     park=gu.ipickle(meta['Paths']['Geospatial'] + '\\TA_PARK_ECORES_PA_SVW.pkl')
+    ogsr=gu.ipickle(meta['Paths']['Geospatial'] + '\\OGSR_TAP_PRIORITY_DEF_AREA_SP.pkl')    
     try:
         ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
     except:
         ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_ALL_SVW.pkl')
 
-    return geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal
+    return geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal,ogsr
 
 #%% Load index to sparse grid
     
@@ -3123,6 +3202,15 @@ def ExportSummaryActivities_ByMP(meta,par,atu_multipolygons,uMP,geos,atu,op,burn
     for i in range(len(atu_multipolygons)):
         dMP['Project Type'][i]=meta['Project']['ProjectTypeByMP'][i]
 
+    # District
+    u=np.unique(dMP['OPENING_ID'])
+    dMP['District']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
+    for iU in range(u.size):
+        ind1=np.where(dMP['OPENING_ID']==u[iU])[0]
+        ind2=np.where(op['OPENING_ID']==u[iU])[0]
+        if ind2.size>0:
+            dMP['District'][ind1]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind2[0]])[0][0:-26]
+
     # Add land cover class
     dMP['LCC 1']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
     dMP['LCC 2']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
@@ -3174,6 +3262,17 @@ def ExportSummaryActivities_ByMP(meta,par,atu_multipolygons,uMP,geos,atu,op,burn
         dMP['SI_ba_min'][i]=np.min(ba['SI'][ind])
         dMP['SI_ba_max'][i]=np.max(ba['SI'][ind])
 
+    # Age at time of fertilization
+    dMP['AgeFertMean']=-999*np.ones(dMP['ID_Multipolygon'].size)
+    try:
+        for i in range(len(atu_multipolygons)):
+            ind=np.where(geos['Sparse']['ID_atu_multipolygons']==i)[0]
+            if ind.size==0:
+                continue
+            dMP['AgeFertMean'][i]=int(np.mean(meta['AgeAtFert'][ind]))
+    except:
+        pass
+    
     # Add forest cover inventory update year
     for i in range(5):
         dMP['FC' + str(i+1) + ' Year']=-999*np.ones(dMP['ID_Multipolygon'].size)
@@ -3279,33 +3378,6 @@ def ExportSummaryActivities_ByMP(meta,par,atu_multipolygons,uMP,geos,atu,op,burn
             dMP['PL_S' + str(j+1) + '_PCT'][iMP]=np.round(pct[ord[j]])
             dMP['PL_S' + str(j+1) + '_GW'][iMP]=np.round(gw[ord[j]])
 
-    # Add age at time of fertilization
-    dMP['Age @ Fert mean']=-999*np.ones(dMP['ID_Multipolygon'].size)
-    try:
-        for i in range(len(atu_multipolygons)):
-            ind=np.where(geos['Sparse']['ID_atu_multipolygons']==i)[0]
-            if ind.size==0:
-                continue
-            dMP['Age @ Fert mean'][i]=int(np.mean(meta['AgeAtFert'][ind]))
-    except:
-        pass
-
-    # Add district
-    u=np.unique(dMP['OPENING_ID'])
-    dMP['District']=np.array(['' for _ in range(dMP['OPENING_ID'].size)],dtype=object)
-    for iU in range(u.size):
-        ind1=np.where(dMP['OPENING_ID']==u[iU])[0]
-        ind2=np.where(op['OPENING_ID']==u[iU])[0]
-        if ind2.size>0:
-            dMP['District'][ind1]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind2[0]])[0][0:-26]
-
-    # Add GHG benefit
-    #it=np.where( (tv>=2018) & (tv<=2050) )[0]
-    #dMP['GHG Benefit 2050']=0*np.ones(dMP['ID_Multipolygon'].size)
-    #for iMP in range(uMP.size):
-    #    ghgb=MosByMP[1]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP]-MosByMP[0]['v2']['Mean']['Sec_NGHGB']['Ensemble Mean'][:,iMP]
-    #    dMP['GHG Benefit 2050'][uMP[iMP]]=int(np.sum(ghgb[it]))
-
     # Delete any unwanted variables
     #del d['GeomFromCutLyr']
 
@@ -3347,9 +3419,9 @@ def ExportSummaryActivities_ByMP(meta,par,atu_multipolygons,uMP,geos,atu,op,burn
         for iMP in range(uMP.size): 
             indMP=np.where(dMP['ID_Multipolygon']==uMP[iMP])[0]
             indSXY=np.where(geos['Sparse']['ID_atu_multipolygons']==iMP)[0]
-            dMP['tmin_ann'][indMP]=np.mean(clm['tmin_ann'][indSXY])
-            dMP['tmean_gs'][indMP]=np.mean(clm['tmean_gs'][indSXY])
-            dMP['ws_gs'][indMP]=np.mean(clm['ws_gs'][indSXY])
+            dMP['tmin_ann'][indMP]=np.round(np.mean(clm['tmin_ann'][indSXY]),decimals=1)
+            dMP['tmean_gs'][indMP]=np.round(np.mean(clm['tmean_gs'][indSXY]),decimals=1)
+            dMP['ws_gs'][indMP]=np.round(np.mean(clm['ws_gs'][indSXY]),decimals=0)
     except:
         pass
         
@@ -3780,7 +3852,8 @@ def ExportSummaryActivities_ByPP(meta,dAdmin,dMP,dFCI_Summary):
 
     MaterialMilestoneTypes=['Aerial Spray','Browse Protectors','Direct Seeding',
             'Disc Trenching','Dwarf Mistletoe Control','Fertilization Aerial',
-            'Fertilization Hand','Fertilization Teabag','Incremental Haul','Knockdown','Planting','Ripping','Thinning']
+            'Fertilization Hand','Fertilization Teabag','Incremental Haul','Knockdown',
+            'Planting','Ripping','Thinning']
 
     dPP={}
     dPP['FIA_PROJECT_ID']=np.unique(dMP['FIA_PROJECT_ID'])
@@ -3793,8 +3866,9 @@ def ExportSummaryActivities_ByPP(meta,dAdmin,dMP,dFCI_Summary):
     dPP['BGC Zone 2']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
     dPP['ACTUAL_TREATMENT_AREA']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
     dPP['ACTUAL_PLANTED_NUMBER']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
-    dPP['Age @ Fert']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['AgeAtFert']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
     dPP['SI BA AreaWeighted']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['GHGB50 (tCO2e/ha)']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
     dPP['Year FC Update']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
     dPP['SPH FC Inv']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
     dPP['SPH Planted']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
@@ -3803,8 +3877,7 @@ def ExportSummaryActivities_ByPP(meta,dAdmin,dMP,dFCI_Summary):
     dPP['Spc3 FC Inv']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
     dPP['Spc1 Planted']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
     dPP['Spc2 Planted']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
-    dPP['Spc3 Planted']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
-    dPP['GHGB50 (tCO2e/ha)']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
+    dPP['Spc3 Planted']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)    
     dPP['GeomFromOpLyr']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
     dPP['GeomFromFcLyr']=np.nan*np.ones(dPP['FIA_PROJECT_ID'].size)
     dPP['District']=np.array(['None' for _ in range(dPP['FIA_PROJECT_ID'].size)],dtype=object)
@@ -3814,8 +3887,9 @@ def ExportSummaryActivities_ByPP(meta,dAdmin,dMP,dFCI_Summary):
         
         # Indices
         iMP=np.where(dMP['FIA_PROJECT_ID']==dPP['FIA_PROJECT_ID'][i])[0]    
-        iAdmin=np.where( (dAdmin['Estimation Method']=='Completed') & (dAdmin['PP Number']==dPP['FIA_PROJECT_ID'][i]) & (dAdmin['Removed']!='Removed') & (np.isin(dAdmin['Milestone Type'],MaterialMilestoneTypes)==True) )[0]
-        iD2=np.where( (dFCI_Summary['PP Number']==dPP['FIA_PROJECT_ID'][i]) & (dFCI_Summary['Estimation Method']=='Completed') )[0]
+        iAdmin=np.where( (dAdmin['Estimation Method']=='Completed') & (dAdmin['Subproject Code']==dPP['FIA_PROJECT_ID'][i]) & \
+                        (dAdmin['Removed']!='Removed') & (np.isin(dAdmin['Mitigation Milestone Type'],MaterialMilestoneTypes)==True) )[0]
+        iD2=np.where( (dFCI_Summary['Subproject Code']==dPP['FIA_PROJECT_ID'][i]) & (dFCI_Summary['Estimation Method']=='Completed') )[0]
         
         dPP['Num Openings'][i]=np.unique(dMP['OPENING_ID'][iMP]).size
     
@@ -3832,23 +3906,23 @@ def ExportSummaryActivities_ByPP(meta,dAdmin,dMP,dFCI_Summary):
         
         dPP['ACTUAL_PLANTED_NUMBER'][i]=np.nansum(dMP['ACTUAL_PLANTED_NUMBER'][iMP])
         
-        dPP['SI BA AreaWeighted'][i]=np.sum(dMP['SI_ba_mean'][iMP]*dMP['ACTUAL_TREATMENT_AREA'][iMP])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][iMP])
+        dPP['SI BA AreaWeighted'][i]=np.round(np.sum(dMP['SI_ba_mean'][iMP]*dMP['ACTUAL_TREATMENT_AREA'][iMP])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][iMP]),decimals=0)
     
-        dPP['Age @ Fert'][i]=np.sum(dMP['Age @ Fert mean'][iMP]*dMP['ACTUAL_TREATMENT_AREA'][iMP])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][iMP])
+        dPP['AgeAtFert'][i]=np.round(np.sum(dMP['AgeFertMean'][iMP]*dMP['ACTUAL_TREATMENT_AREA'][iMP])/np.sum(dMP['ACTUAL_TREATMENT_AREA'][iMP]),decimals=0)
     
+        # Add GHG benefit from FCI DB   
+        if dFCI_Summary['Area (ha)'][iD2]>0:
+            dPP['GHGB50 (tCO2e/ha)'][i]=np.round(dFCI_Summary['GHG Benefit Cumu 2050 (tCO2e)'][iD2]/dFCI_Summary['Area (ha)'][iD2],decimals=0)
+            
         if iAdmin.size>0:
-            dPP['Project Type'][i]=dAdmin['Project Type'][iAdmin[0]]
-            dPP['Milestone Type'][i]=dAdmin['Milestone Type'][iAdmin[0]]
+            dPP['Project Type'][i]=dAdmin['Mitigation Project Type'][iAdmin[0]]
+            dPP['Milestone Type'][i]=dAdmin['Mitigation Milestone Type'][iAdmin[0]]
          
         dPP['District'][i]=dMP['District'][iMP[0]]
     
         dPP['GeomFromOpLyr'][i]=np.nansum(dMP['GeomFromOpLyr'][iMP])
         dPP['GeomFromFcLyr'][i]=np.nansum(dMP['GeomFromFcLyr'][iMP])
     
-        # Add GHG benefit from FCI DB   
-        if dFCI_Summary['Area (ha)'][iD2]>0:
-            dPP['GHGB50 (tCO2e/ha)'][i]=dFCI_Summary['GHG Benefit Cumu 2050 (tCO2e)'][iD2]/dFCI_Summary['Area (ha)'][iD2]
-
     # Convert to dataframe
     df=pd.DataFrame.from_dict(dPP)
     df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryActivities_ByPP.xlsx',index=False)  
@@ -3943,7 +4017,7 @@ def QA_Plot_ByMultiPolygon(meta,uMP,ivlMP,iScnForArea,ivlT,tv,it,MosByMP,iB,iP):
     
     return
 
-#%% QA - Plot time series by PP number
+#%% QA - Plot time series by Subproject Code
 
 def QA_PlotTimeSeries_ByPP(meta,dMP,MosByMP,tv,iB,iP):
     
@@ -3955,7 +4029,7 @@ def QA_PlotTimeSeries_ByPP(meta,dMP,MosByMP,tv,iB,iP):
         
         # Find multipolygons for tis project
         if (dMP['FIA_PROJECT_ID'][iPr]!=''):
-            indP=np.where(uP_ByMP==dMP['FIA_PROJECT_ID'][iPr])[0]
+            #indP=np.where(uP_ByMP==dMP['FIA_PROJECT_ID'][iPr])[0]
             nam=dMP['FIA_PROJECT_ID'][iPr]
             List.append(dMP['FIA_PROJECT_ID'][iPr])
         else:
@@ -4541,30 +4615,30 @@ def ForestCover_AddArchive(meta,fcinv,fcsilv):
     dToAdd['FOREST_COVER_ID']=np.zeros(n,dtype=np.float32)
     dToAdd['SILV_POLYGON_NUMBER']=np.zeros(n,dtype=np.float32)
     dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype=np.float32)
-    dToAdd['STOCKING_STATUS_CODE']=-9999*np.ones(n)
-    dToAdd['STOCKING_TYPE_CODE']=-9999*np.ones(n)
-    dToAdd['I_TOTAL_STEMS_PER_HA']=-9999*np.ones(n)
-    dToAdd['I_TOTAL_WELL_SPACED_STEMS_HA']=-9999*np.ones(n)
-    dToAdd['I_FREE_GROWING_STEMS_PER_HA']=-9999*np.ones(n)
-    dToAdd['I_CROWN_CLOSURE_PERCENT']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_CODE_1']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_CODE_2']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_CODE_3']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_CODE_4']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_CODE_5']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_PERCENT_1']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_PERCENT_2']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_PERCENT_3']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_PERCENT_4']=-9999*np.ones(n)
-    dToAdd['I_SPECIES_PERCENT_5']=-9999*np.ones(n)
-    dToAdd['Year_Created']=-9999*np.ones(n)
-    dToAdd['Month_Created']=-9999*np.ones(n)
-    dToAdd['Year_Updated']=-9999*np.ones(n)
-    dToAdd['Month_Updated']=-9999*np.ones(n)
+    dToAdd['STOCKING_STATUS_CODE']=-999*np.ones(n)
+    dToAdd['STOCKING_TYPE_CODE']=-999*np.ones(n)
+    dToAdd['I_TOTAL_STEMS_PER_HA']=-999*np.ones(n)
+    dToAdd['I_TOTAL_WELL_SPACED_STEMS_HA']=-999*np.ones(n)
+    dToAdd['I_FREE_GROWING_STEMS_PER_HA']=-999*np.ones(n)
+    dToAdd['I_CROWN_CLOSURE_PERCENT']=-999*np.ones(n)
+    dToAdd['I_SPECIES_CODE_1']=-999*np.ones(n)
+    dToAdd['I_SPECIES_CODE_2']=-999*np.ones(n)
+    dToAdd['I_SPECIES_CODE_3']=-999*np.ones(n)
+    dToAdd['I_SPECIES_CODE_4']=-999*np.ones(n)
+    dToAdd['I_SPECIES_CODE_5']=-999*np.ones(n)
+    dToAdd['I_SPECIES_PERCENT_1']=-999*np.ones(n)
+    dToAdd['I_SPECIES_PERCENT_2']=-999*np.ones(n)
+    dToAdd['I_SPECIES_PERCENT_3']=-999*np.ones(n)
+    dToAdd['I_SPECIES_PERCENT_4']=-999*np.ones(n)
+    dToAdd['I_SPECIES_PERCENT_5']=-999*np.ones(n)
+    dToAdd['Year_Created']=-999*np.ones(n)
+    dToAdd['Month_Created']=-999*np.ones(n)
+    dToAdd['Year_Updated']=-999*np.ones(n)
+    dToAdd['Month_Updated']=-999*np.ones(n)
     cnt=0
     for iO in range(uO.shape[0]):
     
-        if (uO[iO,0]==-9999):
+        if (uO[iO,0]==-999):
             continue
         
         # Index to SXY from existing dictionaries
@@ -4648,12 +4722,17 @@ def ForestCover_AddArchive(meta,fcinv,fcsilv):
     for k in dToAdd.keys():
         dToAdd[k]=dToAdd[k][0:cnt]
     
+    # Remove NaNs
+    for k in dToAdd.keys():
+        ind=np.where(np.isnan(dToAdd[k])==True)[0]
+        dToAdd[k][ind]=-999
+    
     # Add to fcinv dictionary
     for k in fcinv.keys():
         if k in dToAdd:
             fcinv[k]=np.append(fcinv[k],dToAdd[k])
         else:
-            fcinv[k]=np.append(fcinv[k],-9999*np.ones(dToAdd['IdxToSXY'].size))
+            fcinv[k]=np.append(fcinv[k],-999*np.ones(dToAdd['IdxToSXY'].size))
     
     # Remove duplicates
     ToKeep=np.zeros(fcinv['FOREST_COVER_ID'].size)
@@ -4684,30 +4763,30 @@ def ForestCover_AddArchive(meta,fcinv,fcsilv):
     dToAdd['SILV_POLYGON_NUMBER']=np.zeros(n,dtype=np.float32)
     dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype=np.float32)  
     dToAdd['REFERENCE_YEAR']=np.zeros(n,dtype=np.float32)
-    dToAdd['STOCKING_STATUS_CODE']=-9999*np.ones(n)
-    dToAdd['STOCKING_TYPE_CODE']=-9999*np.ones(n)
-    dToAdd['S_TOTAL_STEMS_PER_HA']=-9999*np.ones(n)
-    dToAdd['S_TOTAL_WELL_SPACED_STEMS_HA']=-9999*np.ones(n)
-    dToAdd['S_FREE_GROWING_STEMS_PER_HA']=-9999*np.ones(n)
-    dToAdd['S_CROWN_CLOSURE_PERCENT']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_CODE_1']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_CODE_2']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_CODE_3']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_CODE_4']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_CODE_5']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_PERCENT_1']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_PERCENT_2']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_PERCENT_3']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_PERCENT_4']=-9999*np.ones(n)
-    dToAdd['S_SPECIES_PERCENT_5']=-9999*np.ones(n)
-    dToAdd['Year_Created']=-9999*np.ones(n)
-    dToAdd['Month_Created']=-9999*np.ones(n)
-    dToAdd['Year_Updated']=-9999*np.ones(n)
-    dToAdd['Month_Updated']=-9999*np.ones(n)
+    dToAdd['STOCKING_STATUS_CODE']=-999*np.ones(n)
+    dToAdd['STOCKING_TYPE_CODE']=-999*np.ones(n)
+    dToAdd['S_TOTAL_STEMS_PER_HA']=-999*np.ones(n)
+    dToAdd['S_TOTAL_WELL_SPACED_STEMS_HA']=-999*np.ones(n)
+    dToAdd['S_FREE_GROWING_STEMS_PER_HA']=-999*np.ones(n)
+    dToAdd['S_CROWN_CLOSURE_PERCENT']=-999*np.ones(n)
+    dToAdd['S_SPECIES_CODE_1']=-999*np.ones(n)
+    dToAdd['S_SPECIES_CODE_2']=-999*np.ones(n)
+    dToAdd['S_SPECIES_CODE_3']=-999*np.ones(n)
+    dToAdd['S_SPECIES_CODE_4']=-999*np.ones(n)
+    dToAdd['S_SPECIES_CODE_5']=-999*np.ones(n)
+    dToAdd['S_SPECIES_PERCENT_1']=-999*np.ones(n)
+    dToAdd['S_SPECIES_PERCENT_2']=-999*np.ones(n)
+    dToAdd['S_SPECIES_PERCENT_3']=-999*np.ones(n)
+    dToAdd['S_SPECIES_PERCENT_4']=-999*np.ones(n)
+    dToAdd['S_SPECIES_PERCENT_5']=-999*np.ones(n)
+    dToAdd['Year_Created']=-999*np.ones(n)
+    dToAdd['Month_Created']=-999*np.ones(n)
+    dToAdd['Year_Updated']=-999*np.ones(n)
+    dToAdd['Month_Updated']=-999*np.ones(n)
     cnt=0
     for iO in range(uO.shape[0]):
     
-        if (uO[iO,0]==-9999):
+        if (uO[iO,0]==-999):
             continue
         
         # Index to SXY from existing dictionaries
@@ -4784,7 +4863,15 @@ def ForestCover_AddArchive(meta,fcinv,fcsilv):
         if k in dToAdd:
             fcsilv[k]=np.append(fcsilv[k],dToAdd[k])
         else:
-            fcsilv[k]=np.append(fcsilv[k],-9999*np.ones(dToAdd['IdxToSXY'].size))
+            fcsilv[k]=np.append(fcsilv[k],-999*np.ones(dToAdd['IdxToSXY'].size))
+
+    # Remove NaNs
+    for k in dToAdd.keys():
+        try:
+            ind=np.where(np.isnan(dToAdd[k])==True)[0]
+            dToAdd[k][ind]=-999
+        except:
+            pass
 
     # Remove duplicates    
     ToKeep=np.zeros(fcsilv['FOREST_COVER_ID'].size)
@@ -4817,18 +4904,18 @@ def ForestCover_AddForestHealth(meta,fcinv):
     # Initialize forest health variables
     #--------------------------------------------------------------------------
     
-    fcinv['I_DA1 CD']=-9999*np.ones(fcinv['FOREST_COVER_ID'].size)
+    fcinv['I_DA1 CD']=-999*np.ones(fcinv['FOREST_COVER_ID'].size)
     fcinv['I_DA1 PCT']=np.zeros(fcinv['FOREST_COVER_ID'].size)
-    fcinv['I_DA2 CD']=-9999*np.ones(fcinv['FOREST_COVER_ID'].size)
+    fcinv['I_DA2 CD']=-999*np.ones(fcinv['FOREST_COVER_ID'].size)
     fcinv['I_DA2 PCT']=np.zeros(fcinv['FOREST_COVER_ID'].size)
-    fcinv['I_DA3 CD']=-9999*np.ones(fcinv['FOREST_COVER_ID'].size)
+    fcinv['I_DA3 CD']=-999*np.ones(fcinv['FOREST_COVER_ID'].size)
     fcinv['I_DA3 PCT']=np.zeros(fcinv['FOREST_COVER_ID'].size)
     
-    fcinv['S_DA1 CD']=-9999*np.ones(fcinv['FOREST_COVER_ID'].size)
+    fcinv['S_DA1 CD']=-999*np.ones(fcinv['FOREST_COVER_ID'].size)
     fcinv['S_DA1 PCT']=np.zeros(fcinv['FOREST_COVER_ID'].size)
-    fcinv['S_DA2 CD']=-9999*np.ones(fcinv['FOREST_COVER_ID'].size)
+    fcinv['S_DA2 CD']=-999*np.ones(fcinv['FOREST_COVER_ID'].size)
     fcinv['S_DA2 PCT']=np.zeros(fcinv['FOREST_COVER_ID'].size)
-    fcinv['S_DA3 CD']=-9999*np.ones(fcinv['FOREST_COVER_ID'].size)
+    fcinv['S_DA3 CD']=-999*np.ones(fcinv['FOREST_COVER_ID'].size)
     fcinv['S_DA3 PCT']=np.zeros(fcinv['FOREST_COVER_ID'].size)
 
     #--------------------------------------------------------------------------
@@ -4851,24 +4938,24 @@ def ForestCover_AddForestHealth(meta,fcinv):
             indL=np.where(fcinv['I_FOREST_COVER_LAYER_ID']==prp['FOREST_COVER_LAYER_ID'])[0]
             if indL.size>0:
                 # Inventory label
-                if fcinv['I_DA1 CD'][ind[0]]==-9999:
+                if fcinv['I_DA1 CD'][ind[0]]==-999:
                     fcinv['I_DA1 CD'][ind]=id
                     fcinv['I_DA1 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['I_DA2 CD'][ind[0]]==-9999:
+                elif fcinv['I_DA2 CD'][ind[0]]==-999:
                     fcinv['I_DA2 CD'][ind]=id
                     fcinv['I_DA2 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['I_DA3 CD'][ind[0]]==-9999:
+                elif fcinv['I_DA3 CD'][ind[0]]==-999:
                     fcinv['I_DA3 CD'][ind]=id
                     fcinv['I_DA3 PCT'][ind]=prp['INCIDENCE_PCT']
             else:
                 # Silv label
-                if fcinv['S_DA1 CD'][ind[0]]==-9999:
+                if fcinv['S_DA1 CD'][ind[0]]==-999:
                     fcinv['S_DA1 CD'][ind]=id
                     fcinv['S_DA1 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['S_DA2 CD'][ind[0]]==-9999:
+                elif fcinv['S_DA2 CD'][ind[0]]==-999:
                     fcinv['S_DA2 CD'][ind]=id
                     fcinv['S_DA2 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['S_DA3 CD'][ind[0]]==-9999:
+                elif fcinv['S_DA3 CD'][ind[0]]==-999:
                     fcinv['S_DA3 CD'][ind]=id
                     fcinv['S_DA3 PCT'][ind]=prp['INCIDENCE_PCT']  
         
@@ -4891,26 +4978,34 @@ def ForestCover_AddForestHealth(meta,fcinv):
             indL=np.where(fcinv['I_FOREST_COVER_LAYER_ID']==prp['FOREST_COVER_LAYER_ID'])[0]
             if indL.size>0:
                 # Inventory label
-                if fcinv['I_DA1 CD'][ind[0]]==-9999:
+                if fcinv['I_DA1 CD'][ind[0]]==-999:
                     fcinv['I_DA1 CD'][ind]=id
                     fcinv['I_DA1 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['I_DA2 CD'][ind[0]]==-9999:
+                elif fcinv['I_DA2 CD'][ind[0]]==-999:
                     fcinv['I_DA2 CD'][ind]=id
                     fcinv['I_DA2 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['I_DA3 CD'][ind[0]]==-9999:
+                elif fcinv['I_DA3 CD'][ind[0]]==-999:
                     fcinv['I_DA3 CD'][ind]=id
                     fcinv['I_DA3 PCT'][ind]=prp['INCIDENCE_PCT']
             else:
                 # Silv label
-                if fcinv['S_DA1 CD'][ind[0]]==-9999:
+                if fcinv['S_DA1 CD'][ind[0]]==-999:
                     fcinv['S_DA1 CD'][ind]=id
                     fcinv['S_DA1 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['S_DA2 CD'][ind[0]]==-9999:
+                elif fcinv['S_DA2 CD'][ind[0]]==-999:
                     fcinv['S_DA2 CD'][ind]=id
                     fcinv['S_DA2 PCT'][ind]=prp['INCIDENCE_PCT']
-                elif fcinv['S_DA3 CD'][ind[0]]==-9999:
+                elif fcinv['S_DA3 CD'][ind[0]]==-999:
                     fcinv['S_DA3 CD'][ind]=id
                     fcinv['S_DA3 PCT'][ind]=prp['INCIDENCE_PCT']  
+    
+    # Remove NaNs
+    for k in fcinv.keys():
+        try:
+            ind=np.where(np.isnan(fcinv[k])==True)[0]
+            fcinv[k][ind]=-999
+        except:
+            pass
     
     return fcinv
 

@@ -18,22 +18,24 @@ from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_inventory as invu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 
-#%% Project name
+#%% Specify project name
 
-project_name='FCI_RollupFCI_Inv_2022'
+#project_name='FCI_RollupFCI_Inv_2022'
 #project_name='SummaryNutrientManagement'
 #project_name='SummaryNutrientManagementFull'
-#project_name='SummaryReforestationNonOb'
+project_name='SummaryReforestationNonOb'
 #project_name='SummaryReforestation'
 #project_name='SummarySurvey'
 
 #%% Define paths
 
+# *** The paths to inventory files need to be up to date ***
+
 meta={}
 meta['Paths']={}
 meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
-meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
+meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + project_name
+#meta['Paths']['Project']=r'C:\Users\rhember\Documents\Data\FCI_Projects' + '\\' + project_name
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
@@ -73,7 +75,7 @@ elif project_name=='SummaryNutrientManagementFull':
 elif project_name=='SummaryReforestationNonOb':
     
     # Import AIL- used to subsample certain multipolygons
-    # *** Not subsampling - its too hard to partition into different project types afterwards ***
+    # *** Not subsampling MPs - its too hard to partition into different project types afterwards ***
     #ail=gu.ipickle(r'D:\Data\FCI_Projects\SummaryReforestationNonOb\Inputs\AnnualImplementationLevel.pkl')
     
     # Sparse grid subsampling rate
@@ -714,6 +716,29 @@ gdf_atu_polygons.to_file(filename=fnam,driver='ESRI Shapefile')
 #fnam=meta['Paths']['Project'] + '\\Geospatial\\atu_polygons_latlon.shp'
 #gdf.to_file(filename=fnam,driver='ESRI Shapefile')
 
+#%% Plot map
+
+def PlotMap():
+    # Load basemap
+    gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
+    
+    gdf=gpd.read_file(meta['Paths']['Project'] + '\\Geospatial\\atu_polygons.geojson')
+    
+    plt.close('all')
+    fig,ax=plt.subplots(figsize=gu.cm2inch(7.8,6.6))
+    gdf_bm.plot(ax=ax,facecolor=[0.8,0.8,0.8],edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+    #tsa_boundaries.plot(ax=ax,facecolor='none',edgecolor=[0,0,0],linewidth=0.25)
+    gdf.plot(ax=ax,facecolor=[0.75,0,0],edgecolor=None,lw=0.75)
+    ax.grid(color='k',linestyle='-',linewidth=0.25)
+    
+    #iP=2000
+    #for iD in range(len(nddat[iP])):
+    #    x,y=nddat[iP][iD]['Geometry'].exterior.xy
+    #    plt.plot(x,y,'r-')
+    
+    ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
+    #plt.savefig(meta['Paths']['Figures'] + '\\SparseGrid_Map.png',format='png',dpi=900)
+
 #%% Save sparse grid sample to file
 
 # Add opening id to SXY dictionary before saving
@@ -756,7 +781,6 @@ print((time.time()-t0)/60)
 garc.collect()
 
 atu_multipolygons=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\atu_multipolygons.pkl')
-sxy=gu.ipickle(meta['Paths']['Project'] + '\\Geospatial\\sxy.pkl')
 
 for iLyr in range(len(InvLyrInfo)):
     
@@ -981,7 +1005,18 @@ for iLyr in range(len(InvLyrInfo)):
     # planting layer. The Strings will be fixed then.
     if lyr_nam!='RSLT_PLANTING_SVW':
         data=invu.ExtractDateStringsFromRESULTS(lyr_nam,data)      
-       
+    
+    #--------------------------------------------------------------------------
+    # Remove any NaNs
+    #--------------------------------------------------------------------------
+    
+    for k in data.keys():
+        try:
+            ind=np.where(np.isnan(data[k])==True)[0]
+            data[k][ind]=-999
+        except:
+            pass
+    
     #--------------------------------------------------------------------------    
     # Save to file
     #--------------------------------------------------------------------------
@@ -1083,7 +1118,15 @@ for fnam,flag,dtype in InvLyrInfo[iLyr]['Field List']:
     
 # Convert date string to numeric
 pl=invu.ExtractDateStringsFromRESULTS(lyr_nam,pl)
-       
+
+# Remove any NaNs
+for k in pl.keys():
+    try:
+        ind=np.where(np.isnan(pl[k])==True)[0]
+        pl[k][ind]=-999
+    except:
+        pass
+
 # Save    
 gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl',pl)
 gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)

@@ -609,9 +609,8 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             
             for k in meta['Param']['BE']['Felled Fate'][scn][reg].keys():
                 x=meta['Param']['BE']['Felled Fate'][scn][reg][k]
-                x=np.reshape(x,(-1,1))
-                x=np.tile(x,(1,ind.size))
-                meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
+                for i in range(ind.size):
+                    meta['Param']['BEV']['Felled Fate'][k][:,ind[i]]=x
  
     elif meta['Project']['Scenario Source']=='Spreadsheet':
         
@@ -635,10 +634,9 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
             for k in meta['Param']['BE']['Felled Fate'][Scenario][reg].keys():
                 x=meta['Param']['BE']['Felled Fate'][Scenario][reg][k]
-                x=np.reshape(x,(-1,1))
-                x=np.tile(x,(1,ind.size))
-                meta['Param']['BEV']['Felled Fate'][k][:,ind]=x
-     
+                for i in range(ind.size):
+                    meta['Param']['BEV']['Felled Fate'][k][:,ind[i]]=x
+
     #--------------------------------------------------------------------------
     # Removed Fate
     #--------------------------------------------------------------------------
@@ -673,9 +671,8 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             
             for k in meta['Param']['BE']['Removed Fate'][scn][reg].keys():
                 x=meta['Param']['BE']['Removed Fate'][scn][reg][k]
-                x=np.reshape(x,(-1,1))
-                x=np.tile(x,(1,ind.size))
-                meta['Param']['BEV']['Removed Fate'][k][:,ind]=x                    
+                for i in range(ind.size):
+                    meta['Param']['BEV']['Removed Fate'][k][:,ind[i]]=x                 
  
     elif meta['Project']['Scenario Source']=='Spreadsheet':
         
@@ -697,11 +694,10 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
         
         for reg in meta['LUT']['Region'].keys():
             ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
-            for k in meta['Param']['BE']['Felled Fate'][Scenario][reg].keys():
-                x=meta['Param']['BE']['Felled Fate'][Scenario][reg][k]
-                x=np.reshape(x,(-1,1))
-                x=np.tile(x,(1,ind.size))
-                meta['Param']['BEV']['Felled Fate'][k][:,ind]=x   
+            for k in meta['Param']['BE']['Removed Fate'][Scenario][reg].keys():
+                x=meta['Param']['BE']['Removed Fate'][Scenario][reg][k]
+                for i in range(ind.size):
+                    meta['Param']['BEV']['Removed Fate'][k][:,ind[i]]=x  
         
     #--------------------------------------------------------------------------
     # Harvested Wood Products - static
@@ -774,7 +770,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
  
     elif meta['Project']['Scenario Source']=='Spreadsheet':
         
-        Scenario=meta['Scenario'][meta['iScn']]['HW End Use Scenario']
+        Scenario=meta['Scenario'][meta['iScn']]['HWP End Use Scenario']
         Region=meta['Scenario'][meta['iScn']]['Region Code']        
         for k in meta['Param']['BE']['HWP End Use'][Scenario][Region].keys():
             x=meta['Param']['BE']['HWP End Use'][Scenario][Region][k]
@@ -794,9 +790,8 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
             for k in meta['Param']['BE']['HWP End Use'][Scenario][reg].keys():
                 x=meta['Param']['BE']['HWP End Use'][Scenario][reg][k]
-                x=np.reshape(x,(-1,1))
-                x=np.tile(x,(1,ind.size))
-                meta['Param']['BEV']['HWP End Use'][k][:,ind]=x  
+                for i in range(ind.size):
+                    meta['Param']['BEV']['HWP End Use'][k][:,ind[i]]=x
     
     #--------------------------------------------------------------------------
     # Populate custom harvest parameters with those supplied for project
