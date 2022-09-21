@@ -37,7 +37,7 @@ vrL=['RemovedMerchToChipperMill','RemovedMerchToPulpMill','RemovedMerchToPelletM
 # *** If you change the time vector, change it consistently for other variable scenarios - it needs to be consistent ***
 tv=np.arange(1850,2101,1)
 
-regL=['Coast','Interior','GFS22']
+regL=['Coast','Interior','GFS22','Energy Production']
 scnL=['BaseCase','S1']
 
 #%% Initialize with BaseCase parameters

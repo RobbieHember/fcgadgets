@@ -299,8 +299,8 @@ def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
     rn=np.random.random(meta['Project']['Batch Size'][iBat])
     
     # Regional probabilities
-    Po_Sat_Coast=0.055
-    Po_Sat_Interior=0.015
+    Po_Sat_Coast=2.0*meta['Scenario'][iScn]['Nutrient Application Prob']
+    Po_Sat_Interior=0.5*meta['Scenario'][iScn]['Nutrient Application Prob']
     
     flg=0
     if flg==1:
@@ -315,13 +315,20 @@ def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
         plt.close('all')
         plt.plot(vi['tv'],Po_Interior,'r-',lw=1.5 )
     
-    # Time-dependent models to compensate for aging forests
-    Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.002*np.maximum(1,vi['tv']-2021) )
-    Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0012*np.maximum(1,vi['tv']-2045) )
+    # Contstant
+    #Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.0*np.maximum(1,vi['tv']-2021) )
+    #Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0*np.maximum(1,vi['tv']-2045) )
+    
+    # Time-dependent models to compensate for aging forests (paper)
+    #Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.002*np.maximum(1,vi['tv']-2021) )
+    #Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0012*np.maximum(1,vi['tv']-2045) )
+    
+    Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.0008*np.maximum(1,vi['tv']-2021) )
+    Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0005*np.maximum(1,vi['tv']-2045) )
     
     # Find eligible coastal stands to fertilize
     indS_Coast=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
-            (vo['A'][iT,:]>=10) & \
+            (vo['A'][iT,:]>=9) & \
             (vo['A'][iT,:]<=61) & \
             (rn<Po_Coast[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
@@ -329,8 +336,8 @@ def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
             (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['Coastal Zones ID'])==True) )[0]
     
     indS_Interior=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
-            (vo['A'][iT,:]>=10) & \
-            (vo['A'][iT,:]<=61) & \
+            (vo['A'][iT,:]>=9) & \
+            (vo['A'][iT,:]<=81) & \
             (rn<Po_Interior[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
             (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
@@ -345,6 +352,6 @@ def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
                 iE=iAvailable[0]
                 vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Fertilization Aerial']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=np.array(0,dtype='int16')
-                vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=2
+                #vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=np.max(vi['EC']['ID_GrowthCurve'][0:iT,indS[i],:])
     
     return vi

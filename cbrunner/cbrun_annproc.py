@@ -1176,7 +1176,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
             
             for k in meta['Param']['BEV']['Felled Fate'].keys():
                 b[k][iHarvest]=meta['Param']['BEV']['Felled Fate'][k][iT_P,iHarvest]
-                
+            
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
         #----------------------------------------------------------------------
@@ -1607,13 +1607,13 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # This will be the same between end use and removed fate because the time vectors
     # are the same.
     # *** Don't change one time vector without changing the other. ***
-    iTDV=np.where(meta['Param']['BE']['HWP End Use']['Year']==meta['Year'][iT])[0]
+    iT_P=np.where(meta['Param']['BE']['HWP End Use']['Year']==meta['Year'][iT])[0]
 
     # Removed fate
     bRF={}
     for k in meta['Param']['BEV']['Removed Fate'].keys():
-        if iTDV.size!=0:
-            bRF[k]=meta['Param']['BEV']['Removed Fate'][k][iTDV,:].flatten()
+        if iT_P.size!=0:
+            bRF[k]=meta['Param']['BEV']['Removed Fate'][k][iT_P,:].flatten()
         else:
             # Simulations may extend beyond the 2100 limit of the time-dependent HWP variables
             bRF[k]=meta['Param']['BEV']['Removed Fate'][k][-1,:].flatten()
@@ -1621,8 +1621,8 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # End uses
     bEU={}
     for k in meta['Param']['BEV']['HWP End Use'].keys():
-        if iTDV.size!=0:
-            bEU[k]=meta['Param']['BEV']['HWP End Use'][k][iTDV,:].flatten()
+        if iT_P.size!=0:
+            bEU[k]=meta['Param']['BEV']['HWP End Use'][k][iT_P,:].flatten()
         else:
             # Simulations may extend beyond the 2100 limit of the time-dependent HWP variables
             bEU[k]=meta['Param']['BEV']['HWP End Use'][k][-1,:].flatten()

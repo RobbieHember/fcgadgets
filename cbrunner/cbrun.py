@@ -202,7 +202,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vi['Inv']=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         
     # Update number of stands for batch
-    meta['Project']['N Stand Batch']=vi['Inv']['X'].shape[1]          
+    meta['Project']['N Stand Batch']=vi['Inv']['ID_BECZ'].shape[1]          
     
     # Import event chronology
     vi['EC']=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
@@ -230,8 +230,11 @@ def InitializeStands(meta,iScn,iEns,iBat):
         vi['GC'][2]=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\GrowthCurve2_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         
         # Import growth curve 3
-        vi['GC'][3]=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\GrowthCurve3_Bat' + cbu.FixFileNum(iBat) + '.pkl')
-        
+        try:
+            vi['GC'][3]=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\GrowthCurve3_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        except:
+            vi['GC'][3]=0
+            
         # Import growth curve 4 (optional)
         try:
             vi['GC'][4]=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\GrowthCurve4_Bat' + cbu.FixFileNum(iBat) + '.pkl')
@@ -622,7 +625,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             x=np.tile(x,(1,meta['Project']['Batch Size'][iBat]))
             meta['Param']['BEV']['Felled Fate'][k]=x
     
-    else:
+    elif meta['Project']['Scenario Source']=='Script':
         
         # Index to batch
         indBat=cbu.IndexToBatch(meta,iBat)
@@ -636,6 +639,13 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
                 x=meta['Param']['BE']['Felled Fate'][Scenario][reg][k]
                 for i in range(ind.size):
                     meta['Param']['BEV']['Felled Fate'][k][:,ind[i]]=x
+
+        # Override regional parameters for stands that have land use = energy production
+        if meta['Scenario'][iScn]['Land Surface Scenario']!='None':
+            iEnergy=np.where(vi['Inv']['LSC']['Use']==meta['LUT']['LSC']['Use']['Energy Production'])
+            if iEnergy[0].size>0:
+                for k in meta['Param']['BEV']['Felled Fate'].keys():
+                    meta['Param']['BEV']['Felled Fate'][k][iEnergy]=meta['Param']['BE']['Felled Fate'][Scenario]['Energy Production'][k][0]
 
     #--------------------------------------------------------------------------
     # Removed Fate
@@ -684,7 +694,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             x=np.tile(x,(1,meta['Project']['Batch Size'][iBat]))
             meta['Param']['BEV']['Removed Fate'][k]=x
     
-    else:
+    elif meta['Project']['Scenario Source']=='Script':
         
         # Index to batch
         indBat=cbu.IndexToBatch(meta,iBat)
@@ -699,6 +709,13 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
                 for i in range(ind.size):
                     meta['Param']['BEV']['Removed Fate'][k][:,ind[i]]=x  
         
+        # Override regional parameters for stands that have land use = energy production
+        if meta['Scenario'][iScn]['Land Surface Scenario']!='None':
+            iEnergy=np.where(vi['Inv']['LSC']['Use']==meta['LUT']['LSC']['Use']['Energy Production'])
+            if iEnergy[0].size>0:
+                for k in meta['Param']['BEV']['Removed Fate'].keys():
+                    meta['Param']['BEV']['Removed Fate'][k][iEnergy]=meta['Param']['BE']['Removed Fate'][Scenario]['Energy Production'][k][0]
+    
     #--------------------------------------------------------------------------
     # Harvested Wood Products - static
     #--------------------------------------------------------------------------

@@ -11,8 +11,8 @@ BC1ha GRID
 
 import sys
 import numpy as np
-import gdal
-import osr 
+from osgeo import gdal
+from osgeo import osr
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import pandas as pd
@@ -28,7 +28,7 @@ import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
 from fcgadgets.macgyver import utilities_inventory as invu
 
-#%% DEFINE STANDARD GRID 
+#%% DEFINE STANDARD GRID
 # Select an existing file that will define the SRS and extent of the BC1ha grid.
 # Currently, it is a tif TSA file that was rasterized in ArcGIS.
 
@@ -44,7 +44,7 @@ zS=gis.OpenGeoTiff(finS)
 # from a shapefile of TSA downloaded from the BC Data Cat.
 #------------------------------------------------------------------------------
 
-# Import the shapefile with the TSA names and get the unique list of TSA Numbers 
+# Import the shapefile with the TSA names and get the unique list of TSA Numbers
 # and each corresponding TSA name.
 gdf_tsa=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\TSA\tsa.shp')
 u=gdf_tsa['TSA_NUMBER'].unique()
@@ -56,7 +56,7 @@ for i in range(len(u)):
 # Key between raster values and TSA name (this fixes the original file created by ESRI the first time)
 
 # Import raster metadata
-db=dbfread.DBF(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif.vat.dbf',load=True)  
+db=dbfread.DBF(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif.vat.dbf',load=True)
 
 # Convert to dataframe for key
 df=pd.DataFrame([])
@@ -81,9 +81,9 @@ df.to_excel(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa_key.xlsx',index=Fal
 # Open dataframe containing TSA names and values for raster grid of TSAs
 zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
 #ds=gdal.Open(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif');
-#tsa=ds.ReadAsArray(); 
-#gt=ds.GetGeoTransform(); del ds; 
-#m,n=tsa.shape; 
+#tsa=ds.ReadAsArray();
+#gt=ds.GetGeoTransform(); del ds;
+#m,n=tsa.shape;
 #extent=(gt[0],gt[0]+n*gt[1],gt[3]-m*gt[1],gt[3])
 #xG=np.arange(gt[0],gt[0]+gt[1]*n,gt[1])
 #yG=np.flip(np.arange(gt[3]-m*gt[1],gt[3],gt[1]))
@@ -100,15 +100,15 @@ for i in range(len(df_tsa)):
     id=df_tsa.loc[i,'VALUE']
 
     # Create binary image
-    z=np.zeros((m,n,3),dtype=np.uint8)   
+    z=np.zeros((m,n,3),dtype=np.uint8)
     z[tsa==id,:]=255
     z=cv2.cvtColor(z,cv2.COLOR_BGR2GRAY) # Convert to grey scale
 
     # Calculate contour of object
     cont=cv2.findContours(image=z,mode=cv2.RETR_LIST,method=cv2.CHAIN_APPROX_SIMPLE)
-        
+
     # Unpack silly tuple
-    
+
     for j in range(len(cont[0])):
         cont_inner=cont[0][j].squeeze()
         if cont_inner.size==2:
@@ -124,13 +124,58 @@ for i in range(len(df_tsa)):
             pointList.append(geometry.Point(x,y))
         gdf.loc[cnt,'Value']=df_tsa.loc[i,'VALUE'].astype(float)
         gdf.loc[cnt,'Name']=df_tsa.loc[i,'Name']
-        gdf.loc[cnt,'geometry']=geometry.Polygon([[p.x,p.y] for p in pointList])            
+        gdf.loc[cnt,'geometry']=geometry.Polygon([[p.x,p.y] for p in pointList])
         cnt=cnt+1
 
 gdf.to_file(filename=r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 
 
 #%% Revise the extent of rasters that were created in ArcGIS
+
+# Using new function with warp
+fin_Ref= r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
+fin_ToAdjust=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year4.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year4b.tif'
+gis.ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout)
+
+# Using new function with warp
+fin_Ref= r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
+fin_ToAdjust=r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm2.tif'
+gis.ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout)
+
+# Using new function with warp
+fin_Ref= r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
+fin_ToAdjust=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2a.tif'
+gis.ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout)
+
+# Using new function with warp
+fin_Ref= r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
+fin_ToAdjust=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becza.tif'
+gis.ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout)
+
+
+# Using new function with warp
+fin_Ref= r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
+fin_ToAdjust=r'C:\Users\rhember\Documents\Data\BC1ha\Soil\soil_dev1.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\Soil\soil_dev1a.tif'
+gis.ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout)
+
+
+
+
+# DEM
+
+fin1=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\topography.elevation.tif'
+fin1_adj=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\elevation.tif'
+gis.ReviseRasterExtent(fin1,finS,fin1_adj)
+
+z=gis.OpenGeoTiff(fin1_adj)
+z['Data']=z['Data'].astype('int16')
+gis.SaveGeoTiff(z,r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\elevation1.tif')
+plt.matshow(z['Data'],clim=(0,2000))
 
 # Admin boundaries
 
@@ -201,7 +246,7 @@ df=df[df.geometry!=None]
 
 df0=df.copy()
 df0['dummy']=np.ones(len(df0))
-shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))    
+shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))
 
 z0=np.zeros(zTSA['Data'].shape,dtype=float)
 burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
@@ -246,7 +291,7 @@ df0=df0[df0.Flag==1]
 
 #df0=df.copy()
 df0['dummy']=np.ones(len(df0))
-shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))    
+shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))
 
 z0=np.zeros(zTSA['Data'].shape,dtype=float)
 burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
@@ -300,15 +345,15 @@ for val in meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].keys():
 
     df0=df[df[fn]==val].copy()
     df0['dummy']=np.ones(len(df0))
-    shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))    
+    shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['dummy']))
 
     z0=np.zeros(zTSA['Data'].shape,dtype=float)
     burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
-    
+
     val1=val.replace(":","_")
     val1=val1.replace("/","_")
     val1=val1.replace("<","Less Than")
-    
+
     zOut=zTSA.copy()
     zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
     zOut['Data'][burned>0]=1
@@ -342,8 +387,8 @@ zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
 tv=np.arange(2020,2020,1)
 
 for iT in range(tv.size):
-    df0=df[df.FIRE_YEAR==tv[iT]].copy()        
-    shapes=((geom,value) for geom, value in zip(df0.geometry,df0.FIRE_YEAR))    
+    df0=df[df.FIRE_YEAR==tv[iT]].copy()
+    shapes=((geom,value) for geom, value in zip(df0.geometry,df0.FIRE_YEAR))
 
     z0=np.zeros(zTSA['Data'].shape,dtype=float)
     burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA.Transform)
@@ -357,7 +402,7 @@ for iT in range(tv.size):
 # Test
 #z=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Disturbances\test1.tif')
 #plt.matshow(z['Data'])
-    
+
 #%% Rasterize AOS occurrence by year
 
 # Input path to RESULTS database (downloaded from BC data catalogue)
@@ -404,16 +449,16 @@ for iP in range(len(fcd)):
         print(tv[iT])
         zOut=zTSA.copy()
         zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
-    
-        df0=df[ (df[fnam]==fcd[iP]) & (df.CAPTURE_YEAR==tv[iT]) ].copy() 
+
+        df0=df[ (df[fnam]==fcd[iP]) & (df.CAPTURE_YEAR==tv[iT]) ].copy()
         df0=df0[df0.geometry!=None]
-        
+
         if len(df0)>0:
-            shapes=((geom,value) for geom, value in zip(df0.geometry,df0.PSC))    
+            shapes=((geom,value) for geom, value in zip(df0.geometry,df0.PSC))
             z0=np.zeros(zTSA['Data'].shape,dtype=float)
             burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
             zOut['Data']=burned.astype('int16')
-            
+
         fout=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances' + '\\' + lnam + '_' + fcd[iP] + '_SeverityClass_' + str(tv[iT]) + '.tif'
         gis.SaveGeoTiff(zOut,fout)
 
@@ -434,19 +479,19 @@ for iT in range(tv.size):
     zOut=zTSA.copy()
     zOut['Data']=np.zeros(zTSA['Data'].shape,dtype='int16')
 
-    df0=gdf_spray[ (gdf_spray['Year']==tv[iT]) ].copy() 
+    df0=gdf_spray[ (gdf_spray['Year']==tv[iT]) ].copy()
     df0=df0[df0.geometry!=None]
     df0['Dummy']=1
-    
+
     if len(df0)>0:
-        shapes=((geom,value) for geom, value in zip(df0.geometry,df0['Dummy']))    
+        shapes=((geom,value) for geom, value in zip(df0.geometry,df0['Dummy']))
         z0=np.zeros(zTSA['Data'].shape,dtype=float)
         burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA['Transform'])
         zOut['Data']=burned.astype('int16')
-        
+
     fout=r'C:\Users\rhember\Documents\Data\BC1ha\Management' + '\\btk_spray_' + str(tv[iT]) + '.tif'
     gis.SaveGeoTiff(zOut,fout)
-    
+
 
 #%% Rasterize burn severity
 
@@ -483,9 +528,9 @@ zTSA=gis.OpenGeoTiff(r'Z:\!Workgrp\Forest Carbon\Data\BC1ha\Admin\tsa.tif')
 tv=np.arange(2017,2020,1)
 
 for iT in range(tv.size):
-    
-    df0=df[df.FIRE_YEAR==tv[iT]].copy()        
-    shapes=((geom,value) for geom, value in zip(df0.geometry,df0.ID_BSR))    
+
+    df0=df[df.FIRE_YEAR==tv[iT]].copy()
+    shapes=((geom,value) for geom, value in zip(df0.geometry,df0.ID_BSR))
 
     z0=np.zeros(zTSA['Data'].shape,dtype=float)
     burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zTSA.Transform)
@@ -533,27 +578,27 @@ for iBR in range(len(BR)):
     #zy8=np.zeros(rst.shape,dtype=float)
     for i in range(tv.size):
         print(tv[i])
-    
+
         # Isolate BR of interest in ith year
         df0=df[(df.BURN_SEVERITY_RATING==BR[iBR]) & (df.FIRE_YEAR==tv[i])].copy()
-        df0=df0.reset_index(drop=True)    
+        df0=df0.reset_index(drop=True)
         if len(df0)==0:
             continue
-    
+
         # Get index to entries with geometry
         ind=[]
         for j in range(len(df0)):
             if df0.loc[j,'geometry']!=None:
-                ind.append(j)    
+                ind.append(j)
         if len(ind)==0:
             continue
-        df0=df0.loc[ind]        
-    
+        df0=df0.loc[ind]
+
         # Year
         shapes=((geom,value) for geom, value in zip(df0.geometry,df0.FIRE_YEAR))
         z0=np.zeros(rst.shape,dtype=float)
         burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=out.transform)
-    
+
         ind=np.where((zy1[:]==0) & (burned[:]!=0))
         zy1[ind]=tv[i]
         ind=np.where((zy1[:]!=0) & (zy1[:]!=tv[i]) & (zy2[:]==0) & (burned[:]!=0))
@@ -580,7 +625,7 @@ for iBR in range(len(BR)):
 #------------------------------------------------------------------------------
 # Severity
 #------------------------------------------------------------------------------
-    
+
 out=rasterio.open(pthout + '\\test.tif', 'w', **meta)
 
 zs1=np.zeros(rst.shape,dtype=float)
@@ -593,27 +638,27 @@ zs7=np.zeros(rst.shape,dtype=float)
 zs8=np.zeros(rst.shape,dtype=float)
 for i in range(tv.size):
     print(tv[i])
-    
+
     # Isolate pest of interest in ith year
     df0=df[(df[fnam]==fcd) & (df.CAPTURE_YEAR==tv[i])].copy()
-    df0=df0.reset_index(drop=True)    
+    df0=df0.reset_index(drop=True)
     if len(df0)==0:
         continue
-    
+
     # Get index to entries with geometry
     ind=[]
     for j in range(len(df0)):
         if df0.loc[j,'geometry']!=None:
-            ind.append(j)    
+            ind.append(j)
     if len(ind)==0:
         continue
     df0=df0.loc[ind]
-       
+
     # Severity
-    shapes=((geom,value) for geom, value in zip(df0.geometry,df0.PSC))      
+    shapes=((geom,value) for geom, value in zip(df0.geometry,df0.PSC))
     z0=np.zeros(rst.shape,dtype=float)
     burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=out.transform)
-    
+
     ind=np.where((zs1[:]==0) & (burned[:]!=0))
     zs1[ind]=burned[ind]
     ind=np.where((zs1[:]!=0) & (zs1[:]!=tv[i]) & (zs2[:]==0) & (burned[:]!=0))
@@ -683,21 +728,21 @@ with fiona.open(pthin,layer=lnam) as source:
         df1.geometry=df0.geometry
         df1['BCLCS_LEVEL_2']=df0['BCLCS_LEVEL_2']
         df=pd.concat([df,df1])
-        
+
         iCode=int(np.where(Code==df.BCLCS_LEVEL_2.values)[0])
         df.BCLCS_LEVEL_2=ID[iCode]
-        shapes=((geom,value) for geom, value in zip(df.geometry,df.BCLCS_LEVEL_2))        
+        shapes=((geom,value) for geom, value in zip(df.geometry,df.BCLCS_LEVEL_2))
         burned=features.rasterize(shapes=shapes,fill=0,out=z,transform=out.transform)
         ind=np.where((burned[:]!=0))
         z[ind]=ID[iCode]
         break
-        
-        coords0=feat['geometry']['coordinates']        
-        for i in range(len(coords0)):            
+
+        coords0=feat['geometry']['coordinates']
+        for i in range(len(coords0)):
             coords1=coords0[i]
             for j in range(len(coords1)):
                 coords2=coords1[j]
-                
+
                 poly=np.asarray(coords2)
 
 # Output path
@@ -710,12 +755,12 @@ out=rasterio.open(pthout + '\\test.tif', 'w', **meta)
 flg=1
 
 z1=np.zeros(rst.shape,dtype=float)
-        
+
 shapes=((geom,value) for geom, value in zip(df.geometry,df.FIRE_YEAR))
-    
+
 z0=np.zeros(rst.shape,dtype=float)
 burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=out.transform)
-    
+
 #ind=np.where((z1[:]==0) & (burned[:]!=0))
 #z1[ind]=tv[i]
 
@@ -740,7 +785,7 @@ z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmin_ann
 z=gis.ClipRaster(z,[zS['xmin'],zS['xmax']],[zS['ymin'],zS['ymax']])
 gis.SaveGeoTiff(z,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmin_ann_norm_1971to2000_si_hist_v1.tif')
 del z; garc.collect()
-    
+
 # Monthly
 for mo in range(12,13):
     z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_dwf_ann_norm_1971to2000_si_hist_v1_c.tif')

@@ -1,6 +1,6 @@
 '''
 
-FOREST CARBON BALANCE BY SPARSE GRID SAMPLING
+INVENTORY FOR SPARSE REGULAR GRID SAMPLE
 
 '''
 
@@ -11,9 +11,9 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import fiona
+import gc as garc
 import matplotlib.pyplot as plt
 import numpy.matlib as ml
-import matplotlib.pyplot as plt
 import time
 from shapely.geometry import Polygon,Point
 from fcgadgets.macgyver import utilities_general as gu
@@ -21,21 +21,22 @@ from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_inventory as invu
 from fcgadgets.cbrunner import cbrun_utilities
 
+#%% Project name
+
+#name='SummaryBC5k'
+#name='SummaryBC20k_H'
+#name='SummaryBC20k_HAR'
+#name='SummaryBC20k_NA'
+#name='LICS Hanceville'
+#name='SummaryQuesnel'
+#name='SummaryBC_NOSE'
+name='SummaryBC_OHS'
+
 #%% Define paths
 
 meta={}
 meta['Paths']={}
-
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryWaste'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBCTS_5k'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC5k'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryQuesnel'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k'
-meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k_H'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k_HAR'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SummaryBC20k_NA'
-#meta['Paths']['Project']=r'D:\Data\FCI_Projects\SparseGrid_HighRes'
-
+meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + name 
 meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
@@ -47,28 +48,27 @@ meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 # Save
 gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Metadata.pkl',meta)
 
-#%% Define geospatial variables
+#%% Import maps
 
 # Import raster grids
 zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
 lut_tsa=pd.read_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx')
 tsa_boundaries=gpd.read_file(r'C:\Users\rhember\Documents\Data\TSA\tsa_boundaries.shp')
 zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
+bc_grid_size=zTSA['Data'].size
 
-# Explore size
-#ind=np.where(zLC2['Data'].flatten()==4)[0]
-#ind.size
-#58257054
+#%% Define geospatial variables
 
 # Initialize geospatial info structure
 geos={}
 
 # Define regular grid sampling frequency
 
+#geos['rgsf']=1 # 100 m
 #geos['rgsf']=5 # 500 m
 #geos['rgsf']=10 # 1 km
-#geos['rgsf']=20 # 2 km High res
-#geos['rgsf']=40 # 4 km High res
+#geos['rgsf']=20 # 2 km
+#geos['rgsf']=40 # 4 km
 #geos['rgsf']=50 # 5 km
 #geos['rgsf']=100 # 10 km
 geos['rgsf']=200 # 20 km
@@ -83,35 +83,89 @@ geos['Y']=zTSA['Y'][0::geos['rgsf'],0::geos['rgsf']]
 geos['m'],geos['n']=geos['X'].shape
 geos['Mask']=np.zeros((geos['m'],geos['n']),dtype=np.int8)
 
-# Define additional inclusion criteria
+# Area expansion factor
+geos['AEF']=bc_grid_size/(geos['m']*geos['n'])
 
-flg='Treed'
-#flg='Waste'
-#flg='BCTS'
+# Define additional sampling criteria
 
-if flg=='Treed':
+if (name=='SummaryBC5k') | (name=='SummaryBC_OHS'):
     
     # Treed, global
     geos['iMask']=np.where( (zLC2['Data']==4) )
     
-elif flg=='Quesnel':
+elif (name=='SummbaryBC_Quesnel'):
     
     # Treed, Williams Lake TSA only
     iTSA=lut_tsa.loc[lut_tsa.Name=='Quesnel TSA','VALUE'].values
     geos['iMask']=np.where( (zLC2['Data']==4) & (zTSA['Data']==iTSA) )
 
-elif flg=='BCTS':
+elif (name=='BCTS'):
     
     zBCTS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\bcts_op_area.tif')
     zBCTS['Data']=zBCTS['Data'][0::geos['rgsf'],0::geos['rgsf']]
     geos['iMask']=np.where( (zLC2['Data']==4) & (zBCTS['Data']>0) )
 
-elif flg=='Waste':
+elif (name=='LICS Hanceville'):
+    
+    lics=gu.ipickle(r'D:\Data\FCI_Projects\LICS Site List\LICS Sites.pkl')
+    id=5
+    width=30000
+    zMask=np.zeros(geos['Mask'].shape,dtype=int)
+    ind=np.where( (np.abs(geos['X']-lics[id]['X'])<=width/2) & (np.abs(geos['Y']-lics[id]['Y'])<=width/2) )
+    zMask[ind]=1
+    #geos['iMask']=np.where( (zLC2['Data']==4) & (zMask==1) )
+    geos['iMask']=np.where( (zMask==1) )
+    
+elif (name=='Waste'):
     
     zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\Waste Wood\openings.tif')
     zW['Data']=zW['Data'][0::geos['rgsf'],0::geos['rgsf']]
     geos['iMask']=np.where( (zW['Data']>0) )
+  
+elif (name=='20k_SS'):
     
+    zBGC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz.tif')
+    zBGC['Data']=zBGC['Data'][0::geos['rgsf'],0::geos['rgsf']]
+    zMask=np.zeros(zBGC['Data'].shape)
+    u=np.unique(zBGC['Data'])
+    u=u[u!=255]
+    th=16
+    for iU in range(u.size):
+        ind=np.where(zBGC['Data']==u[iU])
+        rny=np.argsort(np.random.random(ind[0].size))
+        rnx=np.argsort(np.random.random(ind[1].size))
+        ind_y=ind[0][rny[0:th]].astype(int)
+        ind_x=ind[1][rnx[0:th]].astype(int)
+        zMask[ind_y,ind_x]=1
+    
+    geos['iMask']=np.where( (zLC2['Data']==4) & (zMask==1) )
+
+elif (name=='SummaryBC_NOSE'):
+    
+    x=geos['X'].flatten()
+    y=geos['Y'].flatten()
+    points=[]
+    for k in range(x.size):
+        points.append(Point(x[k],y[k]))
+    gdf_xy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':1})
+    gdf_xy.crs=tsa_boundaries.crs 
+    
+    # Import polygons of non-obligatoin stand establishment (from query script)
+    gdf_nose=gpd.read_file(r'D:\Data\FCI_Projects\SummaryBC_NOSE\Geospatial\NOSE_query.geojson')
+
+    # Get points within polygons
+    gdf_sxy=gpd.sjoin(gdf_xy,gdf_nose,op='within')
+    
+    geos['Sparse']={}
+    geos['Sparse']['X']=gdf_sxy['geometry'].x.values
+    geos['Sparse']['Y']=gdf_sxy['geometry'].y.values
+
+    for i in range(geos['Sparse']['X'].size):
+        ind=np.where( (geos['X']==geos['Sparse']['X'][i]) & (geos['Y']==geos['Sparse']['Y'][i]) )
+        geos['Mask'][ind]=1
+        
+    geos['iMask']=np.where( (geos['Mask']==1) )
+
 # Revise mask
 geos['Mask'][geos['iMask']]=1
 
@@ -122,6 +176,8 @@ geos['Sparse']['Y']=geos['Y'][geos['iMask']]
 geos['Sparse']['ID_TSA']=zTSA['Data'][geos['iMask']]
 
 # Save to pickle file
+geos['X']=geos['X'][0,:]
+geos['Y']=geos['Y'][:,0]
 gu.opickle(meta['Paths']['Geospatial'] + '\\geos.pkl',geos)
 
 # Save mask as geotiff
@@ -143,23 +199,21 @@ if flg==1:
 # Load basemap
 gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
 
+#gdf_sxy=gpd.read_file(meta['Paths']['Geospatial'] + '\\geos.geojson')
+
 plt.close('all')
-fig,ax=plt.subplots(figsize=gu.cm2inch(7.8,6.6))
+fig,ax=plt.subplots(figsize=gu.cm2inch(7.8,6.6)); ms=3
 #mngr=plt.get_current_fig_manager() 
 #mngr.window.setGeometry(700,20,620,600)
 gdf_bm.plot(ax=ax,facecolor=[0.8,0.8,0.8],edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
 tsa_boundaries.plot(ax=ax,facecolor='none',edgecolor=[0,0,0],linewidth=0.25)
-gdf_sxy.plot(ax=ax,markersize=1,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1)
+gdf_sxy.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1)
 ax.grid(color='k',linestyle='-',linewidth=0.25)
-
-#iP=2000
-#for iD in range(len(nddat[iP])):
-#    x,y=nddat[iP][iD]['Geometry'].exterior.xy
-#    plt.plot(x,y,'r-')
-
 ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
 #plt.savefig(PathProject + '\\SparseGrid_Map.png',format='png',dpi=900)
 plt.close('all')
+
+garc.collect()
 
 #%% Open crosswalk between missing AT geometries and opening geometries
 # If this doesn't work, you need to run the script that creates the crosswalk
