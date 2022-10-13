@@ -14,6 +14,7 @@ import pandas as pd
 import copy
 import fiona
 import time
+import garbage as garc
 from shapely.geometry import Polygon,Point,LineString,box
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
@@ -88,7 +89,7 @@ elif flg_roi=='ByLatLon':
         meta_bc1ha['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\Reforestation Hanceville ROI'
 
     # Elephant Hill fire
-    flg=0
+    flg=1
     if flg==1:
         roi['Centre']=[-121.15,51.15]
         roi['Radius']=45*1000 # metres
@@ -107,7 +108,7 @@ elif flg_roi=='ByLatLon':
         roi['Radius']=100*1000 # metres
 
     # IWB
-    flg=1
+    flg=0
     if flg==1:
         roi['Centre']=[-117.5,50.8]
         roi['Radius']=100*1000 # metres
@@ -127,17 +128,18 @@ print((t1-t0)/60)
 
 #%% Import rasters over ROI
 
-#vList=['lc2','btm','elev','bgcz','cut_yr','bsr','wf','age1','sphlive','sphdead']
+vList=['lc2','btm','elev','becz']
 #vList=['temp_norm','ws_norm','lc2','btm','elev','bgcz','cut_yr']
 #vList=['lc2','btm','elev','becz','age1','cut_yr']
-vList=['lc2','btm','elev','soc','age1','si','temp_norm','ws_norm','cut_yr']
+#vList=['lc2','btm','elev','soc','age1','si','temp_norm','ws_norm','cut_yr']
+#vList=['lc2','btm','elev','bgcz','cut_yr','bsr','wf','age1','sphlive','sphdead']
 #vList=['cut_yr']
 #vList=['si']
 roi=bc1hau.Import_Raster_Over_ROI(meta_bc1ha,roi,vList)
 
 #%% Import required vector geodatabases
 
-vList=['op','ogsr']
+vList=['op','cc','fcres','ogsr']
 roi=bc1hau.Import_GDB_Over_ROI(meta_bc1ha,roi,vList)
 
 #%% Plot ROI mask
@@ -145,14 +147,15 @@ roi=bc1hau.Import_GDB_Over_ROI(meta_bc1ha,roi,vList)
 def Plot_ROI_Mask():
     plt.close('all')
     fig,ax=bc1hau.Plot_ROI_Mask(meta_bc1ha,roi,gdf)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=1.25,label='Road',alpha=1)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1)
-    roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=45)
+    #roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=1.25,label='Road',alpha=1)
+    #roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1)
+    #roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=45)
     #wf['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0,0],linewidth=1,label='Opening',alpha=1)
     roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=2,label='Opening',alpha=1)
-    #fcres['gdf'].plot(ax=ax[0],facecolor=[0.75,0.9,0.75],edgecolor=[0,1,0],linewidth=1,label='Reserves',alpha=1,linestyle='--')
+    roi['gdf']['cc']['gdf'].plot(ax=ax[0],facecolor=[1,1,0.5],edgecolor=[1,1,0],linewidth=1,label='Cut',alpha=0.25,linestyle='--')
+    roi['gdf']['fcres']['gdf'].plot(ax=ax[0],facecolor=[0.75,0.9,0.75],edgecolor=[0,1,0],linewidth=1,label='Reserves',alpha=1,linestyle='--')
     #atu['gdf'].plot(ax=ax[0],facecolor=[0,1,1],edgecolor=[0,0,1],linewidth=1,label='Planting',alpha=0.25)
-    #cc['gdf'].plot(ax=ax[0],facecolor=[1,0,0],edgecolor=[1,0,0],linewidth=1,label='Cut',alpha=0.25,linestyle='--')
+
     #gu.PrintFig(meta_bc1ha['Paths']['Figures'] + '\\Planted areas','png',900)
 
 #%% Plot elevation

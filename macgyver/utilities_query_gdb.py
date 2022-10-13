@@ -212,7 +212,6 @@ def Query_VRI(meta,roi):
 #%% Query cutblocks
 
 def Query_ConsolidatedCutblocks(meta,roi):
-
     List=[]
     with fiona.open(meta['Path'],layer=meta['Layer']) as source:
         for feat in source:
@@ -221,10 +220,8 @@ def Query_ConsolidatedCutblocks(meta,roi):
             if (feat['properties']['HARVEST_YEAR']>=meta['Year Start']) & (feat['properties']['HARVEST_YEAR']<=meta['Year End']):
                 List.append(feat)
     gdf=gpd.GeoDataFrame.from_features(List,crs=meta['crs'])
-
     if type(roi)==dict:
         gdf=bc1hau.ClipGDF_ByROI(gdf,roi)
-
     return gdf
 
 #%% QA
@@ -236,88 +233,6 @@ def Check():
             if feat['properties']['FIA_PROJECT_ID']=='FCI0000427':
                 print('found')
                 break
-
-
-#%% Annual harvest area from RESULTS
-
-def GetAnnualHarvestAreaFromRESULTS():
-
-    tv=np.arange(1950,2022,1)
-
-    d={}
-    d['Year']=tv
-    d['Area Harvested']=np.zeros(tv.size)
-
-    with fiona.open(path,layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
-        for feat in source:
-
-            #if feat['geometry']==None:
-            #    continue
-            if feat['properties']['ATU_COMPLETION_DATE']==None:
-                continue
-            if feat['properties']['ACTUAL_TREATMENT_AREA']==None:
-                continue
-
-            if (feat['properties']['DISTURBANCE_CODE']=='L') | (feat['properties']['DISTURBANCE_CODE']=='S') | (feat['properties']['DISTURBANCE_CODE']=='R'):
-                #break
-
-                Year=int(feat['properties']['ATU_COMPLETION_DATE'][0:4])
-
-                iT=np.where(tv==Year)[0]
-                if iT.size==0:
-                    continue
-                d['Area Harvested'][iT]=d['Area Harvested'][iT]+feat['properties']['ACTUAL_TREATMENT_AREA']
-
-    # Save
-    gu.opickle(r'C:\Users\rhember\Documents\Data\Harvest\Harvest Area\AnnualHarvestAreaFromRESULTS.pkl',d)
-
-    # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(9,6));
-    plt.plot(tv,d['Area Harvested']/1e3,'-bo')
-    ax.set(position=[0.085,0.125,0.88,0.84],xlim=[1949.5,2021.5],xticks=np.arange(1800,2120,5), \
-           yticks=np.arange(0,275,25),ylabel='Area harvested (Thousand ha yr$^-$$^1$)',xlabel='Time, years')
-    #ax.legend(loc='upper left',facecolor=[1,1,1],frameon=False)
-    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=1.5)
-    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Harvest Area\AnnualAreaHarvested_FromRESULTS','png',900)
-
-    return d
-
-#%% Annual harvest area from consolidated cutblock DB
-
-def GetAnnualHarvestAreaFromConCutblocksDB():
-
-    fin=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb'
-
-    tv=np.arange(1950,2022,1)
-
-    d={}
-    d['Year']=tv
-    d['Area Harvested']=np.zeros(tv.size)
-
-    with fiona.open(fin,layer='VEG_CONSOLIDATED_CUT_BLOCKS_SP') as source:
-        for feat in source:
-
-            if feat['geometry']==None:
-                continue
-            #break
-            iT=np.where(tv==feat['properties']['HARVEST_YEAR'])[0]
-            if iT.size==0:
-                continue
-            d['Area Harvested'][iT]=d['Area Harvested'][iT]+feat['properties']['AREA_HA']
-
-    # Save
-    gu.opickle(r'C:\Users\rhember\Documents\Data\Harvest\Harvest Area\AnnualHarvestAreaFromConCutblocksDB.pkl',d)
-
-    # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(9,6));
-    plt.plot(tv,d['Area Harvested']/1e3,'-bo')
-    ax.set(position=[0.085,0.125,0.88,0.84],xlim=[1949.5,2021.5],xticks=np.arange(1800,2120,5), \
-           yticks=np.arange(0,275,25),ylabel='Area harvested (Thousand ha yr$^-$$^1$)',xlabel='Time, years')
-    #ax.legend(loc='upper left',facecolor=[1,1,1],frameon=False)
-    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=1.5)
-    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Harvest Area\AnnualAreaHarvested_FromConsolidatedCutblocks','png',900)
-
-    return d
 
 #%% Query pest DB
 

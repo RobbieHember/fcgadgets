@@ -1,4 +1,6 @@
 
+#%% Import modules
+
 import os
 from osgeo import gdal
 import numpy as np
@@ -13,9 +15,7 @@ from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.transform import from_origin
 from fcgadgets.macgyver import utilities_general as gu
 
-'''============================================================================
-IMPORT SPATIAL REFERENCE SYSTEMS
-============================================================================'''
+#%% IMPORT SPATIAL REFERENCE SYSTEMS
 
 def ImportSRSs():
 
@@ -37,28 +37,20 @@ def ImportSRSs():
     srs['Proj']['BC1ha']=pyproj.Proj(srs['String']['BC1ha'])
     return srs
 
-'''============================================================================
-BUNCH VARIABLES FROM DICTIONARY
-============================================================================'''
+#%% BUNCH VARIABLES FROM DICTIONARY
 
 class Bunch(dict):
     def __init__(self, *args, **kwds):
         super(Bunch, self).__init__(*args, **kwds)
         self.__dict__ = self
 
-'''============================================================================
-OPEN RASTER USING GDAL
-Forerly "OpenGdal"
-============================================================================'''
+#%% Open Geotiff
 
 def OpenGeoTiff(pthin):
 
     ds=gdal.Open(pthin)
     gt=ds.GetGeoTransform()
 
-    # Gdal does not recognize negative values so using rasterio to get the actual
-    # grid data
-    #data=ds.ReadAsArray()
     raster=rasterio.open(pthin)
     data=raster.read()
 
@@ -71,7 +63,6 @@ def OpenGeoTiff(pthin):
     Projection=ds.GetProjection()
     prj=osr.SpatialReference(wkt=ds.GetProjection())
     proj4_str=prj.GetAttrValue('AUTHORITY',1)
-
 
     xmin=gt[0]
     ymax=gt[3]
@@ -124,23 +115,25 @@ def OpenGeoTiff(pthin):
 
     return z
 
-'''============================================================================
-SAVE TO GEOTIFF
-============================================================================'''
+#%% Save geotiff
 
 def SaveGeoTiff(z,fout):
 
     driver=gdal.GetDriverByName("GTiff")
 
     # Data type
-    if z['Data'].dtype=='int8':
-        dtype=gdal.GDT_Int8
+    if (z['Data'].dtype=='int8') | (z['Data'].dtype=='uint8'):
+        dtype=gdal.GDT_Int16
     elif z['Data'].dtype=='int16':
+        dtype=gdal.GDT_Int16
+    elif z['Data'].dtype=='uint16':
         dtype=gdal.GDT_Int16
     elif z['Data'].dtype=='int32':
         dtype=gdal.GDT_Int32
     elif z['Data'].dtype=='float32':
         dtype=gdal.GDT_Float32
+    else:
+        print('Did not work, input dtype is:' + z['Data'].dtype)
 
     N_band=1
     ds=driver.Create(fout,z['n'],z['m'],N_band,dtype,[ 'COMPRESS=LZW' ])
@@ -150,32 +143,15 @@ def SaveGeoTiff(z,fout):
 
     return
 
-'''============================================================================
-CLIP RASTER
-The raster input structure must be from the OpenGdal function from this module.
-============================================================================'''
+#%% CLIP RASTER
+#The raster input structure must be from the OpenGdal function from this module.
 
 def ClipRasterByXYLimits(z_in,xlim,ylim):
-
-    #xlim=z['xlim']
-    #ylim=z['ylim']
 
     z=z_in.copy()
 
     ix=np.where((z['X'][0,:]>=xlim[0]) & (z['X'][0,:]<=xlim[1]))[0]
     iy=np.where((z['Y'][:,0]>=ylim[0]) & (z['Y'][:,0]<=ylim[1]))[0]
-
-#    dx=ix.size-z['Data'].shape[1]
-#    if dx==1:
-#        ix=np.where((z['X'][0,:]>=xlim[0]) & (z['X'][0,:]<xlim[1]))[0]
-#    elif dx==-1:
-#        ix=np.where((z['X'][0,:]>=xlim[0]) & (z['X'][0,:]<=xlim[1]))[0]
-#
-#    dy=iy.size-z['Data'].shape[0]
-#    if dy==1:
-#        iy=np.where((z['Y'][:,0]>=ylim[0]) & (z['Y'][:,0]<ylim[1]))[0]
-#    elif dy==-1:
-#        iy=np.where((z['Y'][:,0]>=ylim[0]) & (z['Y'][:,0]<=ylim[1]+z['cellsize']))[0]
 
     ind=np.ix_(iy,ix)
     z['Data']=z['Data'][ind]
@@ -195,7 +171,7 @@ def ClipRasterByXYLimits(z_in,xlim,ylim):
 
     return z
 
-#%%
+#%% Clip raster based on extent of other raster
 
 def ClipToRaster(z_in0,z_ref0):
 
@@ -242,9 +218,22 @@ def ClipToRaster(z_in0,z_ref0):
 
     return z
 
-'''============================================================================
-REPROJECT RASTER
-============================================================================'''
+#%% Clip raster based on extent of other raster (from files)
+
+def ClipToRaster_ByFile(fin,fout,fref):
+
+    z_in=OpenGeoTiff(fin)
+    z_ref=OpenGeoTiff(fref)
+    z_out=ClipToRaster(z_in,z_ref)
+
+    # Force output to be the same datatype as input
+    z_out['Data']=z_out['Data'].astype(z_in['Data'].dtype)
+
+    SaveGeoTiff(z_out,fout)
+
+    return
+
+#%% Reproject and clip raster
 
 def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
 
@@ -280,7 +269,7 @@ def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
 
     return z
 
-#%%
+#%% Reproject geotiff
 
 def ReprojectGeoTiff(pthin,pthout,crs_dst):
 
@@ -306,17 +295,12 @@ def ReprojectGeoTiff(pthin,pthout,crs_dst):
 
     return
 
-'''============================================================================
-POLYGON AREA
-============================================================================'''
+#%% POLYGON AREA
 
 def PolyArea(x,y):
     return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
-
-'''============================================================================
-INPOLYGON
-============================================================================'''
+#%% INPOLYGON
 
 def InPolygon(xg,yg,xv,yv):
 
@@ -343,10 +327,7 @@ def InPolygon(xg,yg,xv,yv):
 
     return InPol
 
-
-'''============================================================================
-EXTENT FROM GDAL
-============================================================================'''
+#%% Get extent from gdal
 
 def GetExtentFromGDAL(gt,cols,rows):
     ''' Return list of corner coordinates from a geotransform
@@ -372,9 +353,7 @@ def GetExtentFromGDAL(gt,cols,rows):
         yarr.reverse()
     return ext
 
-'''============================================================================
-COMPRESS CATEGORIES IN RASTER DATASET
-============================================================================'''
+#%% COMPRESS CATEGORIES IN RASTER DATASET
 
 def CompressCats(z0,id0,lab0,cl0):
     uc=np.unique(z0)
@@ -394,9 +373,7 @@ def CompressCats(z0,id0,lab0,cl0):
     lab1=np.array(lab1)
     return z1,lab1,cl1
 
-'''============================================================================
-DIGITIZE (GET POLYGONS FROM BINARY MASK)
-============================================================================'''
+#%% DIGITIZE (GET POLYGONS FROM BINARY MASK)
 
 def Digitize(BinaryMask,xv,yv):
 
@@ -423,84 +400,28 @@ def Digitize(BinaryMask,xv,yv):
             break
     return xy
 
-'''============================================================================
-REVISE RASTER EXTENT
-============================================================================'''
+#%% Revise raster extent
+# Such a pain to figure out how to compress output, use ClipToRaster_ByFile instead
 
-def ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout):
+# def ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout):
 
-    # specify input and output filenames
-    #fin_ToAdjust=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year4.tif'
-    #fout=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year4a.tif'
-    #fin_Ref = r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif'
+#     # open reference file and get resolution
+#     ds=gdal.Open(fin_Ref,0)
+#     gt=ds.GetGeoTransform()
+#     data=ds.ReadAsArray()
+#     rows,cols=data.shape
+#     x_res=gt[1]
+#     y_res=-gt[5]  # make sure this value is positive
+#     extent=GetExtentFromGDAL(gt,cols,rows)
 
-    # open reference file and get resolution
-    ds=gdal.Open(fin_Ref,0)
-    gt=ds.GetGeoTransform()
-    data=ds.ReadAsArray()
-    rows,cols=data.shape
-    x_res=gt[1]
-    y_res=-gt[5]  # make sure this value is positive
-    extent=GetExtentFromGDAL(gt,cols,rows)
+#     # call gdal Warp
+#     kwargs={"format":"GTiff","xRes":x_res,"yRes":y_res,"outputBounds":extent,"outputType":gdal.GDT_Int16}
 
-    # call gdal Warp
-    kwargs={"format":"GTiff",
-            "xRes":x_res,
-            "yRes":y_res}
-    #"outputBounds":extent
+#     ds=gdal.Warp(fout,fin_ToAdjust,**kwargs)
 
-    ds=gdal.Warp(fout,fin_ToAdjust,
-        creationOptions=["COMPRESS=LZW"],
-        options=gdal.WarpOptions(options=['outputBounds'],outputBounds=extent)
-        **kwargs)
+#     #ds=gdal.Warp(fout,fin_ToAdjust,creationOptions=["COMPRESS=LZW"],options=gdal.WarpOptions(options=['outputBounds'],outputBounds=extent),**kwargs)
 
-    return
-
-#def ReviseRasterExtent_old(fin1,fin2,fout1):
-#
-#    # Notes:
-#    # 1) No data value specifically refers to values less than zero, set to -99
-#    # 2) Set up to compress output
-#
-#    # Raster 1 (with extent that will be revised)
-#    ds1=gdal.Open(fin1)
-#    data1=ds1.ReadAsArray()
-#    m1=ds1.RasterYSize
-#    n1=ds1.RasterXSize
-#
-#    # Raster 2 (with target extent)
-#    ds2=gdal.Open(fin2)
-#    gt2=ds2.GetGeoTransform()
-#    proj2=ds2.GetProjection()
-#    data2=ds2.ReadAsArray()
-#    m2=ds2.RasterYSize
-#    n2=ds2.RasterXSize
-#    pw=[gt2[0],gt2[3],gt2[0]+gt2[1]*n2,gt2[3]-gt2[1]*m2] # Target extent (ulx uly lrx lry)
-#
-#    # Adjusted raster 1 (with same extent as raster 2)
-#    ds1_adj=gdal.Open(fin1)
-#    ds1_adj=gdal.Translate('',ds1_adj,projWin=pw,format="MEM")
-#    ds1_adj.SetGeoTransform(ds2.GetGeoTransform())
-#    ds1_adj.SetProjection(proj2)
-#    data1_adj=ds1_adj.ReadAsArray()
-#    m1_adj=ds1_adj.RasterYSize
-#    n1_adj=ds1_adj.RasterXSize
-#
-#    # Adjust the no data value
-#    nodatval=-99
-#    data1_adj=np.where((data1_adj<0),nodatval,data1_adj)
-#
-#    if fout1!='NoSave':
-#        driver=gdal.GetDriverByName('GTiff')
-#        outdata=driver.Create(fout1,n2,m2,1,gdal.GDT_UInt16,options=['COMPRESS=LZW'])
-#        outdata.SetGeoTransform(ds1_adj.GetGeoTransform()) # sets same geotransform as input
-#        outdata.SetProjection(ds1_adj.GetProjection()) # sets same projection as input
-#        outdata.GetRasterBand(1).WriteArray(data1_adj)
-#        outdata.GetRasterBand(1).SetNoDataValue(nodatval) # if you want these values transparent
-#        outdata.FlushCache() # saves to disk
-#        outdata=None
-#
-#    return
+#     return
 
 #%% Clip geodataframe to user-specified x and y limits
 
@@ -514,6 +435,24 @@ def ClipGDF(gdf_in,xlim,ylim):
     #gdf=gdf.groupby('index_right')
 
     return gdf
+
+#%% Adjust grid cellsize based on regular subsampling
+
+def UpdateGridCellsize(z,scale_factor):
+    z['Data']=z['Data'][0::scale_factor,0::scale_factor]
+    z['X']=z['X'][0::scale_factor,0::scale_factor]
+    z['Y']=z['Y'][0::scale_factor,0::scale_factor]
+    z['m'],z['n']=z['Data'].shape
+    z['Cellsize']=z['Cellsize']*scale_factor
+    gt=list(z['gt'])
+    gt[1]=gt[1]*scale_factor
+    gt[5]=gt[5]*scale_factor
+    z['gt']=tuple(gt)
+    t=list(z['Transform'])
+    t[1]=t[0]*scale_factor
+    t[5]=t[4]*scale_factor
+    z['Transform']=tuple(t)
+    return z
 
 #%% Import Cities
 

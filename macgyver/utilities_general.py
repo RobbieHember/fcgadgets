@@ -18,6 +18,7 @@ from scipy.io import loadmat
 from subprocess import call
 import netCDF4 as nc
 import statsmodels.api as sm
+import csv
 
 #%% Regression stats
 
@@ -47,6 +48,14 @@ def GetRegStats(x,y):
     rs['txt']=txt
 
     return rs,txt
+
+#%% Import CSV file and add to dictionary
+
+def ReadCSV(fin):
+    d=pd.read_csv(fin).to_dict('list')
+    for k in d.keys():
+        d[k]=np.array(d[k])
+    return d
 
 #%% PICKLE INPUT AND OUTPUT
 

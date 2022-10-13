@@ -59,6 +59,14 @@ zMask[ind]=1
 #plt.matshow(zMask)
 
 
+plt.close('all')
+fig,ax=plt.subplots(1,figsize=gu.cm2inch(14,14*zBTM['yxrat']))
+im=ax.matshow(zMask,extent=zBTM['Extent'])
+
+ch_aoi=gpd.read_file(r'D:\Data\FCI_Projects\CaribouRecovery\Geospatial\Received 2022-09-22\REVY_HERDS.geojson')
+ch_aoi.plot(ax=ax)
+
+
 #%% Plot soil organic carbon
 
 z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Soil\soc_tot_forest_Shawetal2018.tif')
