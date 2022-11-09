@@ -910,7 +910,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
 
 #%% STAND DEAD ORGANIC MATTER DYNAMICS
 
-def DOM_like_CBM08(iT,iBat,vi,vo,iEP,meta):
+def DOM_LikeKurzetal2009(iT,iBat,vi,vo,iEP,meta):
 
     # Extract parameters
     bIPF=meta['Param']['BEV']['Inter Pool Fluxes']
@@ -1359,16 +1359,11 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
         vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]+(1.0-meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom'])*PiledStemMerch
         vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]+b['BiomassNonMerch_Piled']*Affected_StemNonMerch
-        vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]+b['BiomassMerch_Piled']*Affected_Branch
-        vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]+b['BiomassMerch_Piled']*Affected_Bark
+        vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]+b['BiomassNonMerch_Piled']*Affected_Branch
+        vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]+b['BiomassNonMerch_Piled']*Affected_Bark
         vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]+(1.0-meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom'])*PiledSnagStem
         vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]+b['Snags_Piled']*Affected_SnagBranch
         vo['C_ToFirewoodDom'][iT,:]=vo['C_ToFirewoodDom'][iT,:]+meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom']*(PiledStemMerch+PiledSnagStem)
-
-        #----------------------------------------------------------------------
-        # Piled carbon that is burned
-        # Completeness of burn factor is factored into parameters
-        #----------------------------------------------------------------------
 
         # Affected carbon
         StemMerch=b['PiledStemMerch_Burned']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]
@@ -1394,9 +1389,9 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['C_E_OpenBurningAsCO'][iT,:]=vo['C_E_OpenBurningAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
 
         # If it is slashpile burning, track it accordingly
-        ind=np.where(ID_Type==meta['LUT']['Dist']['Slashpile Burn'])[0]
-        vo['C_ToSlashpileBurnTot'][iT,ind]=Total_Burned[ind]
-        vo['C_ToSlashpileBurnNonMerch'][iT,ind]=NonMerch_Burned[ind]
+        #ind=np.where(ID_Type==meta['LUT']['Dist']['Slashpile Burn'])[0]
+        vo['C_ToSlashpileBurnTot'][iT,:]=vo['C_ToSlashpileBurnTot'][iT,:]+Total_Burned
+        vo['C_ToSlashpileBurnNonMerch'][iT,:]=vo['C_ToSlashpileBurnNonMerch'][iT,:]+NonMerch_Burned
 
         #----------------------------------------------------------------------
         # Carbon that is moved from biomass to snags
@@ -1642,39 +1637,39 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Carbon transferred from forest to mills or direct to end-uses
     #--------------------------------------------------------------------------
 
-    C_PulpMill=bRF['RemovedMerchToPulpMill']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToPulpMill=bRF['RemovedMerchToPulpMill']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToPulpMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToPulpMill']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_PelletMill=bRF['RemovedMerchToPelletMill']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToPelletMill=bRF['RemovedMerchToPelletMill']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToPelletMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToPelletMill']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_SawMill=bRF['RemovedMerchToSawMill']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToSawMill=bRF['RemovedMerchToSawMill']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToSawMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToSawMill']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_PlywoodMill=bRF['RemovedMerchToPlywoodMill']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToPlywoodMill=bRF['RemovedMerchToPlywoodMill']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToPlywoodMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToPlywoodMill']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_OSBMill=bRF['RemovedMerchToOSBMill']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToOSBMill=bRF['RemovedMerchToOSBMill']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToOSBMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToOSBMill']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_MDFMill=bRF['RemovedMerchToMDFMill']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToMDFMill=bRF['RemovedMerchToMDFMill']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToMDFMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToMDFMill']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_LogExport=bRF['RemovedMerchToLogExport']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToLogExport=bRF['RemovedMerchToLogExport']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToLogExport']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToLogExport']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_PowerGrid=bRF['RemovedMerchToIPP']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToPowerGrid=bRF['RemovedMerchToIPP']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToIPP']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToIPP']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_FirewoodCollection=bRF['RemovedMerchToFirewood']*vo['C_ToMillMerch'][iT,:] + \
+    C_ToFirewoodCollection=bRF['RemovedMerchToFirewood']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToFirewood']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToFirewood']*vo['C_ToMillSnagStem'][iT,:]
 
@@ -1694,61 +1689,63 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Carbon transferred from mill to mill
     #--------------------------------------------------------------------------
 
-    C_PulpMill=C_PulpMill+C_SawMill*meta['Param']['BEV']['HWP']['SawMillToPulpMill']
+    C_ToPulpMill=C_ToPulpMill+C_ToSawMill*meta['Param']['BEV']['HWP']['SawMillToPulpMill']
 
-    C_MDFMill=C_MDFMill+C_SawMill*meta['Param']['BEV']['HWP']['SawMillToMDFMill']
+    C_ToMDFMill=C_ToMDFMill+C_ToSawMill*meta['Param']['BEV']['HWP']['SawMillToMDFMill']
 
-    C_PelletMill=C_PelletMill+C_SawMill*meta['Param']['BEV']['HWP']['SawMillToPelletMill']
-
-    #--------------------------------------------------------------------------
-    # Carbon transferred from sawmill logs to log exports
-    #--------------------------------------------------------------------------
-
-    C_LogExport=C_LogExport+bEU['SawMillToLogExport']*C_SawMill
+    C_ToPelletMill=C_ToPelletMill+C_ToSawMill*meta['Param']['BEV']['HWP']['SawMillToPelletMill']
 
     #--------------------------------------------------------------------------
-    # Carbon transferred from log exports to firewood
+    # Carbon transferred from sawmill logs to log Export
     #--------------------------------------------------------------------------
 
-    C_FirewoodFor=meta['Param']['BEV']['HWP']['LogExportToFirewood']*C_LogExport
+    C_ToLogExport=C_ToLogExport+bEU['SawMillToLogExport']*C_ToSawMill
+
+    #--------------------------------------------------------------------------
+    # Carbon transferred from log Export to firewood
+    #--------------------------------------------------------------------------
+
+    C_ToFirewoodExport=meta['Param']['BEV']['HWP']['LogExportToFirewood']*C_ToLogExport
 
     #--------------------------------------------------------------------------
     # Carbon transferred to paper
     #--------------------------------------------------------------------------
 
-    C_Paper=meta['Param']['BEV']['HWP']['PulpMillToPaper']*C_PulpMill
+    C_ToPaper=meta['Param']['BEV']['HWP']['PulpMillToPaper']*C_ToPulpMill
 
     #--------------------------------------------------------------------------
     # Carbon transferred to pulp effluent
     #--------------------------------------------------------------------------
 
-    C_PulpEffluent=meta['Param']['BEV']['HWP']['PulpMillToEffluent']*C_PulpMill
+    C_ToPulpEffluent=meta['Param']['BEV']['HWP']['PulpMillToEffluent']*C_ToPulpMill
 
     #--------------------------------------------------------------------------
     # Carbon transferred to pellets
     #--------------------------------------------------------------------------
 
-    C_Pellet=meta['Param']['BEV']['HWP']['PelletMillToPellets']*C_PelletMill
+    C_ToPelletExport=meta['Param']['BEV']['HWP']['PelletMillToPelletExport']*C_ToPelletMill
+    C_ToPelletDomGrid=meta['Param']['BEV']['HWP']['PelletMillToDomGrid']*C_ToPelletMill
+    C_ToPelletDomRNG=meta['Param']['BEV']['HWP']['PelletMillToDomRNG']*C_ToPelletMill
 
     #--------------------------------------------------------------------------
     # Carbon transferred to facility power
     #--------------------------------------------------------------------------
 
-    C_PowerFacilityDom=bEU['SawMillToPowerFacility']*C_SawMill + \
-        meta['Param']['BEV']['HWP']['PulpMillToPowerFacility']*C_PulpMill + \
-        bEU['PlywoodMillToPowerFacility']*C_PlywoodMill + \
-        bEU['OSBMillToPowerFacility']*C_OSBMill
+    C_ToPowerFacilityDom=bEU['SawMillToPowerFacility']*C_ToSawMill + \
+        meta['Param']['BEV']['HWP']['PulpMillToPowerFacility']*C_ToPulpMill + \
+        bEU['PlywoodMillToPowerFacility']*C_ToPlywoodMill + \
+        bEU['OSBMillToPowerFacility']*C_ToOSBMill
 
-    C_PowerFacilityFor=meta['Param']['BEV']['HWP']['LogExportToPowerFacility']*C_LogExport
+    C_ToPowerFacilityExport=meta['Param']['BEV']['HWP']['LogExportToPowerFacility']*C_ToLogExport
 
     #--------------------------------------------------------------------------
     # Carbon transferred to grid by independent power producers
     #--------------------------------------------------------------------------
 
-    C_PowerGrid=C_PowerGrid+bEU['SawMillToIPP']*C_SawMill + \
-        meta['Param']['BEV']['HWP']['PulpMillToIPP']*C_PulpMill + \
-        bEU['PlywoodMillToIPP']*C_PlywoodMill + \
-        bEU['OSBMillToIPP']*C_OSBMill
+    C_ToPowerGrid=C_ToPowerGrid+bEU['SawMillToIPP']*C_ToSawMill + \
+        meta['Param']['BEV']['HWP']['PulpMillToIPP']*C_ToPulpMill + \
+        bEU['PlywoodMillToIPP']*C_ToPlywoodMill + \
+        bEU['OSBMillToIPP']*C_ToOSBMill
 
     #--------------------------------------------------------------------------
     # Log-size effect
@@ -1784,82 +1781,82 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of single-family homes
     #--------------------------------------------------------------------------
 
-    C_SawMillToSFH=C_SawMill*bEU['SawMillToSFH']
-    C_PlywoodMillToSFH=C_PlywoodMill*bEU['PlywoodMillToSFH']
-    C_OSBMillToSFH=C_OSBMill*bEU['OSBMillToSFH']
-    C_MDFMillToSFH=C_MDFMill*bEU['MDFMillToSFH']
-    C_LogExportToSFH=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToSFH']
+    C_SawMillToSFH=C_ToSawMill*bEU['SawMillToSFH']
+    C_PlywoodMillToSFH=C_ToPlywoodMill*bEU['PlywoodMillToSFH']
+    C_OSBMillToSFH=C_ToOSBMill*bEU['OSBMillToSFH']
+    C_MDFMillToSFH=C_ToMDFMill*bEU['MDFMillToSFH']
+    C_LogExportToSFH=C_ToLogExport*meta['Param']['BEV']['HWP']['LogExportToSFH']
     #C_ShakeShingleToSFH=C_ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToSFH']
 
     #--------------------------------------------------------------------------
     # Production of multi-family homes
     #--------------------------------------------------------------------------
 
-    C_SawMillToMFH=C_SawMill*bEU['SawMillToMFH']
-    C_PlywoodMillToMFH=C_PlywoodMill*bEU['PlywoodMillToMFH']
-    C_OSBMillToMFH=C_OSBMill*bEU['OSBMillToMFH']
-    C_MDFMillToMFH=C_MDFMill*bEU['MDFMillToMFH']
-    C_LogExportToMFH=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToMFH']
+    C_SawMillToMFH=C_ToSawMill*bEU['SawMillToMFH']
+    C_PlywoodMillToMFH=C_ToPlywoodMill*bEU['PlywoodMillToMFH']
+    C_OSBMillToMFH=C_ToOSBMill*bEU['OSBMillToMFH']
+    C_MDFMillToMFH=C_ToMDFMill*bEU['MDFMillToMFH']
+    C_LogExportToMFH=C_ToLogExport*meta['Param']['BEV']['HWP']['LogExportToMFH']
     #C_ShakeShingleToMFH=C_ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToMFH']
 
     #--------------------------------------------------------------------------
     # Production of commercial buildings
     #--------------------------------------------------------------------------
 
-    C_SawMillToCom=C_SawMill*bEU['SawMillToCom']
-    C_PlywoodMillToCom=C_PlywoodMill*bEU['PlywoodMillToCom']
-    C_OSBMillToCom=C_OSBMill*bEU['OSBMillToCom']
-    C_MDFMillToCom=C_MDFMill*bEU['MDFMillToCom']
-    C_LogExportToCom=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToCom']
+    C_SawMillToCom=C_ToSawMill*bEU['SawMillToCom']
+    C_PlywoodMillToCom=C_ToPlywoodMill*bEU['PlywoodMillToCom']
+    C_OSBMillToCom=C_ToOSBMill*bEU['OSBMillToCom']
+    C_MDFMillToCom=C_ToMDFMill*bEU['MDFMillToCom']
+    C_LogExportToCom=C_ToLogExport*meta['Param']['BEV']['HWP']['LogExportToCom']
     #C_ShakeShingleToCom=C_ShakeShingleMill*meta['Param']['BEV']['HWP']['ShakeShingleMillToCom']
 
     #--------------------------------------------------------------------------
     # Production of furniture
     #--------------------------------------------------------------------------
 
-    C_SawMillToFurn=C_SawMill*bEU['SawMillToFurn']
-    C_PlywoodMillToFurn=C_PlywoodMill*bEU['PlywoodMillToFurn']
-    C_OSBMillToFurn=C_OSBMill*bEU['OSBMillToFurn']
-    C_MDFMillToFurn=C_MDFMill*bEU['MDFMillToFurn']
-    C_LogExportToFurn=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToFurn']
+    C_SawMillToFurn=C_ToSawMill*bEU['SawMillToFurn']
+    C_PlywoodMillToFurn=C_ToPlywoodMill*bEU['PlywoodMillToFurn']
+    C_OSBMillToFurn=C_ToOSBMill*bEU['OSBMillToFurn']
+    C_MDFMillToFurn=C_ToMDFMill*bEU['MDFMillToFurn']
+    C_LogExportToFurn=C_ToLogExport*meta['Param']['BEV']['HWP']['LogExportToFurn']
 
     #--------------------------------------------------------------------------
     # Production of shipping containers
     #--------------------------------------------------------------------------
 
-    C_SawMillToShip=C_SawMill*bEU['SawMillToShip']
-    C_PlywoodMillToShip=C_PlywoodMill*bEU['PlywoodMillToShip']
-    C_OSBMillToShip=C_OSBMill*bEU['OSBMillToShip']
-    C_MDFMillToShip=C_MDFMill*bEU['MDFMillToShip']
-    C_LogExportToShip=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToShip']
+    C_SawMillToShip=C_ToSawMill*bEU['SawMillToShip']
+    C_PlywoodMillToShip=C_ToPlywoodMill*bEU['PlywoodMillToShip']
+    C_OSBMillToShip=C_ToOSBMill*bEU['OSBMillToShip']
+    C_MDFMillToShip=C_ToMDFMill*bEU['MDFMillToShip']
+    C_LogExportToShip=C_ToLogExport*meta['Param']['BEV']['HWP']['LogExportToShip']
 
     #--------------------------------------------------------------------------
     # Production of repairs
     #--------------------------------------------------------------------------
 
-    C_SawMillToRepairs=C_SawMill*bEU['SawMillToRepairs']
-    C_PlywoodMillToRepairs=C_PlywoodMill*bEU['PlywoodMillToRepairs']
-    C_OSBMillToRepairs=C_OSBMill*bEU['OSBMillToRepairs']
-    C_MDFMillToRepairs=C_MDFMill*bEU['MDFMillToRepairs']
-    C_LogExportToRepairs=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToRepairs']
+    C_SawMillToRepairs=C_ToSawMill*bEU['SawMillToRepairs']
+    C_PlywoodMillToRepairs=C_ToPlywoodMill*bEU['PlywoodMillToRepairs']
+    C_OSBMillToRepairs=C_ToOSBMill*bEU['OSBMillToRepairs']
+    C_MDFMillToRepairs=C_ToMDFMill*bEU['MDFMillToRepairs']
+    C_LogExportToRepairs=C_ToLogExport*meta['Param']['BEV']['HWP']['LogExportToRepairs']
 
     #--------------------------------------------------------------------------
     # Production of other
     #--------------------------------------------------------------------------
 
-    C_SawMillToOther=C_SawMill*bEU['SawMillToOther']
-    C_PlywoodMillToOther=C_PlywoodMill*bEU['PlywoodMillToOther']
-    C_OSBMillToOther=C_OSBMill*bEU['OSBMillToOther']
-    C_MDFMillToOther=C_MDFMill*bEU['MDFMillToOther']
-    C_LogExportToOther=C_LogExport*meta['Param']['BEV']['HWP']['LogExportToOther']
+    C_SawMillToOther=C_ToSawMill*bEU['SawMillToOther']
+    C_PlywoodMillToOther=C_ToPlywoodMill*bEU['PlywoodMillToOther']
+    C_OSBMillToOther=C_ToOSBMill*bEU['OSBMillToOther']
+    C_MDFMillToOther=C_ToMDFMill*bEU['MDFMillToOther']
+    C_LogExportToOther=C_ToLogExport*meta['Param']['BEV']['HWP']['LogExportToOther']
     #C_PolePostMillToOther=PolePostMill*meta['Param']['BEV']['HWP']['PolePostMillToOther']
 
     #--------------------------------------------------------------------------
     # Track sales (for economic modelling)
     # *** Conservation of mass is not being retained in the below set of variables
-    # - log exports retain the full amount of log exports, but some of it was
+    # - log Export retain the full amount of log Export, but some of it was
     # also added to foreign power facility and foreign firewood.
-    # Economics only consider log exports, substitution effects only consider
+    # Economics only consider log Export, substitution effects only consider
     # foreign power facility ad foreign firewood. ***
     #--------------------------------------------------------------------------
 
@@ -1871,22 +1868,24 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
 
     vo['C_ToMDF'][iT,:]=C_MDFMillToSFH+C_MDFMillToMFH+C_MDFMillToCom+C_MDFMillToFurn+C_MDFMillToShip+C_MDFMillToRepairs+C_MDFMillToOther
 
-    vo['C_ToPaper'][iT,:]=C_Paper
+    vo['C_ToPaper'][iT,:]=C_ToPaper
 
-    vo['C_ToPowerFacilityDom'][iT,:]=C_PowerFacilityDom
+    vo['C_ToPowerFacilityDom'][iT,:]=C_ToPowerFacilityDom
 
-    vo['C_ToPowerFacilityFor'][iT,:]=C_PowerFacilityFor
+    vo['C_ToPowerFacilityExport'][iT,:]=C_ToPowerFacilityExport
 
-    vo['C_ToPowerGrid'][iT,:]=C_PowerGrid
+    vo['C_ToPowerGrid'][iT,:]=C_ToPowerGrid
 
-    vo['C_ToPellets'][iT,:]=C_Pellet
+    vo['C_ToPelletExport'][iT,:]=C_ToPelletExport
+    vo['C_ToPelletDomGrid'][iT,:]=C_ToPelletDomGrid
+    vo['C_ToPelletDomRNG'][iT,:]=C_ToPelletDomRNG
 
     # *** There is firewood taken directly from forest ecosystems (see events function) ***
-    vo['C_ToFirewoodDom'][iT,:]=vo['C_ToFirewoodDom'][iT,:]+C_FirewoodCollection
+    vo['C_ToFirewoodDom'][iT,:]=vo['C_ToFirewoodDom'][iT,:]+C_ToFirewoodCollection
 
-    vo['C_ToFirewoodFor'][iT,:]=C_FirewoodFor
+    vo['C_ToFirewoodExport'][iT,:]=C_ToFirewoodExport
 
-    vo['C_ToLogExport'][iT,:]=C_LogExport
+    vo['C_ToLogExport'][iT,:]=C_ToLogExport
 
     #--------------------------------------------------------------------------
     # Carbon transferred from mills to in-use products
@@ -1957,27 +1956,39 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
 
     # Transfer pulp mill fibre to paper
     ip=meta['Core']['iPP']['Paper']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_Paper
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToPaper
 
     # Transfer mill fibre to power facitity, domestic
     ip=meta['Core']['iPP']['PowerFacilityDom']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_PowerFacilityDom
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToPowerFacilityDom
 
     # Transfer mill fibre to power facitity, foreign
-    ip=meta['Core']['iPP']['PowerFacilityFor']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_PowerFacilityFor
+    ip=meta['Core']['iPP']['PowerFacilityExport']
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToPowerFacilityExport
+
+    # Transfer mill fibre to pellet Export
+    ip=meta['Core']['iPP']['PelletExport']
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToPelletExport
+
+    # Transfer mill fibre to pellet domestic grid
+    ip=meta['Core']['iPP']['PelletDomGrid']
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToPelletDomGrid
+
+    # Transfer mill fibre to pellet domestic RNG
+    ip=meta['Core']['iPP']['PelletDomRNG']
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToPelletDomRNG
 
     # Transfer domestic firewood to domestic firewood pool
     ip=meta['Core']['iPP']['FirewoodDom']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_FirewoodCollection
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToFirewoodCollection
 
     # Transfer foreign firewood to foreign firewood pool
-    ip=meta['Core']['iPP']['FirewoodFor']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_FirewoodFor
+    ip=meta['Core']['iPP']['FirewoodExport']
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToFirewoodExport
 
     # Transfer pulp mill carbon to pulp-mill effluent
     ip=meta['Core']['iPP']['EffluentPulp']
-    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_PulpEffluent
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT-1,:,ip]+C_ToPulpEffluent
 
     #--------------------------------------------------------------------------
     # Update dump and landfill reservoirs
@@ -2195,7 +2206,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     #--------------------------------------------------------------------------
 
     # Turnover
-    ip=meta['Core']['iPP']['PowerFacilityFor']
+    ip=meta['Core']['iPP']['PowerFacilityExport']
     C_emitted=meta['Param']['BEV']['HWP']['Energy_tr']*vo['C_Pro_Pools'][iT,:,ip]
 
     # Remove carbon
@@ -2207,11 +2218,43 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
-    # Emissions from combustion of pellets
+    # Emissions from combustion of pellet Export
     #--------------------------------------------------------------------------
 
     # Turnover
-    ip=meta['Core']['iPP']['Pellets']
+    ip=meta['Core']['iPP']['PelletExport']
+    C_emitted=meta['Param']['BEV']['HWP']['Energy_tr']*vo['C_Pro_Pools'][iT,:,ip]
+
+    # Remove carbon
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_emitted
+
+    # Emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
+    E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
+    vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+
+    #--------------------------------------------------------------------------
+    # Emissions from combustion of pellet domestic grid
+    #--------------------------------------------------------------------------
+
+    # Turnover
+    ip=meta['Core']['iPP']['PelletDomGrid']
+    C_emitted=meta['Param']['BEV']['HWP']['Energy_tr']*vo['C_Pro_Pools'][iT,:,ip]
+
+    # Remove carbon
+    vo['C_Pro_Pools'][iT,:,ip]=vo['C_Pro_Pools'][iT,:,ip] - C_emitted
+
+    # Emissions
+    E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
+    E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
+    vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+
+    #--------------------------------------------------------------------------
+    # Emissions from combustion of pellet domestic RNG
+    #--------------------------------------------------------------------------
+
+    # Turnover
+    ip=meta['Core']['iPP']['PelletDomRNG']
     C_emitted=meta['Param']['BEV']['HWP']['Energy_tr']*vo['C_Pro_Pools'][iT,:,ip]
 
     # Remove carbon
@@ -2243,7 +2286,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     #--------------------------------------------------------------------------
 
     # Turnover
-    ip=meta['Core']['iPP']['FirewoodFor']
+    ip=meta['Core']['iPP']['FirewoodExport']
     C_emitted=meta['Param']['BEV']['HWP']['Firewood_tr']*vo['C_Pro_Pools'][iT,:,ip]
 
     # Remove carbon

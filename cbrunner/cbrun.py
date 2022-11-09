@@ -139,7 +139,7 @@ def MeepMeep(meta):
                         vo=annproc.Biomass_FromGrasses(iScn,iBat,iT,vi,vo,meta,iEP)
 
                     # Calculate annual dead organic matter dynamics
-                    vo=annproc.DOM_like_CBM08(iT,iBat,vi,vo,iEP,meta)
+                    vo=annproc.DOM_LikeKurzetal2009(iT,iBat,vi,vo,iEP,meta)
 
                     # Calculate effects of disturbance and management
                     vo,vi=annproc.Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP)
@@ -304,6 +304,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_Litter_Tot']=np.array([])
     vo['C_DeadWood_Tot']=np.array([])
     vo['C_Soil_Tot']=np.array([])
+    vo['C_Soil_OHorizon']=np.array([])
     vo['C_InUse_Tot']=np.array([])
     vo['C_DumpLandfill_Tot']=np.array([])
     vo['C_Buildings_Tot']=np.zeros((m,n))
@@ -338,11 +339,13 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_ToMDF']=np.zeros((m,n))
     vo['C_ToPaper']=np.zeros((m,n))
     vo['C_ToPowerFacilityDom']=np.zeros((m,n))
-    vo['C_ToPowerFacilityFor']=np.zeros((m,n))
+    vo['C_ToPowerFacilityExport']=np.zeros((m,n))
     vo['C_ToPowerGrid']=np.zeros((m,n))
-    vo['C_ToPellets']=np.zeros((m,n))
+    vo['C_ToPelletExport']=np.zeros((m,n))
+    vo['C_ToPelletDomRNG']=np.zeros((m,n))
+    vo['C_ToPelletDomGrid']=np.zeros((m,n))
     vo['C_ToFirewoodDom']=np.zeros((m,n))
-    vo['C_ToFirewoodFor']=np.zeros((m,n))
+    vo['C_ToFirewoodExport']=np.zeros((m,n))
     vo['C_ToLogExport']=np.zeros((m,n))
 
     # Emissions from wildfire and open burning (will be deleted upon export)
@@ -500,13 +503,19 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #--------------------------------------------------------------------------
 
     if (meta['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta['Scenario'][iScn]['Harvest Status Future']=='On'):
-        rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        if 'Use Frozen Ensembles' not in meta['Project']:
+            rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        else:
+            rn=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         rn=rn.astype(float)
         rn=rn*meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
         meta['Project']['On the Fly']['Random Numbers']['Harvest']=rn.copy()
 
     if (meta['Scenario'][iScn]['Breakup Status']=='On'):
-        rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        if 'Use Frozen Ensembles' not in meta['Project']:
+            rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+        else:
+            rn=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         rn=rn.astype(float)
         rn=rn*meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
         meta['Project']['On the Fly']['Random Numbers']['Breakup']=rn.copy()
@@ -993,15 +1002,15 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     #----------------------------------------------------------------------
 
     # Yield (green tonnes/ha)
-    Yield_PowerFacilityFor=vo['C_ToPowerFacilityDom']/bB['Density Wood']/bB['Moisture Content Wood']
+    Yield_PowerFacilityExport=vo['C_ToPowerFacilityDom']/bB['Density Wood']/bB['Moisture Content Wood']
 
     # Yield to energy (GJ/ha)
-    vo['GJ PowerFacilityFor']=bB['Energy Content Wood (0% moisture)']*Yield_PowerFacilityFor
+    vo['GJ PowerFacilityExport']=bB['Energy Content Wood (0% moisture)']*Yield_PowerFacilityExport
 
-    E_Sub_CoalForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ PowerFacilityFor']
-    E_Sub_DieselForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ PowerFacilityFor']
-    E_Sub_GasForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ PowerFacilityFor']
-    E_Sub_OilForBioenergy_PowerFacilityFor=bS['PowerFacilityForFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ PowerFacilityFor']
+    E_Sub_CoalForBioenergy_PowerFacilityExport=bS['PowerFacilityExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ PowerFacilityExport']
+    E_Sub_DieselForBioenergy_PowerFacilityExport=bS['PowerFacilityExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ PowerFacilityExport']
+    E_Sub_GasForBioenergy_PowerFacilityExport=bS['PowerFacilityExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ PowerFacilityExport']
+    E_Sub_OilForBioenergy_PowerFacilityExport=bS['PowerFacilityExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ PowerFacilityExport']
 
     #----------------------------------------------------------------------
     # Independent power producers (MgC/ha) to (green tonne/ha)
@@ -1019,19 +1028,49 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     E_Sub_OilForBioenergy_PowerGrid=bS['PowerGridFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ PowerGrid']
 
     #----------------------------------------------------------------------
-    # Pellets (MgC/ha) to (kiln dried tonne/ha)
+    # Pellet exports (MgC/ha) to (kiln dried tonne/ha)
     #----------------------------------------------------------------------
 
     # Yield (kiln dired tonnes/ha)
-    Yield_PelletFor=vo['C_ToPellets']/bB['Density Wood']
+    Yield_PelletExport=vo['C_ToPelletExport']/bB['Density Wood']
 
     # Yield to energy (GJ/ha)
-    vo['GJ PelletFor']=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletFor
+    vo['GJ PelletExport']=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletExport
 
-    E_Sub_CoalForBioenergy_Pellets=bS['PelletFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ PelletFor']
-    E_Sub_DieselForBioenergy_Pellets=bS['PelletFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ PelletFor']
-    E_Sub_GasForBioenergy_Pellets=bS['PelletFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ PelletFor']
-    E_Sub_OilForBioenergy_Pellets=bS['PelletFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ PelletFor']
+    E_Sub_CoalForBioenergy_PelletExport=bS['PelletExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ PelletExport']
+    E_Sub_DieselForBioenergy_PelletExport=bS['PelletExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ PelletExport']
+    E_Sub_GasForBioenergy_PelletExport=bS['PelletExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ PelletExport']
+    E_Sub_OilForBioenergy_PelletExport=bS['PelletExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ PelletExport']
+
+    #----------------------------------------------------------------------
+    # Pellet domestic grid (MgC/ha) to (kiln dried tonne/ha)
+    #----------------------------------------------------------------------
+
+    # Yield (kiln dired tonnes/ha)
+    Yield_PelletDomGrid=vo['C_ToPelletDomGrid']/bB['Density Wood']
+
+    # Yield to energy (GJ/ha)
+    vo['GJ PelletDomGrid']=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletDomGrid
+
+    E_Sub_CoalForBioenergy_PelletDomGrid=bS['PelletDomGridFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ PelletDomGrid']
+    E_Sub_DieselForBioenergy_PelletDomGrid=bS['PelletDomGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ PelletDomGrid']
+    E_Sub_GasForBioenergy_PelletDomGrid=bS['PelletDomGridFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ PelletDomGrid']
+    E_Sub_OilForBioenergy_PelletDomGrid=bS['PelletDomGridFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ PelletDomGrid']
+
+    #----------------------------------------------------------------------
+    # Pellet domestic RNG (MgC/ha) to (kiln dried tonne/ha)
+    #----------------------------------------------------------------------
+
+    # Yield (kiln dired tonnes/ha)
+    Yield_PelletDomRNG=vo['C_ToPelletDomRNG']/bB['Density Wood']
+
+    # Yield to energy (GJ/ha)
+    vo['GJ PelletDomRNG']=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletDomRNG
+
+    E_Sub_CoalForBioenergy_PelletDomRNG=bS['PelletDomRNGFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ PelletDomRNG']
+    E_Sub_DieselForBioenergy_PelletDomRNG=bS['PelletDomRNGFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ PelletDomRNG']
+    E_Sub_GasForBioenergy_PelletDomRNG=bS['PelletDomRNGFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ PelletDomRNG']
+    E_Sub_OilForBioenergy_PelletDomRNG=bS['PelletDomRNGFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ PelletDomRNG']
 
     #----------------------------------------------------------------------
     # Domestic firewood (MgC/ha) to (air dried tonne/ha)
@@ -1053,15 +1092,15 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     #----------------------------------------------------------------------
 
     # Yield (air dried tonnes/ha)
-    Yield_FirewoodFor=vo['C_ToFirewoodFor']/bB['Density Wood']
+    Yield_FirewoodExport=vo['C_ToFirewoodExport']/bB['Density Wood']
 
     # Yield to energy (GJ/ha)
-    vo['GJ FirewoodFor']=bB['Energy Content Wood (0% moisture)']*Yield_FirewoodFor
+    vo['GJ FirewoodExport']=bB['Energy Content Wood (0% moisture)']*Yield_FirewoodExport
 
-    E_Sub_CoalForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ FirewoodFor']
-    E_Sub_DieselForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ FirewoodFor']
-    E_Sub_GasForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ FirewoodFor']
-    E_Sub_OilForBioenergy_FirewoodFor=bS['FirewoodForFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ FirewoodFor']
+    E_Sub_CoalForBioenergy_FirewoodExport=bS['FirewoodExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*vo['GJ FirewoodExport']
+    E_Sub_DieselForBioenergy_FirewoodExport=bS['FirewoodExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*vo['GJ FirewoodExport']
+    E_Sub_GasForBioenergy_FirewoodExport=bS['FirewoodExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*vo['GJ FirewoodExport']
+    E_Sub_OilForBioenergy_FirewoodExport=bS['FirewoodExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*vo['GJ FirewoodExport']
 
     #--------------------------------------------------------------------------
     # Substitution of fossil fuels for bioenergy
@@ -1070,63 +1109,77 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
 
     vo['E_CO2e_SUB_CoalForBioenergy']= \
         (E_Sub_CoalForBioenergy_PowerFacilityDom + \
-         E_Sub_CoalForBioenergy_PowerFacilityFor + \
+         E_Sub_CoalForBioenergy_PowerFacilityExport + \
          E_Sub_CoalForBioenergy_PowerGrid + \
-         E_Sub_CoalForBioenergy_Pellets + \
+         E_Sub_CoalForBioenergy_PelletExport + \
+         E_Sub_CoalForBioenergy_PelletDomGrid + \
+         E_Sub_CoalForBioenergy_PelletDomRNG + \
          E_Sub_CoalForBioenergy_FirewoodDom + \
-         E_Sub_CoalForBioenergy_FirewoodFor)
+         E_Sub_CoalForBioenergy_FirewoodExport)
 
     vo['E_CO2e_SUB_OilForBioenergy']= \
         (E_Sub_OilForBioenergy_PowerFacilityDom + \
-         E_Sub_OilForBioenergy_PowerFacilityFor + \
+         E_Sub_OilForBioenergy_PowerFacilityExport + \
          E_Sub_OilForBioenergy_PowerGrid + \
-         E_Sub_OilForBioenergy_Pellets + \
+         E_Sub_OilForBioenergy_PelletExport + \
          E_Sub_OilForBioenergy_FirewoodDom + \
-         E_Sub_OilForBioenergy_FirewoodFor + \
+         E_Sub_OilForBioenergy_FirewoodExport + \
          E_Sub_DieselForBioenergy_PowerFacilityDom + \
-         E_Sub_DieselForBioenergy_PowerFacilityFor + \
+         E_Sub_DieselForBioenergy_PowerFacilityExport + \
          E_Sub_DieselForBioenergy_PowerGrid + \
-         E_Sub_DieselForBioenergy_Pellets + \
+         E_Sub_DieselForBioenergy_PelletExport + \
+         E_Sub_DieselForBioenergy_PelletDomGrid + \
+         E_Sub_DieselForBioenergy_PelletDomRNG + \
          E_Sub_DieselForBioenergy_FirewoodDom + \
-         E_Sub_DieselForBioenergy_FirewoodFor)
+         E_Sub_DieselForBioenergy_FirewoodExport)
 
     vo['E_CO2e_SUB_GasForBioenergy']= \
         (E_Sub_GasForBioenergy_PowerFacilityDom + \
-         E_Sub_GasForBioenergy_PowerFacilityFor + \
+         E_Sub_GasForBioenergy_PowerFacilityExport + \
          E_Sub_GasForBioenergy_PowerGrid + \
-         E_Sub_GasForBioenergy_Pellets + \
+         E_Sub_GasForBioenergy_PelletExport + \
+         E_Sub_GasForBioenergy_PelletDomGrid + \
+         E_Sub_GasForBioenergy_PelletDomRNG + \
          E_Sub_GasForBioenergy_FirewoodDom + \
-         E_Sub_GasForBioenergy_FirewoodFor)
+         E_Sub_GasForBioenergy_FirewoodExport)
 
     vo['E_CO2e_SUB_PowerFacilityDom']= \
         (E_Sub_CoalForBioenergy_PowerFacilityDom + \
          E_Sub_OilForBioenergy_PowerFacilityDom + \
          E_Sub_GasForBioenergy_PowerFacilityDom)
 
-    vo['E_CO2e_SUB_PowerFacilityFor']= \
-        (E_Sub_CoalForBioenergy_PowerFacilityFor + \
-         E_Sub_OilForBioenergy_PowerFacilityFor + \
-         E_Sub_GasForBioenergy_PowerFacilityFor)
+    vo['E_CO2e_SUB_PowerFacilityExport']= \
+        (E_Sub_CoalForBioenergy_PowerFacilityExport + \
+         E_Sub_OilForBioenergy_PowerFacilityExport + \
+         E_Sub_GasForBioenergy_PowerFacilityExport)
 
     vo['E_CO2e_SUB_PowerGrid']= \
         (E_Sub_CoalForBioenergy_PowerGrid + \
          E_Sub_OilForBioenergy_PowerGrid + \
          E_Sub_GasForBioenergy_PowerGrid)
 
-    vo['E_CO2e_SUB_PelletFor']= \
-        (E_Sub_CoalForBioenergy_Pellets + \
-         E_Sub_OilForBioenergy_Pellets + \
-         E_Sub_GasForBioenergy_Pellets)
+    vo['E_CO2e_SUB_PelletDom']= \
+        (E_Sub_CoalForBioenergy_PelletDomGrid + \
+         E_Sub_OilForBioenergy_PelletDomGrid + \
+         E_Sub_GasForBioenergy_PelletDomGrid + \
+         E_Sub_CoalForBioenergy_PelletDomRNG + \
+         E_Sub_OilForBioenergy_PelletDomRNG + \
+         E_Sub_GasForBioenergy_PelletDomRNG)
+
+    vo['E_CO2e_SUB_PelletExport']= \
+        (E_Sub_CoalForBioenergy_PelletExport + \
+         E_Sub_OilForBioenergy_PelletExport + \
+         E_Sub_GasForBioenergy_PelletExport)
 
     vo['E_CO2e_SUB_FirewoodDom']= \
         (E_Sub_CoalForBioenergy_FirewoodDom + \
          E_Sub_OilForBioenergy_FirewoodDom + \
          E_Sub_GasForBioenergy_FirewoodDom)
 
-    vo['E_CO2e_SUB_FirewoodFor']= \
-        (E_Sub_CoalForBioenergy_FirewoodFor + \
-         E_Sub_OilForBioenergy_FirewoodFor + \
-         E_Sub_GasForBioenergy_FirewoodFor)
+    vo['E_CO2e_SUB_FirewoodExport']= \
+        (E_Sub_CoalForBioenergy_FirewoodExport + \
+         E_Sub_OilForBioenergy_FirewoodExport + \
+         E_Sub_GasForBioenergy_FirewoodExport)
 
     #----------------------------------------------------------------------
     # Substitution for structural wood produts (tCO2e/ha)
@@ -1229,6 +1282,9 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     # These variables only need to be saved to file if the indiviudal pools are
     # not being stored.
     #--------------------------------------------------------------------------
+
+    # Calculate carbon content of dead wood, organic and mineral soil horizons following Shaw et al. (2017)
+    vo['C_Soil_OHorizon']=vo['C_Eco_Pools'][:,:,iEP['LitterVF']]+vo['C_Eco_Pools'][:,:,iEP['LitterS']]
 
     if meta['Project']['Save Biomass Pools']!='On':
 

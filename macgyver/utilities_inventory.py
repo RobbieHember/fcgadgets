@@ -1174,7 +1174,7 @@ def AddPlantingWithNoData(d_nd):
 
 #%% PREPARE DISTURBANCE MANAGEMENT ENVENT HISTORY
 
-def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
+def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
 
     # Initiate disturbance-management event history
     dmec=[None]*meta['Project']['N Stand']
@@ -1427,6 +1427,10 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
 
             for i in range(indS.size):
 
+                # Make sure it is not within a forest cover reserve
+                if np.isin(cut['IdxToSXY'][indS[i]],fcres['IdxToSXY'])==True:
+                    continue
+
                 # Add the harvest
                 yr_harv=cut['HARVEST_YEAR'][indS[i]]+1/12
                 dmec0['Year']=np.append(dmec0['Year'],yr_harv)
@@ -1472,6 +1476,10 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest):
             indS=indS_op['Index']
 
             for i in range(indS.size):
+
+                # Make sure it is not within a forest cover reserve
+                if np.isin(op['IdxToSXY'][indS[i]],fcres['IdxToSXY'])==True:
+                    continue
 
                 Year=np.floor(op['Year_Denu1_Comp'][indS[i]])
                 Month=op['Month_Denu1_Comp'][indS[i]]
@@ -1991,6 +1999,88 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity):
 
     return dmec
 
+#%% Gap-fill DMEC with VRI Stand age
+
+def GapFill_DMEC_WithAgeFromVRI(meta,dmec,vri,idx):
+
+    # Specify flag indicating whether subsetting occurs
+    if np.isin('iKeep',list(meta['Project'].keys()))==True:
+        # Tile project, only keeping a subset
+        flag_subset=1
+    else:
+        # Run all entries
+        flag_subset=0
+
+    for iStand0 in range(meta['Project']['N Stand']):
+
+        if flag_subset==1:
+            # Project with subsetting (tiled most likely)
+            iStand=meta['Project']['iKeep'][iStand0]
+        else:
+            iStand=iStand0
+
+        if idx['vri'][iStand]==None:
+            continue
+
+        if dmec[iStand0]==None:
+            continue
+
+        if dmec[iStand0]['MortalityFactor'].size>0:
+            if np.max(dmec[iStand0]['MortalityFactor']==100):
+                # If there is a stand-replacing disturbance on record, no need to proceed
+                continue
+
+        ind0=idx['vri'][iStand]['Index'][0]
+        Age=vri['PROJ_AGE_1'][ind0]
+
+        if Age>=0:
+            dmec[iStand0]['Year']=np.append(dmec[iStand0]['Year'],meta['Project']['Year Project']-Age)
+            dmec[iStand0]['ID_Type']=np.append(dmec[iStand0]['ID_Type'],meta['LUT']['Dist']['Wildfire'])
+            dmec[iStand0]['MortalityFactor']=np.append(dmec[iStand0]['MortalityFactor'],np.array(100,dtype='int16'))
+            dmec[iStand0]['GrowthFactor']=np.append(dmec[iStand0]['GrowthFactor'],np.array(0,dtype='int16'))
+            if 'FCI Funded' in dmec[iStand0]:
+                dmec[iStand0]['FCI Funded']=np.append(dmec[iStand0]['FCI Funded'],np.array(0,dtype='int16'))
+            for v in meta['Core']['StringsToFill']:
+                dmec[iStand0][v]=np.append(dmec[iStand0][v],-999)
+
+    return dmec
+
+#%% ADD OLDEST KNOWN DISTURBANCE FROM VRI
+# This really doesn't work well. RETIRED!!
+
+# def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
+
+#     for iStand in range(meta['Project']['N Stand']):
+#         if idx['vri'][iStand]==None:
+#             continue
+#         ind=idx['vri'][iStand]['Index'][0]
+#         DOE=vri['Year'][ind]-vri['PROJ_AGE_1'][ind]
+#         flg=0
+#         if dmec[iStand]['Year'].size==0:
+#             flg==1
+#         else:
+#             if (DOE>0) & (DOE<np.min(dmec[iStand]['Year'])):
+#                 flg==1
+#         if flg==1:
+#             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],DOE)
+#             dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Wildfire'])
+#             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],np.array(100,dtype='int16'))
+#             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+#             if 'FCI Funded' in dmec[iStand]:
+#                 dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
+#             for v in meta['Core']['StringsToFill']:
+#                 dmec[iStand][v]=np.append(dmec[iStand][v],-999)
+
+#     # Put events in order of calendar date
+#     for iStand in range(meta['Project']['N Stand']):
+#         d=dmec[iStand].copy()
+#         ord=np.argsort(d['Year'])
+#         for key in d.keys():
+#             d[key]=d[key][ord]
+#         dmec[iStand]=d.copy()
+
+#     return dmec
+
 #%% ENSURE DISTURBANCE PRECEDES AERIAL FERTILIZATION
 # So that age at fert is specified.
 
@@ -2156,42 +2246,6 @@ def IDW_Fix_Severity(meta,dmec):
                 dmec[iStand]['MortalityFactor'][iA]=np.array(Mortality1,dtype='int16')
     return dmec
 
-#%% ADD OLDEST KNOWN DISTURBANCE FROM VRI
-# This really doesn't work well. RETIRED!!
-
-def Add_Oldest_Disturbance_From_VRI(meta,dmec,idx,vri):
-
-    for iStand in range(meta['Project']['N Stand']):
-        if idx['vri'][iStand]==None:
-            continue
-        ind=idx['vri'][iStand]['Index'][0]
-        DOE=vri['Year'][ind]-vri['PROJ_AGE_1'][ind]
-        flg=0
-        if dmec[iStand]['Year'].size==0:
-            flg==1
-        else:
-            if (DOE>0) & (DOE<np.min(dmec[iStand]['Year'])):
-                flg==1
-        if flg==1:
-            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],DOE)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Wildfire'])
-            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],np.array(100,dtype='int16'))
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
-            if 'FCI Funded' in dmec[iStand]:
-                dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
-            for v in meta['Core']['StringsToFill']:
-                dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-
-    # Put events in order of calendar date
-    for iStand in range(meta['Project']['N Stand']):
-        d=dmec[iStand].copy()
-        ord=np.argsort(d['Year'])
-        for key in d.keys():
-            d[key]=d[key][ord]
-        dmec[iStand]=d.copy()
-
-    return dmec
-
 #%% CLEAN SPECIES COMPOSITION
 
 def Clean_Species_Composition(meta,dmec,vri,fcinv):
@@ -2282,6 +2336,7 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
     ba['Spc_Pct4']=-999*np.ones(meta['Project']['N Stand'])
     ba['Spc_Pct5']=-999*np.ones(meta['Project']['N Stand'])
     ba['SI']=-999*np.ones(meta['Project']['N Stand'])
+    ba['SI VRI']=-999*np.ones(meta['Project']['N Stand'])
     ba['VRI_LIVE_STEMS_PER_HA']=-999*np.ones(meta['Project']['N Stand'])
     ba['PROJ_AGE_1']=-999*np.ones(meta['Project']['N Stand'])
     ba['Year']=-999*np.ones(meta['Project']['N Stand'])
@@ -2437,108 +2492,155 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
     spl={}
     spl['SI_SPL']=-999*np.ones(meta['Project']['N Stand'])
 
+    spcL=['At','Ba','Bl','Cw','Ep','Fd','Hw','Hm','Lw','Pl','Py','Sb','Sw','Sx','Se']
+
     if 'xlim' in geos:
 
         # Tiled project, we can just clip rasters to tile boundaries -> goes super fast
 
-        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Fd.tif')
-        z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
-        Site_Prod_Fd=z['Data'].flatten()
-        del z
-        garc.collect()
+        for spc in spcL:
 
-        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Pl.tif')
-        z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
-        Site_Prod_Pl=z['Data'].flatten()
-        del z
-        garc.collect()
+            # Import site productivity layer for focal species
+            z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
+            z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
+            zSPL=z['Data'].flatten()
+            del z
 
-        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Sx.tif')
-        z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
-        Site_Prod_Sx=z['Data'].flatten()
-        del z
-        garc.collect()
+            # Map SPL species codes to those in VRI
+            if spc=='At':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
+            elif spc=='Ba':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
+            elif spc=='Bl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
+            elif spc=='Cw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
+            elif spc=='Ep':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
+            elif spc=='Fd':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
+            elif spc=='Hw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
+            elif spc=='Hm':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
+            elif spc=='Lw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
+            elif spc=='Pl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
+            elif spc=='Py':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
+            elif spc=='Sb':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
+            elif spc=='Se':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
+            elif spc=='Ss':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
+            elif spc=='Sw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
+            elif spc=='Sx':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
 
-        # Populate dictionary with nearest estimate
-        for iStand0 in range(meta['Project']['N Stand']):
+            # Populate dictionary with nearest estimate
+            for iStand0 in range(meta['Project']['N Stand']):
 
-            if flag_subset==1:
-                iStand=meta['Project']['iKeep'][iStand0]
-            else:
-                iStand=iStand0
+                if flag_subset==1:
+                    iStand=meta['Project']['iKeep'][iStand0]
+                else:
+                    iStand=iStand0
 
-            if (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FD']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDC']):
-                if Site_Prod_Fd[iStand]>0:
-                    spl['SI_SPL'][iStand0]=Site_Prod_Fd[iStand]
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PL']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLC']):
-                if Site_Prod_Pl[iStand]>0:
-                    spl['SI_SPL'][iStand0]=Site_Prod_Pl[iStand]
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['SX']):
-                if Site_Prod_Sx[iStand]>0:
-                    spl['SI_SPL'][iStand0]=Site_Prod_Sx[iStand]
-
-        del Site_Prod_Fd,Site_Prod_Pl,Site_Prod_Sx
+                # Populate
+                if np.isin(ba['Spc_CD1'][iStand0],ids):
+                    if zSPL[iStand]>0:
+                        spl['SI_SPL'][iStand0]=zSPL[iStand]
 
     else:
 
         # Not a tiled project
 
-        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Fd.tif')
+        # Populate dictionary with nearest estimate
+        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_Ep.tif')
         x=z['X'][0,:]
         y=z['Y'][:,0]
-        Site_Prod_Fd=np.squeeze(z['Data'])
         del z
         garc.collect()
 
-        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Pl.tif')
-        Site_Prod_Pl=np.squeeze(z['Data'])
-        del z
-        garc.collect()
-
-        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_Sx.tif')
-        Site_Prod_Sx=np.squeeze(z['Data'])
-        del z
-        garc.collect()
-
-        # Populate dictionary with nearest estimate
+        ix=np.zeros(meta['Project']['N Stand'],dtype=int)
+        iy=np.zeros(meta['Project']['N Stand'],dtype=int)
         for iStand0 in range(meta['Project']['N Stand']):
-
             if flag_subset==1:
                 iStand=meta['Project']['iKeep'][iStand0]
             else:
                 iStand=iStand0
-
             adx=np.abs(geos['Sparse']['X'][iStand]-x)
             ady=np.abs(geos['Sparse']['Y'][iStand]-y)
-            ix=np.where(adx==np.min(adx))[0]
-            iy=np.where(ady==np.min(ady))[0]
-            ind=np.ix_(iy,ix)
+            ix[iStand0]=np.where(adx==np.min(adx))[0]
+            iy[iStand0]=np.where(ady==np.min(ady))[0]
+        ind=tuple([iy,ix])
+        del x,y
 
-            if (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FD']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['FDC']):
-                if Site_Prod_Fd[ind][0][0]>0:
-                    spl['SI_SPL'][iStand0]=Site_Prod_Fd[ind][0][0]
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PL']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLI']) | \
-                (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['PLC']):
-                if Site_Prod_Pl[ind][0][0]>0:
-                    spl['SI_SPL'][iStand0]=np.maximum(0,Site_Prod_Pl[ind][0][0])
-            elif (ba['Spc_CD1'][iStand0]==meta['LUT']['VRI']['SPECIES_CD_1']['SX']):
-                if Site_Prod_Sx[ind][0][0]>0:
-                    spl['SI_SPL'][iStand0]=np.maximum(0,Site_Prod_Sx[ind][0][0])
+        for spc in spcL:
 
-        del x,y,Site_Prod_Fd,Site_Prod_Pl,Site_Prod_Sx
+            # Import site productivity layer for focal species
+            z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
+            zSPL=np.squeeze(z['Data'])
+            zSPL=zSPL[ind]
+            del z
+
+            # Map SPL species codes to those in VRI
+            if spc=='At':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
+            elif spc=='Ba':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
+            elif spc=='Bl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
+            elif spc=='Cw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
+            elif spc=='Ep':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
+            elif spc=='Fd':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
+            elif spc=='Hw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
+            elif spc=='Hm':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
+            elif spc=='Lw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
+            elif spc=='Pl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
+            elif spc=='Py':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
+            elif spc=='Sb':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
+            elif spc=='Se':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
+            elif spc=='Ss':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
+            elif spc=='Sw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
+            elif spc=='Sx':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
+
+            # Populate
+            for iStand0 in range(meta['Project']['N Stand']):
+
+                if flag_subset==1:
+                    iStand=meta['Project']['iKeep'][iStand0]
+                else:
+                    iStand=iStand0
+
+                if np.isin(ba['Spc_CD1'][iStand0],ids):
+                    if zSPL[iStand]>0:
+                        spl['SI_SPL'][iStand0]=zSPL[iStand]
+
+        del zSPL
 
     garc.collect()
 
     #--------------------------------------------------------------------------
     # Best-available site index
     #--------------------------------------------------------------------------
+
+    ba['SI SPL']=spl['SI_SPL']
 
     # Populate with site productivity layer
     ind=np.where( (spl['SI_SPL']>5) )[0]
@@ -2595,13 +2697,15 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
         else:
             iStand=iStand0
 
-        if ba['SI'][iStand0]>0:
-            continue
-
         if idx['vri'][iStand]==None:
             continue
 
         ind0=idx['vri'][iStand]['Index'][0]
+        ba['SI VRI'][iStand0]=vri['SITE_INDEX'][ind0]
+
+        if ba['SI'][iStand0]>0:
+            continue
+
         if vri['SITE_INDEX'][ind0]>0:
             ba['SI'][iStand0]=vri['SITE_INDEX'][ind0]
             N_tot=N_tot+ind0.size
@@ -2991,17 +3095,6 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
             continue
 
         #------------------------------------------------------------------------------
-        # Fix for tiled
-        #------------------------------------------------------------------------------
-
-        if 'IdxToSXY' not in park:
-            fcres['IdxToSXY']=fcres['IdxToGrid']
-            lul['IdxToSXY']=lul['IdxToGrid']
-            ogmal['IdxToSXY']=ogmal['IdxToGrid']
-            ogsr['IdxToSXY']=ogsr['IdxToGrid']
-            park['IdxToSXY']=park['IdxToGrid']
-
-        #------------------------------------------------------------------------------
         # Initialize THLB flags (THLB=1,Non-THLB=0)
         #------------------------------------------------------------------------------
 
@@ -3181,6 +3274,7 @@ def LoadSparseGeospatialInputs(meta):
     try:
         geos=gu.ipickle(meta['Paths']['Geospatial'] + '\\geos.pkl')
     except:
+        # Tiled projects dont save the geos file
         # Make this work for tiled projects as well
         geos=[]
 
@@ -3202,6 +3296,24 @@ def LoadSparseGeospatialInputs(meta):
         ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_CURRENT_SVW.pkl')
     except:
         ogmal=gu.ipickle(meta['Paths']['Geospatial'] + '\\RMP_OGMA_LEGAL_ALL_SVW.pkl')
+
+    # Fix for tiled project
+    if geos==[]:
+        atu['IdxToSXY']=atu['IdxToGrid']
+        op['IdxToSXY']=op['IdxToGrid']
+        burnsev['IdxToSXY']=burnsev['IdxToGrid']
+        vri['IdxToSXY']=vri['IdxToGrid']
+        fcinv['IdxToSXY']=fcinv['IdxToGrid']
+        fcsilv['IdxToSXY']=fcsilv['IdxToGrid']
+        fcres['IdxToSXY']=fcres['IdxToGrid']
+        pl['IdxToSXY']=pl['IdxToGrid']
+        fire['IdxToSXY']=fire['IdxToGrid']
+        pest['IdxToSXY']=pest['IdxToGrid']
+        cut['IdxToSXY']=cut['IdxToGrid']
+        lul['IdxToSXY']=lul['IdxToGrid']
+        park['IdxToSXY']=park['IdxToGrid']
+        ogmal['IdxToSXY']=ogmal['IdxToGrid']
+        ogsr['IdxToSXY']=ogsr['IdxToGrid']
 
     return geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fire,pest,cut,lul,park,ogmal,ogsr
 
@@ -5670,7 +5782,7 @@ def ProcessProjectInputs1(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
 
     print('Preparing Disturbance/management event chronology')
     t0=time.time()
-    dmec=PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest)
+    dmec=PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres)
     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
 
     #--------------------------------------------------------------------------
@@ -5740,6 +5852,17 @@ def ProcessProjectInputs1(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
         print('Ensure every stand has a disturbance in the modern era')
         t0=time.time()
         dmec=Ensure_Every_Stand_Has_Modern_Disturbance(meta,dmec,name_dist,severity)
+        print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
+
+    #--------------------------------------------------------------------------
+    # Gap-fill stands with no event history based on VRI age
+    # So that there is at least one event
+    #--------------------------------------------------------------------------
+
+    if meta['Project']['Gap-fill DMEC with VRI stand age']=='On':
+        print('Gap-fill DMEC with VRI stand age')
+        t0=time.time()
+        dmec=GapFill_DMEC_WithAgeFromVRI(meta,dmec,vri,idx)
         print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
 
     #--------------------------------------------------------------------------
@@ -6591,15 +6714,20 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
 
                 # Import wildfire from onset-spread model
                 if 'Use Wildfire from OSM' in meta['Project']:
+
                     idx=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_osm_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
-                    wf_osm=np.zeros( (lsc['Scenarios'][0]['Cover'].shape) ,dtype='int8')
-                    wf_osm[idx]=1
-                    wf_osm=np.reshape(wf_osm,(lsc['tv'].size,meta['Project']['N Stand']))
+                    wf_osm={}
+                    wf_osm['Raw']=np.zeros( (lsc['Scenarios'][0]['Cover'].shape) ,dtype='int8')
+                    wf_osm['Raw'][idx]=1
+                    wf_osm['Raw']=np.reshape(wf_osm['Raw'],(lsc['tv'].size,meta['Project']['N Stand']))
+
+                    wf_osm['Occurrence']=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int8')
+                    wf_osm['Mortality']=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int8')
                     for iT in range(lsc['tv'].size):
                         if lsc['tv'][iT]<2022:
                             continue
                         indT=np.where(meta['Year']==lsc['tv'][iT])[0]
-                        indS=np.where(wf_osm[iT,:]==1)[0]
+                        indS=np.where(wf_osm['Raw'][iT,:]==1)[0]
                         wf_osm['Occurrence'][indT,indS]=1
                         wf_osm['Mortality'][indT,indS]=100
 
@@ -6645,10 +6773,17 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
                         iStandFull=indBat[iS]
 
                         # Pre-industrial disturbance interval
-                        if inv['Region Code'][0,iS]==meta['LUT']['Region']['Coast']:
-                            ivl_pi=300
-                        else:
-                            ivl_pi=125
+
+                        # Old: regional
+                        #if inv['Region Code'][0,iS]==meta['LUT']['Region']['Coast']:
+                        #    ivl_pi=300
+                        #else:
+                        #    ivl_pi=125
+
+                        # New BGC zone-specific
+                        cd=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,iS])[0]
+                        ind=np.where(meta['Param']['BE']['SpinupRI']['Name']==cd)[0]
+                        ivl_pi=meta['Param']['BE']['SpinupRI']['Value'][ind]
 
                         # Timing of transition between pre-industrial and modern periods
                         try:
@@ -6837,3 +6972,5 @@ def LSC_Scenario_Crosswalk(lsc,name):
     for i in range(len(lsc['Scenarios'])):
         if lsc['Scenarios'][i]['Name']==name:
             return i
+
+

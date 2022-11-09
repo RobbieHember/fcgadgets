@@ -14,7 +14,7 @@ import pandas as pd
 import copy
 import fiona
 import time
-import garbage as garc
+import gc as garc
 from shapely.geometry import Polygon,Point,LineString,box
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
@@ -89,7 +89,7 @@ elif flg_roi=='ByLatLon':
         meta_bc1ha['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\Reforestation Hanceville ROI'
 
     # Elephant Hill fire
-    flg=1
+    flg=0
     if flg==1:
         roi['Centre']=[-121.15,51.15]
         roi['Radius']=45*1000 # metres
@@ -102,7 +102,7 @@ elif flg_roi=='ByLatLon':
         roi['Radius']=10*1000 # metres
 
     # Yahk
-    flg=0
+    flg=1
     if flg==1:
         roi['Centre']=[-116.086296,49.106646]
         roi['Radius']=100*1000 # metres
@@ -128,9 +128,9 @@ print((t1-t0)/60)
 
 #%% Import rasters over ROI
 
-vList=['lc2','btm','elev','becz']
+#vList=['lc2','btm','elev','becz']
+vList=['lc2','btm','elev','becz','age1','cut_yr']
 #vList=['temp_norm','ws_norm','lc2','btm','elev','bgcz','cut_yr']
-#vList=['lc2','btm','elev','becz','age1','cut_yr']
 #vList=['lc2','btm','elev','soc','age1','si','temp_norm','ws_norm','cut_yr']
 #vList=['lc2','btm','elev','bgcz','cut_yr','bsr','wf','age1','sphlive','sphdead']
 #vList=['cut_yr']
@@ -193,22 +193,39 @@ def Plot_Elev(meta_bc1ha,roi):
 
 plt.close('all')
 fig,ax=Plot_Elev(meta_bc1ha,roi)
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=3,label='Road',alpha=1)
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.75,label='Road',alpha=1)
-roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=45)
+
+roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2,label='Road',alpha=1,zorder=1)
+roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+
+# Plot lumber mills, pulp mills and chipper mills
+flg=1
+if flg==1:
+    u=roi['gdf']['tpf']['PRODUCT_CODE'].unique()
+    ind=np.where( (roi['gdf']['tpf']['PRODUCT_CODE']=='LBR') )[0]
+    roi['gdf']['tpf'].iloc[ind].plot(ax=ax[0],marker='s',edgecolor='k',facecolor='r',linewidth=0.25,markersize=30,zorder=2)
+    for x,y,label in zip(roi['gdf']['tpf'].iloc[ind].geometry.x, roi['gdf']['tpf'].iloc[ind].geometry.y,roi['gdf']['tpf'].iloc[ind].COMPANY_NAME):
+        ax[0].annotate(label,xy=(x,y),xytext=(5,4),textcoords="offset points")
+    for x,y,label in zip(roi['gdf']['tpf'].iloc[ind].geometry.x, roi['gdf']['tpf'].iloc[ind].geometry.y,np.round(roi['gdf']['tpf'].iloc[ind].EST_AN_CAP_MLN_BOARD_FT)):
+        ax[0].annotate(label,xy=(x,y),xytext=(5,-4),textcoords="offset points")
+    ind=np.where( (roi['gdf']['tpf']['PRODUCT_CODE']=='PLP') )[0]
+    roi['gdf']['tpf'].iloc[ind].plot(ax=ax[0],marker='^',edgecolor='k',facecolor='y',linewidth=0.25,markersize=75,zorder=2)
+    ind=np.where( (roi['gdf']['tpf']['PRODUCT_CODE']=='CHP') )[0]
+    roi['gdf']['tpf'].iloc[ind].plot(ax=ax[0],marker='d',edgecolor='k',facecolor='b',linewidth=0.25,markersize=25,zorder=2)
+
+
 #roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0,0],linewidth=0.5,label='Opening',alpha=1)
-roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=0.5,label='Opening',alpha=1)
+#roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=0.5,label='Opening',alpha=1)
 
-gp=gpd.read_file(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB\ground_plots.geojson')
-ind=np.where( (sl['Age_t0']>125) & (sl['Csw_L_t0']<50) )[0]
-gp.iloc[ind].plot(ax=ax[0],facecolor='None',marker='s',edgecolor=[1,0,0],linewidth=1,markersize=12,label='Opening',alpha=1)
+# gp=gpd.read_file(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB\ground_plots.geojson')
+# ind=np.where( (sl['Age_t0']>125) & (sl['Csw_L_t0']<50) )[0]
+# gp.iloc[ind].plot(ax=ax[0],facecolor='None',marker='s',edgecolor=[1,0,0],linewidth=1,markersize=12,label='Opening',alpha=1)
 
-ind=np.where( (sl['Age_t0']>125) & (sl['Csw_L_t0']>250) )[0]
-gp.iloc[ind].plot(ax=ax[0],facecolor='None',marker='s',edgecolor=[0,1,0],linewidth=1,markersize=12,label='Opening',alpha=1)
+# ind=np.where( (sl['Age_t0']>125) & (sl['Csw_L_t0']>250) )[0]
+# gp.iloc[ind].plot(ax=ax[0],facecolor='None',marker='s',edgecolor=[0,1,0],linewidth=1,markersize=12,label='Opening',alpha=1)
 
-a=gpd.read_file(r'C:\Users\rhember\Documents\Data\GroundPlots\DellaSala et al 2022 IWB\data\v10\outputs.gdb')
-a=a.to_crs(roi['crs'])
-a.plot(ax=ax[0],facecolor='None',marker='^',edgecolor=[1,1,0],linewidth=1.25,markersize=14,label='Opening',alpha=1)
+# a=gpd.read_file(r'C:\Users\rhember\Documents\Data\GroundPlots\DellaSala et al 2022 IWB\data\v10\outputs.gdb')
+# a=a.to_crs(roi['crs'])
+# a.plot(ax=ax[0],facecolor='None',marker='^',edgecolor=[1,1,0],linewidth=1.25,markersize=14,label='Opening',alpha=1)
 
 
 #ind=np.where(roi['gdf']['op']['gdf']['OPENING_ID']==1760606)[0]
@@ -447,7 +464,7 @@ def Plot_Age1_WithinROI(roi):
 
 plt.close('all')
 fig,ax=Plot_Age1_WithinROI(roi)
-roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],linewidth=0.5,facecolor='none')
+#roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],linewidth=0.5,facecolor='none')
 #roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0.5,0],linewidth=0.75,label='Opening',alpha=1)
 #roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=0.75,label='Opening',alpha=1)
 #wfp.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1.5,label='Wildfire',alpha=1)

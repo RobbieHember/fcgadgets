@@ -323,7 +323,7 @@ def Import_Raster_Over_ROI(meta_bc1ha,roi,vList):
 
         elif nam=='age1':
             # Age 1
-            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\age1.tif')
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\proj_age_1.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
 

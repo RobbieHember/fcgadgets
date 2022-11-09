@@ -24,15 +24,15 @@ from fcgadgets.cbrunner import cbrun_utilities
 
 #%% Project name
 
-#name='SummaryBC5k'
 #name='SummaryBC20k_H'
 #name='SummaryBC20k_HAR'
-name='SummaryBC4k_HAR'
 #name='SummaryBC20k_NA'
+#name='SummaryBC4k_HAR'
+#name='SummaryBC4k_BAU'
 #name='LICS Hanceville'
-#name='SummaryQuesnel'
 #name='SummaryBC_NOSE'
 #name='SummaryBC_OHS'
+name='ComparisonWithPlotsSoil'
 
 #%% Define paths
 
@@ -72,12 +72,11 @@ zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 geos={}
 
 # Define regular grid sampling frequency
-
-#geos['rgsf']=1 # 100 m
+geos['rgsf']=1 # 100 m
 #geos['rgsf']=5 # 500 m
 #geos['rgsf']=10 # 1 km
 #geos['rgsf']=20 # 2 km
-geos['rgsf']=40 # 4 km
+#geos['rgsf']=40 # 4 km
 #geos['rgsf']=50 # 5 km
 #geos['rgsf']=100 # 10 km
 #geos['rgsf']=200 # 20 km
@@ -87,29 +86,27 @@ geos['Grid']=zTSA.copy()
 geos['Grid']['Data']=0.0*geos['Grid']['Data']
 geos['Grid']=gis.UpdateGridCellsize(geos['Grid'],geos['rgsf'])
 
-# Area expansion factor
-geos['AEF']=bc_grid_size/(geos['Grid']['m']*geos['Grid']['n'])
-
-zLC2=gis.UpdateGridCellsize(zLC2,geos['rgsf'])
+# Resample required grids
+zLC2_r=gis.UpdateGridCellsize(zLC2,geos['rgsf'])
+zTSA_r=gis.UpdateGridCellsize(zTSA,geos['rgsf'])
 
 # Define additional sampling criteria
 
-if (name=='SummaryBC5k') | (name=='SummaryBC_OHS')| (name=='SummaryBC4k_HAR'):
+if (name=='SummaryBC4k_BAU') | (name=='SummaryBC4k_TDAF') | (name=='SummaryBC4k_HAR') | (name=='SummaryBC20k_BAU') | (name=='SummaryBC20k_TDAF') | (name=='SummaryBC20k_HAR'):
 
-    # Treed, global
-    geos['iMask']=np.where( (zLC2['Data']==4) )
+    # Index to treed land
+    iMask_Full=np.where( (zLC2['Data']==4) )
+    geos['iMask']=np.where( (zLC2_r['Data']==4) )
+
+    # Area expansion factor
+    geos['AEF']=iMask_Full[0].size/geos['iMask'][0].size
+    #geos['AEF']=bc_grid_size/(geos['Grid']['m']*geos['Grid']['n'])
 
 elif (name=='SummaryBC_Quesnel'):
 
     # Treed, Williams Lake TSA only
     iTSA=lut_tsa.loc[lut_tsa.Name=='Quesnel TSA','VALUE'].values
-    geos['iMask']=np.where( (zLC2['Data']==4) & (zTSA['Data']==iTSA) )
-
-elif (name=='BCTS'):
-
-    zBCTS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\bcts_op_area.tif')
-    zBCTS['Data']=zBCTS['Data'][0::geos['rgsf'],0::geos['rgsf']]
-    geos['iMask']=np.where( (zLC2['Data']==4) & (zBCTS['Data']>0) )
+    geos['iMask']=np.where( (zLC2_r['Data']==4) & (zTSA_r['Data']==iTSA) )
 
 elif (name=='LICS Hanceville'):
 
@@ -171,6 +168,32 @@ elif (name=='SummaryBC_NOSE'):
         geos['Mask'][ind]=1
 
     geos['iMask']=np.where( (geos['Mask']==1) )
+
+elif (name=='BCTS'):
+
+    zBCTS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\bcts_op_area.tif')
+    zBCTS['Data']=zBCTS['Data'][0::geos['rgsf'],0::geos['rgsf']]
+    geos['iMask']=np.where( (zLC2['Data']==4) & (zBCTS['Data']>0) )
+
+elif (name=='ComparisonWithPlotsSoil'):
+
+    soils=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
+
+    # Some pits have the same cell so the size deviates -> allow duplicates
+    #z=np.zeros(zLC2['X'].shape)
+    Lx=[]; Ly=[]
+    for i in range(soils['x'].size):
+        dx=np.abs(zLC2['X'][0,:]-soils['x'][i])
+        dy=np.abs(zLC2['Y'][:,0]-soils['y'][i])
+        ix=np.where( dx==np.min(dx) )[0]
+        iy=np.where( dy==np.min(dy) )[0]
+        #z[iy,ix]=1
+        Lx.append(ix[0])
+        Ly.append(iy[0])
+    geos['iMask']=tuple( np.array([Ly,Lx],dtype=int) )
+    #geos['iMask']=np.where(z==1)
+
+    geos['AEF']=1.0
 
 elif (name=='CaribouRecovery'):
 

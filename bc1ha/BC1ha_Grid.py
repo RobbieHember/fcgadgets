@@ -14,7 +14,7 @@ import rasterio
 from rasterio import features
 from shapely.geometry import Point, Polygon
 from shapely import geometry
-import opencv as cv2
+import cv2
 
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
@@ -144,9 +144,23 @@ fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2_old.tif'
 fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif'
 gis.ClipToRaster_ByFile(fin,fout,fref)
 
+# VRI age
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\proj_age_1.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\proj_age_1.tif'
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
 # BGC zone
 fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz_old.tif'
 fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz.tif'
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
+# Mean annual temp
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1_old.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif'
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif'
 gis.ClipToRaster_ByFile(fin,fout,fref)
 
 #%% Rasterize protected lands
@@ -827,5 +841,30 @@ for mo in range(12,13):
 plt.matshow(z.Data)
 
 
+
+
+#%% Extract mean climate data by BGC zone
+
+zBGC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz.tif')
+lutBGC=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz_lut.xlsx')
+
+zMAT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
+zMAT['Data']=zMAT['Data'].astype(float)/10
+
+zWS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+zWS['Data']=zWS['Data'].astype(float)
+
+
+lutBGC['MAT']=np.zeros(lutBGC['VALUE'].size)
+lutBGC['WS']=np.zeros(lutBGC['VALUE'].size)
+for i in range(lutBGC['VALUE'].size):
+    ta=zMAT['Data'].flatten()
+    ws=zWS['Data'].flatten()
+    ind=np.where( (zBGC['Data'].flatten()==lutBGC['VALUE'][i]) & (ta>=-50) & (ws>=0) & (ws<=200) )[0]
+    lutBGC['MAT'][i]=np.mean(ta[ind])
+    lutBGC['WS'][i]=np.mean(ws[ind])
+
+df=pd.DataFrame(lutBGC)
+df.to_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\tmp.xlsx')
 
 

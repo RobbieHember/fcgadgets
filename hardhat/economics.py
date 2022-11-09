@@ -51,7 +51,8 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Price Newsprint']=np.zeros(v1['A'].shape)
     d['Price PowerFacilityDom']=np.zeros(v1['A'].shape)
     d['Price PowerGrid']=np.zeros(v1['A'].shape)
-    d['Price Pellets']=np.zeros(v1['A'].shape)
+    d['Price PelletExport']=np.zeros(v1['A'].shape)
+    d['Price PelletDom']=np.zeros(v1['A'].shape)
     d['Price LogExport']=np.zeros(v1['A'].shape)
     d['Price FirewoodDom']=np.zeros(v1['A'].shape)
     d['Exchange Rate US']=np.zeros(v1['A'].shape)
@@ -69,7 +70,8 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
         d['Price Newsprint'][it1,iStand]=dPrice['Price Newsprint (US$/tonne)'][it0]
         d['Price PowerFacilityDom'][it1,iStand]=dPrice['Price Power Facility (CDN$/MWh)'][it0]
         d['Price PowerGrid'][it1,iStand]=dPrice['Price Power Grid (CDN$/MWh)'][it0]
-        d['Price Pellets'][it1,iStand]=dPrice['Price Pellets (Euro/MWh CIF)'][it0]
+        d['Price PelletExport'][it1,iStand]=dPrice['Price Pellet Export (Euro/MWh CIF)'][it0]
+        d['Price PelletDom'][it1,iStand]=dPrice['Price Pellet Domestic (CDN$/MWh)'][it0]
         d['Price LogExport'][it1,iStand]=dPrice['Price Log Export (CDN$/m3)'][it0]
         d['Price FirewoodDom'][it1,iStand]=dPrice['Price Firewood (CDN$/ODT)'][it0]
         d['Exchange Rate US'][it1,iStand]=dPrice['Exchange Rate (US to CDN)'][it0]
@@ -414,12 +416,14 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Revenue PowerGrid']=d['Price PowerGrid']*b['Ratio MWh per GJ']*v1['GJ PowerGrid']
 
     # Revenue from sale of pellets (CDN$/ha) = (Euro$/MWh) * (CDN$/Euro$) * (MWh/ha)
-    d['Revenue Pellets']=d['Price Pellets']*(1/d['Exchange Rate Euro'])*b['Ratio MWh per GJ']*v1['GJ PelletFor']
+    d['Revenue PelletExport']=d['Price PelletExport']*(1/d['Exchange Rate Euro'])*b['Ratio MWh per GJ']*v1['GJ PelletExport']
+
+    d['Revenue PelletDom']=d['Price PelletDom']*b['Ratio MWh per GJ']*(v1['GJ PelletDomGrid']+v1['GJ PelletDomRNG'])
 
     # Revenue from sale of firewood (CDN$/ha) = (CDN$/ODT) * (ODT/ha)
     d['Revenue FirewoodDom']=d['Price FirewoodDom']*v1['ODT FirewoodDom']
 
-    # Revenue from sale of log exports (CDN$/ha) = (CDN$/m3) * (m3/ha)
+    # Revenue from sale of log Export (CDN$/ha) = (CDN$/m3) * (m3/ha)
     d['Revenue LogExport']=d['Price LogExport']*v1['ODT LogExport']/b['Density Wood']
 
     # Remove all NaNs
@@ -428,7 +432,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
     # Gross revenue ($)
     d['Revenue Gross']=d['Revenue Lumber']+d['Revenue Plywood']+d['Revenue OSB']+d['Revenue MDF']+ \
-        d['Revenue Paper']+d['Revenue PowerFacilityDom']+d['Revenue PowerGrid']+d['Revenue Pellets']+d['Revenue FirewoodDom']+d['Revenue LogExport']
+        d['Revenue Paper']+d['Revenue PowerFacilityDom']+d['Revenue PowerGrid']+d['Revenue PelletExport']+d['Revenue PelletDom']+d['Revenue FirewoodDom']+d['Revenue LogExport']
 
     # Net revenue
     d['Revenue Net']=d['Revenue Gross']-d['Cost Total']

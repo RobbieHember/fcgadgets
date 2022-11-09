@@ -438,7 +438,8 @@ def ClipGDF(gdf_in,xlim,ylim):
 
 #%% Adjust grid cellsize based on regular subsampling
 
-def UpdateGridCellsize(z,scale_factor):
+def UpdateGridCellsize(z_in,scale_factor):
+    z=z_in.copy()
     z['Data']=z['Data'][0::scale_factor,0::scale_factor]
     z['X']=z['X'][0::scale_factor,0::scale_factor]
     z['Y']=z['Y'][0::scale_factor,0::scale_factor]

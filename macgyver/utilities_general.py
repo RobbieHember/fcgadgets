@@ -384,141 +384,279 @@ def discres(x,y,bw,bin):
 
 #%% GRAPHICS PARAMETERS FOR JUPYTER NOTEBOOK
 
-def Import_GraphicsParameters(type):
-    if type=='ipynb':
-        fs1=6
-        fs2=9
+# def Import_GraphicsParameters(type):
+#     if type=='ipynb':
+#         fs1=6
+#         fs2=9
+#         params={'font.sans-serif':'Arial',
+#                 'font.size':fs1,
+#                 'figure.titlesize':fs2,
+#                 'figure.dpi':150,
+#                 'figure.constrained_layout.use':True,
+#                 'axes.edgecolor':'black',
+#                 'axes.labelsize':fs1,
+#                 'axes.labelcolor':'black',
+#                 'axes.titlesize':fs2,
+#                 'axes.titlepad':2,
+#                 'axes.linewidth':0.5,
+#                 'lines.linewidth':0.75,
+#                 'lines.markersize': 3.0,
+#                 'text.color':'black',
+#                 'xtick.color':'black',
+#                 'xtick.labelsize':fs1,
+#                 'xtick.major.width':0.5,
+#                 'xtick.major.size':3,
+#                 'xtick.direction':'in',
+#                 'ytick.color':'black',
+#                 'ytick.labelsize':fs1,
+#                 'ytick.major.width':0.5,
+#                 'ytick.major.size':3,
+#                 'ytick.direction':'in',
+#                 'legend.fontsize':fs1,
+#                 'savefig.dpi':900,
+#                 'savefig.transparent':True,
+#                 'savefig.format':'png',
+#                 'savefig.pad_inches':0.1,
+#                 'savefig.bbox':'tight'}
+#     elif type=='spyder_fs6':
+#         fs1=6
+#         fs2=6
+#         params={'font.sans-serif':'Arial',
+#                 'font.size':fs1,
+#                 'figure.titlesize':fs2,
+#                 'figure.dpi':150,
+#                 'figure.constrained_layout.use':True,
+#                 'axes.edgecolor':'black',
+#                 'axes.labelsize':fs1,
+#                 'axes.labelcolor':'black',
+#                 'axes.titlesize':fs2,
+#                 'axes.titlepad':2,
+#                 'axes.linewidth':0.5,
+#                 'lines.linewidth':0.75,
+#                 'lines.markersize': 2,
+#                 'text.color':'black',
+#                 'xtick.color':'black',
+#                 'xtick.labelsize':fs1,
+#                 'xtick.major.width':0.5,
+#                 'xtick.major.size':3,
+#                 'xtick.direction':'in',
+#                 'ytick.color':'black',
+#                 'ytick.labelsize':fs1,
+#                 'ytick.major.width':0.5,
+#                 'ytick.major.size':3,
+#                 'ytick.direction':'in',
+#                 'legend.fontsize':fs1,
+#                 'savefig.dpi':900,
+#                 'savefig.transparent':True,
+#                 'savefig.format':'png',
+#                 'savefig.pad_inches':0.1,
+#                 'savefig.bbox':'tight'}
+#     elif type=='spyder_fs7':
+#         fs1=7
+#         fs2=7
+#         params={'font.sans-serif':'Arial',
+#                 'font.size':fs1,
+#                 'figure.titlesize':fs2,
+#                 'figure.dpi':150,
+#                 'figure.constrained_layout.use':True,
+#                 'axes.edgecolor':'black',
+#                 'axes.labelsize':fs1,
+#                 'axes.labelcolor':'black',
+#                 'axes.titlesize':fs2,
+#                 'axes.titlepad':2,
+#                 'axes.linewidth':0.5,
+#                 'lines.linewidth':0.75,
+#                 'lines.markersize': 2,
+#                 'text.color':'black',
+#                 'xtick.color':'black',
+#                 'xtick.labelsize':fs1,
+#                 'xtick.major.width':0.5,
+#                 'xtick.major.size':3,
+#                 'xtick.direction':'in',
+#                 'ytick.color':'black',
+#                 'ytick.labelsize':fs1,
+#                 'ytick.major.width':0.5,
+#                 'ytick.major.size':3,
+#                 'ytick.direction':'in',
+#                 'legend.fontsize':fs1,
+#                 'savefig.dpi':900,
+#                 'savefig.transparent':False,
+#                 'savefig.format':'png',
+#                 'savefig.pad_inches':0.1,
+#                 'savefig.bbox':'tight'}
+#     elif type=='Presentation':
+#         fs1=7
+#         fs2=7
+#         params={'font.sans-serif':'Arial',
+#                 'font.size':fs1,
+#                 'figure.titlesize':fs2,
+#                 'figure.dpi':150,
+#                 'figure.constrained_layout.use':True,
+#                 'axes.edgecolor':'black',
+#                 'axes.labelsize':fs1,
+#                 'axes.labelcolor':'black',
+#                 'axes.titlesize':fs2,
+#                 'axes.titlepad':2,
+#                 'axes.linewidth':0.5,
+#                 'lines.linewidth':1.25,
+#                 'lines.markersize': 4,
+#                 'text.color':'black',
+#                 'xtick.color':'black',
+#                 'xtick.labelsize':fs1,
+#                 'xtick.major.width':0.5,
+#                 'xtick.major.size':3,
+#                 'xtick.direction':'in',
+#                 'ytick.color':'black',
+#                 'ytick.labelsize':fs1,
+#                 'ytick.major.width':0.5,
+#                 'ytick.major.size':3,
+#                 'ytick.direction':'in',
+#                 'legend.fontsize':fs1,
+#                 'savefig.dpi':900,
+#                 'savefig.transparent':True,
+#                 'savefig.format':'png',
+#                 'savefig.pad_inches':0.1,
+#                 'savefig.bbox':'tight'}
+#     elif type=='Presentation Dark':
+
+#         fs1=7; fs2=7; cla=[0.92,0.92,0.92];
+#         params={'font.sans-serif':'Arial',
+#                 'font.size':fs1,
+#                 'figure.titlesize':fs2,
+#                 'figure.dpi':150,
+#                 'figure.constrained_layout.use':True,
+#                 'axes.edgecolor':cla,
+#                 'axes.labelsize':fs1,
+#                 'axes.labelcolor':cla,
+#                 'axes.titlesize':fs2,
+#                 'axes.titlepad':2,
+#                 'axes.linewidth':0.5,
+#                 'lines.linewidth':5,
+#                 'lines.markersize': 4,
+#                 'text.color':cla,
+#                 'xtick.color':cla,
+#                 'xtick.labelsize':fs1,
+#                 'xtick.major.width':0.5,
+#                 'xtick.major.size':3,
+#                 'xtick.direction':'in',
+#                 'ytick.color':cla,
+#                 'ytick.labelsize':fs1,
+#                 'ytick.major.width':0.5,
+#                 'ytick.major.size':3,
+#                 'ytick.direction':'in',
+#                 'legend.fontsize':fs1,
+#                 'savefig.dpi':900,
+#                 'savefig.transparent':True,
+#                 'savefig.format':'png',
+#                 'savefig.pad_inches':0.1,
+#                 'savefig.bbox':'tight'}
+
+#     return params
+
+#%% Set graphics
+def SetGraphics(type):
+
+    gp={}
+
+    if type=='Presentation Dark':
+
+        gp['fs1']=7
+        gp['fs2']=7
+        gp['fs3']=6
+        gp['cla']=[0.9,0.9,0.9]
+        gp['clt']=[0.8,0.8,0.8]
+        gp['cl1']=[0.27,0.49,0.79];
+        gp['cl2']=[0.6,0.9,0];
+        gp['cl3']=[0.7,0.4,0.95];
+        gp['cl4']=[0.85,0,0]
+        gp['lw1']=0.5;
+        gp['lw2']=1.0;
+        gp['ms']=4
+        gp['Alpha1']=0.225;
+        gp['Alpha2']=0.45;
+        gp['tickl']=1.5;
+
         params={'font.sans-serif':'Arial',
-                'font.size':fs1,
-                'figure.titlesize':fs2,
-                'figure.dpi':150,
+                'font.size':gp['fs1'],
+                'figure.titlesize':gp['fs2'],
                 'figure.constrained_layout.use':True,
-                'axes.edgecolor':'black',
-                'axes.labelsize':fs1,
-                'axes.labelcolor':'black',
-                'axes.titlesize':fs2,
+                'axes.edgecolor':gp['cla'],
+                'axes.labelsize':gp['fs1'],
+                'axes.labelcolor':gp['cla'],
+                'axes.titlesize':gp['fs2'],
                 'axes.titlepad':2,
-                'axes.linewidth':0.5,
-                'lines.linewidth':0.75,
-                'lines.markersize': 3.0,
-                'text.color':'black',
-                'xtick.color':'black',
-                'xtick.labelsize':fs1,
-                'xtick.major.width':0.5,
+                'axes.linewidth':gp['lw1'],
+                'lines.linewidth':gp['lw2'],
+                'lines.markersize':gp['ms'],
+                'text.color':gp['cla'],
+                'xtick.color':gp['cla'],
+                'xtick.labelsize':gp['fs1'],
+                'xtick.major.width':gp['lw1'],
                 'xtick.major.size':3,
                 'xtick.direction':'in',
-                'ytick.color':'black',
-                'ytick.labelsize':fs1,
+                'ytick.color':gp['cla'],
+                'ytick.labelsize':gp['fs1'],
                 'ytick.major.width':0.5,
                 'ytick.major.size':3,
                 'ytick.direction':'in',
-                'legend.fontsize':fs1,
-                'savefig.dpi':900,
-                'savefig.transparent':True,
-                'savefig.format':'png',
-                'savefig.pad_inches':0.1,
-                'savefig.bbox':'tight'}
-    elif type=='spyder_fs6':
-        fs1=6
-        fs2=6
-        params={'font.sans-serif':'Arial',
-                'font.size':fs1,
-                'figure.titlesize':fs2,
-                'figure.dpi':150,
-                'figure.constrained_layout.use':True,
-                'axes.edgecolor':'black',
-                'axes.labelsize':fs1,
-                'axes.labelcolor':'black',
-                'axes.titlesize':fs2,
-                'axes.titlepad':2,
-                'axes.linewidth':0.5,
-                'lines.linewidth':0.75,
-                'lines.markersize': 2,
-                'text.color':'black',
-                'xtick.color':'black',
-                'xtick.labelsize':fs1,
-                'xtick.major.width':0.5,
-                'xtick.major.size':3,
-                'xtick.direction':'in',
-                'ytick.color':'black',
-                'ytick.labelsize':fs1,
-                'ytick.major.width':0.5,
-                'ytick.major.size':3,
-                'ytick.direction':'in',
-                'legend.fontsize':fs1,
-                'savefig.dpi':900,
-                'savefig.transparent':True,
-                'savefig.format':'png',
-                'savefig.pad_inches':0.1,
-                'savefig.bbox':'tight'}
-    elif type=='spyder_fs7':
-        fs1=7
-        fs2=7
-        params={'font.sans-serif':'Arial',
-                'font.size':fs1,
-                'figure.titlesize':fs2,
-                'figure.dpi':150,
-                'figure.constrained_layout.use':True,
-                'axes.edgecolor':'black',
-                'axes.labelsize':fs1,
-                'axes.labelcolor':'black',
-                'axes.titlesize':fs2,
-                'axes.titlepad':2,
-                'axes.linewidth':0.5,
-                'lines.linewidth':0.75,
-                'lines.markersize': 2,
-                'text.color':'black',
-                'xtick.color':'black',
-                'xtick.labelsize':fs1,
-                'xtick.major.width':0.5,
-                'xtick.major.size':3,
-                'xtick.direction':'in',
-                'ytick.color':'black',
-                'ytick.labelsize':fs1,
-                'ytick.major.width':0.5,
-                'ytick.major.size':3,
-                'ytick.direction':'in',
-                'legend.fontsize':fs1,
-                'savefig.dpi':900,
-                'savefig.transparent':False,
-                'savefig.format':'png',
-                'savefig.pad_inches':0.1,
-                'savefig.bbox':'tight'}
-    elif type=='Presentation':
-        fs1=8
-        fs2=8
-        params={'font.sans-serif':'Arial',
-                'font.size':fs1,
-                'figure.titlesize':fs2,
-                'figure.dpi':150,
-                'figure.constrained_layout.use':True,
-                'axes.edgecolor':'black',
-                'axes.labelsize':fs1,
-                'axes.labelcolor':'black',
-                'axes.titlesize':fs2,
-                'axes.titlepad':2,
-                'axes.linewidth':0.5,
-                'lines.linewidth':1.25,
-                'lines.markersize': 4,
-                'text.color':'black',
-                'xtick.color':'black',
-                'xtick.labelsize':fs1,
-                'xtick.major.width':0.5,
-                'xtick.major.size':3,
-                'xtick.direction':'in',
-                'ytick.color':'black',
-                'ytick.labelsize':fs1,
-                'ytick.major.width':0.5,
-                'ytick.major.size':3,
-                'ytick.direction':'in',
-                'legend.fontsize':fs1,
+                'legend.fontsize':gp['fs1'],
                 'savefig.dpi':900,
                 'savefig.transparent':True,
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
                 'savefig.bbox':'tight'}
 
-    return params
+    elif type=='Manuscript':
+
+        gp['fs1']=7
+        gp['fs2']=6
+        gp['fs3']=5
+        gp['cla']=[0,0,0]
+        gp['clt']=[0,0,0]
+        gp['cl1']=[0.27,0.49,0.79];
+        gp['cl2']=[0.6,0.9,0];
+        gp['cl3']=[0.7,0.4,0.95];
+        gp['cl4']=[0.85,0,0]
+        gp['lw1']=0.5;
+        gp['lw2']=1.0;
+        gp['ms']=4
+        gp['Alpha1']=0.225;
+        gp['Alpha2']=0.45;
+        gp['tickl']=1.5;
+
+        params={'font.sans-serif':'Arial',
+                'font.size':gp['fs1'],
+                'figure.titlesize':gp['fs2'],
+                'figure.constrained_layout.use':True,
+                'axes.edgecolor':gp['cla'],
+                'axes.labelsize':gp['fs1'],
+                'axes.labelcolor':gp['cla'],
+                'axes.titlesize':gp['fs2'],
+                'axes.titlepad':2,
+                'axes.linewidth':gp['lw1'],
+                'lines.linewidth':gp['lw2'],
+                'lines.markersize':gp['ms'],
+                'text.color':gp['cla'],
+                'xtick.color':gp['cla'],
+                'xtick.labelsize':gp['fs1'],
+                'xtick.major.width':gp['lw1'],
+                'xtick.major.size':3,
+                'xtick.direction':'in',
+                'ytick.color':gp['cla'],
+                'ytick.labelsize':gp['fs1'],
+                'ytick.major.width':0.5,
+                'ytick.major.size':3,
+                'ytick.direction':'in',
+                'legend.fontsize':gp['fs1'],
+                'savefig.dpi':900,
+                'savefig.transparent':False,
+                'savefig.format':'png',
+                'savefig.pad_inches':0.1,
+                'savefig.bbox':'tight'}
+
+    plt.rcParams.update(params)
+
+    return gp
 
 #%% Z-score a variable
 

@@ -281,13 +281,22 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
             d={}
 
             for k in meta['Core']['Output Variable List']:
-                d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos['Scenarios'][iScn]['Sum'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                try:
+                    d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos['Scenarios'][iScn]['Sum'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                except:
+                    pass
 
             for k in meta['Core']['Output Variable List']:
-                d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                try:
+                    d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                except:
+                    pass
 
             for k in meta['Core']['Output Variable List']:
-                d['Per-hectare mean ' + k]=np.round(np.mean(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                try:
+                    d['Per-hectare mean ' + k]=np.round(np.mean(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                except:
+                    pass
 
             if iScn==0:
                 df=pd.DataFrame().from_dict(d,orient='index');
@@ -304,13 +313,22 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
                 d={}
 
                 for k in meta['Core']['Output Variable List']:
-                    d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[iPort][iScn]['Sum'][k]['Ensemble Mean'][iT]),decimals=2)
+                    try:
+                        d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[iPort][iScn]['Sum'][k]['Ensemble Mean'][iT]),decimals=2)
+                    except:
+                        pass
 
                 for k in meta['Core']['Output Variable List']:
-                    d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+                    try:
+                        d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+                    except:
+                        pass
 
                 for k in meta['Core']['Output Variable List']:
-                    d['Per-hectare mean ' + k]=np.round(np.mean(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+                    try:
+                        d['Per-hectare mean ' + k]=np.round(np.mean(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+                    except:
+                        pass
 
                 if (iPort==0) & (iScn==0):
                     df=pd.DataFrame().from_dict(d,orient='index');
@@ -320,7 +338,8 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
 
     df.columns=[np.arange(1,df.columns.size+1)];
 
-    df.to_excel(meta['Paths']['Project'] + '\\Outputs\\TabularSummary_' + str(t_start) + '-' + str(t_end) + '_ProjectType' + str(iSP) + '_Region' + str(iSS) + '.xlsx');
+    fout=meta['Paths']['Project'] + '\\Outputs\\TabularSummary_' + str(t_start) + '-' + str(t_end) + '_ProjectType' + str(iSP) + '_Region' + str(iSS) + '.xlsx'
+    df.to_excel(fout);
 
     return df
 

@@ -37,7 +37,7 @@ vrL=['RemovedMerchToChipperMill','RemovedMerchToPulpMill','RemovedMerchToPelletM
 # *** If you change the time vector, change it consistently for other variable scenarios - it needs to be consistent ***
 tv=np.arange(1850,2101,1)
 
-regL=['Coast','Interior','GFS22','Energy Production']
+regL=['Coast','Interior','GFS22','Energy Production','BurnUneconomic','LeaveUneconomicStanding','UseUnecomicForPellets','Energy Production Pellets']
 scnL=['BaseCase','S1']
 
 #%% Initialize with BaseCase parameters
@@ -63,13 +63,13 @@ fChange=0.5
 # Phase in period
 tStart=2021
 tEnd=2030
-    
+
 for reg in regL:
-      
+
     #--------------------------------------------------------------------------
     # Merch
     #--------------------------------------------------------------------------
-    
+
     # Change in Pulp input
     nam='RemovedMerchToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
@@ -80,11 +80,11 @@ for reg in regL:
     iT=np.where( (tv>tEnd) )[0]
     d['S1'][reg][nam][iT]=y1_Pulp
     yD_Pulp=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
-    
+
     # Plot assumptions
     #plt.plot(tv,dS1[nam],'b-')
     # plt.plot(tv,1-yDelta,'b-')
-    
+
     # Change in pellet input
     nam='RemovedMerchToPelletMill'
     y0_Pellet=d['BaseCase'][reg][nam][0].copy()
@@ -95,28 +95,28 @@ for reg in regL:
     iT=np.where( (tv>tEnd) )[0]
     d['S1'][reg][nam][iT]=y1_Pellet
     yD_Pellet=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
-    
+
     # Fractions of fibre sent to sawmill, plywood, OSB
     fSawMill=0.6
     fPlywoodMill=0.2
     fOSBMill=0.2
-    
+
     # Add to Sawmill input
     nam='RemovedMerchToSawMill'
     d['S1'][reg][nam]=d['S1'][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
-    
+
     # Add to Plywood input
     nam='RemovedMerchToPlywoodMill'
     d['S1'][reg][nam]=d['S1'][reg][nam]+fPlywoodMill*(yD_Pulp+yD_Pellet)
-    
+
     # Add to OSB input
     nam='RemovedMerchToOSBMill'
     d['S1'][reg][nam]=d['S1'][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
-    
+
     #--------------------------------------------------------------------------
     # Snags
     #--------------------------------------------------------------------------
-    
+
     # Assumed change in Pulp input
     nam='RemovedSnagStemToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
@@ -127,11 +127,11 @@ for reg in regL:
     iT=np.where( (tv>tEnd) )[0]
     d['S1'][reg][nam][iT]=y1_Pulp
     yD_Pulp=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
-    
+
     # Plot assumptions
     #plt.plot(tv,dS1[nam],'b-')
     # plt.plot(tv,1-yDelta,'b-')
-    
+
     # Assumed change in pellet input
     nam='RemovedSnagStemToPelletMill'
     y0_Pellet=d['BaseCase'][reg][nam][0].copy()
@@ -142,28 +142,28 @@ for reg in regL:
     iT=np.where( (tv>tEnd) )[0]
     d['S1'][reg][nam][iT]=y1_Pellet
     yD_Pellet=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
-    
+
     # Fractions of fibre sent to sawmill, plywood, OSB
     fSawMill=0.6
     fPlywoodMill=0.2
     fOSBMill=0.2
-    
+
     # Add to Sawmill input
     nam='RemovedSnagStemToSawMill'
     d['S1'][reg][nam]=d['S1'][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
-    
+
     # Add to Plywood input
     nam='RemovedSnagStemToPlywoodMill'
     d['S1'][reg][nam]=d['S1'][reg][nam]+fPlywoodMill*(yD_Pulp+yD_Pellet)
-    
+
     # Add to OSB input
     nam='RemovedSnagStemToOSBMill'
     d['S1'][reg][nam]=d['S1'][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
-    
+
     #--------------------------------------------------------------------------
     # Non-merch (same as BaseCase)
     #--------------------------------------------------------------------------
-    
+
     # No change
 
 
@@ -199,7 +199,7 @@ ax[1,1].plot(tv,d['S1'][reg]['RemovedMerchToPlywoodMill']+d['S1'][reg]['RemovedM
 ax[1,1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to plywood mill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
 ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=1.5)
 
-gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') # 
+gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') #
 
 fig.tight_layout()
 gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Removed Fate Scenarios\Removed Fate Scenarios ' + reg,'png',900)

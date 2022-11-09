@@ -23,17 +23,17 @@ plt.rcParams.update(params)
 dDef0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_HWP.xlsx','Default')
 
 # Variables to keep
-vrL=['SawMillToPulpMill','SawMillToMDFMill','SawMillToPelletMill','SawMillToPowerFacility','SawMillToIPP','SawMillToLogExport','SawMillToSFH','SawMillToMFH','SawMillToCom',
-  'SawMillToFurn','SawMillToShip','SawMillToRepairs','SawMillToOther','PlywoodMillToPowerFacility','PlywoodMillToIPP','PlywoodMillToSFH','PlywoodMillToMFH','PlywoodMillToCom',
-  'PlywoodMillToFurn','PlywoodMillToShip','PlywoodMillToRepairs','PlywoodMillToOther','OSBMillToPowerFacility','OSBMillToIPP','OSBMillToSFH','OSBMillToMFH','OSBMillToCom',
-  'OSBMillToFurn','OSBMillToShip','OSBMillToRepairs','OSBMillToOther','MDFMillToSFH','MDFMillToMFH','MDFMillToCom','MDFMillToFurn','MDFMillToShip','MDFMillToRepairs','MDFMillToOther']
+vrL=['SawMillToPulpMill','SawMillToMDFMill','SawMillToPelletMill','SawMillToPowerFacility','SawMillToIPP','SawMillToLogExport','SawMillToSFH','SawMillToMFH','SawMillToCom','SawMillToFurn','SawMillToShip','SawMillToRepairs','SawMillToOther',
+  'PlywoodMillToPowerFacility','PlywoodMillToIPP','PlywoodMillToSFH','PlywoodMillToMFH','PlywoodMillToCom','PlywoodMillToFurn','PlywoodMillToShip','PlywoodMillToRepairs','PlywoodMillToOther',
+  'OSBMillToPowerFacility','OSBMillToIPP','OSBMillToSFH','OSBMillToMFH','OSBMillToCom','OSBMillToFurn','OSBMillToShip','OSBMillToRepairs','OSBMillToOther',
+  'MDFMillToSFH','MDFMillToMFH','MDFMillToCom','MDFMillToFurn','MDFMillToShip','MDFMillToRepairs','MDFMillToOther']
 
 # *** If you change the time vector, change it consistently for other variable scenarios - it needs to be consistent ***
 tv=np.arange(1850,2101,1)
 
-#%% Initialize dictionary 
+#%% Initialize dictionary
 
-regL=['Coast','Interior','GFS22']
+regL=['Coast','Interior','GFS22','BurnUneconomic','LeaveUneconomicStanding','UseUnecomicForPellets','Energy Production Pellets']
 scnL=['BaseCase','S1','S2','S3']
 
 d={}
@@ -49,37 +49,37 @@ for scn in scnL:
 #%% Scenario 1
 
 for reg in regL:
-    
+
     #------------------------------------------------------------------------------
     # Define change in fraction of building materials
     #------------------------------------------------------------------------------
-            
+
     # Assumed change in building output
     tStart=2021
     tEnd=2030
-    
+
     # Change in building materials
     DeltaBuildingsTot=1.1
     DeltaBuildings=np.ones(tv.size)
-    
+
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
     DeltaBuildings[iT]=np.linspace(1,DeltaBuildingsTot,iT.size)
     iT=np.where( (tv>tEnd) )[0]
     DeltaBuildings[iT]=DeltaBuildingsTot
-    
+
     # Plot assumptions
     #plt.plot(tv,DeltaBuildings,'b-')
-    
+
     #------------------------------------------------------------------------------
     # Sawmills
     #------------------------------------------------------------------------------
-    
+
     nm='SawMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PulpMill','MDFMill','PelletMill','PowerFacility','IPP','LogExport','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -87,34 +87,34 @@ for reg in regL:
         d['S1'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S1'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S1'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S1'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # Plywood mills
     #------------------------------------------------------------------------------
-        
+
     nm='PlywoodMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PowerFacility','IPP','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -122,34 +122,34 @@ for reg in regL:
         d['S1'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S1'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S1'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S1'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # OSB mills
     #------------------------------------------------------------------------------
-        
+
     nm='OSBMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PowerFacility','IPP','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -157,34 +157,34 @@ for reg in regL:
         d['S1'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S1'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S1'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S1'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # MDF mills
     #------------------------------------------------------------------------------
-        
+
     nm='MDFMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -192,19 +192,19 @@ for reg in regL:
         d['S1'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S1'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S1'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S1'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
@@ -217,33 +217,33 @@ for reg in regL:
     #------------------------------------------------------------------------------
     # Define change in fraction of building materials
     #------------------------------------------------------------------------------
-            
+
     # Assumed change in building output
     tStart=2021
     tEnd=2030
-    
+
     # Change in building materials
     DeltaBuildingsTot=2.0
     DeltaBuildings=np.ones(tv.size)
-    
+
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
     DeltaBuildings[iT]=np.linspace(1,DeltaBuildingsTot,iT.size)
     iT=np.where( (tv>tEnd) )[0]
     DeltaBuildings[iT]=DeltaBuildingsTot
-    
+
     # Plot assumptions
     #plt.plot(tv,DeltaBuildings,'b-')
-    
+
     #------------------------------------------------------------------------------
     # Sawmills
     #------------------------------------------------------------------------------
-    
+
     nm='SawMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PulpMill','MDFMill','PelletMill','PowerFacility','IPP','LogExport','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -251,34 +251,34 @@ for reg in regL:
         d['S2'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S2'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S2'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S2'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # Plywood mills
     #------------------------------------------------------------------------------
-        
+
     nm='PlywoodMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PowerFacility','IPP','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -286,34 +286,34 @@ for reg in regL:
         d['S2'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S2'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S2'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S2'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # OSB mills
     #------------------------------------------------------------------------------
-        
+
     nm='OSBMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PowerFacility','IPP','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -321,34 +321,34 @@ for reg in regL:
         d['S2'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S2'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S2'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S2'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # MDF mills
     #------------------------------------------------------------------------------
-        
+
     nm='MDFMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -356,19 +356,19 @@ for reg in regL:
         d['S2'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S2'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S2'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S2'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
@@ -377,37 +377,37 @@ for reg in regL:
 #%% Scenario 3
 
 for reg in regL:
-    
+
     #------------------------------------------------------------------------------
     # Define change in fraction of building materials
     #------------------------------------------------------------------------------
-            
+
     # Assumed change in building output
     tStart=2022
     tEnd=2030
-    
+
     # Change in building materials
     DeltaBuildingsTot=3.0
     DeltaBuildings=np.ones(tv.size)
-    
+
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
     DeltaBuildings[iT]=np.linspace(1,DeltaBuildingsTot,iT.size)
     iT=np.where( (tv>tEnd) )[0]
     DeltaBuildings[iT]=DeltaBuildingsTot
-    
+
     # Plot assumptions
     #plt.plot(tv,DeltaBuildings,'b-')
-    
+
     #------------------------------------------------------------------------------
     # Sawmills
     #------------------------------------------------------------------------------
-    
+
     nm='SawMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PulpMill','MDFMill','PelletMill','PowerFacility','IPP','LogExport','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -415,34 +415,34 @@ for reg in regL:
         d['S3'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S3'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S3'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S3'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # Plywood mills
     #------------------------------------------------------------------------------
-        
+
     nm='PlywoodMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PowerFacility','IPP','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -450,34 +450,34 @@ for reg in regL:
         d['S3'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S3'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S3'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S3'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # OSB mills
     #------------------------------------------------------------------------------
-        
+
     nm='OSBMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['PowerFacility','IPP','Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -485,34 +485,34 @@ for reg in regL:
         d['S3'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S3'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S3'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S3'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
         plt.plot(tv,y,'-')
-    
+
     #------------------------------------------------------------------------------
     # MDF mills
     #------------------------------------------------------------------------------
-        
+
     nm='MDFMillTo'
-    
-    # Pool groups 
+
+    # Pool groups
     BuildingL=['SFH','MFH','Com']
     NonBuildingL=['Furn','Ship','Repairs','Other']
-    
+
     # Adjust building pools
     TotalChangeInBuildingTrans=np.zeros(tv.size)
     for ip in BuildingL:
@@ -520,19 +520,19 @@ for reg in regL:
         d['S3'][reg][nm + ip]=DeltaBuildings*x
         TotalChangeInBuildingTrans=TotalChangeInBuildingTrans+DeltaBuildings*x-DeltaBuildings[0]*x
     #plt.plot(tv,TotalChangeInBuildingTrans,'-')
-    
+
     # Adjust non-building pools to compensate
     for ip in NonBuildingL:
         x=d['BaseCase'][reg][nm + ip]
         d['S3'][reg][nm + ip]=x-TotalChangeInBuildingTrans/len(NonBuildingL)
-        
+
     # QA (check conservation of mass)
     y=np.zeros(tv.size)
     for ip in BuildingL:
         y=y+d['S3'][reg][nm + ip]
     for ip in NonBuildingL:
         y=y+d['S3'][reg][nm + ip]
-    
+
     flg=0
     if flg==1:
         plt.close('all')
@@ -555,7 +555,7 @@ for ip in BuildingL:
     yBS1=yBS1+d['S1'][reg][nm + ip]
 yBS2=np.zeros(tv.size)
 for ip in BuildingL:
-    yBS2=yBS2+d['S2'][reg][nm + ip]    
+    yBS2=yBS2+d['S2'][reg][nm + ip]
 
 yNBD=np.zeros(tv.size)
 for ip in NonBuildingL:
@@ -565,8 +565,8 @@ for ip in NonBuildingL:
     yNBS1=yNBS1+d['S1'][reg][nm + ip]
 yNBS2=np.zeros(tv.size)
 for ip in NonBuildingL:
-    yNBS2=yNBS2+d['S2'][reg][nm + ip]    
- 
+    yNBS2=yNBS2+d['S2'][reg][nm + ip]
+
 plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(16,6.5)); ms=3; lw=1.25
 ax[0].plot(tv,yBD,'b-',label='BaseCase',lw=lw)
 ax[0].plot(tv,yBS1,'g--',label='Scenario 1',lw=lw)
@@ -580,7 +580,7 @@ ax[1].plot(tv,yNBS2,'r-.',label='Scenario 2',lw=lw)
 ax[1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Non-building material fraction',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
 ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=1.5)
 
-gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') # 
+gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') #
 
 fig.tight_layout()
 gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\End Use Scenarios\End Use Scenarios ' + reg,'png',900)
