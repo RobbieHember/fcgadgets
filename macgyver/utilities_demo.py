@@ -414,7 +414,7 @@ def ExportDeltaTable(meta,mos,tabNam,t_start,t_duration,vL,**kwargs):
 
     return df
 
-#%%
+#%% Plot mean fluxes and mean pools over a specified time horizon
 
 def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
 
@@ -457,7 +457,7 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     bx2_fc=[0.9,0.9,0.9]
     bx_lower_h=0.47
     bx_lulucf_w=0.48
-    bx_esc_w=0.23
+    bx_esc_w=0.15
     bx_atmo_bottom=0.88
     arrow_head_w=0.007
     arrow_lw=0.05
@@ -478,7 +478,7 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
 
     # Atmosphere
     ax.add_patch(Rectangle([0.01,bx_atmo_bottom],0.98,0.1,fc=[0.9,0.95,1],ec=bx_ec))
-    ax.text(0.5,0.935,'Atmosphere',size=bx_fs,ha='center',fontweight='bold',color=[0,0,0.5])
+    ax.text(0.5,0.935,'Atmosphere',size=bx_fs,ha='center',fontweight='bold',color=[0.08,0.3,0.55])
     vr='E_CO2e_AGHGB_WSub'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
     txt='Change in storage (tCO$_2$e/ha): ' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
@@ -491,11 +491,11 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     # Forest land
     ax.add_patch(Rectangle([0.02,0.1],bx_lulucf_w*0.53,bx_lower_h-0.11,fc=[0.9,0.95,0.9],ec=bx_ec))
     ax.text(0.15,0.29,'Forest Land',size=bx_fs,ha='center',color=[0,0.5,0])
-    ax.text(0.15,0.25,'Change in storage (tC/ha):',size=fs_flux,ha='center')
+    ax.text(0.15,0.26,'Change in storage (tC/ha):',size=fs_flux,ha='center')
     vr='C_Forest_Tot'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
     txt=str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.15,0.225,txt,size=fs_flux,ha='center')
+    ax.text(0.15,0.23,txt,size=fs_flux,ha='center')
 
     # Harvested wood products
     ax.add_patch(Rectangle([0.36,0.1],0.12,bx_lower_h-0.11,fc=[0.9,0.95,0.9],ec=bx_ec))
@@ -505,26 +505,40 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     txt='Change in\nstorage (tC/ha):\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
     ax.text(0.42,0.185,txt,size=fs_flux,ha='center')
 
+    # Lithosphere
+    ax.add_patch( Rectangle([bx_lulucf_w+0.02,0.01],bx_esc_w*3+0.03+0.01,bx_lower_h,fc=[0.94,0.88,0.84],ec=bx_ec))
+    ax.text(0.75,0.04,'Lithosphere (Fossil Fuels & Limestone)',size=bx_fs,ha='center',color=[0.5,0,0])
+
     # Energy - Stationary Combustion
-    ax.add_patch(Rectangle([bx_lulucf_w+0.02,0.01],bx_esc_w,bx_lower_h,fc=[1,0.95,0.9],ec=bx_ec))
-    ax.text(0.62,0.23,'Energy\nStationary\nCombustion',size=bx_fs,ha='center',color=[0.5,0,0])
-    a1='?'; a2='?'; a3=-1*np.round(y_d['E_CO2e_ESC_Operations']+y_d['E_CO2e_SUB_Tot'],decimals=decim)
-    txt='Change in storage (tC/ha):\n' + a1 + ',' + a2 + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.62,0.17,txt,size=fs_flux,ha='center')
+    ax.add_patch(Rectangle([bx_lulucf_w+0.02+0.01,0.1],bx_esc_w,bx_lower_h-0.11,fc=[1,0.95,0.9],ec=bx_ec))
+    ax.text(0.585,0.29,'Stationary\nCombustion',size=bx_fs,ha='center',color=[0.5,0,0])
+    a1=np.round(y_d['E_CO2e_SUB_ESC']/3.667,decimals=decim);
+    a2=np.round(-1*y_d['E_CO2e_ESC_OperFor']/3.667,decimals=decim);
+    a3=-1*np.round((y_d['E_CO2e_SUB_ESC']+y_d['E_CO2e_ESC_OperFor'])/3.667,decimals=decim)
+    txt='Change in\nstorage (tC/ha):\n' + GetSign(a1) + str(a1) + ',' + GetSign(a2) + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.585,0.21,txt,size=fs_flux,ha='center')
 
     # Energy - Transportation
-    ax.add_patch(Rectangle([bx_lulucf_w+bx_esc_w+0.03,0.01],0.12,bx_lower_h,fc=[1,0.95,0.9],ec=bx_ec))
-    ax.text(0.8,0.25,'Energy\nTransportation',size=bx_fs,ha='center',color=[0.5,0,0])
-    a1='?'; a2='?'; a3=-1*np.round(y_d['E_CO2e_ET_Operations'],decimals=decim)
-    txt='Change in\n storage (tC/ha):\n' + a1 + ',' + a2 + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.8,0.165,txt,size=fs_flux,ha='center')
+    ax.add_patch(Rectangle([bx_lulucf_w+0.02+0.01+bx_esc_w+0.01,0.1],bx_esc_w,bx_lower_h-0.11,fc=[1,0.95,0.9],ec=bx_ec))
+    ax.text(0.745,0.29,'Transportation',size=bx_fs,ha='center',color=[0.5,0,0])
+    a1=np.round(y_d['E_CO2e_SUB_ET']/3.667,decimals=decim);
+    a2=np.round(-1*y_d['E_CO2e_ET_OperFor']/3.667,decimals=decim);
+    a3=-1*np.round((y_d['E_CO2e_SUB_ET']+y_d['E_CO2e_ET_OperFor'])/3.667,decimals=decim)
+    txt='Change in\n storage (tC/ha):\n' + GetSign(a1) + str(a1) + ',' + GetSign(a2) + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.745,0.21,txt,size=fs_flux,ha='center')
 
     # IPPU
-    ax.add_patch(Rectangle([0.87,0.01],0.12,bx_lower_h,fc=[1,0.95,0.9],ec=bx_ec))
-    ax.text(0.93,0.22,'Industrial\nProducts\n&\nProduct\nUse',size=bx_fs,ha='center',color=[0.5,0,0])
-    a1='?'; a2='?'; a3=-1*np.round(y_d['E_CO2e_IPPU_Operations'],decimals=decim)
-    txt='Change in\n storage (tC/ha):\n' + a1 + ',' + a2 + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.93,0.135,txt,size=fs_flux,ha='center')
+    ax.add_patch(Rectangle([bx_lulucf_w+0.02+0.01+bx_esc_w+0.01+bx_esc_w+0.01,0.1],bx_esc_w,bx_lower_h-0.11,fc=[1,0.95,0.9],ec=bx_ec))
+    ax.text(0.905,0.27,'Industrial\nProcesses &\nProduct Use',size=bx_fs,ha='center',color=[0.5,0,0])
+    a1=np.round(y_d['E_CO2e_SUB_IPPU']/3.667,decimals=decim);
+    a2=np.round(-1*y_d['E_CO2e_IPPU_OperFor']/3.667,decimals=decim);
+    a3=-1*np.round((y_d['E_CO2e_SUB_IPPU']+y_d['E_CO2e_IPPU_OperFor'])/3.667,decimals=decim)
+    txt='Change in\n storage (tC/ha):\n' + GetSign(a1) + str(a1) + ',' + GetSign(a2) + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.905,0.185,txt,size=fs_flux,ha='center')
+
+    #--------------------------------------------------------------------------
+    # Fluxes
+    #--------------------------------------------------------------------------
 
     # NEE
     vr='E_CO2e_LULUCF_NEE'
@@ -574,48 +588,48 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     #a1=0.2; a2=0.5; a3=0.3
     txt='Removals\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
     ax.text(0.315,0.31,txt,ha='center',size=fs_flux)
-    ax.arrow(0.28,0.28,0.07,0,head_width=0.01,head_length=arrow_head_w,fc='k',ec='k',lw=arrow_lw)
+    ax.arrow(0.275,0.275,0.08,0,head_width=0.01,head_length=arrow_head_w,fc='k',ec='k',lw=arrow_lw)
 
     # Bioenergy combustion
     vr='E_CO2e_ESC_Bioenergy'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
     txt='Bioenergy\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.515,0.51,txt,ha='right',size=fs_flux)
+    ax.text(0.515,0.64,txt,ha='right',va='top',size=fs_flux)
     ax.arrow(0.52,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
 
     # ESC operational emissions
-    vr='E_CO2e_ESC_Operations'
+    vr='E_CO2e_ESC_OperFor'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
-    txt='Fossil fuel\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.55,0.51,txt,ha='left',size=fs_flux)
+    txt='Fossil fuel for\nstationary\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.55,0.64,txt,ha='left',va='top',size=fs_flux)
     ax.arrow(0.545,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
 
     # Displacement energy
     vr='E_CO2e_SUB_E'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
     txt='Displacement \neffects of\nbioenergy\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.655,0.72,txt,ha='right',size=fs_flux)
+    ax.text(0.655,0.82,txt,ha='right',va='top',size=fs_flux)
     ax.arrow(0.66,bx_atmo_bottom,0,-1*(bx_atmo_bottom-bx_lower_h-0.02),head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+
+    # Transportation
+    vr='E_CO2e_ET_OperFor'
+    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
+    txt='Fossil fuel for\ntransportation\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.695,0.64,txt,ha='left',va='top',size=fs_flux)
+    ax.arrow(0.69,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
 
     # Displacement building materials
     vr='E_CO2e_SUB_M'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
-    txt='Displacement \neffects of\nwood materials\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.695,0.72,txt,ha='left',size=fs_flux)
-    ax.arrow(0.69,bx_atmo_bottom,0,-1*(bx_atmo_bottom-bx_lower_h-0.02),head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    txt='Displacement \neffects of\nsolid wood\nmaterials\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.805,0.82,txt,ha='left',va='top',size=fs_flux)
+    ax.arrow(0.8,bx_atmo_bottom,0,-1*(bx_atmo_bottom-bx_lower_h-0.02),head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
 
-    # Combustion from transportation
-    vr='E_CO2e_ET_Operations'
-    a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
-    txt='Fossil fuel\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.815,0.51,txt,ha='left',size=fs_flux)
-    ax.arrow(0.81,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
-
-    # Combustoin from IPPU
-    vr='E_CO2e_IPPU_Operations'
+    # IPPU
+    vr='E_CO2e_IPPU_OperFor'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
     txt='Fossil fuel\ncombustion\nand\nurea\nsequestration\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.915,0.68,txt,ha='left',size=fs_flux)
+    ax.text(0.915,0.64,txt,ha='left',va='top',size=fs_flux)
     ax.arrow(0.91,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
 
     ax.set(position=[0,0,1,1],visible='Off',xticks=[],yticks=[])

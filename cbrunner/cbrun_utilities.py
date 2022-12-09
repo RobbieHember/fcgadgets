@@ -480,14 +480,26 @@ def ImportProjectConfig(meta,**kwargs):
         'E_CO2e_LULUCF_Fire',
         'E_CO2e_LULUCF_HWP',
         'E_CO2e_ESC_Bioenergy',
-        'E_CO2e_ESC_Operations',
-        'E_CO2e_ET_Operations',
-        'E_CO2e_IPPU_Operations',
+        'E_CO2e_ESC_BioenergyPowerFacilityDom',
+        'E_CO2e_ESC_BioenergyPowerFacilityExport',
+        'E_CO2e_ESC_BioenergyPowerGrid',
+        'E_CO2e_ESC_BioenergyPelletExport',
+        'E_CO2e_ESC_BioenergyPelletDomGrid',
+        'E_CO2e_ESC_BioenergyPelletDomRNG',
+        'E_CO2e_ESC_BioenergyFirewoodDom',
+        'E_CO2e_ESC_BioenergyFirewoodExport',
+        'E_CO2e_ESC_OperFor',
+        'E_CO2e_ET_OperFor',
+        'E_CO2e_IPPU_OperFor',
         'E_CO2e_SUB_E',
         'E_CO2e_SUB_M',
+        'E_CO2e_SUB_Tot',
         'E_CO2e_SUB_Coal',
         'E_CO2e_SUB_Oil',
         'E_CO2e_SUB_Gas',
+        'E_CO2e_SUB_ESC',
+        'E_CO2e_SUB_ET',
+        'E_CO2e_SUB_IPPU',
         'E_CO2e_SUB_Calcination',
         'E_CO2e_SUB_Sawnwood',
         'E_CO2e_SUB_Panel',
@@ -495,7 +507,8 @@ def ImportProjectConfig(meta,**kwargs):
         'E_CO2e_SUB_PowerFacilityExport',
         'E_CO2e_SUB_PowerGrid',
         'E_CO2e_SUB_PelletExport',
-        'E_CO2e_SUB_PelletDom',
+        'E_CO2e_SUB_PelletDomGrid',
+        'E_CO2e_SUB_PelletDomRNG',
         'E_CO2e_SUB_FirewoodDom',
         'E_CO2e_SUB_FirewoodExport',
         'E_CO2e_AGHGB_WOSub',
@@ -522,6 +535,9 @@ def ImportProjectConfig(meta,**kwargs):
         'ODT Aluminum',
         'ODT Plastic',
         'ODT Textile',
+        'ODT Coal',
+        'ODT Oil',
+        'ODT Gas',
         'GJ PowerFacilityDom',
         'GJ PowerFacilityExport',
         'GJ PowerGrid',
@@ -818,7 +834,7 @@ def ImportProjectConfig(meta,**kwargs):
                 break
 
         # Create random numbers and save them
-        if 'Use Frozen Ensembles' not in meta['Project']:
+        if meta['Project']['Use Frozen Ensembles']=='Off':
             for iEns in range(meta['Project']['N Ensemble']):
                 for iBat in range(meta['Project']['N Batch']):
 
@@ -1216,19 +1232,19 @@ def ImportProjectConfig(meta,**kwargs):
             meta['Scenario'][iScn]['Nutrient Application Status']='Off'
 
     #--------------------------------------------------------------------------
-    # Project type and region (not used in demos so initialize here)
+    # Project type and region
     #--------------------------------------------------------------------------
 
     if meta['Project']['Scenario Source']=='Spreadsheet':
 
-        # Define region from input of BGC zone
-        for iScn in range(meta['Project']['N Scenario']):
-            if np.isin(meta['Scenario'][iScn]['BGC Zone Code'],['CWH','CDF','MH'])==True:
-                meta['Scenario'][iScn]['Region Code']='Coast'
-                meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Coast']
-            else:
-                meta['Scenario'][iScn]['Region Code']='Interior'
-                meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Interior']
+        # Define region from input of BGC zone (*** updated to start including ***)
+        # for iScn in range(meta['Project']['N Scenario']):
+        #     if np.isin(meta['Scenario'][iScn]['BGC Zone Code'],['CWH','CDF','MH'])==True:
+        #         meta['Scenario'][iScn]['Region Code']='Coast'
+        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Coast']
+        #     else:
+        #         meta['Scenario'][iScn]['Region Code']='Interior'
+        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Interior']
 
         # Define strata
         meta['Project']['Strata']={}
@@ -1337,35 +1353,43 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     v0['ODT FirewoodDom']=v0['C_ToFirewoodDom']/bB['Carbon Content Wood']
     v0['ODT FirewoodTot']=(v0['C_ToFirewoodDom']+v0['C_ToFirewoodExport'])/bB['Carbon Content Wood']
 
+    v0['ODT Coal']=v0['E_CO2e_SUB_CoalForBioenergy']/(bB['Emission Intensity Coal']/1000)/bB['Energy Content Coal']
+    v0['ODT Oil']=v0['E_CO2e_SUB_OilForBioenergy']/(bB['Emission Intensity Oil']/1000)/bB['Energy Content Oil']
+    v0['ODT Gas']=v0['E_CO2e_SUB_GasForBioenergy']/(bB['Emission Intensity Natural Gas']/1000)/bB['Energy Content Natural Gas']
+
     # Convert yield of bioenergy feedstock (ODT/ha) to energy (GJ/ha)
     v0['GJ PelletExport']=v0['ODT PelletExport']*bB['Energy Content Wood (0% moisture)']
+    v0['GJ PelletDomGrid']=v0['ODT PelletDomGrid']*bB['Energy Content Wood (0% moisture)']
+    v0['GJ PelletDomRNG']=v0['ODT PelletDomRNG']*bB['Energy Content Wood (0% moisture)']
     v0['GJ PowerGrid']=v0['ODT PowerGrid']*bB['Energy Content Wood (0% moisture)']
     v0['GJ PowerFacilityDom']=v0['ODT PowerFacilityDom']*bB['Energy Content Wood (0% moisture)']
     v0['GJ FirewoodDom']=v0['ODT FirewoodDom']*bB['Energy Content Wood (0% moisture)']
     v0['GJ FirewoodTot']=v0['ODT FirewoodTot']*bB['Energy Content Wood (0% moisture)']
 
     # Aggregate operational emissions
-    v0['E_CO2e_ESC_Operations']=v0['E_CO2e_ESC_OperationsBurnCoal']+v0['E_CO2e_ESC_OperationsBurnOil']+v0['E_CO2e_ESC_OperationsBurnGas']
-    v0['E_CO2e_ET_Operations']=v0['E_CO2e_ET_OperationsBurnCoal']+v0['E_CO2e_ET_OperationsBurnOil']+v0['E_CO2e_ET_OperationsBurnGas']
-    v0['E_CO2e_IPPU_Operations']=v0['E_CO2e_IPPU_BurningCoal']+v0['E_CO2e_IPPU_BurningOil']+v0['E_CO2e_IPPU_BurningGas']
+    v0['E_CO2e_ESC_OperFor']=v0['E_CO2e_ESC_OperForBurnCoal']+v0['E_CO2e_ESC_OperForBurnOil']+v0['E_CO2e_ESC_OperForBurnGas']
+    v0['E_CO2e_ET_OperFor']=v0['E_CO2e_ET_OperForBurnCoal']+v0['E_CO2e_ET_OperForBurnOil']+v0['E_CO2e_ET_OperForBurnGas']
+    v0['E_CO2e_IPPU_OperFor']=v0['E_CO2e_IPPU_OperForBurningCoal']+v0['E_CO2e_IPPU_OperForBurningOil']+v0['E_CO2e_IPPU_OperForBurningGas']
 
-    v0['E_CO2e_OPER_Coal']=v0['E_CO2e_ESC_OperationsBurnCoal']+v0['E_CO2e_ET_OperationsBurnCoal']+v0['E_CO2e_IPPU_BurningCoal']
-    v0['E_CO2e_OPER_Oil']=v0['E_CO2e_ESC_OperationsBurnOil']+v0['E_CO2e_ET_OperationsBurnOil']+v0['E_CO2e_IPPU_BurningOil']
-    v0['E_CO2e_OPER_Gas']=v0['E_CO2e_ESC_OperationsBurnGas']+v0['E_CO2e_ET_OperationsBurnGas']+v0['E_CO2e_IPPU_BurningGas']
-    v0['E_CO2e_OPER']=v0['E_CO2e_OPER_Coal']+v0['E_CO2e_OPER_Oil']+v0['E_CO2e_OPER_Gas']
+    v0['E_CO2e_OperForCoal']=v0['E_CO2e_ESC_OperForBurnCoal']+v0['E_CO2e_ET_OperForBurnCoal']+v0['E_CO2e_IPPU_OperForBurningCoal']
+    v0['E_CO2e_OperForOil']=v0['E_CO2e_ESC_OperForBurnOil']+v0['E_CO2e_ET_OperForBurnOil']+v0['E_CO2e_IPPU_OperForBurningOil']
+    v0['E_CO2e_OperForGas']=v0['E_CO2e_ESC_OperForBurnGas']+v0['E_CO2e_ET_OperForBurnGas']+v0['E_CO2e_IPPU_OperForBurningGas']
+    v0['E_CO2e_OperForTot']=v0['E_CO2e_OperForCoal']+v0['E_CO2e_OperForOil']+v0['E_CO2e_OperForGas']
 
-    # Aggregate substitution effects
-    # For unknown reasons, trying to reverse sign when calculated messes up the array
-    # Do it here instead.
-    vL=['E_CO2e_SUB_CoalForBioenergy','E_CO2e_SUB_OilForBioenergy','E_CO2e_SUB_GasForBioenergy','E_CO2e_SUB_CoalForWood',
-        'E_CO2e_SUB_OilForWood','E_CO2e_SUB_GasForWood',
+    # Revise the sign of substitution effects
+    vL=['E_CO2e_SUB_CoalForBioenergy','E_CO2e_SUB_OilForBioenergy','E_CO2e_SUB_GasForBioenergy',
+        'E_CO2e_SUB_PowerFacilityDom','E_CO2e_SUB_PowerFacilityExport','E_CO2e_SUB_PowerGrid',
+        'E_CO2e_SUB_PelletExport','E_CO2e_SUB_PelletDomGrid','E_CO2e_SUB_PelletDomRNG',
+        'E_CO2e_SUB_FirewoodDom','E_CO2e_SUB_FirewoodExport',
+        'E_CO2e_SUB_CoalForWood','E_CO2e_SUB_OilForWood','E_CO2e_SUB_GasForWood',
+        'E_CO2e_SUB_Sawnwood','E_CO2e_SUB_Panel',
         'E_CO2e_SUB_Concrete','E_CO2e_SUB_Steel','E_CO2e_SUB_Aluminum','E_CO2e_SUB_Plastic','E_CO2e_SUB_Textile',
         'E_CO2e_SUB_Calcination']
     for v in vL:
         v0[v]=-1*v0[v]
 
     # Reverse sign of building material production (saved as positive)
-    vL=['ODT Concrete','ODT Steel','ODT Aluminum','ODT Plastic','ODT Textile']
+    vL=['ODT Concrete','ODT Steel','ODT Aluminum','ODT Plastic','ODT Textile','ODT Coal','ODT Oil','ODT Gas']
     for v in vL:
         try:
             v0[v]=-1*v0[v]
@@ -1375,32 +1399,27 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     v0['E_CO2e_SUB_Coal']=v0['E_CO2e_SUB_CoalForBioenergy']+v0['E_CO2e_SUB_CoalForWood']
     v0['E_CO2e_SUB_Oil']=v0['E_CO2e_SUB_OilForBioenergy']+v0['E_CO2e_SUB_OilForWood']
     v0['E_CO2e_SUB_Gas']=v0['E_CO2e_SUB_GasForBioenergy']+v0['E_CO2e_SUB_GasForWood']
+
     v0['E_CO2e_SUB_E']=v0['E_CO2e_SUB_CoalForBioenergy']+v0['E_CO2e_SUB_OilForBioenergy']+v0['E_CO2e_SUB_GasForBioenergy']
     v0['E_CO2e_SUB_M']=v0['E_CO2e_SUB_CoalForWood']+v0['E_CO2e_SUB_OilForWood']+v0['E_CO2e_SUB_GasForWood']+v0['E_CO2e_SUB_Calcination']
     v0['E_CO2e_SUB_Tot']=v0['E_CO2e_SUB_M']+v0['E_CO2e_SUB_E']
 
-    v0['E_CO2e_Coal']=v0['E_CO2e_OPER_Coal']+v0['E_CO2e_SUB_Coal']
-    v0['E_CO2e_Oil']=v0['E_CO2e_OPER_Oil']+v0['E_CO2e_SUB_Oil']
-    v0['E_CO2e_Gas']=v0['E_CO2e_OPER_Gas']+v0['E_CO2e_SUB_Gas']
-    try:
-        v0['E_CO2e_SUB_Sawnwood']=-1*v0['E_CO2e_SUB_Sawnwood']
-        v0['E_CO2e_SUB_Panel']=-1*v0['E_CO2e_SUB_Panel']
-        v0['E_CO2e_SUB_PowerFacilityDom']=-1*v0['E_CO2e_SUB_PowerFacilityDom']
-        v0['E_CO2e_SUB_PowerFacilityExport']=-1*v0['E_CO2e_SUB_PowerFacilityExport']
-        v0['E_CO2e_SUB_PowerGrid']=-1*v0['E_CO2e_SUB_PowerGrid']
-        v0['E_CO2e_SUB_PelletFor']=-1*v0['E_CO2e_SUB_PelletFor']
-        v0['E_CO2e_SUB_FirewoodDom']=-1*v0['E_CO2e_SUB_FirewoodDom']
-        v0['E_CO2e_SUB_FirewoodExport']=-1*v0['E_CO2e_SUB_FirewoodExport']
-    except:
-        pass
+    v0['E_CO2e_SUB_ESC']=0.9*(v0['E_CO2e_SUB_Tot']-v0['E_CO2e_SUB_Calcination'])
+    v0['E_CO2e_SUB_ET']=0.1*(v0['E_CO2e_SUB_Tot']-v0['E_CO2e_SUB_Calcination'])
+    v0['E_CO2e_SUB_IPPU']=v0['E_CO2e_SUB_Calcination']
+
+    v0['E_CO2e_Coal']=v0['E_CO2e_OperForCoal']+v0['E_CO2e_SUB_Coal']
+    v0['E_CO2e_Oil']=v0['E_CO2e_OperForOil']+v0['E_CO2e_SUB_Oil']
+    v0['E_CO2e_Gas']=v0['E_CO2e_OperForGas']+v0['E_CO2e_SUB_Gas']
+
     # Atmospheric GHG balance (tCO2e/ha/yr)
     v0['E_CO2e_AGHGB_WSub']=v0['E_CO2e_LULUCF_NEE']+v0['E_CO2e_LULUCF_Wildfire']+v0['E_CO2e_LULUCF_OpenBurning']+ \
         v0['E_CO2e_LULUCF_Denit']+v0['E_CO2e_LULUCF_Other']+v0['E_CO2e_LULUCF_HWP']+v0['E_CO2e_ESC_Bioenergy']+v0['E_CO2e_SUB_E']+v0['E_CO2e_SUB_M']+ \
-        v0['E_CO2e_ESC_Operations']+v0['E_CO2e_ET_Operations']+v0['E_CO2e_IPPU_Operations']
+        v0['E_CO2e_ESC_OperFor']+v0['E_CO2e_ET_OperFor']+v0['E_CO2e_IPPU_OperFor']
 
     v0['E_CO2e_AGHGB_WOSub']=v0['E_CO2e_LULUCF_NEE']+v0['E_CO2e_LULUCF_Wildfire']+v0['E_CO2e_LULUCF_OpenBurning']+ \
         v0['E_CO2e_LULUCF_Denit']+v0['E_CO2e_LULUCF_Other']+v0['E_CO2e_LULUCF_HWP']+v0['E_CO2e_ESC_Bioenergy']+ \
-        v0['E_CO2e_ESC_Operations']+v0['E_CO2e_ET_Operations']+v0['E_CO2e_IPPU_Operations']
+        v0['E_CO2e_ESC_OperFor']+v0['E_CO2e_ET_OperFor']+v0['E_CO2e_IPPU_OperFor']
 
     # Add cumulative
     v0['E_CO2e_AGHGB_WSub_cumu']=np.cumsum(v0['E_CO2e_AGHGB_WSub'],axis=0)
@@ -1418,17 +1437,17 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     # and substitution effects (tonnesC)
     #--------------------------------------------------------------------------
 
-    E_Operations=v0['E_CO2e_ESC_OperationsBurnCoal']+v0['E_CO2e_ET_OperationsBurnCoal']+v0['E_CO2e_IPPU_BurningCoal']
+    E_Op=v0['E_CO2e_ESC_OperForBurnCoal']+v0['E_CO2e_ET_OperForBurnCoal']+v0['E_CO2e_IPPU_OperForBurningCoal']
     E_Substitution=v0['E_CO2e_SUB_CoalForBioenergy']+v0['E_CO2e_SUB_CoalForWood']
-    v0['C_Coal']=-1*(E_Operations+E_Substitution)/(bB['Emission Intensity Coal']/1000)/bB['Energy Content Coal']*bB['Carbon Content Coal']
+    v0['C_Coal']=-1*(E_Op+E_Substitution)/(bB['Emission Intensity Coal']/1000)/bB['Energy Content Coal']*bB['Carbon Content Coal']
 
-    E_Operations=v0['E_CO2e_ESC_OperationsBurnOil']+v0['E_CO2e_ET_OperationsBurnOil']+v0['E_CO2e_IPPU_BurningOil']
+    E_Op=v0['E_CO2e_ESC_OperForBurnOil']+v0['E_CO2e_ET_OperForBurnOil']+v0['E_CO2e_IPPU_OperForBurningOil']
     E_Substitution=v0['E_CO2e_SUB_OilForBioenergy']+v0['E_CO2e_SUB_OilForWood']
-    v0['C_Oil']=-1*(E_Operations+E_Substitution)/(bB['Emission Intensity Oil']/1000)/bB['Energy Content Oil']*bB['Carbon Content Oil']
+    v0['C_Oil']=-1*(E_Op+E_Substitution)/(bB['Emission Intensity Oil']/1000)/bB['Energy Content Oil']*bB['Carbon Content Oil']
 
-    E_Operations=v0['E_CO2e_ESC_OperationsBurnGas']+v0['E_CO2e_ET_OperationsBurnGas']+v0['E_CO2e_IPPU_BurningGas']
+    E_Op=v0['E_CO2e_ESC_OperForBurnGas']+v0['E_CO2e_ET_OperForBurnGas']+v0['E_CO2e_IPPU_OperForBurningGas']
     E_Substitution=v0['E_CO2e_SUB_GasForBioenergy']+v0['E_CO2e_SUB_GasForWood']
-    v0['C_Gas']=-1*(E_Operations+E_Substitution)/(bB['Emission Intensity Natural Gas']/1000)/bB['Energy Content Natural Gas']*bB['Carbon Content Natural Gas']
+    v0['C_Gas']=-1*(E_Op+E_Substitution)/(bB['Emission Intensity Natural Gas']/1000)/bB['Energy Content Natural Gas']*bB['Carbon Content Natural Gas']
 
     #--------------------------------------------------------------------------
     # Sawtooth variable adjustments
@@ -1563,10 +1582,19 @@ def LoadScenarioResults(meta):
     return v1
 
 #%% Calculate model output statistics for GHG variables (from points)
-# Notes: You can't summarize the statistics in this script - the full set of ensemblers
+
+# Notes:
+
+# You can't summarize the statistics in this script - the full set of ensemblers
 # must be saved so that the statistics can be calculate for each scenario comparison.
 
+# This also calculates age class distribution stats, but it does not include uncertainty
+# (individual ensembles are not saved)
+
 def Calc_MOS_FromPoints_GHG(meta,**kwargs):
+
+    t0=time.time()
+    print('Calculating model output statistics for GHG balance and age class distribution')
 
     # Key word arguments
 
@@ -1612,12 +1640,21 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
         uPS_size=meta['Project']['Strata']['Project']['Unique ID'].size
         uSS_size=meta['Project']['Strata']['Spatial']['Unique ID'].size
 
+        # GHGs
         Data1={}
         for oper in ['Mean','Sum']:
             Data1[oper]={}
             for k in v2include:
                 Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
                 Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
+
+        # Initialize age class distribution data
+        acd={}
+        acd['bwT']=10
+        acd['binT']=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End'],acd['bwT'])
+        acd['bwA']=5
+        acd['binA']=np.arange(0,400,acd['bwA'])
+        acd['Data']=np.zeros( (acd['binT'].size,acd['binA'].size,uPS_size,uSS_size) )
 
         #--------------------------------------------------------------------------
         # Loop through ensembles
@@ -1626,9 +1663,12 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
         for iEns in range(meta['Project']['N Ensemble']):
 
             # Initialize temporary data structure for full simulation
-            DataSXY={}
+            Data0={}
             for k in v2include:
-                DataSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                Data0[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+
+            # Initialize age class distribution for this ensemble
+            Age0=np.zeros( (acd['binT'].size,meta['Project']['N Stand']) )
 
             for iBat in range(meta['Project']['N Batch']):
 
@@ -1650,7 +1690,12 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
                     if d1[k].ndim>2:
                         # Skip C pools with more than 2 dims
                         continue
-                    DataSXY[k][:,indBat[iKeepStands]]=d1[k][:,iKeepStands].copy()
+                    Data0[k][:,indBat[iKeepStands]]=d1[k][:,iKeepStands].copy()
+
+                # Populate age class distribution
+                for iT_acd in range(acd['binT'].size):
+                    indT_acd=np.where(tv_saving==acd['binT'][iT_acd])[0]
+                    Age0[iT_acd,indBat]=d1['A'][indT_acd,:]
 
             del d1
             garc.collect()
@@ -1659,10 +1704,10 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
             # Fix bad RH - something wrong happens 1 in 500 simulations
             #------------------------------------------------------------------
 
-            if 'C_RH_Tot' in DataSXY:
-                iBad=np.where(DataSXY['C_RH_Tot']<0)
+            if 'C_RH_Tot' in Data0:
+                iBad=np.where(Data0['C_RH_Tot']<0)
                 if iBad[0].size>0:
-                    DataSXY['C_RH_Tot'][iBad]=0
+                    Data0['C_RH_Tot'][iBad]=0
 
             #--------------------------------------------------------------------------
             # Summarize by project type, region, and time
@@ -1692,14 +1737,28 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
                         continue
 
                     for k in v2include:
-                        Data1['Mean'][k][:,iEns,iPS,iSS]=np.mean(DataSXY[k][:,ind1],axis=1)
-                        Data1['Sum'][k][:,iEns,iPS,iSS]=np.sum(DataSXY[k][:,ind1],axis=1)
+                        Data1['Mean'][k][:,iEns,iPS,iSS]=np.mean(Data0[k][:,ind1],axis=1)
+                        Data1['Sum'][k][:,iEns,iPS,iSS]=np.sum(Data0[k][:,ind1],axis=1)
+
+                    # Add ensemble to age class distribution
+                    for iT_acd in range(acd['binT'].size):
+                        for iA_acd in range(acd['binA'].size):
+                            ind_acd=np.where( np.abs(Age0[iT_acd,ind1]-acd['binA'][iA_acd])<=acd['bwA']/2 )[0]
+                            acd['Data'][iT_acd,iA_acd,iPS,iSS]=acd['Data'][iT_acd,iA_acd,iPS,iSS]+ind_acd.size
 
         #--------------------------------------------------------------------------
         # Save
         #--------------------------------------------------------------------------
 
+        # GHGs
         gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl',Data1)
+
+        # Age class distribution
+        acd['Data']=acd['Data']/meta['Project']['N Ensemble']
+        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_AgeClassDist_Scn' + str(iScn+1) + '.pkl',acd)
+
+    t1=time.time()
+    print(str((t1-t0)/60) + ' min')
 
     return
 
@@ -1708,6 +1767,9 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
 # must be saved so that the statistics can be calculate for each scenario comparison.
 
 def Calc_MOS_FromPoints_Econ(meta,**kwargs):
+
+    t0=time.time()
+    print('Calculating model output statistics for economic variables')
 
     # Keyword argumenst
 
@@ -1758,7 +1820,7 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
                 Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
 
         # An option to skip economic calculations. The file will still be created, but all zeros
-        if 'Skip MOS Economics' not in meta['Project'].keys():
+        if meta['Project']['Skip Economics']=='Off':
 
             # Loop through ensembles
             for iEns in range(meta['Project']['N Ensemble']):
@@ -1845,6 +1907,9 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
 
         gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(iScn+1) + '.pkl',Data1)
 
+    t1=time.time()
+    print(str((t1-t0)/60) + ' min')
+
     return
 
 #%% Calculate model output statistics for area from points
@@ -1853,6 +1918,7 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
 
 def Calc_MOS_FromPoints_Area(meta,**kwargs):
 
+    print('Calculating model output statistics for event areas')
     t0=time.time()
 
     # Key word arguments
@@ -1882,15 +1948,15 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
         uPS_size=meta['Project']['Strata']['Project']['Unique ID'].size
         uSS_size=meta['Project']['Strata']['Spatial']['Unique ID'].size
 
-        Data1={}
+        Area1={}
         for oper in ['Mean','Sum']:
-            Data1[oper]={}
+            Area1[oper]={}
             for k in meta['LUT']['Dist'].keys():
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
+                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
+                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
 
         # An option to skip economic calculations. The file will still be created, but all zeros
-        if 'Skip MOS Area' not in meta['Project'].keys():
+        if meta['Project']['Skip Economics']=='Off':
 
             # Loop through ensembles
             for iEns in range(meta['Project']['N Ensemble']):
@@ -1899,13 +1965,13 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
                 # Initialize temporary data structure for full simulation
                 #--------------------------------------------------------------------------
 
-                DataSXY={}
+                AreaSXY={}
                 for k in meta['LUT']['Dist'].keys():
-                    DataSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                    AreaSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
 
-                DataSXY_Full={}
+                AreaSXY_Full={}
                 for k in meta['LUT']['Dist'].keys():
-                    DataSXY_Full[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                    AreaSXY_Full[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
 
                 #--------------------------------------------------------------------------
                 # Import batches
@@ -1947,11 +2013,11 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
                                 namDist=lut_n2s(meta['LUT']['Dist'],uidDist[iU])[0]
                                 indDist=np.where(idDist1==uidDist[iU])[0]
 
-                                DataSXY_Full[namDist][indT,indBat[indDist]]=DataSXY_Full[namDist][indT,indBat[indDist]]+1
+                                AreaSXY_Full[namDist][indT,indBat[indDist]]=AreaSXY_Full[namDist][indT,indBat[indDist]]+1
 
                     # Pull results for subset of stands
                     for k in meta['LUT']['Dist'].keys():
-                        DataSXY[k][:,indBat[iKeepStands]]=DataSXY_Full[k][:,indBat[iKeepStands]]
+                        AreaSXY[k][:,indBat[iKeepStands]]=AreaSXY_Full[k][:,indBat[iKeepStands]]
 
                 del ec
                 garc.collect()
@@ -1984,39 +2050,39 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
                             continue
 
                         for k in meta['LUT']['Dist'].keys():
-                            Data1['Mean'][k][:,iEns,iPS,iSS]=np.mean(DataSXY[k][:,ind1],axis=1)
-                            Data1['Sum'][k][:,iEns,iPS,iSS]=np.sum(DataSXY[k][:,ind1],axis=1)
+                            Area1['Mean'][k][:,iEns,iPS,iSS]=np.mean(AreaSXY[k][:,ind1],axis=1)
+                            Area1['Sum'][k][:,iEns,iPS,iSS]=np.sum(AreaSXY[k][:,ind1],axis=1)
 
             #----------------------------------------------------------------------
             # Calculate statistics
             #----------------------------------------------------------------------
 
-            Data2={}
+            Area2={}
             for oper in ['Mean','Sum']:
-                Data2[oper]={}
-                for k in Data1[oper].keys():
-                    Data2[oper][k]={}
-                    Data2[oper][k]['Ensemble Mean']=np.mean(Data1[oper][k],axis=1)
-                    Data2[oper][k]['Ensemble SD']=np.std(Data1[oper][k],axis=1)
-                    Data2[oper][k]['Ensemble SE']=np.std(Data1[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
-                    Data2[oper][k]['Ensemble P005']=np.percentile(Data1[oper][k],0.5,axis=1)
-                    Data2[oper][k]['Ensemble P025']=np.percentile(Data1[oper][k],2.5,axis=1)
-                    Data2[oper][k]['Ensemble P250']=np.percentile(Data1[oper][k],25,axis=1)
-                    Data2[oper][k]['Ensemble P750']=np.percentile(Data1[oper][k],75,axis=1)
-                    Data2[oper][k]['Ensemble P975']=np.percentile(Data1[oper][k],97.5,axis=1)
-                    Data2[oper][k]['Ensemble P995']=np.percentile(Data1[oper][k],99.5,axis=1)
+                Area2[oper]={}
+                for k in Area1[oper].keys():
+                    Area2[oper][k]={}
+                    Area2[oper][k]['Ensemble Mean']=np.mean(Area1[oper][k],axis=1)
+                    Area2[oper][k]['Ensemble SD']=np.std(Area1[oper][k],axis=1)
+                    Area2[oper][k]['Ensemble SE']=np.std(Area1[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                    Area2[oper][k]['Ensemble P005']=np.percentile(Area1[oper][k],0.5,axis=1)
+                    Area2[oper][k]['Ensemble P025']=np.percentile(Area1[oper][k],2.5,axis=1)
+                    Area2[oper][k]['Ensemble P250']=np.percentile(Area1[oper][k],25,axis=1)
+                    Area2[oper][k]['Ensemble P750']=np.percentile(Area1[oper][k],75,axis=1)
+                    Area2[oper][k]['Ensemble P975']=np.percentile(Area1[oper][k],97.5,axis=1)
+                    Area2[oper][k]['Ensemble P995']=np.percentile(Area1[oper][k],99.5,axis=1)
 
         #--------------------------------------------------------------------------
         # Save
         #--------------------------------------------------------------------------
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl',Data2)
+        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl',Area2)
 
-        del Data1,Data2
+        del Area1,Area2
         garc.collect()
 
     t1=time.time()
-    print((t1-t0)/60)
+    print(str((t1-t0)/60) + ' min')
 
     return
 
@@ -2047,7 +2113,7 @@ def Calc_MOS_FromPoints_Mortality(meta):
             mos[iScn][k]=np.zeros((tv_saving.size,meta['Project']['N Ensemble']))
 
         # An option to skip economic calculations. The file will still be created, but all zeros
-        if 'Skip MOS Mortality' not in meta['Project'].keys():
+        if meta['Project']['Skip Economics']=='Off':
 
             # Loop through ensembles
             for iEns in range(meta['Project']['N Ensemble']):
@@ -2096,8 +2162,8 @@ def Calc_AgeClassDistribution(meta,acd):
         for iEns in range(meta['Project']['N Ensemble']):
             A=np.zeros( (acd['binT'].size,meta['Project']['N Stand']) )
             for iBat in range(meta['Project']['N Batch']):
-                indBat=cbu.IndexToBatch(meta,iBat)
-                d1=cbu.LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                indBat=IndexToBatch(meta,iBat)
+                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
                 for iT in range(acd['binT'].size):
                     indT=np.where(tv==acd['binT'][iT])[0]
                     A[iT,indBat]=d1['A'][indT,:]
@@ -2662,7 +2728,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
                'C_ToFirewoodExport','C_ToLogExport',
                'E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Denit','E_CO2e_LULUCF_Other','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning',
                'E_CO2e_LULUCF_Fire','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy',
-               'E_CO2e_ESC_Operations','E_CO2e_ET_Operations','E_CO2e_IPPU_Operations',
+               'E_CO2e_ESC_OperFor','E_CO2e_ET_OperFor','E_CO2e_IPPU_OperFor',
                'E_CO2e_Coal','E_CO2e_Oil','E_CO2e_Gas',
                'E_CO2e_SUB_Coal','E_CO2e_SUB_Oil','E_CO2e_SUB_Gas','E_CO2e_SUB_Calcination','E_CO2e_SUB_E','E_CO2e_SUB_M','E_CO2e_SUB_Tot',
                'E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub','E_CO2e_AGHGB_WSub_cumu','E_CO2e_AGHGB_WOSub_cumu',
@@ -3157,7 +3223,7 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #    # Time series of saved results
 #    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
 #
-#    # Operations
+#    # Op
 #    oper=['Mean','Sum']
 #
 #    # GHG balance variables
@@ -3581,7 +3647,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
 
 #%% Write BatchTIPSY input file
 # Notes:
-#    if the input spreadsheet has nan's, all data will be converted to float
+#    If the input spreadsheet has nan's, all data will be converted to float
 
 def Write_BatchTIPSY_Input_File(meta):
 

@@ -606,6 +606,54 @@ def SetGraphics(type):
                 'savefig.pad_inches':0.1,
                 'savefig.bbox':'tight'}
 
+    elif type=='Presentation Light':
+
+        gp['fs1']=9
+        gp['fs2']=7
+        gp['fs3']=6
+        gp['cla']=[0.5,0.5,0.5]
+        gp['clt']=[0.5,0.5,0.5]
+        gp['cl1']=[0.27,0.49,0.79];
+        gp['cl2']=[0.6,0.9,0];
+        gp['cl3']=[0.7,0.4,0.95];
+        gp['cl4']=[0.85,0,0]
+        gp['lw1']=0.5;
+        gp['lw2']=1.0;
+        gp['ms']=4
+        gp['Alpha1']=0.225;
+        gp['Alpha2']=0.45;
+        gp['tickl']=1.5;
+
+        params={'font.sans-serif':'Arial',
+                'font.size':gp['fs1'],
+                'figure.titlesize':gp['fs2'],
+                'figure.constrained_layout.use':True,
+                'axes.edgecolor':gp['cla'],
+                'axes.labelsize':gp['fs1'],
+                'axes.labelcolor':gp['cla'],
+                'axes.titlesize':gp['fs2'],
+                'axes.titlepad':2,
+                'axes.linewidth':gp['lw1'],
+                'lines.linewidth':gp['lw2'],
+                'lines.markersize':gp['ms'],
+                'text.color':gp['cla'],
+                'xtick.color':gp['cla'],
+                'xtick.labelsize':gp['fs1'],
+                'xtick.major.width':gp['lw1'],
+                'xtick.major.size':3,
+                'xtick.direction':'in',
+                'ytick.color':gp['cla'],
+                'ytick.labelsize':gp['fs1'],
+                'ytick.major.width':0.5,
+                'ytick.major.size':3,
+                'ytick.direction':'in',
+                'legend.fontsize':gp['fs1'],
+                'savefig.dpi':900,
+                'savefig.transparent':True,
+                'savefig.format':'png',
+                'savefig.pad_inches':0.1,
+                'savefig.bbox':'tight'}
+
     elif type=='Manuscript':
 
         gp['fs1']=7
@@ -688,12 +736,10 @@ def BlockSum(x,ivl):
 
 def BlockMean(x,ivl):
     if x.ndim==1:
-        m=x.size
-        y=np.zeros(np.ceil(x.size/ivl).astype(int))
-        for i in range(ivl):
-            to_add=x[i::ivl]
-            y[0:to_add.size]=y[0:to_add.size]+to_add
-        y=y/ivl
+        c=np.arange(0,x.size,ivl,dtype=int)
+        y=np.zeros(c.size)
+        for i in range(c.size):
+            y[i]=np.mean(x[c[i]:c[i]+ivl])
     else:
         y='Oops!'
         print('y=Oops, needs revision')

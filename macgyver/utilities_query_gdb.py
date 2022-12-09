@@ -109,7 +109,7 @@ def Query_Openings(meta,roi):
         # Keep geometries
         #======================================================================
 
-        List=[None]*int(1e5)
+        List=[None]*int(1e6)
         cnt=0
         with fiona.open(meta['Path'],layer=meta['Layer']) as source:
             for feat in source:

@@ -32,7 +32,8 @@ from fcgadgets.cbrunner import cbrun_utilities
 #name='LICS Hanceville'
 #name='SummaryBC_NOSE'
 #name='SummaryBC_OHS'
-name='ComparisonWithPlotsSoil'
+#name='ComparisonWithPlotsSoil'
+name='HancevilleFire'
 
 #%% Define paths
 
@@ -72,10 +73,10 @@ zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 geos={}
 
 # Define regular grid sampling frequency
-geos['rgsf']=1 # 100 m
+#geos['rgsf']=1 # 100 m
 #geos['rgsf']=5 # 500 m
 #geos['rgsf']=10 # 1 km
-#geos['rgsf']=20 # 2 km
+geos['rgsf']=20 # 2 km
 #geos['rgsf']=40 # 4 km
 #geos['rgsf']=50 # 5 km
 #geos['rgsf']=100 # 10 km
@@ -195,49 +196,59 @@ elif (name=='ComparisonWithPlotsSoil'):
 
     geos['AEF']=1.0
 
+elif (name=='HancevilleFire'):
+
+    zF=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\PROT_HISTORICAL_FIRE_POLYS_SP_2017.tif')
+    zF_r=gis.UpdateGridCellsize(zF,geos['rgsf'])
+
+    # Treed, Williams Lake TSA only
+    iTSA=lut_tsa.loc[lut_tsa.Name=='Williams Lake TSA','VALUE'].values
+    geos['iMask']=np.where( (zLC2_r['Data']==4) & (zTSA_r['Data']==iTSA) & (zF_r['Data']==1) )
+
 elif (name=='CaribouRecovery'):
+    pass
+    # *** This was abandoned - it was easier to run as a tiled project - way faster ***
+    # # Import area of interest
+    # gdf_aoi=gpd.read_file(r'D:\Data\FCI_Projects\CaribouRecovery\Geospatial\Received 2022-09-22\REVY_HERDS.geojson')
 
-    # Import area of interest
-    gdf_aoi=gpd.read_file(r'D:\Data\FCI_Projects\CaribouRecovery\Geospatial\Received 2022-09-22\REVY_HERDS.geojson')
+    # # Clip grid by bounding box
+    # geos['Grid']=gis.ClipRasterByXYLimits(geos['Grid'],[gdf_aoi.bounds.minx.min(),gdf_aoi.bounds.maxx.max()],[gdf_aoi.bounds.miny.min(),gdf_aoi.bounds.maxy.max()])
 
-    # Clip grid by bounding box
-    geos['Grid']=gis.ClipRasterByXYLimits(geos['Grid'],[gdf_aoi.bounds.minx.min(),gdf_aoi.bounds.maxx.max()],[gdf_aoi.bounds.miny.min(),gdf_aoi.bounds.maxy.max()])
+    # def GetTiles(z_in):
+    #     x_mid=z_in['xmin']+np.floor((z_in['xmax']-z_in['xmin'])/2)
+    #     y_mid=z_in['ymin']+np.floor((z_in['ymax']-z_in['ymin'])/2)
+    #     z_out=[]
+    #     z_out.append( gis.ClipRasterByXYLimits(z_in,[z_in['xmin'],x_mid],[y_mid+z_in['Cellsize'],z_in['ymax']]) )
+    #     z_out.append( gis.ClipRasterByXYLimits(z_in,[x_mid+z_in['Cellsize'],z_in['xmax']],[y_mid+z_in['Cellsize'],z_in['ymax']] ) )
+    #     z_out.append( gis.ClipRasterByXYLimits(z_in,[z_in['xmin'],x_mid],[z_in['ymin'],y_mid]) )
+    #     z_out.append( gis.ClipRasterByXYLimits(z_in,[x_mid+z_in['Cellsize'],z_in['xmax']],[z_in['ymin'],y_mid]) )
+    #     N=0
+    #     for i in z_out:
+    #         N=N+i['Data'].size
+    #     print(z_in['Data'].size)
+    #     print(N)
+    #     return z_out
 
-    def GetTiles(z_in):
-        x_mid=z_in['xmin']+np.floor((z_in['xmax']-z_in['xmin'])/2)
-        y_mid=z_in['ymin']+np.floor((z_in['ymax']-z_in['ymin'])/2)
-        z_out=[]
-        z_out.append( gis.ClipRasterByXYLimits(z_in,[z_in['xmin'],x_mid],[y_mid+z_in['Cellsize'],z_in['ymax']]) )
-        z_out.append( gis.ClipRasterByXYLimits(z_in,[x_mid+z_in['Cellsize'],z_in['xmax']],[y_mid+z_in['Cellsize'],z_in['ymax']] ) )
-        z_out.append( gis.ClipRasterByXYLimits(z_in,[z_in['xmin'],x_mid],[z_in['ymin'],y_mid]) )
-        z_out.append( gis.ClipRasterByXYLimits(z_in,[x_mid+z_in['Cellsize'],z_in['xmax']],[z_in['ymin'],y_mid]) )
-        N=0
-        for i in z_out:
-            N=N+i['Data'].size
-        print(z_in['Data'].size)
-        print(N)
-        return z_out
+    # z=GetTiles(geos['Grid'])
 
-    z=GetTiles(geos['Grid'])
+    # # Pick tile
+    # idx_tl=0
+    # geos['Grid']=z[idx_tl]
 
-    # Pick tile
-    idx_tl=0
-    geos['Grid']=z[idx_tl]
+    # shapes=((geom,value) for geom, value in zip(gdf_aoi.geometry,gdf_aoi.CARIBOU_POPULATION_ID))
+    # geos['Grid']['Data']=features.rasterize(shapes=shapes,fill=0,out=geos['Grid']['Data'],transform=geos['Grid']['Transform'])
+    # #plt.matshow(geos['Grid']['Data'])
 
-    shapes=((geom,value) for geom, value in zip(gdf_aoi.geometry,gdf_aoi.CARIBOU_POPULATION_ID))
-    geos['Grid']['Data']=features.rasterize(shapes=shapes,fill=0,out=geos['Grid']['Data'],transform=geos['Grid']['Transform'])
-    #plt.matshow(geos['Grid']['Data'])
+    # geos['iMask']=np.where( (geos['Grid']['Data']>0) )
 
-    geos['iMask']=np.where( (geos['Grid']['Data']>0) )
+    # #box(W, S, E, N)
+    # #geom=box(z_tl['Extent'][0],z_tl['Extent'][2],z_tl['Extent'][1],z_tl['Extent'][3])
+    # geom=box(geos['Grid']['Extent'][0],geos['Grid']['Extent'][2],geos['Grid']['Extent'][1],geos['Grid']['Extent'][3])
+    # geos['Boundary']=gpd.GeoDataFrame({"id":1,"geometry":[geom]})
+    # geos['Boundary'].crs=gdf_bc_boundary.crs
 
-    #box(W, S, E, N)
-    #geom=box(z_tl['Extent'][0],z_tl['Extent'][2],z_tl['Extent'][1],z_tl['Extent'][3])
-    geom=box(geos['Grid']['Extent'][0],geos['Grid']['Extent'][2],geos['Grid']['Extent'][1],geos['Grid']['Extent'][3])
-    geos['Boundary']=gpd.GeoDataFrame({"id":1,"geometry":[geom]})
-    geos['Boundary'].crs=gdf_bc_boundary.crs
-
-    # Update area expansion factor
-    geos['AEF']=1
+    # # Update area expansion factor
+    # geos['AEF']=1
 
 # Revise mask
 geos['Grid']['Data'][geos['iMask']]=1
@@ -287,8 +298,8 @@ if flg==1:
     ax.grid(color='k',linestyle='-',linewidth=0.25)
     ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
     #plt.savefig(PathProject + '\\SparseGrid_Map.png',format='png',dpi=900)
-    plt.close('all')
-    garc.collect()
+    #plt.close('all')
+    #garc.collect()
 
 #%% Open crosswalk between missing AT geometries and opening geometries
 # If this doesn't work, you need to run the script that creates the crosswalk
@@ -686,7 +697,7 @@ gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxT
 
 #%% Add FC Archive to FC Inventory dictionary
 
-flg=0
+flg=1
 if flg==1:
     # Import inputs
     #meta=gu.ipickle(r'D:\Data\FCI_Projects\SummaryReforestation\Inputs\Metadata.pkl')
@@ -712,3 +723,7 @@ if flg==1:
     # Save revised versions
     gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW.pkl',fcinv)
     gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW.pkl',fcsilv)
+
+
+#%%
+

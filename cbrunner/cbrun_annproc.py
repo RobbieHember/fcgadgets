@@ -1314,20 +1314,6 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['V_ToMillNonMerch'][iT,:]=cf*vo['C_ToMillNonMerch'][iT,:]
 
         #----------------------------------------------------------------------
-        # Add operational emissions from harvest (Klein et al. 2015)
-        #----------------------------------------------------------------------
-
-        if iHarvest.size>0:
-
-            EI_Harvest=meta['Param']['BEV']['Biophysical']['Emission Intensity of Harvesting']
-
-            E=EI_Harvest*(vo['V_ToMillMerchTotal'][iT,iHarvest]+vo['V_ToMillNonMerch'][iT,iHarvest])
-
-            vo['E_CO2e_ET_OperationsBurnOil'][iT,iHarvest]=0.5*E
-
-            vo['E_CO2e_ESC_OperationsBurnOil'][iT,iHarvest]=0.5*E
-
-        #----------------------------------------------------------------------
         # Carbon that is left dispersed on site (after felling or wind storms)
         #----------------------------------------------------------------------
 
@@ -2200,6 +2186,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_BioenergyPowerFacilityDom'][iT,:]=vo['E_CO2e_ESC_BioenergyPowerFacilityDom'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
     # Emissions from combustion during foreign power generation
@@ -2216,6 +2203,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_BioenergyPowerFacilityExport'][iT,:]=vo['E_CO2e_ESC_BioenergyPowerFacilityExport'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
     # Emissions from combustion of pellet Export
@@ -2232,6 +2220,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_BioenergyPelletExport'][iT,:]=vo['E_CO2e_ESC_BioenergyPelletExport'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
     # Emissions from combustion of pellet domestic grid
@@ -2248,6 +2237,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_BioenergyPelletDomGrid'][iT,:]=vo['E_CO2e_ESC_BioenergyPelletDomGrid'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
     # Emissions from combustion of pellet domestic RNG
@@ -2264,6 +2254,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_BioenergyPelletDomRNG'][iT,:]=vo['E_CO2e_ESC_BioenergyPelletDomRNG'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
     # Emissions from combustion of domestic firewood
@@ -2280,6 +2271,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_BioenergyFirewoodDom'][iT,:]=vo['E_CO2e_ESC_BioenergyFirewoodDom'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
     # Emissions from combustion of foreign firewood
@@ -2296,6 +2288,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     E_CO2e_AsCO2=meta['Param']['BEV']['Biophysical']['Ratio_CO2_to_C']*meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2']*C_emitted
     E_CO2e_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*meta['Param']['BEV']['Biophysical']['Ratio_CH4_to_C']*(1-meta['Param']['BEV']['HWP']['EnergyCombustionFracEmitCO2'])*C_emitted
     vo['E_CO2e_ESC_Bioenergy'][iT,:]=vo['E_CO2e_ESC_Bioenergy'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
+    vo['E_CO2e_ESC_BioenergyFirewoodExport'][iT,:]=vo['E_CO2e_ESC_BioenergyFirewoodExport'][iT,:] + (E_CO2e_AsCO2+E_CO2e_AsCH4)
 
     #--------------------------------------------------------------------------
     # Emissions from pulp effluent

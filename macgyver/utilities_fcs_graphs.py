@@ -11,8 +11,10 @@ import warnings
 import time
 #import matplotlib.colors
 #from matplotlib import animation
+from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcexplore.psp.Processing import psp_utilities as utl_gp
 
 #%% Plotting parameters
 
@@ -350,7 +352,7 @@ def PlotVolumePerHectare(meta,mos,tv,iScn,iT,iPS,iSS,AEF):
     V_Harvest=AEF*mos['Scenarios'][iScn]['Sum']['V_ToMillMerchTotal']['Ensemble Mean'][:,iPS,iSS]
     rat=np.maximum(0,V_Harvest/A_Harvest)
     rat_ma=gu.movingave(rat,5,'historical')
-    ax.plot(tv[iT],rat_ma[iT],'-go',lw=1,mfc=[0.6,0.96,0],mec=[0.6,0.96,0],color=[0.6,0.96,0],ms=3,label='FCS prediction')
+    ax.plot(tv[iT],rat_ma[iT],'-go',lw=1,mfc=[0.6,0.96,0],mec=[0.6,0.96,0],color=[0.6,0.96,0],ms=2.5,label='FCS prediction')
 
     # Observations
     d={}
@@ -376,11 +378,11 @@ def PlotVolumePerHectare(meta,mos,tv,iScn,iT,iPS,iSS,AEF):
 
     iT3=np.where( (d['Year']>=tv[iT[0]]) & (d['Year']<=tv[iT[-1]]) )[0]
 
-    plt.plot(d['Year'][iT3],d['V'][iT3]/d['A'][iT3],'-bs',color=[0.27,0.49,0.79],mfc=[0.27,0.49,0.79],mec=[0.27,0.49,0.79],ms=3,lw=1,label='HBS + Harvest Area Analysis')
+    plt.plot(d['Year'][iT3],d['V'][iT3]/d['A'][iT3],'-bs',color=[0.27,0.49,0.79],mfc=[0.27,0.49,0.79],mec=[0.27,0.49,0.79],ms=2.5,lw=1,label='HBS + Harvest Area Analysis')
 
     ax.set(position=[0.1,0.12,0.88,0.84],xticks=np.arange(tv[iT[0]],2250,5),xlabel='Time, years', \
            yticks=np.arange(0,2000,100),ylabel='Harvest volume (m$^3$ ha$^-$$^1$)',
-           xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[200,1220])
+           xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,1220])
     ax.legend(loc='upper right',frameon=False,facecolor='w',edgecolor='w');
     ax.grid(True)
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
@@ -599,17 +601,17 @@ def PlotComparisonWithPIR(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
 
     plt.close('all')
     fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(16,8));
-    ax[0,0].plot(tv[iT],np.zeros(iT.size),'k-')
+    ax[0,0].plot(tv[iT],np.zeros(iT.size),'k-',color=gp['cla'])
 
     ax[0,0].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='FCAST')
-    ax[0,0].plot(dPIR['Year'],dPIR['Forest Growth Minus Decay']/1e3,'rs-',mfc=[1,1,1],label='PIR')
+    ax[0,0].plot(dPIR['Year'],dPIR['Forest Growth Minus Decay']/1e3,'rs-',mfc=[1,1,1],ms=2.5,label='PIR')
     ax[0,0].set(position=[0.08,0.59,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-120,300,20),
            ylabel='Growth - Decay (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-100,60])
     ax[0,0].legend(loc='lower left',frameon=False,facecolor='w',edgecolor='w')
     ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=gp['tickl'])
 
     ax[0,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='Net ecosystem exchange')
-    ax[0,1].plot(dPIR['Year'],dPIR['Wildfires']/1e3,'rs-',mfc=[1,1,1],label='PIR')
+    ax[0,1].plot(dPIR['Year'],dPIR['Wildfires']/1e3,'rs-',mfc=[1,1,1],ms=2.5,label='PIR')
     ax[0,1].set(position=[0.57,0.59,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(0,300,25),
            ylabel='Wildfire (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,220])
     ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=gp['tickl'])
@@ -619,7 +621,7 @@ def PlotComparisonWithPIR(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
     ax[1,0].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='HWP decay (FCS)')
     ax[1,0].plot(tv[iT],(mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,iPS,iSS])/1e6*AEF,'oc-',mfc='w',mew=0.5,ms=2,label='HWP decay + bioenergy (FCS)')
     #ax[1,0].plot(tv[iT],gu.movingave(mos['Scenarios'][iScn]['Sum']['C_ToMill']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF*3.667,10,'center'),'og-',mfc='w',mew=0.5,ms=2,label='Harvest removals (FCAST)')
-    ax[1,0].plot(dPIR['Year'],dPIR['Decomposition of Harvested Wood Products']/1e3,'rs-',mfc=[1,1,1],label='HWP decay (PIR)')
+    ax[1,0].plot(dPIR['Year'],dPIR['Decomposition of Harvested Wood Products']/1e3,'rs-',mfc=[1,1,1],ms=2.5,label='HWP decay (PIR)')
     ax[1,0].set(position=[0.08,0.09,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-120,300,20),
            ylabel='HWP (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,100])
     ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=gp['tickl'])
@@ -631,7 +633,7 @@ def PlotComparisonWithPIR(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
     ax[1,1].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.5)
     ax[1,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='With subs. (FCS)')
     ax[1,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'sb-',color='c',mec='c',mfc='w',mew=0.5,ms=2,label='W/O subs. (FCS)')
-    ax[1,1].plot(dPIR['Year'],dPIR['Forest Management']/1e3,'rs-',lw=0.25,mfc='w',label='Forest Management (PIR)')
+    ax[1,1].plot(dPIR['Year'],dPIR['Forest Management']/1e3,'rs-',lw=0.25,ms=2.5,mfc='w',label='Forest Management (PIR)')
     ax[1,1].set(position=[0.57,0.09,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-150,300,50),
            ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-150,250])
     ax[1,1].legend(loc='upper center',frameon=False,facecolor='w',edgecolor='w')
@@ -1088,6 +1090,108 @@ def PlotSitesOfInterest(meta):
 
     return
 
+#%% QA - biomass by BGC zone
+
+def QA_Biomass_ByBGCZone(meta,mu_mod):
+
+    # Import best-available inventory
+    ba=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\ba.pkl')
+
+    # Import ground plot data
+    metaGP={}
+    metaGP['Paths']={}
+    metaGP['Paths']['DB']=r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2'
+    metaGP=utl_gp.ImportParameters(metaGP)
+    d=gu.ipickle(metaGP['Paths']['DB'] + '\\Processed\\L2\\L2_BC.pkl')
+    sl=d['sobs']
+    del d
+
+    # Filter
+    sl['pt_ind']=np.zeros(sl['ID Plot'].size)
+    ind=np.where( (sl['Plot Type']==metaGP['LUT']['Plot Type BC']['CMI']) | (sl['Plot Type']==metaGP['LUT']['Plot Type BC']['NFI']) & (sl['Lat']>0) & (sl['Lon']!=0) )[0]
+    sl['pt_ind'][ind]=1
+
+    # Calculate stats by BGC zone
+    vL=['Age t0','Cbk L t0','Cbr L t0','Cf L t0','Csw L t0','Cr L t0','Cag L t0','Ctot L t0']
+    u=np.unique(sl['Ecozone BC L1'][sl['Ecozone BC L1']>0])
+    lab=np.array(['' for _ in range(u.size)],dtype=object)
+    d={}
+    for v in vL:
+        d[v]={}
+        d[v]['N']=np.zeros(u.size)
+        d[v]['mu']=np.zeros(u.size)
+        d[v]['sd']=np.zeros(u.size)
+        d[v]['se']=np.zeros(u.size)
+
+    for i in range(u.size):
+        lab[i]=utl_gp.lut_id2cd(metaGP,'Ecozone BC L1',u[i])
+
+        # Observed values
+        for v in vL:
+            ind=np.where( (sl['Ecozone BC L1']==u[i]) &
+                         (sl['pt_ind']==1) &
+                         (sl['Cbk L t0']>=0) & (sl['Cbk L t0']<2000) &
+                         (sl['Cbr L t0']>=0) & (sl['Cbr L t0']<2000) &
+                         (sl['Cf L t0']>=0) & (sl['Cf L t0']<2000) &
+                         (sl['Cr L t0']>=0) & (sl['Cr L t0']<2000) &
+                         (sl['Csw L t0']>=0) & (sl['Csw L t0']<2000) &
+                         (sl['Ctot L t0']>=0) & (sl['Ctot L t0']<10000))[0]
+            d[v]['N'][i]=ind.size
+            d[v]['mu'][i]=np.nanmean(sl[v][ind])
+            d[v]['sd'][i]=np.nanstd(sl[v][ind])
+            #d[v]['se'][i]=np.nanstd(sl[v][ind])/np.sqrt(ind[0].size)
+
+    # Modelled values
+    d['Model Biomass C']={'mu':np.zeros(u.size),'SS':np.zeros(u.size)}
+    for i in range(u.size):
+        id=meta['LUT']['VRI']['BEC_ZONE_CODE'][lab[i]][0]
+        ind_mod=np.where( (ba['BEC_ZONE_CODE']==id) & (ba['SI']>5) )[0]
+        d['Model Biomass C']['SS'][i]=ind_mod.size
+        d['Model Biomass C']['mu'][i]=np.nanmean(mu_mod['C_Biomass_Tot'][ind_mod])
+
+    # Put in order
+    d['Ctot L t0']['mu']=d['Cbk L t0']['mu']+d['Cbr L t0']['mu']+d['Cf L t0']['mu']+d['Cr L t0']['mu']+d['Csw L t0']['mu']
+    ord=np.argsort(d['Ctot L t0']['mu'])
+    lab=np.flip(lab[ord])
+    for v in d:
+        for k in d[v].keys():
+            d[v][k]=np.flip(d[v][k][ord])
+
+    # Plot bar chart
+    cl=np.array([[0.85,1,0.55],[0.45,0.65,0.15]])
+    barw=0.3
+
+    plt.close('all')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
+    ax.bar(np.arange(u.size)-barw/2,d['Ctot L t0']['mu'],barw,facecolor=cl[0,:],label='Ground plots')
+    ax.bar(np.arange(u.size)+barw/2,d['Model Biomass C']['mu'],barw,facecolor=cl[1,:],label='Predicted 2010-2020 (FCS)')
+    for i in range(u.size):
+        ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
+        #ax.text(i,30,str(soc['Model SS'][i].astype(int)),color='c',ha='center',fontsize=8)
+    ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Biomass (MgC ha$^{-1}$)',xlim=[-0.5,u.size-0.5],ylim=[0,200])
+    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_Biomass_ByBGCZone_BarChart','png',900)
+
+    # Scatterplot
+    x=d['Ctot L t0']['mu']
+    y=d['Model Biomass C']['mu']
+    ikp=np.where(np.isnan(x+y)==False)[0]
+    rs,txt=gu.GetRegStats(x[ikp],y[ikp])
+
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,11))
+    ax.plot([0,500],[0,500],'-k',lw=3,color=gp['cla'])
+    ax.plot(x,y,'ko',mfc=[0.29,0.49,0.78],mec=[0.29,0.49,0.78],lw=0.5,ms=4)
+    ax.plot(rs['xhat'],rs['yhat'],'r-',lw=1,label='Best fit')
+    ax.text(155,30,txt,fontsize=10,color='r',ha='right')
+    ax.text(150,150,'1:1',fontsize=8,ha='center')
+    ax.set(position=[0.1,0.1,0.86,0.86],xlabel='Observed biomass (MgC ha$^{-1}$)',ylabel='Predicted biomass (MgC ha$^{-1}$)',xlim=[0,175],ylim=[0,175])
+    #plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_Biomass_ByBGCZone_Scatterplot','png',900)
+
+    return
+
 #%% QA - soil organic carbon stocks by BGC zone
 
 def QA_SOC_ByBGCZone(meta,mu_mod):
@@ -1104,76 +1208,91 @@ def QA_SOC_ByBGCZone(meta,mu_mod):
     # Calculate mean by BGC zone
     u=np.unique(soils['becz'])
     lab=np.array(['' for _ in range(u.size)],dtype=object)
-    soc={}
-    soc['SS']=np.zeros(u.size)
-    soc['mu']=np.zeros(u.size)
-    soc['se']=np.zeros(u.size)
-    soc['min_mu']=np.zeros(u.size)
-    soc['org_mu']=np.zeros(u.size)
+    d={}
+    d['SS']=np.zeros(u.size)
+    d['mu tot']=np.zeros(u.size)
+    d['se']=np.zeros(u.size)
+    d['mu min']=np.zeros(u.size)
+    d['mu org']=np.zeros(u.size)
     for i in range(u.size):
         ind=np.where( (soils['becz']==u[i]) & (soils['TOT_C_THA']>0) )[0]
-        soc['SS'][i]=ind.size
-        soc['mu'][i]=np.nanmean(soils['TOT_C_THA'][ind])
-        soc['se'][i]=np.nanstd(soils['TOT_C_THA'][ind])/np.sqrt(ind.size)
-        soc['min_mu'][i]=np.nanmean(soils['MIN_C_THA'][ind])
-        soc['org_mu'][i]=np.nanmean(soils['ORG_C_THA'][ind])
+        d['SS'][i]=ind.size
+        d['mu tot'][i]=np.nanmean(soils['TOT_C_THA'][ind])
+        d['se'][i]=np.nanstd(soils['TOT_C_THA'][ind])/np.sqrt(ind.size)
+        d['mu min'][i]=np.nanmean(soils['MIN_C_THA'][ind])
+        d['mu org'][i]=np.nanmean(soils['ORG_C_THA'][ind])
+
         ind=np.where(lutBGC['VALUE']==u[i])[0]
         if ind.size>0:
             lab[i]=lutBGC['ZONE'][ind][0]
 
-    soc['Model Soil C']=np.zeros(u.size)
-    soc['Model SS']=np.zeros(u.size)
-    soc['Model SI']=np.zeros(u.size)
-    soc['Model SI SPL']=np.zeros(u.size)
+    d['Model Soil C']=np.zeros(u.size)
+    d['Model SS']=np.zeros(u.size)
+    d['Model SI']=np.zeros(u.size)
+    #d['Model SI SPL']=np.zeros(u.size)
     for i in range(u.size):
         id=meta['LUT']['VRI']['BEC_ZONE_CODE'][lab[i]][0]
         ind_mod=np.where( (ba['BEC_ZONE_CODE']==id) & (ba['SI']>5) )[0]
-        soc['Model SS'][i]=ind_mod.size
-        soc['Model Soil C'][i]=np.nanmean(mu_mod['C_Soil_Tot'][ind_mod])
-        soc['Model SI'][i]=np.nanmean(ba['SI'][ind_mod])
-        ind_mod=np.where( (ba['BEC_ZONE_CODE']==id) & (ba['SI SPL']>5) )[0]
-        soc['Model SI SPL'][i]=np.nanmean(ba['SI SPL'][ind_mod])
+        d['Model SS'][i]=ind_mod.size
+        d['Model Soil C'][i]=np.nanmedian(mu_mod['C_Soil_Tot'][ind_mod])
+        d['Model SI'][i]=np.nanmean(ba['SI'][ind_mod])
+        #ind_mod=np.where( (ba['BEC_ZONE_CODE']==id) & (ba['SI SPL']>5) )[0]
+        #d['Model SI SPL'][i]=np.nanmean(ba['SI SPL'][ind_mod])
 
     # Put in order
-    ord=np.argsort(soc['mu'])
-    for k in soc:
-        soc[k]=np.flip(soc[k][ord])
+    ord=np.argsort(d['mu min'])
+    for k in d:
+        d[k]=np.flip(d[k][ord])
     lab=np.flip(lab[ord])
-    soc['Zone']=lab
+    d['Zone']=lab
 
     # Plot bar chart
+    w=0.3
+    cl=np.array([[0.6,0.4,0.2],[0.8,0.6,0.4]])
+
     plt.close('all')
     fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
-    ax.bar(np.arange(u.size),soc['min_mu'],facecolor=[0.45,0.3,0.3],label='Mineral horizons')
-    #ax.bar(np.arange(u.size),soc['org_mu'],facecolor=[0.15,0.05,0.05],bottom=soc['min_mu'],label='Organic horizon')
-    ax.errorbar(np.arange(u.size),soc['min_mu'],yerr=soc['se'],color='k',fmt='none',capsize=2)
-    ax.plot(np.arange(u.size),soc['Model Soil C'],'co',lw=0.75,ms=6,mfc='w')
+    ax.bar(np.arange(u.size)-w/2,d['mu min'],w,facecolor=cl[0,:],label='Ground sampling (Shaw et al. 2018)')
+    ax.bar(np.arange(u.size)+w/2,d['Model Soil C'],w,facecolor=cl[1,:],label='Prediction 2010-2020 (FCS)')
+    #ax.bar(np.arange(u.size),d['org_mu'],facecolor=[0.15,0.05,0.05],bottom=d['min_mu'],label='Organic horizon')
+    ax.errorbar(np.arange(u.size)-w/2,d['mu min'],yerr=d['se'],color=gp['cla'],fmt='none',capsize=2)
+    #ax.plot(np.arange(u.size),d['Model Soil C'],'co',lw=0.75,ms=4,mfc='w')
     for i in range(u.size):
-        ax.text(i,10,str(soc['SS'][i].astype(int)),color='w',ha='center',fontsize=8)
-        ax.text(i,30,str(soc['Model SS'][i].astype(int)),color='c',ha='center',fontsize=8)
+        ax.text(i,8,str(d['SS'][i].astype(int)),color=gp['cla'],ha='center',fontsize=8)
+        #ax.text(i,30,str(d['Model SS'][i].astype(int)),color='c',ha='center',fontsize=8)
     ax.set(position=[0.08,0.12,0.9,0.86],xlim=[-0.5,u.size-0.5],ylim=[0,375],xticks=np.arange(u.size),
            xticklabels=lab,ylabel='Soil organic carbon (MgC ha$^{-1}$ yr$^{-1}$)')
     plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
-    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
     gu.PrintFig(meta['Paths']['Figures'] + '\\QA_SOC_ByBGCZone_BarChart','png',900)
 
+    plt.close('all')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
+    ax.bar(np.arange(u.size)-w/2,d['Model SI'],w,facecolor=cl[0,:],label='VRI')
+    #ax.bar(np.arange(u.size)+w/2,d['Model SI SPL'],w,facecolor=cl[1,:],label='Site Productivity Layer')
+    ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Site index (m)',xlim=[-0.5,u.size-0.5],ylim=[0,26])
+    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_SI_ByBGCZone_BarChart','png',900)
+
     # Scatterplot
-    x=soc['min_mu']
-    y=soc['Model Soil C']
-    rs,txt=gu.GetRegStats(x,y)
+    x=d['mu min']
+    y=d['Model Soil C']
+    ikp=np.where(np.isnan(x+y)==False)[0]
+    rs,txt=gu.GetRegStats(x[ikp],y[ikp])
 
     fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,11))
     ax.plot([0,1000],[0,1000],'-k',lw=3,color=[0.8,0.8,0.8])
-    ax.plot(x,y,'ko',mfc='k',mec='w',lw=0.5,ms=6)
+    ax.plot(x,y,'ko',mfc=[0.29,0.49,0.78],mec=[0.29,0.49,0.78],lw=0.5,ms=4)
     ax.plot(rs['xhat'],rs['yhat'],'r-',lw=1,label='Best fit')
-    ax.text(350,30,txt,fontsize=10,color='r',ha='right')
+    ax.text(330,30,txt,fontsize=10,color='r',ha='right')
     ax.text(300,300,'1:1',fontsize=8,ha='center')
-    ax.set(position=[0.1,0.1,0.86,0.86],xlabel='Observed SOC (MgC ha$^{-1}$)',ylabel='Predicted SOC (MgC ha$^{-1}$)',xlim=[0,375],ylim=[0,375])
+    ax.set(position=[0.1,0.1,0.86,0.86],xlabel='Observed SOC (MgC ha$^{-1}$)',ylabel='Predicted SOC (MgC ha$^{-1}$)',xlim=[0,350],ylim=[0,350])
     #plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
-    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
     gu.PrintFig(meta['Paths']['Figures'] + '\\QA_SOC_ByBGCZone_Scatterplot','png',900)
 
-    return soc
+    return d
 
 #%% Comparison of anthropogenic component with CFS
 
@@ -1271,3 +1390,38 @@ def LookAtWildfireRecord(meta,iScn):
 
     return hw
 
+#%% AGE CLASS DISTRIBUTION
+
+def Plot_AgeClassDist(meta,iScn,iPS,iSS):
+
+    # Import data
+    acd=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_AgeClassDist_Scn' + str(iScn+1) + '.pkl')
+
+    # Import VRI
+    zA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\age1.tif')
+    zA=zA['Data'].flatten()[0::5]
+    acd['Data VRI']=np.zeros(acd['binA'].size)
+    for iA in range(acd['binA'].size):
+        ind=np.where( np.abs(zA-acd['binA'][iA])<=acd['bwA']/2 )[0]
+        acd['Data VRI'][iA]=ind.size
+    acd['Data VRI'][0]=0
+
+    lw=1.25
+    plt.close('all')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,8));
+    iT=np.where(acd['binT']==1800)[0]
+    plt.plot(acd['binA'],gu.movingave(acd['Data'][iT[0],:,iPS,iSS]/np.sum(acd['Data'][iT[0],:,iPS,iSS])*100,10,'Centre'),'g-',color=[0.27,0.49,0.77],lw=lw,label='1800 (FCS)')
+    iT=np.where(acd['binT']==1900)[0]
+    plt.plot(acd['binA'],gu.movingave(acd['Data'][iT[0],:,iPS,iSS]/np.sum(acd['Data'][iT[0],:,iPS,iSS])*100,10,'Centre'),'g-',color=[0.45,0.95,0],lw=lw,label='1900 (FCS)')
+    iT=np.where(acd['binT']==2020)[0]
+    plt.plot(acd['binA'],gu.movingave(acd['Data'][iT[0],:,iPS,iSS]/np.sum(acd['Data'][iT[0],:,iPS,iSS])*100,10,'Centre'),'g-',color=[1,0.5,0],lw=lw,label='2020 (FCS)')
+    iT=np.where(acd['binT']==2120)[0]
+    plt.plot(acd['binA'],gu.movingave(acd['Data'][iT[0],:,iPS,iSS]/np.sum(acd['Data'][iT[0],:,iPS,iSS])*100,10,'Centre'),'g-',color=[0.9,0,0],lw=lw,label='2120 (FCS)')
+
+    plt.plot(acd['binA'],gu.movingave(acd['Data VRI']/np.sum(acd['Data VRI'])*100,10,'Centre'),'b--',color=[0.5,0,1],lw=lw,label='2021 (VRI)')
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    ax.legend(loc='upper right',frameon=False,facecolor='w',edgecolor='w')
+    ax.set(position=[0.1,0.1,0.82,0.82],ylabel='Frequency (%)',xlabel='Stand age, years since major disturbance',xlim=[0,400],ylim=[0,3])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\Age Class Distribution','png',900)
+
+    return

@@ -149,6 +149,11 @@ fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\proj_age_1.tif'
 fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\proj_age_1.tif'
 gis.ClipToRaster_ByFile(fin,fout,fref)
 
+# VRI SI
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\si.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\si.tif'
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
 # BGC zone
 fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz_old.tif'
 fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz.tif'
@@ -162,6 +167,11 @@ gis.ClipToRaster_ByFile(fin,fout,fref)
 fin=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif'
 fout=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif'
 gis.ClipToRaster_ByFile(fin,fout,fref)
+
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\PROT_HISTORICAL_FIRE_POLYS_SP_2017.tif'
+fout=fin
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
 
 #%% Rasterize protected lands
 
@@ -845,26 +855,36 @@ plt.matshow(z.Data)
 
 #%% Extract mean climate data by BGC zone
 
-zBGC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz.tif')
+zBGC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz.tif')
+zBGC['Data']=zBGC['Data'].flatten()
 lutBGC=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz_lut.xlsx')
 
 zMAT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
-zMAT['Data']=zMAT['Data'].astype(float)/10
+zMAT['Data']=zMAT['Data'].flatten().astype(float)/10
 
 zWS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
-zWS['Data']=zWS['Data'].astype(float)
+zWS['Data']=zWS['Data'].flatten().astype(float)
 
+zSI=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\si.tif')
+zSI['Data']=zSI['Data'].flatten().astype(float)
+
+zA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\proj_age_1.tif')
+zA['Data']=zA['Data'].flatten().astype(float)
 
 lutBGC['MAT']=np.zeros(lutBGC['VALUE'].size)
 lutBGC['WS']=np.zeros(lutBGC['VALUE'].size)
+lutBGC['SI']=np.zeros(lutBGC['VALUE'].size)
+lutBGC['Age']=np.zeros(lutBGC['VALUE'].size)
 for i in range(lutBGC['VALUE'].size):
-    ta=zMAT['Data'].flatten()
-    ws=zWS['Data'].flatten()
-    ind=np.where( (zBGC['Data'].flatten()==lutBGC['VALUE'][i]) & (ta>=-50) & (ws>=0) & (ws<=200) )[0]
-    lutBGC['MAT'][i]=np.mean(ta[ind])
-    lutBGC['WS'][i]=np.mean(ws[ind])
+    ind=np.where( (zBGC['Data']==lutBGC['VALUE'][i]) & (zMAT['Data']>=-50) & (zWS['Data']>=0) & (zWS['Data']<=200) & (zSI['Data']>0) & (zSI['Data']<100) & (zA['Data']>=0) & (zA['Data']<1000) )[0]
+    lutBGC['MAT'][i]=np.mean(zMAT['Data'][ind])
+    lutBGC['WS'][i]=np.mean(zWS['Data'][ind])
+    lutBGC['SI'][i]=np.mean(zSI['Data'][ind])
+    lutBGC['Age'][i]=np.mean(zA['Data'][ind])
 
 df=pd.DataFrame(lutBGC)
 df.to_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\tmp.xlsx')
+
+
 
 

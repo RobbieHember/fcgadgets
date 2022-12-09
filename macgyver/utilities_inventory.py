@@ -2034,8 +2034,14 @@ def GapFill_DMEC_WithAgeFromVRI(meta,dmec,vri,idx):
         Age=vri['PROJ_AGE_1'][ind0]
 
         if Age>=0:
+            r=np.random.random(1)
+            if r<0.33:
+                type=meta['LUT']['Dist']['Wildfire']
+            else:
+                type=meta['LUT']['Dist']['IBM']
+
             dmec[iStand0]['Year']=np.append(dmec[iStand0]['Year'],meta['Project']['Year Project']-Age)
-            dmec[iStand0]['ID_Type']=np.append(dmec[iStand0]['ID_Type'],meta['LUT']['Dist']['Wildfire'])
+            dmec[iStand0]['ID_Type']=np.append(dmec[iStand0]['ID_Type'],type)
             dmec[iStand0]['MortalityFactor']=np.append(dmec[iStand0]['MortalityFactor'],np.array(100,dtype='int16'))
             dmec[iStand0]['GrowthFactor']=np.append(dmec[iStand0]['GrowthFactor'],np.array(0,dtype='int16'))
             if 'FCI Funded' in dmec[iStand0]:
@@ -2489,250 +2495,277 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
     # Import site productivity layer
     #--------------------------------------------------------------------------
 
-    spl={}
-    spl['SI_SPL']=-999*np.ones(meta['Project']['N Stand'])
+    # spl={}
+    # spl['SI_SPL']=-999*np.ones(meta['Project']['N Stand'])
 
-    spcL=['At','Ba','Bl','Cw','Ep','Fd','Hw','Hm','Lw','Pl','Py','Sb','Sw','Sx','Se']
+    # spcL=['At','Ba','Bl','Cw','Ep','Fd','Hw','Hm','Lw','Pl','Py','Sb','Sw','Sx','Se']
 
-    if 'xlim' in geos:
+    # if 'xlim' in geos:
 
-        # Tiled project, we can just clip rasters to tile boundaries -> goes super fast
+    #     # Tiled project, we can just clip rasters to tile boundaries -> goes super fast
 
-        for spc in spcL:
+    #     for spc in spcL:
 
-            # Import site productivity layer for focal species
-            z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
-            z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
-            zSPL=z['Data'].flatten()
-            del z
+    #         # Import site productivity layer for focal species
+    #         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
+    #         z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
+    #         zSPL=z['Data'].flatten()
+    #         del z
 
-            # Map SPL species codes to those in VRI
-            if spc=='At':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
-            elif spc=='Ba':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
-            elif spc=='Bl':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
-            elif spc=='Cw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
-            elif spc=='Ep':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
-            elif spc=='Fd':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
-            elif spc=='Hw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
-            elif spc=='Hm':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
-            elif spc=='Lw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
-            elif spc=='Pl':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
-            elif spc=='Py':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
-            elif spc=='Sb':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
-            elif spc=='Se':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
-            elif spc=='Ss':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
-            elif spc=='Sw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
-            elif spc=='Sx':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
+    #         # Map SPL species codes to those in VRI
+    #         if spc=='At':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
+    #         elif spc=='Ba':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
+    #         elif spc=='Bl':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
+    #         elif spc=='Cw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
+    #         elif spc=='Ep':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
+    #         elif spc=='Fd':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
+    #         elif spc=='Hw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
+    #         elif spc=='Hm':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
+    #         elif spc=='Lw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
+    #         elif spc=='Pl':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
+    #         elif spc=='Py':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
+    #         elif spc=='Sb':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
+    #         elif spc=='Se':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
+    #         elif spc=='Ss':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
+    #         elif spc=='Sw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
+    #         elif spc=='Sx':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
 
-            # Populate dictionary with nearest estimate
-            for iStand0 in range(meta['Project']['N Stand']):
+    #         # Populate dictionary with nearest estimate
+    #         for iStand0 in range(meta['Project']['N Stand']):
 
-                if flag_subset==1:
-                    iStand=meta['Project']['iKeep'][iStand0]
-                else:
-                    iStand=iStand0
+    #             if flag_subset==1:
+    #                 iStand=meta['Project']['iKeep'][iStand0]
+    #             else:
+    #                 iStand=iStand0
 
-                # Populate
-                if np.isin(ba['Spc_CD1'][iStand0],ids):
-                    if zSPL[iStand]>0:
-                        spl['SI_SPL'][iStand0]=zSPL[iStand]
+    #             # Populate
+    #             if np.isin(ba['Spc_CD1'][iStand0],ids):
+    #                 if zSPL[iStand]>0:
+    #                     spl['SI_SPL'][iStand0]=zSPL[iStand]
 
-    else:
+    # else:
 
-        # Not a tiled project
+    #     # Not a tiled project
 
-        # Populate dictionary with nearest estimate
-        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_Ep.tif')
-        x=z['X'][0,:]
-        y=z['Y'][:,0]
-        del z
-        garc.collect()
+    #     # Populate dictionary with nearest estimate
+    #     z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_Ep.tif')
+    #     x=z['X'][0,:]
+    #     y=z['Y'][:,0]
+    #     del z
+    #     garc.collect()
 
-        ix=np.zeros(meta['Project']['N Stand'],dtype=int)
-        iy=np.zeros(meta['Project']['N Stand'],dtype=int)
-        for iStand0 in range(meta['Project']['N Stand']):
-            if flag_subset==1:
-                iStand=meta['Project']['iKeep'][iStand0]
-            else:
-                iStand=iStand0
-            adx=np.abs(geos['Sparse']['X'][iStand]-x)
-            ady=np.abs(geos['Sparse']['Y'][iStand]-y)
-            ix[iStand0]=np.where(adx==np.min(adx))[0]
-            iy[iStand0]=np.where(ady==np.min(ady))[0]
-        ind=tuple([iy,ix])
-        del x,y
+    #     ix=np.zeros(meta['Project']['N Stand'],dtype=int)
+    #     iy=np.zeros(meta['Project']['N Stand'],dtype=int)
+    #     for iStand0 in range(meta['Project']['N Stand']):
+    #         if flag_subset==1:
+    #             iStand=meta['Project']['iKeep'][iStand0]
+    #         else:
+    #             iStand=iStand0
+    #         adx=np.abs(geos['Sparse']['X'][iStand]-x)
+    #         ady=np.abs(geos['Sparse']['Y'][iStand]-y)
+    #         ix[iStand0]=np.where(adx==np.min(adx))[0]
+    #         iy[iStand0]=np.where(ady==np.min(ady))[0]
+    #     ind=tuple([iy,ix])
+    #     del x,y
 
-        for spc in spcL:
+    #     for spc in spcL:
 
-            # Import site productivity layer for focal species
-            z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
-            zSPL=np.squeeze(z['Data'])
-            zSPL=zSPL[ind]
-            del z
+    #         # Import site productivity layer for focal species
+    #         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
+    #         zSPL=np.squeeze(z['Data'])
+    #         zSPL=zSPL[ind]
+    #         del z
 
-            # Map SPL species codes to those in VRI
-            if spc=='At':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
-            elif spc=='Ba':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
-            elif spc=='Bl':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
-            elif spc=='Cw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
-            elif spc=='Ep':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
-            elif spc=='Fd':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
-            elif spc=='Hw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
-            elif spc=='Hm':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
-            elif spc=='Lw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
-            elif spc=='Pl':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
-            elif spc=='Py':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
-            elif spc=='Sb':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
-            elif spc=='Se':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
-            elif spc=='Ss':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
-            elif spc=='Sw':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
-            elif spc=='Sx':
-                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
+    #         # Map SPL species codes to those in VRI
+    #         if spc=='At':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
+    #         elif spc=='Ba':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
+    #         elif spc=='Bl':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
+    #         elif spc=='Cw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
+    #         elif spc=='Ep':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
+    #         elif spc=='Fd':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
+    #         elif spc=='Hw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
+    #         elif spc=='Hm':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
+    #         elif spc=='Lw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
+    #         elif spc=='Pl':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
+    #         elif spc=='Py':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
+    #         elif spc=='Sb':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
+    #         elif spc=='Se':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
+    #         elif spc=='Ss':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
+    #         elif spc=='Sw':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
+    #         elif spc=='Sx':
+    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
 
-            # Populate
-            for iStand0 in range(meta['Project']['N Stand']):
+    #         # Populate
+    #         for iStand0 in range(meta['Project']['N Stand']):
 
-                if flag_subset==1:
-                    iStand=meta['Project']['iKeep'][iStand0]
-                else:
-                    iStand=iStand0
+    #             if flag_subset==1:
+    #                 iStand=meta['Project']['iKeep'][iStand0]
+    #             else:
+    #                 iStand=iStand0
 
-                if np.isin(ba['Spc_CD1'][iStand0],ids):
-                    if zSPL[iStand]>0:
-                        spl['SI_SPL'][iStand0]=zSPL[iStand]
+    #             if np.isin(ba['Spc_CD1'][iStand0],ids):
+    #                 if zSPL[iStand]>0:
+    #                     spl['SI_SPL'][iStand0]=zSPL[iStand]
 
-        del zSPL
+    #     del zSPL
 
-    garc.collect()
+    # garc.collect()
 
     #--------------------------------------------------------------------------
     # Best-available site index
     #--------------------------------------------------------------------------
 
-    ba['SI SPL']=spl['SI_SPL']
+    # NEW:
 
-    # Populate with site productivity layer
-    ind=np.where( (spl['SI_SPL']>5) )[0]
-    ba['SI'][ind]=spl['SI_SPL'][ind]
-    basp['SI']['From site productivity layer']=ind.size/ba['SI'].size*100
+    # Populate dictionary with nearest estimate
+    zT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
+    zT['Data']=zT['Data'].astype(float)/10
+    zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+    zW['Data']=zW['Data'].astype(float)
 
-    # Populate with SI from forest cover inventory
-    N_tot=0
-    for iStand0 in range(meta['Project']['N Stand']):
+    x=zT['X'][0,:]
+    y=zT['Y'][:,0]
+    ix=np.zeros(meta['Project']['N Stand'],dtype=int)
+    iy=np.zeros(meta['Project']['N Stand'],dtype=int)
+    for iStand in range(meta['Project']['N Stand']):
+        adx=np.abs(geos['Sparse']['X'][iStand]-x)
+        ady=np.abs(geos['Sparse']['Y'][iStand]-y)
+        ix[iStand]=np.where(adx==np.min(adx))[0]
+        iy[iStand]=np.where(ady==np.min(ady))[0]
+    ind=tuple([iy,ix])
+    del x,y
 
-        if flag_subset==1:
-            iStand=meta['Project']['iKeep'][iStand0]
-        else:
-            iStand=iStand0
+    beta=[-8.00,3.0,0.06]
+    si_hat=beta[0]+beta[1]*zT['Data'][ind]+beta[2]*zW['Data'][ind]
+    ba['SI']=si_hat.astype('int32')
+    basp=[]
 
-        if ba['SI'][iStand0]>0:
-            # Already populated with Site Productivity Layer
-            continue
+    # OLD:
 
-        if idx['fcinv'][iStand]==None:
-            # FC layer info unavailable
-            continue
+    # ba['SI SPL']=spl['SI_SPL']
 
-        ind0=idx['fcinv'][iStand]['Index'][0]
-        if fcinv['SITE_INDEX'][ind0]>0:
-            # Populate with FC layer info
-            ba['SI'][iStand0]=fcinv['SITE_INDEX'][ind0]
-            N_tot=N_tot+ind0.size
+    # # Populate with site productivity layer
+    # ind=np.where( (spl['SI_SPL']>5) )[0]
+    # ba['SI'][ind]=spl['SI_SPL'][ind]
+    # basp['SI']['From site productivity layer']=ind.size/ba['SI'].size*100
 
-    basp['SI']['From FC Inventory']=N_tot/ba['SI'].size*100
+    # # Populate with SI from forest cover inventory
+    # N_tot=0
+    # for iStand0 in range(meta['Project']['N Stand']):
 
-    # Where Productivity Layer and Forest Cover are missing, try populating with
-    # the average value from each project
-    if flag_projects==1:
-        ind=np.where(ba['SI']<5)[0]
-        u=np.unique(sxy['ID_atu_polygons'][ind])
-        N_tot=0
-        for i in range(u.size):
-            iGood=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']>5))[0]
-            iBad=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']<=5))[0]
-            if (iGood.size!=0) & (iBad.size!=0):
-                mu=np.mean(ba['SI'][iGood])
-                #print(mu)
-                ba['SI'][iBad]=mu
-                N_tot=N_tot+iGood.size
-        basp['SI']['From treatment area average']=N_tot/ba['SI'].size*100
+    #     if flag_subset==1:
+    #         iStand=meta['Project']['iKeep'][iStand0]
+    #     else:
+    #         iStand=iStand0
 
-    # Where there is no FC estimate and no SPL layer, polulate with VRI estimate
-    N_tot=0
-    for iStand0 in range(meta['Project']['N Stand']):
+    #     if ba['SI'][iStand0]>0:
+    #         # Already populated with Site Productivity Layer
+    #         continue
 
-        if flag_subset==1:
-            iStand=meta['Project']['iKeep'][iStand0]
-        else:
-            iStand=iStand0
+    #     if idx['fcinv'][iStand]==None:
+    #         # FC layer info unavailable
+    #         continue
 
-        if idx['vri'][iStand]==None:
-            continue
+    #     ind0=idx['fcinv'][iStand]['Index'][0]
+    #     if fcinv['SITE_INDEX'][ind0]>0:
+    #         # Populate with FC layer info
+    #         ba['SI'][iStand0]=fcinv['SITE_INDEX'][ind0]
+    #         N_tot=N_tot+ind0.size
 
-        ind0=idx['vri'][iStand]['Index'][0]
-        ba['SI VRI'][iStand0]=vri['SITE_INDEX'][ind0]
+    # basp['SI']['From FC Inventory']=N_tot/ba['SI'].size*100
 
-        if ba['SI'][iStand0]>0:
-            continue
+    # # Where Productivity Layer and Forest Cover are missing, try populating with
+    # # the average value from each project
+    # if flag_projects==1:
+    #     ind=np.where(ba['SI']<5)[0]
+    #     u=np.unique(sxy['ID_atu_polygons'][ind])
+    #     N_tot=0
+    #     for i in range(u.size):
+    #         iGood=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']>5))[0]
+    #         iBad=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']<=5))[0]
+    #         if (iGood.size!=0) & (iBad.size!=0):
+    #             mu=np.mean(ba['SI'][iGood])
+    #             #print(mu)
+    #             ba['SI'][iBad]=mu
+    #             N_tot=N_tot+iGood.size
+    #     basp['SI']['From treatment area average']=N_tot/ba['SI'].size*100
 
-        if vri['SITE_INDEX'][ind0]>0:
-            ba['SI'][iStand0]=vri['SITE_INDEX'][ind0]
-            N_tot=N_tot+ind0.size
+    # # Where there is no FC estimate and no SPL layer, polulate with VRI estimate
+    # N_tot=0
+    # for iStand0 in range(meta['Project']['N Stand']):
 
-    basp['SI']['From VRI']=N_tot/ba['SI'].size*100
+    #     if flag_subset==1:
+    #         iStand=meta['Project']['iKeep'][iStand0]
+    #     else:
+    #         iStand=iStand0
 
-    # Where there is nothing, populate with regional averages
+    #     if idx['vri'][iStand]==None:
+    #         continue
 
-    iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
-    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
-    ba['SI'][iToFill1]=np.mean(ba['SI'][iGood])
+    #     ind0=idx['vri'][iStand]['Index'][0]
+    #     ba['SI VRI'][iStand0]=vri['SITE_INDEX'][ind0]
 
-    iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
-    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
-    ba['SI'][iToFill2]=np.mean(ba['SI'][iGood])
+    #     if ba['SI'][iStand0]>0:
+    #         continue
 
-    basp['SI']['From regional averages']=(iToFill1.size+iToFill2.size)/ba['SI'].size*100
+    #     if vri['SITE_INDEX'][ind0]>0:
+    #         ba['SI'][iStand0]=vri['SITE_INDEX'][ind0]
+    #         N_tot=N_tot+ind0.size
 
-    # Where there are still missing values assume mean of whole dataset
-    ind=np.where(ba['SI']<0)[0]
-    if ind.size>0:
-        iGood=np.where( (ba['SI']>0) )[0]
-        ba['SI'][ind]=np.mean(ba['SI'][iGood])
-        basp['SI']['From global average']=ind.size/ba['SI'].size*100
+    # basp['SI']['From VRI']=N_tot/ba['SI'].size*100
 
-    # Convert to integer (for BatchTIPSY)
-    ba['SI']=np.round(ba['SI']).astype(int)
+    # # Where there is nothing, populate with regional averages
+
+    # iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
+    # iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
+    # ba['SI'][iToFill1]=np.mean(ba['SI'][iGood])
+
+    # iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
+    # iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
+    # ba['SI'][iToFill2]=np.mean(ba['SI'][iGood])
+
+    # basp['SI']['From regional averages']=(iToFill1.size+iToFill2.size)/ba['SI'].size*100
+
+    # # Where there are still missing values assume mean of whole dataset
+    # ind=np.where(ba['SI']<0)[0]
+    # if ind.size>0:
+    #     iGood=np.where( (ba['SI']>0) )[0]
+    #     ba['SI'][ind]=np.mean(ba['SI'][iGood])
+    #     basp['SI']['From global average']=ind.size/ba['SI'].size*100
+
+    # # Convert to integer (for BatchTIPSY)
+    # ba['SI']=np.round(ba['SI']).astype(int)
 
     return ba,basp
 
@@ -6671,7 +6704,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
     #--------------------------------------------------------------------------
 
     if (meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Future']=='On'):
-        if 'Use Frozen Ensembles' not in meta['Project']:
+        if meta['Project']['Use Frozen Ensembles']=='Off':
             print('Generating wildfire information')
             t0=time.time()
             asm.SimulateWildfireFromAAO(meta,ba)
@@ -6682,7 +6715,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
     #--------------------------------------------------------------------------
 
     if (meta['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta['Scenario'][iScn]['MPB Status Modern']=='On') | (meta['Scenario'][iScn]['MPB Status Future']=='On'):
-        if 'Use Frozen Ensembles' not in meta['Project']:
+        if meta['Project']['Use Frozen Ensembles']=='Off':
             print('Generating MPB information')
             t0=time.time()
             asm.SimulateIBMFromAAO(meta,ba)
@@ -6700,7 +6733,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
             if (meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Future']=='On'):
 
                 # Import wildfire from aspatial stats model
-                if 'Use Frozen Ensembles' not in meta['Project']:
+                if meta['Project']['Use Frozen Ensembles']=='Off':
                     wf_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
                 else:
                     wf_sim=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
@@ -6734,7 +6767,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
             if (meta['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta['Scenario'][iScn]['MPB Status Modern']=='On') | (meta['Scenario'][iScn]['MPB Status Future']=='On'):
 
                 # Import simulated mountain pine beetle
-                if 'Use Frozen Ensembles' not in meta['Project']:
+                if meta['Project']['Use Frozen Ensembles']=='Off':
                     ibm_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
                 else:
                     ibm_sim=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\ibm_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
@@ -6783,8 +6816,8 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
                         # New BGC zone-specific
                         cd=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,iS])[0]
                         ind=np.where(meta['Param']['BE']['SpinupRI']['Name']==cd)[0]
-                        ivl_pi=meta['Param']['BE']['SpinupRI']['Value'][ind]
-
+                        #ivl_pi=meta['Param']['BE']['SpinupRI']['Value'][ind]
+                        ivl_pi=350.0
                         # Timing of transition between pre-industrial and modern periods
                         try:
                             YearRef=dmec[iScn][iStandFull]['Year'][0]

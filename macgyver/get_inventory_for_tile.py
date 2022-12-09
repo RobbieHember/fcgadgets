@@ -45,13 +45,13 @@ gdf_tile=gpd.read_file(metaTile['Paths']['Project Root'] + '\\TilesBC.geojson')
 
 #%% Specify the tiles to run
 
-TilesToRun_ij=np.zeros((6,2),dtype=int)
-TilesToRun_ij[0,:]=[9,13]
-TilesToRun_ij[1,:]=[9,14]
-TilesToRun_ij[2,:]=[10,12]
-TilesToRun_ij[3,:]=[10,14]
-TilesToRun_ij[4,:]=[11,13]
-TilesToRun_ij[5,:]=[11,14]
+TilesToRun_ij=np.zeros((2,2),dtype=int)
+TilesToRun_ij[0,:]=[12,13]
+TilesToRun_ij[1,:]=[12,14]
+#TilesToRun_ij[2,:]=[10,12]
+#TilesToRun_ij[3,:]=[10,14]
+#TilesToRun_ij[4,:]=[11,13]
+#TilesToRun_ij[5,:]=[11,14]
 
 # Get list of tiles that overlap with land
 flg=0
