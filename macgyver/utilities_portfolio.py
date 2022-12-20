@@ -29,7 +29,7 @@ def ImportPortfolio(meta):
 
     meta['Project']={}
     meta['Project']['N Scenario']=2
-    meta['Project']['N Portfolio']=4
+    meta['Project']['N Portfolio']=7
 
     #--------------------------------------------------------------------------
     # Import portfolio-level parameters
@@ -74,6 +74,9 @@ def ImportPortfolio(meta):
     meta['Project']['AIL']['ID Portfolio'][12:]=1
     meta['Project']['AIL']['ID Portfolio'][24:]=2
     meta['Project']['AIL']['ID Portfolio'][36:]=3
+    meta['Project']['AIL']['ID Portfolio'][48:]=4
+    meta['Project']['AIL']['ID Portfolio'][60:]=5
+    meta['Project']['AIL']['ID Portfolio'][72:]=6
 
     meta['Project']['AIL']['Area']=np.zeros((meta['Project']['AIL']['Year'].size,meta['Project']['N Portfolio']*12))
     for i in range(0,meta['Project']['AIL']['Year'].size):

@@ -833,6 +833,113 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
 
     return
 
+#%% Plot NEP, RH, and NPP
+
+def PlotNEP(meta,mos,tv,iT):
+
+    iSP=0
+    iSS=0
+
+    for k in mos['Delta'].keys():
+
+        iB=mos['Delta'][k]['iB']
+        iP=mos['Delta'][k]['iP']
+
+        fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(18,6.5)); Alpha=0.09
+
+        for j in range(0,2):
+            ax[j].yaxis.set_ticks_position('both');
+            ax[j].xaxis.set_ticks_position('both')
+            ax[j].plot(tv[iT],0*np.ones(tv[iT].shape),'-',lw=3,color=(0.8,0.8,0.8),label='')
+
+        cl=np.array([[0.75,0,0],[0,0.85,0],[0.29,0.49,0.77]])
+        ymin=0.0
+        ymax=0.0
+
+        vn='C_RH_Tot'
+        lo=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS]
+        hi=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS]
+        lo2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS]
+        hi2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS]
+        #ax[0].fill_between(tv[iT],lo,hi,color=cl[0,:],alpha=Alpha,linewidth=0)
+        ax[0].fill_between(tv[iT],lo2,hi2,color=cl[0,:],alpha=Alpha,linewidth=0)
+        ax[0].plot(tv[iT],3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS],'--',color=cl[0,:],label='RH')
+        ymin=np.minimum(ymin,np.min(lo))
+        ymax=np.maximum(ymax,np.max(hi))
+
+        vn='C_NPP_Tot'
+        lo=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS]
+        hi=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS]
+        lo2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS]
+        hi2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS]
+        #ax[0].fill_between(tv[iT],lo,hi,color=cl[0,:],alpha=Alpha,linewidth=0)
+        ax[0].fill_between(tv[iT],lo2,hi2,color=cl[1,:],alpha=Alpha,linewidth=0)
+        ax[0].plot(tv[iT],3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS],'-.',color=cl[1,:],label='NPP')
+        ymin=np.minimum(ymin,np.min(lo))
+        ymax=np.maximum(ymax,np.max(hi))
+
+        vn='E_CO2e_LULUCF_NEE'
+        lo=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS]
+        hi=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS]
+        lo2=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS]
+        hi2=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS]
+        #ax[0].fill_between(tv[iT],lo,hi,color=cl[0,:],alpha=Alpha,linewidth=0)
+        ax[0].fill_between(tv[iT],lo2,hi2,color=cl[2,:],alpha=Alpha,linewidth=0)
+        ax[0].plot(tv[iT],-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS],'-',color=cl[2,:],label='NEP')
+        ymin=np.minimum(ymin,np.min(lo))
+        ymax=np.maximum(ymax,np.max(hi))
+
+        ax[0].legend(loc="lower right",frameon=0)
+        ax[0].set(ylabel='Annual $\Delta$ (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlabel='Time, years',ylim=[ymin,ymax],xlim=[tv[iT[0]],tv[iT[-1]]]);
+
+        ymin=0.0
+        ymax=0.0
+
+        vn='C_RH_Tot'
+        lo=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS])
+        hi=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS])
+        lo2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS])
+        hi2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS])
+        mu=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS])
+        #ax[1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
+        ax[1].fill_between(tv[iT],lo2,hi2,color=cl[0,:],alpha=Alpha,linewidth=0)
+        ax[1].plot(tv[iT],mu,'--',color=cl[0,:])
+        ax[1].set(ylabel='Cumulative $\Delta$ (tCO$_2$e ha$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]],tv[iT[-1]]]);
+        ymin=np.minimum(ymin,np.min(mu))
+        ymax=np.maximum(ymax,np.max(mu))
+
+        vn='C_NPP_Tot'
+        lo=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS])
+        hi=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS])
+        lo2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS])
+        hi2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS])
+        mu=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS])
+        #ax[1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
+        ax[1].fill_between(tv[iT],lo2,hi2,color=cl[1,:],alpha=Alpha,linewidth=0)
+        ax[1].plot(tv[iT],mu,'-.',color=cl[1,:])
+        ymin=np.minimum(ymin,np.min(mu))
+        ymax=np.maximum(ymax,np.max(mu))
+
+        vn='E_CO2e_LULUCF_NEE'
+        lo=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS])
+        hi=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS])
+        lo2=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS])
+        hi2=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS])
+        mu=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS])
+        #ax[1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
+        ax[1].fill_between(tv[iT],lo2,hi2,color=cl[2,:],alpha=Alpha,linewidth=0)
+        ax[1].plot(tv[iT],mu,'-',color=cl[2,:])
+        ymin=np.minimum(ymin,np.min(mu))
+        ymax=np.maximum(ymax,np.max(mu))
+
+        ax[1].set(ylabel='Cumulative $\Delta$ (tCO$_2$e ha$^-$$^1$)',xlabel='Time, years',ylim=[ymin,ymax],xlim=[tv[iT[0]],tv[iT[-1]]]);
+        gu.axletters(ax,plt,0.03,0.89)
+        if meta['Print Figures']=='On':
+            gu.PrintFig(meta['Paths']['Figures'] + '\\GHG_Balance_' + k,'png',900)
+        fig.suptitle(k)
+
+    return
+
 #%%
 
 def PlotGHGB(meta,mos,tv,iT):
@@ -936,3 +1043,60 @@ def PlotGHGBenefit(meta,mos,tv,iT):
 
     return
 
+#%% Summary description
+
+def SummaryDescription(meta,mos,sc,th):
+
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    iT=np.where( (tv>=meta['Project']['Year Project']) & (tv<=meta['Project']['Year Project']+th) )[0]
+
+    d={}
+    d['EI PelletExport (tCO2e/ODT)']=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI PelletExport Boiler (tCO2e/GJ)']=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI PelletExport Boiler+Ops (tCO2e/GJ)']=np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,0,0]) )/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI Pellet Manufacture (tCO2e/ODT Pellets)']=np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]) )/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI OperationForestry (tCO2e/ODT)']= \
+            np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]) ) / \
+            np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['ODT Lumber']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT LogExport']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT Plywood']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT OSB']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT MDF']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT Paper']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletDomGrid']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletDomRNG']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT PowerFacilityDom']['Ensemble Mean'][iT,0,0]+ \
+            mos['Delta'][sc]['ByStrata']['Mean']['ODT PowerGrid']['Ensemble Mean'][iT,0,0]) )
+
+    d['Energy efficiency (GJ/ODT)']=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
+
+    # Displacement factor
+
+    SubTot=-np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_Tot']['Ensemble Mean'][iT,0,0])
+    SubE=-np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_E']['Ensemble Mean'][iT,0,0])
+    SubM=-np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_M']['Ensemble Mean'][iT,0,0])
+    Wood=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['C_ToLumber']['Ensemble Mean'][iT,0,0]+ \
+        mos['Delta'][sc]['ByStrata']['Mean']['C_ToPlywood']['Ensemble Mean'][iT,0,0]+ \
+        mos['Delta'][sc]['ByStrata']['Mean']['C_ToMDF']['Ensemble Mean'][iT,0,0]+ \
+        mos['Delta'][sc]['ByStrata']['Mean']['C_ToOSB']['Ensemble Mean'][iT,0,0])
+    Bioenergy=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0])
+    BioenergyPlusOps=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0]+ \
+                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0])
+    BioenergyOpsAndHWPDecay=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0]+ \
+                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0])
+
+    d['Displacement Factor Total (tC/tC)']=SubTot/BioenergyOpsAndHWPDecay
+    d['Displacement Factor Energy (tC/tC)']=SubE/BioenergyPlusOps
+    d['Displacement Factor Materials (tC/tC)']=(SubM/3.667)/Wood
+
+    return d

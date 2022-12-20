@@ -539,13 +539,17 @@ def ImportProjectConfig(meta,**kwargs):
         'ODT Oil',
         'ODT Gas',
         'GJ PowerFacilityDom',
-        'GJ PowerFacilityExport',
         'GJ PowerGrid',
         'GJ PelletExport',
         'GJ PelletDomGrid',
         'GJ PelletDomRNG',
         'GJ FirewoodDom',
-        'GJ FirewoodExport',
+        'Atm_CO2_In',
+        'Atm_CH4_In',
+        'Atm_N2O_In',
+        'Atm_CO2_Out',
+        'Atm_CH4_Out',
+        'Atm_N2O_Out',
         'Cost Roads',
         'Cost Knockdown',
         'Cost Ripping',
@@ -1271,6 +1275,12 @@ def ImportProjectConfig(meta,**kwargs):
             meta['Scenario'][iScn]['Grass Module Status']='Off'
             meta['Scenario'][iScn]['Grass Module Year Start']=meta['Project']['Year Project']+1
 
+    #--------------------------------------------------------------------------
+    # Initialize run time tracking
+    #--------------------------------------------------------------------------
+
+    meta['Project']['Run Time Summary']={}
+
     return meta
 
 #%% Load scenario results
@@ -1339,6 +1349,8 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     v0['E_CO2e_LULUCF_NEE']=-1*bB['Ratio_CO2_to_C']*(v0['C_NPP_Tot']-v0['C_RH_Tot'])
     v0['E_CO2e_LULUCF_Fire']=v0['E_CO2e_LULUCF_Wildfire']+v0['E_CO2e_LULUCF_OpenBurning']
 
+    v0['ODT Sawnwood']=v0['C_ToLumber']/bB['Carbon Content Wood']
+    v0['ODT Panel']=(v0['C_ToPlywood']+v0['C_ToOSB']+v0['C_ToMDF'])/bB['Carbon Content Wood']
     v0['ODT Lumber']=v0['C_ToLumber']/bB['Carbon Content Wood']
     v0['ODT LogExport']=v0['C_ToLogExport']/bB['Carbon Content Wood']
     v0['ODT Plywood']=v0['C_ToPlywood']/bB['Carbon Content Wood']
@@ -1358,13 +1370,13 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     v0['ODT Gas']=v0['E_CO2e_SUB_GasForBioenergy']/(bB['Emission Intensity Natural Gas']/1000)/bB['Energy Content Natural Gas']
 
     # Convert yield of bioenergy feedstock (ODT/ha) to energy (GJ/ha)
-    v0['GJ PelletExport']=v0['ODT PelletExport']*bB['Energy Content Wood (0% moisture)']
-    v0['GJ PelletDomGrid']=v0['ODT PelletDomGrid']*bB['Energy Content Wood (0% moisture)']
-    v0['GJ PelletDomRNG']=v0['ODT PelletDomRNG']*bB['Energy Content Wood (0% moisture)']
-    v0['GJ PowerGrid']=v0['ODT PowerGrid']*bB['Energy Content Wood (0% moisture)']
-    v0['GJ PowerFacilityDom']=v0['ODT PowerFacilityDom']*bB['Energy Content Wood (0% moisture)']
-    v0['GJ FirewoodDom']=v0['ODT FirewoodDom']*bB['Energy Content Wood (0% moisture)']
-    v0['GJ FirewoodTot']=v0['ODT FirewoodTot']*bB['Energy Content Wood (0% moisture)']
+    v0['GJ PelletExport']=v0['ODT PelletExport']*bB['Energy Content Wood (0% moisture)']*bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']
+    v0['GJ PelletDomGrid']=v0['ODT PelletDomGrid']*bB['Energy Content Wood (0% moisture)']*bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']
+    v0['GJ PelletDomRNG']=v0['ODT PelletDomRNG']*bB['Energy Content Wood (0% moisture)']*bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']
+    v0['GJ PowerGrid']=v0['ODT PowerGrid']*bB['Energy Content Wood (0% moisture)']*bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']
+    v0['GJ PowerFacilityDom']=v0['ODT PowerFacilityDom']*bB['Energy Content Wood (0% moisture)']*bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']
+    v0['GJ FirewoodDom']=v0['ODT FirewoodDom']*bB['Energy Content Wood (0% moisture)']*bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']
+    v0['GJ FirewoodTot']=v0['ODT FirewoodTot']*bB['Energy Content Wood (0% moisture)']*bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']
 
     # Aggregate operational emissions
     v0['E_CO2e_ESC_OperFor']=v0['E_CO2e_ESC_OperForBurnCoal']+v0['E_CO2e_ESC_OperForBurnOil']+v0['E_CO2e_ESC_OperForBurnGas']
@@ -1448,6 +1460,45 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     E_Op=v0['E_CO2e_ESC_OperForBurnGas']+v0['E_CO2e_ET_OperForBurnGas']+v0['E_CO2e_IPPU_OperForBurningGas']
     E_Substitution=v0['E_CO2e_SUB_GasForBioenergy']+v0['E_CO2e_SUB_GasForWood']
     v0['C_Gas']=-1*(E_Op+E_Substitution)/(bB['Emission Intensity Natural Gas']/1000)/bB['Energy Content Natural Gas']*bB['Carbon Content Natural Gas']
+
+    #--------------------------------------------------------------------------
+    # Add and remove atmospheric gases
+    # *** Fluxes from combustion and HWP decay already added ***
+    #--------------------------------------------------------------------------
+
+    # Add heterotrophic respiration
+    v0['Atm_CO2_In']=v0['Atm_CO2_In']+bB['Ratio_CO2_to_C']*v0['C_RH_Tot']
+
+    # Remove net primary productivity
+    v0['Atm_CO2_Out']=v0['Atm_CO2_Out']+bB['Ratio_CO2_to_C']*v0['C_NPP_Tot']
+
+    #v0['Atm_CH4_In']=v0['Atm_CH4_In'][iT,:]+E_CH4
+
+    # Forestry operations
+    v0['Atm_CO2_In']=v0['Atm_CO2_In']+v0['E_CO2e_OperForCoal']*bB['Emission Fraction Coal As CO2']
+    v0['Atm_CH4_In']=v0['Atm_CH4_In']+v0['E_CO2e_OperForCoal']*bB['Emission Fraction Coal As CH4']
+    v0['Atm_N2O_In']=v0['Atm_N2O_In']+v0['E_CO2e_OperForCoal']*bB['Emission Fraction Coal As N2O']
+
+    v0['Atm_CO2_In']=v0['Atm_CO2_In']+v0['E_CO2e_OperForOil']*bB['Emission Fraction Oil As CO2']
+    v0['Atm_CH4_In']=v0['Atm_CH4_In']+v0['E_CO2e_OperForOil']*bB['Emission Fraction Oil As CH4']
+    v0['Atm_N2O_In']=v0['Atm_N2O_In']+v0['E_CO2e_OperForOil']*bB['Emission Fraction Oil As N2O']
+
+    v0['Atm_CO2_In']=v0['Atm_CO2_In']+v0['E_CO2e_OperForGas']*bB['Emission Fraction Natural Gas As CO2']
+    v0['Atm_CH4_In']=v0['Atm_CH4_In']+v0['E_CO2e_OperForGas']*bB['Emission Fraction Natural Gas As CH4']
+    v0['Atm_N2O_In']=v0['Atm_N2O_In']+v0['E_CO2e_OperForGas']*bB['Emission Fraction Natural Gas As N2O']
+
+    # Substitutions
+    v0['Atm_CO2_Out']=v0['Atm_CO2_Out']-v0['E_CO2e_SUB_Coal']*bB['Emission Fraction Coal As CO2']
+    v0['Atm_CH4_Out']=v0['Atm_CH4_Out']-v0['E_CO2e_SUB_Coal']*bB['Emission Fraction Coal As CH4']
+    v0['Atm_N2O_Out']=v0['Atm_N2O_Out']-v0['E_CO2e_SUB_Coal']*bB['Emission Fraction Coal As N2O']
+
+    v0['Atm_CO2_Out']=v0['Atm_CO2_Out']-v0['E_CO2e_SUB_Oil']*bB['Emission Fraction Oil As CO2']
+    v0['Atm_CH4_Out']=v0['Atm_CH4_Out']-v0['E_CO2e_SUB_Oil']*bB['Emission Fraction Oil As CH4']
+    v0['Atm_N2O_Out']=v0['Atm_N2O_Out']-v0['E_CO2e_SUB_Oil']*bB['Emission Fraction Oil As N2O']
+
+    v0['Atm_CO2_Out']=v0['Atm_CO2_Out']-v0['E_CO2e_SUB_Gas']*bB['Emission Fraction Natural Gas As CO2']
+    v0['Atm_CH4_Out']=v0['Atm_CH4_Out']-v0['E_CO2e_SUB_Gas']*bB['Emission Fraction Natural Gas As CH4']
+    v0['Atm_N2O_Out']=v0['Atm_N2O_Out']-v0['E_CO2e_SUB_Gas']*bB['Emission Fraction Natural Gas As N2O']
 
     #--------------------------------------------------------------------------
     # Sawtooth variable adjustments
@@ -4418,7 +4469,14 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
                     iStand=indb[i]
                     iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
 
-                    G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    try:
+                        G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    except:
+                        print(iStand)
+                        print(G.shape)
+                        print(iGC_Unique)
+                        print(G_StemMerch.shape)
+
                     G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
                     G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['GC']['Scale Factor']
                     G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['GC']['Scale Factor']

@@ -37,7 +37,17 @@ vrL=['RemovedMerchToChipperMill','RemovedMerchToPulpMill','RemovedMerchToPelletM
 # *** If you change the time vector, change it consistently for other variable scenarios - it needs to be consistent ***
 tv=np.arange(1850,2101,1)
 
-regL=['Coast','Interior','GFS22','Energy Production','BurnUneconomic','LeaveUneconomicStanding','UseUnecomicForPellets','Energy Production Pellets']
+# Region list
+regL=['Coast',
+      'Interior',
+      'GFS22',
+      'Energy Production',
+      'Burn Uneconomic',
+      'Leave Uneconomic Standing',
+      'Sawlogs and Pellets',
+      'Energy Production Pellets']
+
+# Scenario list
 scnL=['BaseCase','S1']
 
 #%% Initialize with BaseCase parameters

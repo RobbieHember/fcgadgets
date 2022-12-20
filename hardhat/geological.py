@@ -167,6 +167,9 @@ def SubstitutionEffects(meta,vi,vo):
     bB=meta['Param']['BEV']['Biophysical']
     bS=meta['Param']['BEV']['Substitution']
 
+    # Electricity conversion efficiency ratio
+    Ratio_EC=bB['Electrical Conversion Efficiency of Pellet Electricity Plant (>25MW)']/bB['Electrical Conversion Efficiency of Coal Electricity Plant']
+
     #----------------------------------------------------------------------
     # Domestic facility power generation (MgC/ha) to (green tonne/ha)
     #----------------------------------------------------------------------
@@ -175,6 +178,8 @@ def SubstitutionEffects(meta,vi,vo):
 
     # Yield to energy (GJ/ha)
     GJ_PowerFacilityDom=bB['Energy Content Wood (0% moisture)']*Yield_PowerFacilityDom
+
+    GJ_PowerFacilityDom=GJ_PowerFacilityDom*Ratio_EC
 
     E_Sub_CoalForBioenergy_PowerFacilityDom=bS['PowerFacilityDomFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerFacilityDom
     E_Sub_DieselForBioenergy_PowerFacilityDom=bS['PowerFacilityDomFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerFacilityDom
@@ -191,6 +196,8 @@ def SubstitutionEffects(meta,vi,vo):
     # Yield to energy (GJ/ha)
     GJ_PowerFacilityExport=bB['Energy Content Wood (0% moisture)']*Yield_PowerFacilityExport
 
+    GJ_PowerFacilityExport=GJ_PowerFacilityExport*Ratio_EC
+
     E_Sub_CoalForBioenergy_PowerFacilityExport=bS['PowerFacilityExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerFacilityExport
     E_Sub_DieselForBioenergy_PowerFacilityExport=bS['PowerFacilityExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerFacilityExport
     E_Sub_GasForBioenergy_PowerFacilityExport=bS['PowerFacilityExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PowerFacilityExport
@@ -205,6 +212,8 @@ def SubstitutionEffects(meta,vi,vo):
 
     # Yield to energy (GJ/ha)
     GJ_PowerGrid=bB['Energy Content Wood (0% moisture)']*Yield_PowerGrid
+
+    GJ_PowerGrid=GJ_PowerGrid*Ratio_EC
 
     E_Sub_CoalForBioenergy_PowerGrid=bS['PowerGridFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerGrid
     E_Sub_DieselForBioenergy_PowerGrid=bS['PowerGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerGrid
@@ -221,6 +230,8 @@ def SubstitutionEffects(meta,vi,vo):
     # Yield to energy (GJ/ha)
     GJ_PelletExport=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletExport
 
+    GJ_PelletExport=GJ_PelletExport*Ratio_EC
+
     E_Sub_CoalForBioenergy_PelletExport=bS['PelletExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletExport
     E_Sub_DieselForBioenergy_PelletExport=bS['PelletExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletExport
     E_Sub_GasForBioenergy_PelletExport=bS['PelletExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PelletExport
@@ -235,6 +246,8 @@ def SubstitutionEffects(meta,vi,vo):
 
     # Yield to energy (GJ/ha)
     GJ_PelletDomGrid=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletDomGrid
+
+    GJ_PelletDomGrid=GJ_PelletDomGrid*Ratio_EC
 
     E_Sub_CoalForBioenergy_PelletDomGrid=bS['PelletDomGridFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletDomGrid
     E_Sub_DieselForBioenergy_PelletDomGrid=bS['PelletDomGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletDomGrid

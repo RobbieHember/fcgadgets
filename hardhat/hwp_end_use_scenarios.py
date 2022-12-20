@@ -33,7 +33,16 @@ tv=np.arange(1850,2101,1)
 
 #%% Initialize dictionary
 
-regL=['Coast','Interior','GFS22','BurnUneconomic','LeaveUneconomicStanding','UseUnecomicForPellets','Energy Production Pellets']
+# Regions
+regL=['Coast',
+      'Interior',
+      'GFS22',
+      'Burn Uneconomic',
+      'Leave Uneconomic Standing',
+      'Sawlogs and Pellets',
+      'Energy Production Pellets']
+
+# Scenarios
 scnL=['BaseCase','S1','S2','S3']
 
 d={}

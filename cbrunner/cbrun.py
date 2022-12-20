@@ -24,9 +24,6 @@ def MeepMeep(meta):
     else:
         ScenariosToRun=range(meta['Project']['N Scenario'])
 
-    # Initialize run time tracking info
-    rt_info={}
-
     # Loop through batches
     for iBat in range(meta['Project']['N Batch']):
 
@@ -43,7 +40,6 @@ def MeepMeep(meta):
 
                 # Track time
                 t0=time.time()
-                rt_info['t1']=time.time()
 
                 # Path to temporary "working on batch..." file -> tells other instances
                 pth_WorkingOnBatch=meta['Paths']['Project'] + '\\Outputs\\WorkingOnBatch_' + cbu.FixFileNum(iBat) + '.pkl'
@@ -60,7 +56,6 @@ def MeepMeep(meta):
 
                 # Report progress
                 if (meta['Project']['Scenario Source']=='Spreadsheet'):
-                    #print('Running Scenario ' + cbu.FixFileNum(iScn) )
                     pass
                 else:
                     print('Running Scenario ' + cbu.FixFileNum(iScn) + ', Ensemble ' + cbu.FixFileNum(iEns) + ', Batch ' + cbu.FixFileNum(iBat))
@@ -69,31 +64,28 @@ def MeepMeep(meta):
                 meta,vi,vo=InitializeStands(meta,iScn,iEns,iBat)
 
                 # Track time
-                rt_info['t2']=time.time()
+                t1=time.time()
+                meta['Project']['Run Time Summary']['Stand initialization']=t1-t0
 
                 # Set location-specific parameters
                 meta,vi=PrepareParametersForBatch(meta,vi,iEns,iBat,iScn)
 
                 # Track time
-                rt_info['t3']=time.time()
+                t2=time.time()
+                meta['Project']['Run Time Summary']['Set location-specific parameters']=t2-t1
 
                 # Indices to ecosystem pools
                 iEP=meta['Core']['iEP']
 
                 # Try to start at a later date and adopt spinup from a previous run
-                #t_start=1
                 if (meta['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
-
                     #Start from beginning
                     t_start=1
-
                 else:
-
                     # Start at an advanced date using previous data for spinup period
                     t_start=np.where(meta['Year']==meta['Project']['Year Start Saving'])[0][0]
 
                     # Get output variables from first run of this batch
-                    #vo=copy.deepcopy(vo_full)
                     it=np.where(meta['Year']==meta['Project']['Year Start Saving']-1)[0]
                     for k in vo.keys():
                         if (k=='C_M_ByAgent'):
@@ -119,12 +111,31 @@ def MeepMeep(meta):
                             vo[k][it,:]=0*vo[k][it,:]
 
                 # Track time
-                rt_info['t4']=time.time()
+                t3=time.time()
 
                 # Biomass dynamics from Sawtooth
                 if meta['Project']['Biomass Module']=='Sawtooth':
                     for iS in range(meta['Project']['Batch Size'][iBat]):
                         vo=annproc.BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP)
+
+                # Track time
+                t4=time.time()
+                meta['Project']['Run Time Summary']['Running biomass dynamics from sawtooth']=t4-t3
+
+                meta['Project']['Run Time Summary']['Biomass from GY model']=0.0
+                meta['Project']['Run Time Summary']['DOM']=0.0
+                meta['Project']['Run Time Summary']['Events']=0.0
+                meta['Project']['Run Time Summary']['HWP']=0.0
+
+                meta['Project']['Run Time Summary']['Test1']=0.0
+                meta['Project']['Run Time Summary']['Test2']=0.0
+                meta['Project']['Run Time Summary']['Test3']=0.0
+                meta['Project']['Run Time Summary']['Test4']=0.0
+                meta['Project']['Run Time Summary']['Test5']=0.0
+                meta['Project']['Run Time Summary']['Test6']=0.0
+                meta['Project']['Run Time Summary']['Test7']=0.0
+                meta['Project']['Run Time Summary']['Test8']=0.0
+                meta['Project']['Run Time Summary']['Test9']=0.0
 
                 # Loop through time intervals (start in second time step)
                 for iT in range(t_start,meta['Project']['N Time']):
@@ -132,24 +143,40 @@ def MeepMeep(meta):
                     # Biomass dynamics
                     if meta['Project']['Biomass Module']=='BatchTIPSY':
 
-                        # Biomass from BatchTIPSY.exe (or TASS)
-                        vo=annproc.Biomass_FromTIPSYorTASS(iScn,iBat,iT,vi,vo,meta,iEP)
+                        t0=time.time()
+                        # Biomass from growth and yield model
+                        vo=annproc.Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP)
+                        t1=time.time()
+                        meta['Project']['Run Time Summary']['Biomass from GY model']=meta['Project']['Run Time Summary']['Biomass from GY model']+t1-t0
 
                     # Grassland dynamics
                     if (meta['Scenario'][iScn]['Grass Module Status']=='On') & (meta['Year'][iT]>=meta['Scenario'][iScn]['Grass Module Year Start']):
                         vo=annproc.Biomass_FromGrasses(iScn,iBat,iT,vi,vo,meta,iEP)
 
                     # Calculate annual dead organic matter dynamics
+                    t0=time.time()
                     vo=annproc.DOM_LikeKurzetal2009(iT,iBat,vi,vo,iEP,meta)
+                    t1=time.time()
+                    meta['Project']['Run Time Summary']['DOM']=meta['Project']['Run Time Summary']['DOM']+t1-t0
 
                     # Calculate effects of disturbance and management
+                    t0=time.time()
                     vo,vi=annproc.Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP)
+                    t1=time.time()
+                    meta['Project']['Run Time Summary']['Events']=meta['Project']['Run Time Summary']['Events']+t1-t0
 
                     # Calculate products sector
                     if meta['Year'][iT]>=meta['Core']['HWP Year Start']:
 
                         # No need to run this before a certain date
+                        t0=time.time()
                         vo=annproc.HWP_Update21(iT,iBat,vi,vo,meta)
+                        t1=time.time()
+                        meta['Project']['Run Time Summary']['HWP']=meta['Project']['Run Time Summary']['HWP']+t1-t0
+
+                # Track time
+                t5=time.time()
+                meta['Project']['Run Time Summary']['Full annual loop']=t5-t4
 
                 # Calculate fossil fuel emissions from operations
                 vo=geologic.FossilFuelEmissions(meta,vi,vo)
@@ -157,7 +184,9 @@ def MeepMeep(meta):
                 # Calculate substitution effects
                 vo=geologic.SubstitutionEffects(meta,vi,vo)
 
-                rt_info['t5']=time.time()
+                # Track time
+                t6=time.time()
+                meta['Project']['Run Time Summary']['Run geological']=t6-t5
 
                 # Export simulation results to file
                 #ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
@@ -167,7 +196,9 @@ def MeepMeep(meta):
                 else:
                     ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
 
-                rt_info['t6']=time.time()
+                # Track time
+                t7=time.time()
+                meta['Project']['Run Time Summary']['Export results to file']=t7-t6
 
                 # Delete 'working on' file
                 #if meta['Project']['Skip Completed Runs']=='On':
@@ -177,19 +208,11 @@ def MeepMeep(meta):
                 del vi,vo
                 garc.collect()
 
-                # Track simulation time
-                #print(rt_info['t2']-rt_info['t1'])
-                #print(rt_info['t3']-rt_info['t2'])
-                #print(rt_info['t4']-rt_info['t3'])
-                #print(rt_info['t5']-rt_info['t4'])
-                #print(rt_info['t6']-rt_info['t5'])
-                t1=time.time()
-                #print(t1-t0)
+                # Track time
+                t8=time.time()
+                meta['Project']['Run Time Summary']['Collect garbage']=t8-t7
 
-            # Calculate and save model output stats for this ensemble, delete
-            # full model output data to save space
-            if meta['Project']['Save MOS on fly']=='On':
-                SaveOutputToMOS(meta,iScn,iEns)
+    return meta
 
 #%% Initialize stands
 
@@ -228,7 +251,8 @@ def InitializeStands(meta,iScn,iEns,iBat):
         vi['GC'][1]=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\GrowthCurve1_Bat' + cbu.FixFileNum(iBat) + '.pkl')
 
         # Set active growth curve to growth curve 1
-        vi['GC']['Active']=vi['GC'][1].copy()
+        #vi['GC']['Active']=vi['GC'][1].copy()
+        vi['GC']['Active']=vi['GC'][1].copy().astype(float)*meta['GC']['Scale Factor']
 
         # Initialize an indicator of the active growth curve ID
         vi['GC']['ID_GCA']=np.ones(meta['Project']['Batch Size'][iBat])
@@ -440,6 +464,14 @@ def InitializeStands(meta,iScn,iEns,iBat):
 
         # Needed to track dead merch volume
         vo['V_Merch_M']=np.zeros((m,n))
+
+    # Atmosphere
+    vo['Atm_CO2_In']=np.zeros((m,n))
+    vo['Atm_CO2_Out']=np.zeros((m,n))
+    vo['Atm_CH4_In']=np.zeros((m,n))
+    vo['Atm_CH4_Out']=np.zeros((m,n))
+    vo['Atm_N2O_In']=np.zeros((m,n))
+    vo['Atm_N2O_Out']=np.zeros((m,n))
 
     #--------------------------------------------------------------------------
     # Specify a fast-track period that spans the spin-up period for use of Sawtooth
@@ -922,6 +954,11 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
 
     vo['E_CO2e_LULUCF_Wildfire']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
 
+    # Add to atmosphere
+    vo['Atm_CO2_In']=vo['Atm_CO2_In']+E_CO2
+    vo['Atm_CH4_In']=vo['Atm_CH4_In']+E_CH4
+    vo['Atm_N2O_In']=vo['Atm_N2O_In']+E_N2O
+
     #--------------------------------------------------------------------------
     # Emissions from open burning
     #--------------------------------------------------------------------------
@@ -945,6 +982,11 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     CO2e_E_AsN2O=bB['GWP_N2O_AR5']*E_N2O
 
     vo['E_CO2e_LULUCF_OpenBurning']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
+
+    # Add to atmosphere
+    vo['Atm_CO2_In']=vo['Atm_CO2_In']+E_CO2
+    vo['Atm_CH4_In']=vo['Atm_CH4_In']+E_CH4
+    vo['Atm_N2O_In']=vo['Atm_N2O_In']+E_N2O
 
     #--------------------------------------------------------------------------
     # Delete unnecessary fire emission variables

@@ -1300,6 +1300,7 @@ def CompareAnthropogenicComponentWithCFS(meta,mos,iT,iPS,iSS,AEF):
 
     tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
     dfCFS=pd.read_excel(r'C:\Users\rhember\Documents\Data\CFS gaff.xlsx')
+
     plt.close('all')
     fig,ax=plt.subplots(1,figsize=gu.cm2inch(8.5,5.5)); wd=0.8; lw=0.5; cla=[0.8,0.8,0.8]
     ax.bar(1,np.mean(dfCFS['OLD']),label='National GHG Inventory (CFS)',facecolor=[0.5,0.7,1])

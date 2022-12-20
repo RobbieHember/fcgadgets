@@ -25,7 +25,14 @@ dP0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Par
 
 #%% Initialize all regions and all scenarios with the BaseCase values
 
-regL=['Coast','Interior','GFS22','Energy Production','BurnUneconomic','LeaveUneconomicStanding','UseUnecomicForPellets','Energy Production Pellets']
+regL=['Coast',
+      'Interior',
+      'GFS22',
+      'Energy Production',
+      'Burn Uneconomic',
+      'Leave Uneconomic Standing',
+      'Sawlogs and Pellets',
+      'Energy Production Pellets']
 
 dP={}
 for reg in regL:
