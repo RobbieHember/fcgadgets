@@ -18,9 +18,9 @@ import gc as garc
 from shapely.geometry import Polygon,Point,LineString,box
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
-from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcgadgets.bc1ha import bc1ha_utilities as bc1hau
-import fcgadgets.macgyver.utilities_query_gdb as qgdb
+import fcgadgets.cbrunner.cbrun_utilities as cbu
+import fcgadgets.bc1ha.bc1ha_utilities as bc1hau
+import fcgadgets.macgyver.utilities_query_gdb as qv
 
 #%% Path management
 
@@ -59,8 +59,8 @@ roi={}
 
 # Note: roads can slow down by hour, set as [] to skip
 
-#flg_roi='ByTSA'
-flg_roi='ByLatLon'
+flg_roi='ByTSA'
+#flg_roi='ByLatLon'
 
 t0=time.time()
 if flg_roi=='ByTSA':
@@ -68,14 +68,18 @@ if flg_roi=='ByTSA':
     roi['Type']='ByTSA'
 
     # Pick the TSAs to include
+
     # Search: gdf['tsa']['key']
     #roi['TSA List']=['Soo TSA']
     #roi['TSA List']=['Kamloops TSA','100 Mile House TSA','Williams Lake TSA']
-    roi['TSA List']=['Revelstoke TSA']
+    #roi['TSA List']=['Revelstoke TSA']
     #roi['TSA List']=['Kootenay Lake TSA']
     #roi['TSA List']=['100 Mile House TSA']
     #roi['TSA List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
     #roi['TSA List']=list(gdf['tsa']['key']['Name'])
+
+    # Western spruce budworm study (do not change!)
+    roi['TSA List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
 
 elif flg_roi=='ByLatLon':
 
@@ -104,8 +108,10 @@ elif flg_roi=='ByLatLon':
     # Yahk
     flg=1
     if flg==1:
-        roi['Centre']=[-116.086296,49.106646]
-        roi['Radius']=100*1000 # metres
+        #roi['Centre']=[-116.086296,49.106646]
+        #roi['Radius']=100*1000 # metres
+        roi['Lower Left']=[-117.5231,48.9926]
+        roi['Upper Right']=[-115.5786,49.6713]
 
     # IWB
     flg=0
@@ -129,7 +135,8 @@ print((t1-t0)/60)
 #%% Import rasters over ROI
 
 #vList=['lc2','btm','elev','becz']
-vList=['lc2','btm','elev','becz','age1','cut_yr']
+vList=['lc2','btm','elev','idw_mask']
+#vList=['lc2','btm','elev','wsb_mask','wsb_treat','becz','age1','cut_yr','d2road','d2fac']
 #vList=['temp_norm','ws_norm','lc2','btm','elev','bgcz','cut_yr']
 #vList=['lc2','btm','elev','soc','age1','si','temp_norm','ws_norm','cut_yr']
 #vList=['lc2','btm','elev','bgcz','cut_yr','bsr','wf','age1','sphlive','sphdead']
@@ -147,13 +154,13 @@ roi=bc1hau.Import_GDB_Over_ROI(meta_bc1ha,roi,vList)
 def Plot_ROI_Mask():
     plt.close('all')
     fig,ax=bc1hau.Plot_ROI_Mask(meta_bc1ha,roi,gdf)
-    #roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=1.25,label='Road',alpha=1)
-    #roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1)
-    #roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=45)
+    roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=1.25,label='Road',alpha=1)
+    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1)
+    roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=45)
     #wf['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0,0],linewidth=1,label='Opening',alpha=1)
-    roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=2,label='Opening',alpha=1)
-    roi['gdf']['cc']['gdf'].plot(ax=ax[0],facecolor=[1,1,0.5],edgecolor=[1,1,0],linewidth=1,label='Cut',alpha=0.25,linestyle='--')
-    roi['gdf']['fcres']['gdf'].plot(ax=ax[0],facecolor=[0.75,0.9,0.75],edgecolor=[0,1,0],linewidth=1,label='Reserves',alpha=1,linestyle='--')
+    #roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=2,label='Opening',alpha=1)
+    #roi['gdf']['cc']['gdf'].plot(ax=ax[0],facecolor=[1,1,0.5],edgecolor=[1,1,0],linewidth=1,label='Cut',alpha=0.25,linestyle='--')
+    #roi['gdf']['fcres']['gdf'].plot(ax=ax[0],facecolor=[0.75,0.9,0.75],edgecolor=[0,1,0],linewidth=1,label='Reserves',alpha=1,linestyle='--')
     #atu['gdf'].plot(ax=ax[0],facecolor=[0,1,1],edgecolor=[0,0,1],linewidth=1,label='Planting',alpha=0.25)
 
     #gu.PrintFig(meta_bc1ha['Paths']['Figures'] + '\\Planted areas','png',900)
@@ -169,7 +176,7 @@ def Plot_Elev(meta_bc1ha,roi):
     # Plot
     plt.close('all')
     fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta_bc1ha['Graphics']['figwidth'],(1-meta_bc1ha['Graphics']['sidespace'])*meta_bc1ha['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(roi['grd']['elev']['Data'],extent=roi['grd']['elev']['Extent'],cmap='terrain')
+    im=ax[0].matshow(roi['grd']['elev']['Data'],extent=roi['grd']['elev']['Extent'],cmap='Greys')
 
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
     ax[0].set(position=meta_bc1ha['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='',aspect='auto')
@@ -194,24 +201,16 @@ def Plot_Elev(meta_bc1ha,roi):
 plt.close('all')
 fig,ax=Plot_Elev(meta_bc1ha,roi)
 
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2,label='Road',alpha=1,zorder=1)
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+#roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2,label='Road',alpha=1,zorder=1)
+roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0.7,0.9,1],linewidth=1,label='Road',alpha=1,zorder=1)
 
 # Plot lumber mills, pulp mills and chipper mills
-flg=1
-if flg==1:
-    u=roi['gdf']['tpf']['PRODUCT_CODE'].unique()
-    ind=np.where( (roi['gdf']['tpf']['PRODUCT_CODE']=='LBR') )[0]
-    roi['gdf']['tpf'].iloc[ind].plot(ax=ax[0],marker='s',edgecolor='k',facecolor='r',linewidth=0.25,markersize=30,zorder=2)
-    for x,y,label in zip(roi['gdf']['tpf'].iloc[ind].geometry.x, roi['gdf']['tpf'].iloc[ind].geometry.y,roi['gdf']['tpf'].iloc[ind].COMPANY_NAME):
-        ax[0].annotate(label,xy=(x,y),xytext=(5,4),textcoords="offset points")
-    for x,y,label in zip(roi['gdf']['tpf'].iloc[ind].geometry.x, roi['gdf']['tpf'].iloc[ind].geometry.y,np.round(roi['gdf']['tpf'].iloc[ind].EST_AN_CAP_MLN_BOARD_FT)):
-        ax[0].annotate(label,xy=(x,y),xytext=(5,-4),textcoords="offset points")
-    ind=np.where( (roi['gdf']['tpf']['PRODUCT_CODE']=='PLP') )[0]
-    roi['gdf']['tpf'].iloc[ind].plot(ax=ax[0],marker='^',edgecolor='k',facecolor='y',linewidth=0.25,markersize=75,zorder=2)
-    ind=np.where( (roi['gdf']['tpf']['PRODUCT_CODE']=='CHP') )[0]
-    roi['gdf']['tpf'].iloc[ind].plot(ax=ax[0],marker='d',edgecolor='k',facecolor='b',linewidth=0.25,markersize=25,zorder=2)
+mtypeL=['LBR','PLP','PLT']
+ax=bc1hau.PlotMills(ax,gdf['tpf']['gdf'],mtypeL,labels='On')
 
+gdf['cities'].plot(ax=ax[0],marker='s',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=1,markersize=20,alpha=1,zorder=2)
+for x,y,label in zip(gdf['cities'].geometry.x,gdf['cities'].geometry.y,gdf['cities'].Name):
+    ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0.75,0.3,0])
 
 #roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0,0],linewidth=0.5,label='Opening',alpha=1)
 #roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=0.5,label='Opening',alpha=1)
@@ -236,6 +235,54 @@ if flg==1:
 #atu['gdf'].plot(ax=ax[0],facecolor=[0,1,1],edgecolor=[0,0,1],linewidth=1,label='Planting',alpha=0.25)
 #cc['gdf'].plot(ax=ax[0],facecolor=[0,0,1],edgecolor=[0,0,1],linewidth=1,label='Cut',alpha=0.25,linestyle='--')
 #gu.PrintFig(meta_bc1ha['Paths']['Figures'] + '\\Elevation','png',300)
+
+#%% Plot distance from road
+
+def Plot_DistanceFromRoad(meta_bc1ha,roi):
+
+    z=roi['grd']['d2fac']['Data']
+    if roi['Type']=='ByTSA':
+        z[roi['grd']['Data']==0]=0
+
+    # Plot
+    plt.close('all')
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta_bc1ha['Graphics']['figwidth'],(1-meta_bc1ha['Graphics']['sidespace'])*meta_bc1ha['Graphics']['figwidth']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z,extent=roi['grd']['d2road']['Extent'],cmap='Greys')
+
+    #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
+    ax[0].set(position=meta_bc1ha['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='',aspect='auto')
+    ax[0].grid(False)
+
+    # Add relief shading
+    z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['Cellsize'],roi['grd']['Cellsize']
+    ls=LightSource(azdeg=90,altdeg=45)
+    ve=0.1
+    hs=ls.hillshade(z,vert_exag=ve,dx=dx,dy=dy)
+    ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
+
+    cb=plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color+1.5,1))
+    #cb.ax.set(yticklabels=lab)
+    #cb.ax.tick_params(labelsize=6,length=0)
+    #for i in range(0,N_color):
+    #    ax[1].plot([0,100],[i/(N_color-N_hidden),i/(N_color-N_hidden)],'k-',linewidth=0.5)
+    ax[1].set(position=meta_bc1ha['Graphics']['ax2 pos long']);
+
+    return fig,ax
+
+plt.close('all')
+fig,ax=Plot_DistanceFromRoad(meta_bc1ha,roi)
+
+#roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2,label='Road',alpha=1,zorder=1)
+roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0.7,0.9,1],linewidth=1,label='Road',alpha=1,zorder=1)
+
+# Plot lumber mills, pulp mills and chipper mills
+mtypeL=['LBR','PLP','PLT']
+ax=bc1hau.PlotMills(ax,gdf['tpf']['gdf'],mtypeL,labels='On')
+
+gdf['cities'].plot(ax=ax[0],marker='s',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=1,markersize=20,alpha=1,zorder=2)
+for x,y,label in zip(gdf['cities'].geometry.x,gdf['cities'].geometry.y,gdf['cities'].Name):
+    ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0.75,0.3,0])
+
 
 #%% Plot SI
 
@@ -349,9 +396,9 @@ def Plot_ROI_BTM(roi):
 
 plt.close('all')
 fig,ax=Plot_ROI_BTM(roi)
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2.25,label='Road',alpha=1)
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=1.5,label='Road',alpha=1)
-roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=75)
+roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2.25,label='Road',alpha=1,zorder=1)
+roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=1.5,label='Road',alpha=1,zorder=1)
+roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=75,zorder=2)
 roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,1,0],linewidth=0.5,label='Opening',alpha=1)
 #op['gdf'].plot(ax=ax[0],facecolor='None',ls='-',edgecolor=[0.8,0.8,1],linewidth=2,label='Wildfire',alpha=1)
 #fcinv['gdf'].plot(ax=ax[0],facecolor='None',ls='-',edgecolor=[0.4,0.4,1],linewidth=1,label='Wildfire',alpha=1)

@@ -12,11 +12,7 @@ from fcgadgets.macgyver import utilities_general as gu
 
 #%% Graphics parameters
 
-fs=7
-params={'font.sans-serif':'Arial','font.size':fs,'axes.edgecolor':'black','axes.labelsize':fs,'axes.labelcolor':'black','axes.titlesize':fs,'axes.linewidth':0.5,'lines.linewidth':0.5,
-        'text.color':'black','xtick.color':'black','xtick.labelsize':fs,'xtick.major.width':0.5,'xtick.major.size':3,'xtick.direction':'in','ytick.color':'black','ytick.labelsize':fs,
-        'ytick.major.width':0.5,'ytick.major.size':3,'ytick.direction':'in','legend.fontsize':fs,'savefig.dpi':300,'savefig.transparent':True}
-plt.rcParams.update(params)
+gp=gu.SetGraphics('Manuscript')
 
 #%% Import BaseCase HWP parameters
 
@@ -48,7 +44,7 @@ regL=['Coast',
       'Energy Production Pellets']
 
 # Scenario list
-scnL=['BaseCase','S1']
+scnL=['BaseCase','S1','S2']
 
 #%% Initialize with BaseCase parameters
 
@@ -63,6 +59,9 @@ for scn in scnL:
                 d[scn][reg][ dDef0['Name'][i] ]=np.ones(tv.size)*dDef0[reg][i]
 
 #%% Scenario 1
+
+# Shift away from pulp+pellets to sawmills
+# *** Probably not realistic! ***
 
 sc='S1'
 
@@ -84,12 +83,12 @@ for reg in regL:
     nam='RemovedMerchToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
     y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
-    d['S1'][reg][nam]=d['BaseCase'][reg][nam].copy()
+    d[sc][reg][nam]=d['BaseCase'][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
-    d['S1'][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
+    d[sc][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
     iT=np.where( (tv>tEnd) )[0]
-    d['S1'][reg][nam][iT]=y1_Pulp
-    yD_Pulp=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
+    d[sc][reg][nam][iT]=y1_Pulp
+    yD_Pulp=d['BaseCase'][reg][nam]-d[sc][reg][nam]
 
     # Plot assumptions
     #plt.plot(tv,dS1[nam],'b-')
@@ -99,12 +98,12 @@ for reg in regL:
     nam='RemovedMerchToPelletMill'
     y0_Pellet=d['BaseCase'][reg][nam][0].copy()
     y1_Pellet=fChange*d['BaseCase'][reg][nam][0]
-    d['S1'][reg][nam]=d['BaseCase'][reg][nam].copy()
+    d[sc][reg][nam]=d['BaseCase'][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
-    d['S1'][reg][nam][iT]=np.linspace(y0_Pellet,y1_Pellet,iT.size)
+    d[sc][reg][nam][iT]=np.linspace(y0_Pellet,y1_Pellet,iT.size)
     iT=np.where( (tv>tEnd) )[0]
-    d['S1'][reg][nam][iT]=y1_Pellet
-    yD_Pellet=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
+    d[sc][reg][nam][iT]=y1_Pellet
+    yD_Pellet=d['BaseCase'][reg][nam]-d[sc][reg][nam]
 
     # Fractions of fibre sent to sawmill, plywood, OSB
     fSawMill=0.6
@@ -113,15 +112,15 @@ for reg in regL:
 
     # Add to Sawmill input
     nam='RemovedMerchToSawMill'
-    d['S1'][reg][nam]=d['S1'][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
+    d[sc][reg][nam]=d[sc][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
 
     # Add to Plywood input
     nam='RemovedMerchToPlywoodMill'
-    d['S1'][reg][nam]=d['S1'][reg][nam]+fPlywoodMill*(yD_Pulp+yD_Pellet)
+    d[sc][reg][nam]=d[sc][reg][nam]+fPlywoodMill*(yD_Pulp+yD_Pellet)
 
     # Add to OSB input
     nam='RemovedMerchToOSBMill'
-    d['S1'][reg][nam]=d['S1'][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
+    d[sc][reg][nam]=d[sc][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
 
     #--------------------------------------------------------------------------
     # Snags
@@ -131,12 +130,12 @@ for reg in regL:
     nam='RemovedSnagStemToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
     y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
-    d['S1'][reg][nam]=d['S1'][reg][nam].copy()
+    d[sc][reg][nam]=d[sc][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
-    d['S1'][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
+    d[sc][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
     iT=np.where( (tv>tEnd) )[0]
-    d['S1'][reg][nam][iT]=y1_Pulp
-    yD_Pulp=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
+    d[sc][reg][nam][iT]=y1_Pulp
+    yD_Pulp=d['BaseCase'][reg][nam]-d[sc][reg][nam]
 
     # Plot assumptions
     #plt.plot(tv,dS1[nam],'b-')
@@ -146,12 +145,12 @@ for reg in regL:
     nam='RemovedSnagStemToPelletMill'
     y0_Pellet=d['BaseCase'][reg][nam][0].copy()
     y1_Pellet=fChange*d['BaseCase'][reg][nam][0]
-    d['S1'][reg][nam]=d['BaseCase'][reg][nam].copy()
+    d[sc][reg][nam]=d['BaseCase'][reg][nam].copy()
     iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
-    d['S1'][reg][nam][iT]=np.linspace(y0_Pellet,y1_Pellet,iT.size)
+    d[sc][reg][nam][iT]=np.linspace(y0_Pellet,y1_Pellet,iT.size)
     iT=np.where( (tv>tEnd) )[0]
-    d['S1'][reg][nam][iT]=y1_Pellet
-    yD_Pellet=d['BaseCase'][reg][nam]-d['S1'][reg][nam]
+    d[sc][reg][nam][iT]=y1_Pellet
+    yD_Pellet=d['BaseCase'][reg][nam]-d[sc][reg][nam]
 
     # Fractions of fibre sent to sawmill, plywood, OSB
     fSawMill=0.6
@@ -160,15 +159,15 @@ for reg in regL:
 
     # Add to Sawmill input
     nam='RemovedSnagStemToSawMill'
-    d['S1'][reg][nam]=d['S1'][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
+    d[sc][reg][nam]=d[sc][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
 
     # Add to Plywood input
     nam='RemovedSnagStemToPlywoodMill'
-    d['S1'][reg][nam]=d['S1'][reg][nam]+fPlywoodMill*(yD_Pulp+yD_Pellet)
+    d[sc][reg][nam]=d[sc][reg][nam]+fPlywoodMill*(yD_Pulp+yD_Pellet)
 
     # Add to OSB input
     nam='RemovedSnagStemToOSBMill'
-    d['S1'][reg][nam]=d['S1'][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
+    d[sc][reg][nam]=d[sc][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
 
     #--------------------------------------------------------------------------
     # Non-merch (same as BaseCase)
@@ -176,6 +175,78 @@ for reg in regL:
 
     # No change
 
+#%% Scenario 2
+
+# Transition from pulp to pellets as secondary
+
+sc='S2'
+
+# Fractional reduction in direct transfers from forest ecosystem to pulp mill
+# and pellet mill
+fChange=0.5
+
+# Phase in period
+tStart=2012
+tEnd=2026
+
+for reg in regL:
+
+    #--------------------------------------------------------------------------
+    # Merch
+    #--------------------------------------------------------------------------
+
+    # Change in Pulp input
+    nam='RemovedMerchToPulpMill'
+    y0_Pulp=d['BaseCase'][reg][nam][0].copy()
+    y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
+    d[sc][reg][nam]=d['BaseCase'][reg][nam].copy()
+    iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
+    d[sc][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
+    iT=np.where( (tv>tEnd) )[0]
+    d[sc][reg][nam][iT]=y1_Pulp
+    yD_Pulp=d['BaseCase'][reg][nam]-d[sc][reg][nam]
+
+    # Change in pellet input
+    nam='RemovedMerchToPelletMill'
+    d[sc][reg][nam]=d[sc][reg][nam]+yD_Pulp
+
+    #--------------------------------------------------------------------------
+    # Snags
+    #--------------------------------------------------------------------------
+
+    # Assumed change in Pulp input
+    nam='RemovedSnagStemToPulpMill'
+    y0_Pulp=d['BaseCase'][reg][nam][0].copy()
+    y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
+    d[sc][reg][nam]=d[sc][reg][nam].copy()
+    iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
+    d[sc][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
+    iT=np.where( (tv>tEnd) )[0]
+    d[sc][reg][nam][iT]=y1_Pulp
+    yD_Pulp=d['BaseCase'][reg][nam]-d[sc][reg][nam]
+
+    # Change in pellet input
+    nam='RemovedSnagStemToPelletMill'
+    d[sc][reg][nam]=d[sc][reg][nam]+yD_Pulp
+
+    #--------------------------------------------------------------------------
+    # Non-merch (same as BaseCase)
+    #--------------------------------------------------------------------------
+
+    # Assumed change in Pulp input
+    nam='RemovedNonMerchToPulpMill'
+    y0_Pulp=d['BaseCase'][reg][nam][0].copy()
+    y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
+    d[sc][reg][nam]=d[sc][reg][nam].copy()
+    iT=np.where( (tv>=tStart) & (tv<=tEnd) )[0]
+    d[sc][reg][nam][iT]=np.linspace(y0_Pulp,y1_Pulp,iT.size)
+    iT=np.where( (tv>tEnd) )[0]
+    d[sc][reg][nam][iT]=y1_Pulp
+    yD_Pulp=d['BaseCase'][reg][nam]-d[sc][reg][nam]
+
+    # Change in pellet input
+    nam='RemovedNonMerchToPelletMill'
+    d[sc][reg][nam]=d[sc][reg][nam]+yD_Pulp
 
 #%% Save
 
@@ -184,32 +255,34 @@ gu.opickle(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameter
 
 #%% Plot
 
-reg='Interior'
-#reg='GFS22'
+flg=0
+if flg==1:
+    reg='Interior'
+    #reg='GFS22'
 
-plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(16,10)); ms=3; lw=1.25
-ax[0,0].plot(tv,d['BaseCase'][reg]['RemovedMerchToSawMill'],'b-',label='BaseCase',lw=lw)
-ax[0,0].plot(tv,d['S1'][reg]['RemovedMerchToSawMill'],'g--',label='Scenario 1',lw=lw)
-ax[0,0].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to sawmill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=1.5)
-ax[0,0].legend(loc='lower left',facecolor=[1,1,1],frameon=False)
+    plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(16,10)); ms=3; lw=1.25
+    ax[0,0].plot(tv,d['BaseCase'][reg]['RemovedMerchToSawMill'],'b-',label='BaseCase',lw=lw)
+    ax[0,0].plot(tv,d[sc][reg]['RemovedMerchToSawMill'],'g--',label='Scenario 1',lw=lw)
+    ax[0,0].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to sawmill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
+    ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=1.5)
+    ax[0,0].legend(loc='lower left',facecolor=[1,1,1],frameon=False)
 
-ax[0,1].plot(tv,d['BaseCase'][reg]['RemovedMerchToPulpMill'],'b-',label='BaseCase',lw=lw)
-ax[0,1].plot(tv,d['S1'][reg]['RemovedMerchToPulpMill'],'g--',label='Scenario 1',lw=lw)
-ax[0,1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to pulp mill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[0,1].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=1.5)
+    ax[0,1].plot(tv,d['BaseCase'][reg]['RemovedMerchToPulpMill'],'b-',label='BaseCase',lw=lw)
+    ax[0,1].plot(tv,d[sc][reg]['RemovedMerchToPulpMill'],'g--',label='Scenario 1',lw=lw)
+    ax[0,1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to pulp mill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
+    ax[0,1].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=1.5)
 
-ax[1,0].plot(tv,d['BaseCase'][reg]['RemovedMerchToPelletMill'],'b-',label='BaseCase',lw=lw)
-ax[1,0].plot(tv,d['S1'][reg]['RemovedMerchToPelletMill'],'g--',label='Scenario 1',lw=lw)
-ax[1,0].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to pellet mill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=1.5)
+    ax[1,0].plot(tv,d['BaseCase'][reg]['RemovedMerchToPelletMill'],'b-',label='BaseCase',lw=lw)
+    ax[1,0].plot(tv,d[sc][reg]['RemovedMerchToPelletMill'],'g--',label='Scenario 1',lw=lw)
+    ax[1,0].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to pellet mill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
+    ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=1.5)
 
-ax[1,1].plot(tv,d['BaseCase'][reg]['RemovedMerchToPlywoodMill']+d['BaseCase'][reg]['RemovedMerchToOSBMill'],'b-',label='BaseCase',lw=lw)
-ax[1,1].plot(tv,d['S1'][reg]['RemovedMerchToPlywoodMill']+d['S1'][reg]['RemovedMerchToOSBMill'],'g--',label='Scenario 1',lw=lw)
-ax[1,1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to plywood mill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=1.5)
+    ax[1,1].plot(tv,d['BaseCase'][reg]['RemovedMerchToPlywoodMill']+d['BaseCase'][reg]['RemovedMerchToOSBMill'],'b-',label='BaseCase',lw=lw)
+    ax[1,1].plot(tv,d[sc][reg]['RemovedMerchToPlywoodMill']+d[sc][reg]['RemovedMerchToOSBMill'],'g--',label='Scenario 1',lw=lw)
+    ax[1,1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Merch to plywood mill (%)',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
+    ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=1.5)
 
-gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') #
+    gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') #
 
-fig.tight_layout()
-gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Removed Fate Scenarios\Removed Fate Scenarios ' + reg,'png',900)
+    fig.tight_layout()
+    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Removed Fate Scenarios\Removed Fate Scenarios ' + reg,'png',900)

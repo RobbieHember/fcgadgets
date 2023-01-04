@@ -32,6 +32,8 @@ from geovoronoi import voronoi_regions_from_coords, points_to_coords
 gdf_bc_bound=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
 gdf_tpf=gpd.read_file(r'C:\Users\rhember\Documents\Data\ForestInventory\Infrastructure.gdb',layer='GSR_TMBR_PRCSSING_FAC_SV')
 
+
+#%%
 zS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\FAIB_Standard.tif')
 
 #%%
@@ -45,7 +47,7 @@ for i in range(len(gdf_bc_bound)):
     Area[i]=gdf_bc_bound.iloc[i].geometry.area
 isort=np.flip(np.argsort(Area))
 
-#%%
+#%% Veronoi catchments
 
 #box(W, S, E, N)
 #bnd=box(zS['xmin'],zS['ymin'],zS['xmax'],zS['ymax'])

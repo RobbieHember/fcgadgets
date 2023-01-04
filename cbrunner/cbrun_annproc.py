@@ -163,33 +163,36 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     # correction for catastrophic mortality
     C_M_Reg=vo['C_M_Reg'][iT,:,:].copy()
 
-    # Define a threshold level of negative growth so it isn't triggered by noise
-    NegGrowthThreshold=-0.25
-    #NegGrowthThreshold=-1e6
+    flg=0
+    if flg==1:
 
-    # Find stands with negative net growth
-    iNegNetG=np.where(vo['C_G_Net'][iT,:,0]<NegGrowthThreshold)[0]
+        # Define a threshold level of negative growth so it isn't triggered by noise
+        NegGrowthThreshold=-0.25
+        #NegGrowthThreshold=-1e6
 
-    if iNegNetG.size>0:
+        # Find stands with negative net growth
+        iNegNetG=np.where(vo['C_G_Net'][iT,:,0]<NegGrowthThreshold)[0]
 
-        # If it is the first instance of negative net growth: 91) record net growth
-        # of the preceeding timestep and (2) set flag = 1.
-        iSwitchFlag=np.where(meta['FlagNegNetGrowth'][iNegNetG]==0)[0]
-        meta['FlagNegNetGrowth'][iNegNetG[iSwitchFlag]]=1
-        meta['G_Net_PriorToBreakup'][iNegNetG[iSwitchFlag],0:7]=vo['C_G_Net'][iT-1,iNegNetG[iSwitchFlag],0:7]
+        if iNegNetG.size>0:
 
-        d=vo['C_G_Net'][iT,iNegNetG,0:7]-meta['G_Net_PriorToBreakup'][iNegNetG,:]
+            # If it is the first instance of negative net growth: 91) record net growth
+            # of the preceeding timestep and (2) set flag = 1.
+            iSwitchFlag=np.where(meta['FlagNegNetGrowth'][iNegNetG]==0)[0]
+            meta['FlagNegNetGrowth'][iNegNetG[iSwitchFlag]]=1
+            meta['G_Net_PriorToBreakup'][iNegNetG[iSwitchFlag],0:7]=vo['C_G_Net'][iT-1,iNegNetG[iSwitchFlag],0:7]
 
-        CToTransfer=np.zeros((meta['Project']['Batch Size'][iBat],7))
-        CToTransfer[iNegNetG,:]=-1*d
+            d=vo['C_G_Net'][iT,iNegNetG,0:7]-meta['G_Net_PriorToBreakup'][iNegNetG,:]
 
-        vo['C_G_Net'][iT,:,0:7]=vo['C_G_Net'][iT,:,0:7]+CToTransfer
-        vo['C_M_Reg'][iT,:,0:7]=vo['C_M_Reg'][iT,:,0:7]+CToTransfer
+            CToTransfer=np.zeros((meta['Project']['Batch Size'][iBat],7))
+            CToTransfer[iNegNetG,:]=-1*d
 
-        # # Logbook entry
-        # for i in range(iNegNetG.size):
-        #     txt='Scenario:' + str(iScn) + ', Stand:' + str(iNegNetG[i]) + ', Time:' + str(iT) + ', Negative net growth received from GY model is being adjusted.'
-        #     meta['Logbook'].append(txt)
+            vo['C_G_Net'][iT,:,0:7]=vo['C_G_Net'][iT,:,0:7]+CToTransfer
+            vo['C_M_Reg'][iT,:,0:7]=vo['C_M_Reg'][iT,:,0:7]+CToTransfer
+
+            # # Logbook entry
+            # for i in range(iNegNetG.size):
+            #     txt='Scenario:' + str(iScn) + ', Stand:' + str(iNegNetG[i]) + ', Time:' + str(iT) + ', Negative net growth received from GY model is being adjusted.'
+            #     meta['Logbook'].append(txt)
 
     #--------------------------------------------------------------------------
     # Litterfall
@@ -200,22 +203,23 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     fA=-meta['Param']['BEV']['Biomass Turnover']['BiomassTurnoverAgeDependence']
 
     # Calculate foliage biomass turnover due to litterfall
-    tr=fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['Foliage']
+    tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['Foliage'])
     vo['C_LF'][iT,:,iEP['Foliage']]=tr*vo['C_Eco_Pools'][iT,:,iEP['Foliage']]
 
     # Calculate branch biomass turnover due to litterfall
-    tr=fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['Branch']
+    tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['Branch'])
     vo['C_LF'][iT,:,iEP['Branch']]=tr*vo['C_Eco_Pools'][iT,:,iEP['Branch']]
 
     # Calculate bark biomass turnover due to litterfall
+    tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['Bark'])
     vo['C_LF'][iT,:,iEP['Bark']]=meta['Param']['BEV']['Biomass Turnover']['Bark']*vo['C_Eco_Pools'][iT,:,iEP['Bark']]
 
     # Calculate coarse root biomass turnover due to litterfall
-    tr=fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['RootCoarse']
+    tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['RootCoarse'])
     vo['C_LF'][iT,:,iEP['RootCoarse']]=tr*vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]
 
     # Calculate fine root biomass turnover due to litterfall
-    tr=fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['RootFine']
+    tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['Biomass Turnover']['RootFine'])
     vo['C_LF'][iT,:,iEP['RootFine']]=tr*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
 
     # Adjust litterfall to account for N application response
@@ -1147,6 +1151,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         flag_nutrient_application[iApp]=1
         #t1=time.time()
         #meta['Project']['Run Time Summary']['Test9']=meta['Project']['Run Time Summary']['Test9']+t1-t0
+
         #----------------------------------------------------------------------
         # Get event-specific parameters
         #----------------------------------------------------------------------
@@ -1386,7 +1391,6 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['C_E_OpenBurningAsCO'][iT,:]=vo['C_E_OpenBurningAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
 
         # If it is slashpile burning, track it accordingly
-        #ind=np.where(ID_Type==meta['LUT']['Dist']['Slashpile Burn'])[0]
         vo['C_ToSlashpileBurnTot'][iT,:]=vo['C_ToSlashpileBurnTot'][iT,:]+Total_Burned
         vo['C_ToSlashpileBurnNonMerch'][iT,:]=vo['C_ToSlashpileBurnNonMerch'][iT,:]+NonMerch_Burned
 
@@ -1430,7 +1434,6 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
             # List of exception event types (that will remain at the same age)
             Exceptions_to_Partial_Mortality=[  ]
-            #v2[iB1]['A']
 
             # Index to types where age will change
             ind=np.where( (np.isin(ID_Type,Exceptions_to_Partial_Mortality)==False) )[0]
@@ -1463,24 +1466,18 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
             for iGC in range(meta['GC']['N Growth Curves']):
 
-                # Don't alter growth curve for fertilization
+                # Don't alter growth curve for fertilization - index to non-fertilization events
                 ind=np.where( (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Aerial']) | \
                               (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Hand']) )[0]
 
                 if ind.size>0:
                     # Notes: This crashes often when the GY model has been accidently run with the wrong project info
                     # - because the project path in BatchTipsy is wrong.
-                    try:
-                        vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['GC']['ID GC Unique'][iGC] ][:,ind,:].astype(float)*meta['GC']['Scale Factor']
-                    except:
-                        print(ind.shape)
-                        print(vi['GC']['Active'][:,ind,:].shape)
-                        print(len(vi['GC']))
-                        print(vi['GC'][ meta['GC']['ID GC Unique'][iGC] ].shape)
-
+                    vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['GC']['ID GC Unique'][iGC] ][:,ind,:].astype(float)*meta['GC']['Scale Factor']
                     vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC Unique'][iGC])
         #t1=time.time()
         #meta['Project']['Run Time Summary']['Test5']=meta['Project']['Run Time Summary']['Test5']+t1-t0
+
         #----------------------------------------------------------------------
         # Impose regen failure
         #----------------------------------------------------------------------
@@ -1556,38 +1553,46 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
         #----------------------------------------------------------------------
         # Apply growth factors (in response to non-lethal events)
+        # Growth factor should comes in DMEC as percent effect
+        # 10 = 10% increase, -10 = 10% decrease
         #----------------------------------------------------------------------
+
         #t0=time.time()
         flg=1
         if (flg==1) & (meta['Project']['Biomass Module']!='Sawtooth'):
 
-            GF=vi['EC']['GrowthFactor'][iT,:,iE]
+            GrowthFactor=vi['EC']['GrowthFactor'][iT,:,iE].copy()
 
-            indAdj=np.where(GF!=0)[0]
+            indAdj=np.where( (GrowthFactor!=-999) & (GrowthFactor!=0) )[0]
 
             if (indAdj.size>0):
 
-                #print(vi['GC']['Active'].shape)
+                Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
 
-                GrowthFraction=1+GF[indAdj].astype(float)/100
-                NetGrowth=vi['GC']['Active'][:,indAdj,:].copy().astype(float)/meta['GC']['Scale Factor']
+                # Convert growth factor to respoonse ratio
+                GrowthResponseRatio=GrowthFactor.astype(float)/100+1.0
 
-                #if ID_Type==meta['LUT']['Dist']['IDW']:
-                #    # Only a temporary change in growth (see severity class table)
-                #    # *** I have not checked to see if this is working properly ***
-                #    ResponsePeriod=2
-                #    A=np.arange(1,302,1)
-                #    iResponse=np.where( (A>=vo['A'][iT,indAdj]) & (A<=vo['A'][iT,indAdj]+ResponsePeriod) )[0]
-                #    NetGrowth[iResponse,:]=GrowthFraction*NetGrowth[iResponse,:]
-                #else:
+                NetGrowth=vi['GC']['Active'].copy()
 
-                # A permanent change in growth
                 for iAdj in range(indAdj.size):
-                    NetGrowth[:,iAdj,:]=GrowthFraction[iAdj]*NetGrowth[:,iAdj,:]
 
-                NetGrowth=NetGrowth*meta['GC']['Scale Factor']
-                NetGrowth=NetGrowth.astype(np.int16)
-                vi['GC']['Active'][:,indAdj,:]=NetGrowth
+                    if ID_Type[iAdj]==meta['LUT']['Dist']['IDW']:
+
+                        # Only a temporary change in growth (see severity class table)
+                        # *** I have not checked to see if this is working properly ***
+                        ResponsePeriod=6
+
+                        iResponse=np.where( (Age>=vo['A'][iT,iAdj]) & (Age<=vo['A'][iT,iAdj]+ResponsePeriod) )[0]
+
+                        NetGrowth[iResponse,iAdj,:]=GrowthResponseRatio[iAdj]*NetGrowth[iResponse,iAdj,:]
+
+                    else:
+
+                        # A permanent change in growth
+                        NetGrowth[:,iAdj,:]=GrowthResponseRatio[iAdj]*NetGrowth[:,iAdj,:]
+
+                vi['GC']['Active']=NetGrowth
+
         #t1=time.time()
         #meta['Project']['Run Time Summary']['Test6']=meta['Project']['Run Time Summary']['Test6']+t1-t0
     #--------------------------------------------------------------------------

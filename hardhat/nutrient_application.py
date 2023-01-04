@@ -90,7 +90,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         #GCA_SP=GCA_SP/meta['GC']['Scale Factor']
 
         # Convert to 16-bit integers
-        #GCA_SP=GCA_SP.astype(np.int16)
+        #GCA_SP=GCA_SP.astype('int16')
 
         # Repopulate in input variable dictionary
         vi['GC']['Active'][:,iApp,:]=GCA_SP

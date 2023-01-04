@@ -3,10 +3,9 @@
 
 import os
 import numpy as np
-import gc
-from osgeo import gdal
 import matplotlib.pyplot as plt
 import matplotlib.colors
+from matplotlib.collections import PatchCollection
 import geopandas as gpd
 import pandas as pd
 import copy
@@ -16,7 +15,6 @@ from scipy.interpolate import griddata
 from shapely.geometry import Polygon,Point,box
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
-#import fcgadgets.macgyver.utilities_query_gdbs as qv
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 from fcgadgets.bc1ha import bc1ha_utilities as bc1hau
 
@@ -49,23 +47,47 @@ gdf=bc1hau.Import_GDBs_ProvinceWide()
 # Load dataset with CRS
 #meta_bc1ha['crs']=gdf['bc_land']['gdf'].crs
 
-#%% Get mask
+#%% Import raster
 
 zBTM=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm.tif')
-zMask=np.zeros(zBTM['Data'].shape)
-ind=np.where( (zBTM['Data']!=9) & (zBTM['Data']!=15) & (zBTM['Data']!=0) )
-zMask[ind]=1
-#plt.close('all')
-#plt.matshow(zMask)
+
+#%% Plot mills
+
+u=gdf['tpf']['gdf']['PRODUCT_CODE'].unique()
+gdf['tpf']['gdf'].keys()
 
 
 plt.close('all')
-fig,ax=plt.subplots(1,figsize=gu.cm2inch(14,14*zBTM['yxrat']))
-im=ax.matshow(zMask,extent=zBTM['Extent'])
+fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(14,14*zBTM['yxrat']))
+#im=ax[0].matshow(z1,clim=(0,L+1),extent=zBTM['Extent'],cmap=cm)
+gdf['bc_bound']['gdf'].plot(ax=ax[0],color=None,linewidth=0.25,edgecolor=[0,0,0],facecolor='none')
+ax[0].set(position=[0.05,0.05,0.9,0.9],xlim=zBTM['xlim'],ylim=zBTM['ylim'],aspect='auto')
+ax[0].grid(False)
+ax[0].axis('off')
+ax[1].set(position=[0.06,0.15,0.05,0.65]);
 
-ch_aoi=gpd.read_file(r'D:\Data\FCI_Projects\CaribouRecovery\Geospatial\Received 2022-09-22\REVY_HERDS.geojson')
-ch_aoi.plot(ax=ax)
+mtypeL=['LBR','PLP','CHP','PLT']
+ax=bc1hau.PlotMills(ax,gdf['tpf']['gdf'],mtypeL,labels='On')
 
+
+
+#%% Find a ROI (example Revelstoke Complex)
+
+flg=0
+if flg==1:
+    zBTM=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm.tif')
+    zMask=np.zeros(zBTM['Data'].shape)
+    ind=np.where( (zBTM['Data']!=9) & (zBTM['Data']!=15) & (zBTM['Data']!=0) )
+    zMask[ind]=1
+    #plt.close('all')
+    #plt.matshow(zMask)
+
+    plt.close('all')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(14,14*zBTM['yxrat']))
+    im=ax.matshow(zMask,extent=zBTM['Extent'])
+
+    ch_aoi=gpd.read_file(r'D:\Data\FCI_Projects\CaribouRecovery\Geospatial\Received 2022-09-22\REVY_HERDS.geojson')
+    ch_aoi.plot(ax=ax)
 
 #%% Plot soil organic carbon
 
@@ -110,7 +132,6 @@ for i in range(0,N_color):
 ax[1].set(position=[0.06,0.15,0.05,0.65]);
 gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Soils\SOC_Shawetal2018','png',300)
 
-
 #%% Plot GlobBiomass
 
 z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\Biomass\GlobBiomass\N80W140_agb pc8.tif')
@@ -154,9 +175,6 @@ for i in range(0,N_color):
     ax[1].plot([0,100],[i,i],'w-',linewidth=0.5)
 ax[1].set(position=[0.06,0.15,0.05,0.65]);
 gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Biomass\GlobBiomass','png',300)
-
-
-
 
 #%% Plot nitrogen deposition
 

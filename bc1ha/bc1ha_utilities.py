@@ -13,8 +13,8 @@ import fiona
 from shapely.geometry import Polygon,Point,box,shape
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
-from fcgadgets.cbrunner import cbrun_utilities as cbu
 import fcgadgets.macgyver.utilities_query_gdb as qgdb
+import fcgadgets.cbrunner.cbrun_utilities as cbu
 
 #%% Region of interest
 
@@ -25,6 +25,9 @@ def DefineROI(roi,gdf):
     tsa['Data']=np.squeeze(tsa['Data'])
 
     roi['crs']=gdf['bc_land']['gdf'].crs
+
+    # Vector:
+    roi['gdf']={}
 
     if roi['Type']=='ByTSA':
 
@@ -44,56 +47,37 @@ def DefineROI(roi,gdf):
         roi['grd']=gis.ClipRasterByXYLimits(roi['grd'],xlim,ylim)
         gc.collect()
 
-        # # Vector:
-        # roi['gdf']={}
-        # geom=box(roi['grd']['Extent'][0],roi['grd']['Extent'][2],roi['grd']['Extent'][1],roi['grd']['Extent'][3])
-        # roi['gdf']['bound']=gpd.GeoDataFrame({"id":1,"geometry":[geom]})
-
-        # roi['gdf']['tsa']=gdf['tsa']['gdf'][np.isin(gdf['tsa']['gdf'].Name,roi['TSA List'])]
-        # roi['gdf']['tsa']=roi['gdf']['tsa'].reset_index(drop=True)
-
-        # roi['gdf']['lakes']=gpd.overlay(gdf['bc_land']['gdf'][(gdf['bc_land']['gdf']['TAG']=='lake')],roi['gdf']['bound'],how='intersection')
-
-        # roi['gdf']['rivers']=gpd.overlay(gdf['bc_land']['gdf'][(gdf['bc_land']['gdf']['TAG']=='river')],roi['gdf']['bound'],how='intersection')
-
-#        try:
-#            if type(road)!=list:
-#                roi['gdf_roads']=road['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
-#                roi['gdf_roads']=roi['gdf_roads'].reset_index(drop=True)
-#                roi['gdf_roads']=gpd.sjoin(roi['gdf_roads'],roi['gdf']['bound'],how='left')
-#                roi['gdf_roads']=roi['gdf_roads'].groupby('index_right')
-#            else:
-#                roi['gdf_roads']=[]
-#        except:
-#            roi['gdf_roads']=[]
-
     elif roi['Type']=='ByLatLon':
 
         srs=gis.ImportSRSs()
-        xc,yc=srs['Proj']['BC1ha'](roi['Centre'][0],roi['Centre'][1])
-        xc=np.round(xc/100)*100
-        yc=np.round(yc/100)*100
 
-        # Define extent based on mask
-        xlim=[xc-roi['Radius'],xc+roi['Radius']]
-        ylim=[yc-roi['Radius'],yc+roi['Radius']]
+        if 'Centre' in roi.keys():
+            xc,yc=srs['Proj']['BC1ha'](roi['Centre'][0],roi['Centre'][1])
+            xc=np.round(xc/100)*100
+            yc=np.round(yc/100)*100
+            xlim=[xc-roi['Radius'],xc+roi['Radius']]
+            ylim=[yc-roi['Radius'],yc+roi['Radius']]
+        else:
+            ll=srs['Proj']['BC1ha'](roi['Lower Left'][0],roi['Lower Left'][1])
+            ur=srs['Proj']['BC1ha'](roi['Upper Right'][0],roi['Upper Right'][1])
+            xlim=[ll[0],ur[0]]
+            ylim=[ll[1],ur[1]]
 
         roi['grd']=gis.ClipRasterByXYLimits(tsa,xlim,ylim)
         roi['grd']['Data']=0*roi['grd']['Data']+1
         roi['grd']['yxrat']=np.diff(ylim)[0]/np.diff(xlim)[0]
 
-    # Vector:
-    roi['gdf']={}
-
     #box(W, S, E, N)
     geom=box(roi['grd']['Extent'][0],roi['grd']['Extent'][2],roi['grd']['Extent'][1],roi['grd']['Extent'][3])
     roi['gdf']['bound']=gpd.GeoDataFrame({"id":1,"geometry":[geom]})
 
-    #roi['gdf']['tsa']=gpd.overlay(gdf['tsa']['gdf'],roi['gdf']['bound'],how='intersection')
+    #roi['gdf']['tsa within']=gpd.overlay(gdf['tsa']['gdf'],roi['gdf']['bound'],how='intersection')
     roi['gdf']['tsa']=gdf['tsa']['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
     roi['gdf']['tsa']=roi['gdf']['tsa'].reset_index(drop=True)
     roi['gdf']['tsa']=gpd.sjoin(roi['gdf']['tsa'],roi['gdf']['bound'],how='left')
     roi['gdf']['tsa']=gpd.overlay(roi['gdf']['tsa'],roi['gdf']['bound'],how='intersection')
+
+    roi['gdf']['tsa within']=gdf['tsa']['gdf'].iloc[np.isin(gdf['tsa']['gdf'].Name,roi['TSA List'])]
 
     roi['gdf']['lakes']=gpd.overlay(gdf['bc_land']['gdf'][(gdf['bc_land']['gdf']['TAG']=='lake')],roi['gdf']['bound'],how='intersection')
 
@@ -161,12 +145,9 @@ def Import_GDBs_ProvinceWide():
     gdf['ogp']={}
     gdf['ogp']['gdf']=gpd.read_file(path_inf,layer='DRP_OIL_GAS_PIPELINES_BC_SP')
 
-    # Districts
-    #    gdf['district']={}
-    #    try:
-    #        gdf['district']['gdf']=gpd.read_file(r'Z:\!Workgrp\Forest Carbon\Data\Districts\district.shp')
-    #    except:
-    #        pass
+    # Cities
+    gdf['cities']=gis.ImportCities(r'C:\Users\rhember\Documents\Data\Cities\Cities.xlsx','GDF')
+    gdf['cities'].crs=gdf['bc_bound']['gdf'].crs
 
     return gdf
 
@@ -183,7 +164,7 @@ def ClipGDF_ByROI(gdf_in,roi):
 
     return gdf_out
 
-#%%
+#%% Import geodatabases for ROI
 
 def Import_GDB_Over_ROI(meta_bc1ha,roi,vList):
 
@@ -402,7 +383,20 @@ def Import_Raster_Over_ROI(meta_bc1ha,roi,vList):
             roi['grd'][nam]['cm']=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\Colormaps\colormap_ws.xlsx')
             gc.collect()
             #plt.matshow(zW['Data']);plt.colorbar()
-
+        elif nam=='d2road':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Terrain\\DistanceFromRoads.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+            gc.collect()
+        elif nam=='d2fac':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Management\\DistanceFromForestryFacility.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+            gc.collect()
+        elif nam=='idw_mask':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Disturbances\\IDW_Mask.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
     return roi
 
 #%% PLOT ROI mask
@@ -459,3 +453,43 @@ def Plot_ROI_Mask(meta_bc1ha,roi,gdf):
     ax[1].set(position=pos2)
 
     return fig,ax
+
+#%% Plot major timber producing facilities
+
+def PlotMills(ax,gdf,mtypeL,labels):
+    lw=0.75
+    for mtype in mtypeL:
+        #mtype='PLP'
+        ind=np.where( (gdf['PRODUCT_CODE']==mtype) )[0]
+        if mtype=='LBR':
+            y=gdf.iloc[ind]['EST_AN_CAP_MLN_BOARD_FT']/453
+            ms=500*y
+            gdf.iloc[ind].plot(ax=ax[0],marker='o',edgecolor='g',facecolor='g',lw=lw,markersize=ms,alpha=0.35,zorder=2)
+        elif (mtype=='PLY') | (mtype=='VNR') | (mtype=='OSB') | (mtype=='PNL'):
+            # One PNL (panel) mill WestPine MDF in Quesnell - it is MDF
+            y=gdf.iloc[ind]['EST_AN_CAP_MLN_SQ_FT']/885
+            ms=300*y
+            gdf.iloc[ind].plot(ax=ax[0],marker='o',edgecolor='c',facecolor='c',lw=lw,markersize=ms,alpha=0.35,zorder=2)
+        elif mtype=='PLT':
+            y=gdf.iloc[ind]['EST_AN_CAP_000_TONNES']*2
+            ms=1.0*y
+            gdf.iloc[ind].plot(ax=ax[0],marker='o',edgecolor='r',facecolor='r',lw=lw,markersize=ms,alpha=0.35,zorder=2)
+        elif mtype=='CHP':
+            y=gdf.iloc[ind]['EST_AN_CAP_000_BDUS']*2
+            ms=0.75*y
+            gdf.iloc[ind].plot(ax=ax[0],marker='o',edgecolor='y',facecolor='y',lw=lw,markersize=ms,alpha=0.35,zorder=2)
+        elif mtype=='PLP':
+            y=gdf.iloc[ind]['EST_AN_CAP_000_TONNES']*2
+            ms=0.75*y
+            gdf.iloc[ind].plot(ax=ax[0],marker='o',edgecolor='k',facecolor='k',lw=lw,markersize=ms,alpha=0.35,zorder=2)
+        elif mtype=='LVL':
+            # Laminated veneer lumber
+            y=gdf.iloc[ind]['EST_AN_CAP_MLN_CUBIC_FT']#/885
+            ms=200*y
+            gdf.iloc[ind].plot(ax=ax[0],marker='o',edgecolor='k',facecolor='g',lw=lw,markersize=ms,alpha=0.35,zorder=2)
+
+        if labels=='On':
+            for x,y,label in zip(gdf.iloc[ind].geometry.x,gdf.iloc[ind].geometry.y,gdf.iloc[ind].COMPANY_NAME):
+                ax[0].annotate(label,xy=(x,y),xytext=(5,4),textcoords="offset points")
+    return ax
+

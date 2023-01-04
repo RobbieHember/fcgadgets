@@ -548,50 +548,28 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
     else:
         flag_ep=np.ones(flag_thlb.size,dtype=int)
 
-    # Saturating annual probability of harvest
     if Period=='Historical':
 
-        # Historical
-        #f1=0.0014*25**((meta['Year'][iT]-1900)/100)
-        #f2=(1/(1+np.exp(0.12*(Year-1950))))
-
-        #yr=1930
-        #f1=0.0011*35**((yr-1900)/100)
-        #f2=(1/(1+np.exp(0.3*(yr-1960))))
-        #f1*f2
-
-        #f1=0.0011*35**((meta['Year'][iT]-1900)/100)
-        #f2=(1/(1+np.exp(0.3*(meta['Year'][iT]-1960))))
-        #Pa_H_Sat=f1*f2
+        # Historical period
 
         bH=[0.00055,4.9,0.32,1967]
+        f1=bH[0]*np.maximum(0,(meta['Year'][iT]-1800)/100)**bH[1]
+        f2=(1/(1+np.exp(bH[2]*(meta['Year'][iT]-bH[3]))))
+        Pa_H_Sat=f1*f2
 
         # Plot
         flg=0
         if flg==1:
-
-            # Old
-            t=np.arange(1700,2001,1)
-            f1=0.0011*35**((t-1900)/100)
-            f2=(1/(1+np.exp(0.3*(t-1960))))
-            Pa_H_Sat=f1*f2
-            plt.close('all')
-            plt.plot(t,Pa_H_Sat,'b-',lw=1.5)
-            plt.grid()
-
             t=np.arange(1700,2001,1)
             f1=bH[0]*np.maximum(0,(t-1800)/100)**bH[1]
             f2=(1/(1+np.exp(bH[2]*(t-bH[3]))))
             Pa_H_Sat=f1*f2
             plt.plot(t,Pa_H_Sat,'c--',lw=1.5)
 
-        f1=bH[0]*np.maximum(0,(meta['Year'][iT]-1800)/100)**bH[1]
-        f2=(1/(1+np.exp(bH[2]*(meta['Year'][iT]-bH[3]))))
-        Pa_H_Sat=f1*f2
-
     else:
 
-        # Future
+        # Future period
+
         if 'Pa Harvest Sat' in meta['Scenario'][iScn]:
 
             # Default has been overriden with scenario-specific value
@@ -600,7 +578,11 @@ def PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,V_Merch,Period):
         else:
 
             # Use default
-            Pa_H_Sat=meta['Param']['BE']['On The Fly']['Pa_Harvest_Sat']
+            #Pa_H_Sat=meta['Param']['BE']['On The Fly']['Pa_Harvest_Sat']
+
+            # Use historical map of annual probably of harvest
+            # *** This will ensure low/no harvesting in remote/inoperable areas ***
+            Pa_H_Sat=meta['Param']['BE']['On The Fly']['Pa_Harvest_Sat']*vi['Inv']['P Harvest Weight']
 
     # Inflection point
     if 'Pa Harvest Inf' in meta['Scenario'][iScn]:

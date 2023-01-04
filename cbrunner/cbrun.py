@@ -518,19 +518,19 @@ def InitializeStands(meta,iScn,iEns,iBat):
     #--------------------------------------------------------------------------
 
     if (meta['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta['Scenario'][iScn]['Harvest Status Future']=='On'):
-        if meta['Project']['Use Frozen Ensembles']=='Off':
+        if meta['Project']['Frozen Ensembles Status']=='Off':
             rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         else:
-            rn=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+            rn=gu.ipickle(meta['Project']['Frozen Ensembles Path'] + '\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         rn=rn.astype(float)
         rn=rn*meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
         meta['Project']['On the Fly']['Random Numbers']['Harvest']=rn.copy()
 
     if (meta['Scenario'][iScn]['Breakup Status']=='On'):
-        if meta['Project']['Use Frozen Ensembles']=='Off':
+        if meta['Project']['Frozen Ensembles Status']=='Off':
             rn=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         else:
-            rn=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+            rn=gu.ipickle(meta['Project']['Frozen Ensembles Path'] + '\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         rn=rn.astype(float)
         rn=rn*meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
         meta['Project']['On the Fly']['Random Numbers']['Breakup']=rn.copy()
@@ -668,21 +668,30 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
         indBat=cbu.IndexToBatch(meta,iBat)
 
         # Isolate felled fate scenario names within this batch
-        Scenario=meta['Scenario'][meta['iScn']]['Felled Fate Scenario']
+        HistoricalRegime=meta['Scenario'][meta['iScn']]['Felled Fate Historical Regime']
+        ChangeScenario=meta['Scenario'][meta['iScn']]['Felled Fate Change Scenario']
 
-        for reg in meta['LUT']['Region'].keys():
-            ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
-            for k in meta['Param']['BE']['Felled Fate'][Scenario][reg].keys():
-                x=meta['Param']['BE']['Felled Fate'][Scenario][reg][k]
-                for i in range(ind.size):
-                    meta['Param']['BEV']['Felled Fate'][k][:,ind[i]]=x
+        if HistoricalRegime=='Regional Defaults':
 
-        # Override regional parameters for stands that have land use = energy production
+            for reg in meta['LUT']['Region'].keys():
+                ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
+                for k in meta['Param']['BE']['Felled Fate'][ChangeScenario][reg].keys():
+                    x=meta['Param']['BE']['Felled Fate'][ChangeScenario][reg][k]
+                    for i in range(ind.size):
+                        meta['Param']['BEV']['Felled Fate'][k][:,ind[i]]=x
+        else:
+
+            for k in meta['Param']['BE']['Felled Fate'][ChangeScenario][HistoricalRegime].keys():
+                x=meta['Param']['BE']['Felled Fate'][ChangeScenario][HistoricalRegime][k]
+                for i in range(indBat.size):
+                    meta['Param']['BEV']['Felled Fate'][k][:,i]=x
+
+        # Override historical regime parameters for stands that have land use = energy production
         if meta['Scenario'][iScn]['Land Surface Scenario']!='None':
             iEnergy=np.where(vi['Inv']['LSC']['Use']==meta['LUT']['LSC']['Use']['Energy Production'])
             if iEnergy[0].size>0:
                 for k in meta['Param']['BEV']['Felled Fate'].keys():
-                    meta['Param']['BEV']['Felled Fate'][k][iEnergy]=meta['Param']['BE']['Felled Fate'][Scenario]['Energy Production'][k][0]
+                    meta['Param']['BEV']['Felled Fate'][k][iEnergy]=meta['Param']['BE']['Felled Fate'][ChangeScenario]['Energy Production'][k][0]
 
     #--------------------------------------------------------------------------
     # Removed Fate
@@ -699,7 +708,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
         indBat=cbu.IndexToBatch(meta,iBat)
 
         # Isolate Removal Fate scenario names within this batch
-        Scenario=meta['Project']['Portfolio']['Removed Fate Scenario'][indBat]
+        Scenario=meta['Project']['Portfolio']['Removed Fate Change Scenario'][indBat]
 
         # Isolate region
         Region=meta['Project']['Portfolio']['Region Code'][indBat]
@@ -737,21 +746,31 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
         indBat=cbu.IndexToBatch(meta,iBat)
 
         # Isolate Removal Fate scenario names within this batch
-        Scenario=meta['Scenario'][meta['iScn']]['Removed Fate Scenario']
+        HistoricalRegime=meta['Scenario'][meta['iScn']]['Removed Fate Historical Regime']
+        ChangeScenario=meta['Scenario'][meta['iScn']]['Removed Fate Change Scenario']
 
-        for reg in meta['LUT']['Region'].keys():
-            ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
-            for k in meta['Param']['BE']['Removed Fate'][Scenario][reg].keys():
-                x=meta['Param']['BE']['Removed Fate'][Scenario][reg][k]
-                for i in range(ind.size):
-                    meta['Param']['BEV']['Removed Fate'][k][:,ind[i]]=x
+        if HistoricalRegime=='Regional Defaults':
 
-        # Override regional parameters for stands that have land use = energy production
+            for reg in meta['LUT']['Region'].keys():
+                ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
+                for k in meta['Param']['BE']['Removed Fate'][ChangeScenario][reg].keys():
+                    x=meta['Param']['BE']['Removed Fate'][ChangeScenario][reg][k]
+                    for i in range(ind.size):
+                        meta['Param']['BEV']['Removed Fate'][k][:,ind[i]]=x
+
+        else:
+
+            for k in meta['Param']['BE']['Removed Fate'][ChangeScenario][HistoricalRegime].keys():
+                x=meta['Param']['BE']['Removed Fate'][ChangeScenario][HistoricalRegime][k]
+                for i in range(indBat.size):
+                    meta['Param']['BEV']['Removed Fate'][k][:,i]=x
+
+        # Override historical regime parameters for stands that have land use = energy production
         if meta['Scenario'][iScn]['Land Surface Scenario']!='None':
             iEnergy=np.where(vi['Inv']['LSC']['Use']==meta['LUT']['LSC']['Use']['Energy Production'])
             if iEnergy[0].size>0:
                 for k in meta['Param']['BEV']['Removed Fate'].keys():
-                    meta['Param']['BEV']['Removed Fate'][k][iEnergy]=meta['Param']['BE']['Removed Fate'][Scenario]['Energy Production'][k][0]
+                    meta['Param']['BEV']['Removed Fate'][k][iEnergy]=meta['Param']['BE']['Removed Fate'][ChangeScenario]['Energy Production'][k][0]
 
     #--------------------------------------------------------------------------
     # Harvested Wood Products - static
@@ -838,31 +857,24 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
         indBat=cbu.IndexToBatch(meta,iBat)
 
         # Isolate Removal Fate scenario names within this batch
-        Scenario=meta['Scenario'][meta['iScn']]['HWP End Use Scenario']
+        HistoricalRegime=meta['Scenario'][meta['iScn']]['Removed Fate Historical Regime']
+        ChangeScenario=meta['Scenario'][meta['iScn']]['HWP End Use Change Scenario']
 
-        for reg in meta['LUT']['Region'].keys():
-            ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
-            for k in meta['Param']['BE']['HWP End Use'][Scenario][reg].keys():
-                x=meta['Param']['BE']['HWP End Use'][Scenario][reg][k]
-                for i in range(ind.size):
-                    meta['Param']['BEV']['HWP End Use'][k][:,ind[i]]=x
+        if HistoricalRegime=='Regional Defaults':
 
-    #--------------------------------------------------------------------------
-    # Populate custom harvest parameters with those supplied for project
-    # *** Retired ***
-    #--------------------------------------------------------------------------
+            for reg in meta['LUT']['Region'].keys():
+                ind=np.where( vi['Inv']['Region Code'][0,:]==meta['LUT']['Region'][reg] )[0]
+                for k in meta['Param']['BE']['HWP End Use'][ChangeScenario][reg].keys():
+                    x=meta['Param']['BE']['HWP End Use'][ChangeScenario][reg][k]
+                    for i in range(ind.size):
+                        meta['Param']['BEV']['HWP End Use'][k][:,ind[i]]=x
 
-    #    if 'Harvest Custom' in meta:
-    #
-    #        for iHC in range(10):
-    #
-    #            if int(iHC+1) in meta['Harvest Custom']:
-    #
-    #                for k in meta['Harvest Custom'][int(iHC+1)].keys():
-    #
-    #                    if k[0:7]!='Removed':
-    #                        id=meta['LUT']['Dist']['Harvest Custom ' + str(int(iHC+1))]
-    #                        meta['Param']['BEV']['Dist'][id][k]=meta['Harvest Custom'][int(iHC+1)][k]/100
+        else:
+
+            for k in meta['Param']['BE']['HWP End Use'][ChangeScenario][HistoricalRegime].keys():
+                x=meta['Param']['BE']['HWP End Use'][ChangeScenario][HistoricalRegime][k]
+                for i in range(indBat.size):
+                    meta['Param']['BEV']['HWP End Use'][k][:,i]=x
 
     return meta,vi
 

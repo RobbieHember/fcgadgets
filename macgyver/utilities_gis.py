@@ -3,6 +3,7 @@
 
 import os
 from osgeo import gdal
+import geopandas as gpd
 import numpy as np
 from osgeo import osr
 from matplotlib import path
@@ -11,6 +12,9 @@ from shapely.geometry import Polygon,Point
 import pyproj
 import rasterio
 from rasterio.features import shapes
+import cv2
+from shapely.geometry import Point, Polygon
+from shapely import geometry
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.transform import from_origin
 from fcgadgets.macgyver import utilities_general as gu
@@ -123,7 +127,7 @@ def SaveGeoTiff(z,fout):
 
     # Data type
     if (z['Data'].dtype=='int8') | (z['Data'].dtype=='uint8'):
-        dtype=gdal.GDT_Int16
+        dtype=gdal.GDT_Byte
     elif z['Data'].dtype=='int16':
         dtype=gdal.GDT_Int16
     elif z['Data'].dtype=='uint16':
@@ -373,7 +377,45 @@ def CompressCats(z0,id0,lab0,cl0):
     lab1=np.array(lab1)
     return z1,lab1,cl1
 
-#%% DIGITIZE (GET POLYGONS FROM BINARY MASK)
+#%% Digitize raster binary mask
+
+def DigitizeBinaryMask(zIn):
+
+    # Create binary image
+    z=np.zeros((zIn['m'],zIn['n'],3),dtype='uint8')
+    z[zIn['Data']==1,:]=255
+    z=cv2.cvtColor(z,cv2.COLOR_BGR2GRAY) # Convert to grey scale
+
+    xg=zIn['X'][0,:]
+    yg=zIn['Y'][:,0]
+
+    # Calculate contour of object
+    cont=cv2.findContours(image=z,mode=cv2.RETR_LIST,method=cv2.CHAIN_APPROX_SIMPLE)
+
+    # Unpack silly tuple
+    gdf=gpd.GeoDataFrame(data=[],columns=['Value','geometry'])
+    cnt=0
+    for j in range(len(cont[0])):
+        cont_inner=cont[0][j].squeeze()
+        if cont_inner.size==2:
+            continue
+        if cont_inner.shape[0]<3:
+            continue
+        pointList=[]
+        for k in range(len(cont_inner)):
+            c=cont_inner[k][0]
+            r=cont_inner[k][1]
+            x=xg[c]
+            y=yg[r]
+            pointList.append(geometry.Point(x,y))
+        gdf.loc[cnt,'Value']=1
+        #gdf.loc[cnt,'Name']=df_tsa.loc[i,'Name']
+        gdf.loc[cnt,'geometry']=geometry.Polygon([[p.x,p.y] for p in pointList])
+        cnt=cnt+1
+
+    return gdf
+
+# OLD:
 
 def Digitize(BinaryMask,xv,yv):
 
@@ -457,7 +499,7 @@ def UpdateGridCellsize(z_in,scale_factor):
 
 #%% Import Cities
 
-def ImportCities(pthin):
+def ImportCities(pthin,output_type):
 
     Cities=gu.ReadExcel(pthin)
 
@@ -468,4 +510,12 @@ def ImportCities(pthin):
     for i in range(Cities['Lat'].size):
         Cities['X'][i],Cities['Y'][i]=srs['Proj']['BC1ha'](Cities['Lon'][i],Cities['Lat'][i])
 
-    return Cities
+    if output_type=='Dict':
+        out=Cities
+    elif output_type=='GDF':
+        points=[]
+        for i in range(Cities['X'].size):
+            points.append(Point(Cities['X'][i],Cities['Y'][i]))
+        out=gpd.GeoDataFrame({'geometry':points,'Name':Cities['Name'],'Territory':Cities['Territory'],'Lat':Cities['Lat'],'Lon':Cities['Lon']})
+
+    return out

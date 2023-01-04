@@ -20,7 +20,7 @@ plt.rcParams.update(params)
 
 #%% Import BaseCase HWP parameters
 
-dDef0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_HWP.xlsx','Default')
+dDef0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_HWP.xlsx','Main')
 
 # Variables to keep
 vrL=['SawMillToPulpMill','SawMillToMDFMill','SawMillToPelletMill','SawMillToPowerFacility','SawMillToIPP','SawMillToLogExport','SawMillToSFH','SawMillToMFH','SawMillToCom','SawMillToFurn','SawMillToShip','SawMillToRepairs','SawMillToOther',
@@ -549,7 +549,7 @@ for reg in regL:
 
 #%% Save
 
-gu.opickle(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Variables_HWP_EndUses.pkl',d)
+gu.opickle(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Variables_HWP_EndUse.pkl',d)
 
 
 #%% Plot

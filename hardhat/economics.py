@@ -94,6 +94,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Cost Ripping']=np.zeros(v1['A'].shape)
     d['Cost PAS Deactivation']=np.zeros(v1['A'].shape)
     d['Cost Slashpile Burn']=np.zeros(v1['A'].shape)
+    d['Cost Aerial Spray']=np.zeros(v1['A'].shape)
     #d['Harvest Vol Merch']=np.zeros(v1['A'].shape)
     #d['Harvest Vol Resid']=np.zeros(v1['A'].shape)
 
@@ -120,6 +121,26 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
             d['Cost Nutrient Management'][it1,iStand]=dCost['Cost Nutrient Purchase (CDN$/ha)'][it0]+ \
                 dCost['Cost Nurtrient Application (CDN$/ha)'][it0]+ \
                 dCost['Cost Nutrient Overhead (CDN$/ha)'][it0]
+
+        #----------------------------------------------------------------------
+        # Aerial spray (Btk)
+        #----------------------------------------------------------------------
+
+        for k in range(meta['Core']['Max Events Per Year']):
+
+            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Aerial Spray']) )[0]
+
+            if ind.size==0:
+                continue
+
+            Year=tv_full[ind]
+            it0=np.where(dPrice['Year']==Year)[0]
+            it1=np.where(tv==Year)[0]
+
+            if it1.size==0:
+                continue
+
+            d['Cost Aerial Spray'][it1,iStand]=dCost['Cost Aerial Spray (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Planting
@@ -370,7 +391,8 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
         d['Cost Ripping']+ \
         d['Cost PAS Deactivation']+ \
         d['Cost Slashpile Burn']+ \
-        d['Cost Knockdown']
+        d['Cost Knockdown']+ \
+        d['Cost Aerial Spray']
 
     # Total silviculture
     d['Cost Silviculture Total']=d['Cost Harvest Residuals']+ \
@@ -380,7 +402,8 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
         d['Cost Ripping']+ \
         d['Cost PAS Deactivation']+ \
         d['Cost Slashpile Burn']+ \
-        d['Cost Knockdown']
+        d['Cost Knockdown']+ \
+        d['Cost Aerial Spray']
 
     # Thousand board feet lumber / ha
     mbf_Lumber=b['Ratio bd ft Lumber per m3']*v1['ODT Lumber']/b['Density Wood']/1000

@@ -140,19 +140,9 @@ def PlotCarbonPoolBarChart(meta,tv,mos,AEF,iScn,iPS,iSS):
 def PlotFluxesBarChart(meta,tv,mos,AEF,iScn,iPS,iSS):
     #list(mos['Scenarios'][0]['Sum'].keys())
 
-    #iScn=0
-
-    mos['Scenarios'][iScn]['Sum']['OPS']=mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Operations'].copy()
-    mos['Scenarios'][iScn]['Sum']['OPS']['Ensemble Mean']=mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Operations']['Ensemble Mean']+mos['Scenarios'][iScn]['Sum']['E_CO2e_ET_Operations']['Ensemble Mean']+mos['Scenarios'][iScn]['Sum']['E_CO2e_IPPU_Operations']['Ensemble Mean']
-
-    mos['Scenarios'][iScn]['Sum']['OPS']=mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Operations'].copy()
-    mos['Scenarios'][iScn]['Sum']['OPS']['Ensemble P250']=mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Operations']['Ensemble P250']+mos['Scenarios'][iScn]['Sum']['E_CO2e_ET_Operations']['Ensemble P250']+mos['Scenarios'][iScn]['Sum']['E_CO2e_IPPU_Operations']['Ensemble P250']
-
-    mos['Scenarios'][iScn]['Sum']['OPS']=mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Operations'].copy()
-    mos['Scenarios'][iScn]['Sum']['OPS']['Ensemble P750']=mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Operations']['Ensemble P750']+mos['Scenarios'][iScn]['Sum']['E_CO2e_ET_Operations']['Ensemble P750']+mos['Scenarios'][iScn]['Sum']['E_CO2e_IPPU_Operations']['Ensemble P750']
-
-    nam=np.array(['E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy','OPS', \
+    nam=np.array(['E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy','E_CO2e_OperForTot', \
                   'E_CO2e_SUB_E','E_CO2e_SUB_M','E_CO2e_SUB_Tot','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub'])
+
     xlab=['Net\necosystem\nexchange','Wildfire\nemissions','Open\nburning\nemissions','Wood\nproduct\nemissions','Bioenergy\nemissions','Operational\nemissions', \
           'Energy\nsubst.','Material\nsubst.','Total\nsubst.','Net GHG\nbalance\n(with subs.)','Net GHG\nbalance\n(w/o subs.)']
 
@@ -201,16 +191,7 @@ def PlotFluxesBarChart(meta,tv,mos,AEF,iScn,iPS,iSS):
 
 def PlotForcingBarChart(meta,tv,mos,AEF,cmp,iPS,iSS):
 
-    mos['Delta'][cmp]['ByStrata']['Sum']['OPS']={}
-    mos['Delta'][cmp]['ByStrata']['Sum']['OPS']['Ensemble Mean']=mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ESC_Operations']['Ensemble Mean'].copy()
-    mos['Delta'][cmp]['ByStrata']['Sum']['OPS']['Ensemble P025']=mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ESC_Operations']['Ensemble Mean'].copy()
-    mos['Delta'][cmp]['ByStrata']['Sum']['OPS']['Ensemble P975']=mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ESC_Operations']['Ensemble Mean'].copy()
-
-    mos['Delta'][cmp]['ByStrata']['Sum']['OPS']['Ensemble Mean']=mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ESC_Operations']['Ensemble Mean']+mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ET_Operations']['Ensemble Mean']+mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_IPPU_Operations']['Ensemble Mean']
-    mos['Delta'][cmp]['ByStrata']['Sum']['OPS']['Ensemble P025']=mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ESC_Operations']['Ensemble P025']+mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ET_Operations']['Ensemble P025']+mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_IPPU_Operations']['Ensemble P025']
-    mos['Delta'][cmp]['ByStrata']['Sum']['OPS']['Ensemble P975']=mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ESC_Operations']['Ensemble P975']+mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_ET_Operations']['Ensemble P975']+mos['Delta'][cmp]['ByStrata']['Sum']['E_CO2e_IPPU_Operations']['Ensemble P975']
-
-    nam=np.array(['E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy','OPS', \
+    nam=np.array(['E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy','E_CO2e_OperForTot', \
                   'E_CO2e_SUB_E','E_CO2e_SUB_M','E_CO2e_SUB_Tot','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub'])
 
     xlab=['Net\necosystem\nexchange','Wildfire\nemissions','Open\nburning\nemissions','Wood\nproduct\nemissions','Bioenergy\nemissions','Operational\nemissions', \
@@ -295,7 +276,7 @@ def PlotHarvestVolume(meta,mos,tv,AEF,iScn,iT,iPS,iSS,flg_ann,flg_dead,flg_hbs):
 
     if flg_hbs==1:
         ax.plot(H_FLNR['Year'],H_FLNR['Total_harvest_millions_m3'],'k-',color=gp['cl1'],lw=1.25,label='Tot. merch. vol. (FLNR)')
-        ax.plot(H_HBS['Year'],H_HBS['V All (Mm3/yr)'],color=[0,1,1],lw=1.25,label='Tot. merch. vol. (HBS)')
+        ax.plot(H_HBS['Year'],H_HBS['V All Abs (Mm3/yr)'],color=[0,1,1],lw=1.25,label='Tot. merch. vol. (HBS)')
 
     #ax.plot(tv[iT],y,'-',color=gp['cl2'],lw=0.5,label='Total')
     ax.set(position=[0.085,0.125,0.88,0.84],xlim=[tv[iT[0]],2100],xticks=np.arange(1800,2120,20),ylabel='Volume removed (Million m$^3$ yr$^-$$^1$)',xlabel='Time, years')
@@ -406,7 +387,7 @@ def PlotGHGBalance(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
     y_hwp=mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF
     ax.bar(tv[iT],y_hwp,wd,label='Product emissions',facecolor=[0.75,0.85,1])
 
-    y_op=mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Operations']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF
+    y_op=mos['Scenarios'][iScn]['Sum']['E_CO2e_OperForTot']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF
     ax.bar(tv[iT],y_op,wd,bottom=y_hwp,label='Fossil fuel emissions',facecolor=[0,0,0.7])
 
     y_ob=mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_OpenBurning']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF
@@ -1378,10 +1359,10 @@ def LookAtWildfireRecord(meta,iScn):
 
     for iEns in range(meta['Project']['N Ensemble']):
 
-        if 'Use Frozen Ensembles' not in meta['Project']:
+        if 'Frozen Ensembles Status' not in meta['Project']:
             wf_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
         else:
-            wf_sim=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
+            wf_sim=gu.ipickle(meta['Project']['Frozen Ensembles Path'] + '\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
 
         if 'idx' in wf_sim:
             idx=wf_sim['idx']

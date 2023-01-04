@@ -382,6 +382,17 @@ def discres(x,y,bw,bin):
         se[i]=np.nanstd(y[ind])/np.sqrt(ind.size)
     return N,mu,sig,se
 
+#%% Binned sum
+
+def BinnedCount(bins,bw,x):
+
+    y=np.zeros(bins.size)
+    for i in range(bins.size):
+        ind=np.where(np.abs(x-bins[i])<=bw/2)[0]
+        y[i]=ind.size
+
+    return y
+
 #%% GRAPHICS PARAMETERS FOR JUPYTER NOTEBOOK
 
 # def Import_GraphicsParameters(type):
@@ -709,8 +720,21 @@ def SetGraphics(type):
 #%% Z-score a variable
 
 def zscore(x):
-    y=(x-np.nanmean(x))/np.nanstd(x)
-    return y
+
+    if x.ndim==1:
+        mu=np.nanmean(x)
+        sig=np.nanstd(x)
+        y=(x-mu)/sig
+    else:
+        y=x.copy()
+        mu=np.zeros(x.shape[1])
+        sig=np.zeros(x.shape[1])
+        for j in range(x.shape[1]):
+            mu[j]=np.nanmean(x[:,j])
+            sig[j]=np.nanstd(x[:,j])
+            y[:,j]=(x[:,j]-mu[j])/sig[j]
+
+    return y,mu,sig
 
 #%% Read NetCDF4
 

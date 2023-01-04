@@ -184,7 +184,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                 ec={}
                 ec['ID_Type']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
                 ec['MortalityFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-                ec['GrowthFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['GrowthFactor']=-999*np.ones((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
                 ec['ID_GrowthCurve']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
 
                 #----------------------------------------------------------
@@ -217,7 +217,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     iT=np.where(tv==Year[iYr])[0]
                     ec['ID_Type'][iT,:,0]=meta['LUT']['Dist'][meta['Project']['Spinup Disturbance Type']]
                     ec['MortalityFactor'][iT,:,0]=100
-                    ec['GrowthFactor'][iT,:,0]=0
+                    ec['GrowthFactor'][iT,:,0]=-999
                     ec['ID_GrowthCurve'][iT,:,0]=meta['Project']['Spinup Growth Curve ID']
 
                 #----------------------------------------------------------
@@ -288,7 +288,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(ind.size)
                     Year=tv[ind]
                     MortF=wf_sim['Mortality'][ind,iS]
-                    GrowthF=0*np.ones(ind.size)
+                    GrowthF=-999*np.ones(ind.size)
                     ID_GrowthCurve=1*np.ones(ind.size)
 
                     for iYr in range(Year.size):
@@ -318,7 +318,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                         ID_Type=meta['LUT']['Dist']['IBM']*np.ones(ind.size)
                         Year=tv[ind]
                         MortF=ibm_sim['Mortality'][ind,iS]
-                        GrowthF=0*np.ones(ind.size)
+                        GrowthF=-999*np.ones(ind.size)
                         ID_GrowthCurve=1*np.ones(ind.size)
 
                         for iYr in range(Year.size):
@@ -838,7 +838,7 @@ def ImportProjectConfig(meta,**kwargs):
                 break
 
         # Create random numbers and save them
-        if meta['Project']['Use Frozen Ensembles']=='Off':
+        if meta['Project']['Frozen Ensembles Status']=='Off':
             for iEns in range(meta['Project']['N Ensemble']):
                 for iBat in range(meta['Project']['N Batch']):
 
@@ -1696,8 +1696,8 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
         for oper in ['Mean','Sum']:
             Data1[oper]={}
             for k in v2include:
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
 
         # Initialize age class distribution data
         acd={}
@@ -1716,7 +1716,7 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
             # Initialize temporary data structure for full simulation
             Data0={}
             for k in v2include:
-                Data0[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                Data0[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
 
             # Initialize age class distribution for this ensemble
             Age0=np.zeros( (acd['binT'].size,meta['Project']['N Stand']) )
@@ -1867,8 +1867,8 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
         for oper in ['Mean','Sum']:
             Data1[oper]={}
             for k in v2include:
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
 
         # An option to skip economic calculations. The file will still be created, but all zeros
         if meta['Project']['Skip Economics']=='Off':
@@ -1882,7 +1882,7 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
 
                 DataSXY={}
                 for k in v2include:
-                    DataSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                    DataSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
 
                 #--------------------------------------------------------------------------
                 # Import batches
@@ -2003,8 +2003,8 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
         for oper in ['Mean','Sum']:
             Area1[oper]={}
             for k in meta['LUT']['Dist'].keys():
-                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
-                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype=np.float)
+                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
 
         # An option to skip economic calculations. The file will still be created, but all zeros
         if meta['Project']['Skip Economics']=='Off':
@@ -2018,11 +2018,11 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
 
                 AreaSXY={}
                 for k in meta['LUT']['Dist'].keys():
-                    AreaSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                    AreaSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
 
                 AreaSXY_Full={}
                 for k in meta['LUT']['Dist'].keys():
-                    AreaSXY_Full[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                    AreaSXY_Full[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
 
                 #--------------------------------------------------------------------------
                 # Import batches
@@ -2143,6 +2143,8 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
 # set up to save mortality by stand (too much data) ***
 
 def Calc_MOS_FromPoints_Mortality(meta):
+
+    print('Calculating model output statistics for mortality')
 
     # Time series of saved results
     tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
@@ -2802,14 +2804,14 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
         MoMeanByPTAndYr={}
         MoSumByPTAndYr={}
         for k in v2include:
-            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
-            MoSumByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
+            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+            MoSumByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
             MoMeanByPTAndYr[k]={}
             MoSumByPTAndYr[k]={}
             for t in tv_Implementation:
-                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
-                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
+                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
         # Loop through ensembles
         for iEns in range(meta['Project']['N Ensemble']):
@@ -2820,7 +2822,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
 
             DataSXY={}
             for k in v2include:
-                DataSXY[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                DataSXY[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
 
             #--------------------------------------------------------------------------
             # Import batches
@@ -2966,14 +2968,14 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
         MoMeanByPTAndYr={}
         MoSumByPTAndYr={}
         for k in v2include:
-            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
-            MoSumByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
+            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+            MoSumByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
             MoMeanByPTAndYr[k]={}
             MoSumByPTAndYr[k]={}
             for t in tv_Implementation:
-                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
-                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype=np.float)
+                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
         # Loop through ensembles
         for iEns in range(meta['Project']['N Ensemble']):
@@ -2984,7 +2986,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
 
             DataSXY={}
             for k in v2include:
-                DataSXY[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype=np.float)
+                DataSXY[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
 
             #--------------------------------------------------------------------------
             # Import batches
@@ -3323,7 +3325,7 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #        # Initialize data matrix
 #        Data={}
 #        for op in oper:
-#            Data[op]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],len(ListSubsetMP),len(v2include)) ,dtype=np.float)
+#            Data[op]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],len(ListSubsetMP),len(v2include)) ,dtype='float64')
 #
 #        #----------------------------------------------------------------------
 #        # Loop through ensembles
@@ -3337,7 +3339,7 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #            #------------------------------------------------------------------
 #
 #            # Initialize temporary data structure for full simulation
-#            DataSXY=np.zeros( (tv_saving.size,meta['Project']['N Stand'],len(v2include)) ,dtype=np.float)
+#            DataSXY=np.zeros( (tv_saving.size,meta['Project']['N Stand'],len(v2include)) ,dtype='float64')
 #
 #            # Import batches
 #            for iBat in range(meta['Project']['N Batch']):
@@ -3421,7 +3423,7 @@ def GetTASSCurves(meta,iScn,iGC,fny,fnc,fnm):
     dfY=pd.read_csv(fny,header=30)
 
     # Initialize age response of net growth
-    G=np.zeros((N_Age,1,6),dtype=np.int16)
+    G=np.zeros((N_Age,1,6),dtype='int16')
 
     G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
     G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
@@ -3885,7 +3887,7 @@ def PrepareInventoryFromSpreadsheet(meta):
             inv['Y']=inv['Lon']
 
             # BEC zone
-            inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype=np.int)
+            inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype='int16')
             inv['ID_BECZ'][0,:]=meta['LUT']['VRI']['BEC_ZONE_CODE'][meta['Scenario'][iScn]['BGC Zone Code']]
 
             # Timber harvesting landbase (1=yes, 0=no)
@@ -3904,14 +3906,14 @@ def PrepareInventoryFromSpreadsheet(meta):
 
                 id=meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_ID'][ind]
 
-                inv['SRS1_ID']=id*np.ones((1,N_StandsInBatch),dtype=np.int)
-                inv['SRS1_PCT']=100*np.ones((1,N_StandsInBatch),dtype=np.int)
+                inv['SRS1_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
+                inv['SRS1_PCT']=100*np.ones((1,N_StandsInBatch),dtype='int16')
 
-                inv['SRS2_ID']=np.ones((1,N_StandsInBatch),dtype=np.int)
-                inv['SRS2_PCT']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
+                inv['SRS2_ID']=np.ones((1,N_StandsInBatch),dtype='int16')
+                inv['SRS2_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
 
-                inv['SRS3_ID']=np.ones((1,N_StandsInBatch),dtype=np.int)
-                inv['SRS3_PCT']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
+                inv['SRS3_ID']=np.ones((1,N_StandsInBatch),dtype='int16')
+                inv['SRS3_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
 
             # Save
             gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl',inv)
@@ -4260,7 +4262,7 @@ def PrepGrowthCurvesForCBR(meta):
             for iGC in range(3):
 
                 # Initialize age response of net growth
-                G=np.zeros((N_Age,indBat.size,6),dtype=np.int32)
+                G=np.zeros((N_Age,indBat.size,6),dtype='int32')
 
                 # Populate the growth curve
                 for iS in range(indBat.size):
@@ -4462,7 +4464,7 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
                 Inverse_ugc_ScnAndGcAndBat=Inverse_ugc_ScnAndGc[inda]
 
                 # Initialize array of growth data
-                G=np.zeros((N_Age,indBat.size,6),dtype=np.int16)
+                G=np.zeros((N_Age,indBat.size,6),dtype='int16')
 
                 for i in range(inda.size):
 
@@ -4568,7 +4570,7 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
                 Inverse_ugc_ScnAndGcAndBat=Inverse_ugc_ScnAndGc[inda]
 
                 # Initialize array of growth data
-                G=np.zeros((N_Age,indBat.size,6),dtype=np.int16)
+                G=np.zeros((N_Age,indBat.size,6),dtype='int16')
 
                 for i in range(inda.size):
 
@@ -4758,7 +4760,7 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
 
     meta['Param']['BE']['HWP']={}
-    meta['Param']['BE']['HWP']['Raw']=pd.read_excel(pthin + '\Parameters_HWP.xlsx',sheet_name='Default')
+    meta['Param']['BE']['HWP']['Raw']=pd.read_excel(pthin + '\Parameters_HWP.xlsx',sheet_name='Main')
 
     #--------------------------------------------------------------------------
     # HWP - End Use parameters
@@ -4766,7 +4768,7 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
 
     meta['Param']['BE']['HWP End Use']={}
-    meta['Param']['BE']['HWP End Use']=gu.ipickle(meta['Paths']['Model Code'] + '\\Parameters\\Variables_HWP_EndUses.pkl')
+    meta['Param']['BE']['HWP End Use']=gu.ipickle(meta['Paths']['Model Code'] + '\\Parameters\\Variables_HWP_EndUse.pkl')
 
     #--------------------------------------------------------------------------
     # Nutrient application paramaters

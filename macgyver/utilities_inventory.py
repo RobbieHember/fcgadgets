@@ -1196,10 +1196,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
             iStand=iStand0
 
         # Indices to stand
-        try:
-            indS_atu=idx['atu'][iStand]
-        except:
-            print(iStand)
+        indS_atu=idx['atu'][iStand]
         indS_pl=idx['pl'][iStand]
         indS_op=idx['op'][iStand]
         indS_burnsev=idx['burnsev'][iStand]
@@ -1270,8 +1267,8 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 dmec0['Month']=np.append(dmec0['Month'],atu['Month'][iA])
                 dmec0['Day']=np.append(dmec0['Day'],atu['Day'][iA])
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],ID_Type)
-                dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],np.array(0,dtype='int16'))
-                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],np.array(0,dtype='int16'))
+                dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],0)
+                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][iA])
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],atu['OPENING_ID'][iA])
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],atu['FIA_PROJECT_ID'][iA])
@@ -1385,7 +1382,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 dmec0['Day']=np.append(dmec0['Day'],-999)
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],Severity)
-                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1409,7 +1406,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 dmec0['Day']=np.append(dmec0['Day'],fire['Day'][indS[i]])
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],50)
-                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1438,7 +1435,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 dmec0['Day']=np.append(dmec0['Day'],-999)
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Harvest'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1456,7 +1453,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 dmec0['Day']=np.append(dmec0['Day'],-999)
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                 dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                 dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1502,7 +1499,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Harvest'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1517,7 +1514,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1546,7 +1543,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Harvest'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1561,7 +1558,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1603,7 +1600,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Knockdown'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1618,7 +1615,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1647,7 +1644,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Knockdown'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1662,7 +1659,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     dmec0['Day']=np.append(dmec0['Day'],-999)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],100)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                     dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                     dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
                     dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
@@ -1675,10 +1672,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
         # Adjust severity later based on host species
         #--------------------------------------------------------------------------
 
-        # Turn on or off for QA purposes
-        flg=1
-
-        if (indS_pest!=None) & (flg==1):
+        if (indS_pest!=None):
 
             indS=indS_pest['Index']
 
@@ -1692,6 +1686,10 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
 
                 # Don't include trace
                 if (pest['PEST_SEVERITY_CODE'][iYr]==meta['LUT']['Pest']['PEST_SEVERITY_CODE']['T'][0]):
+                    continue
+
+                # Turn off western spruce budworm
+                if (pest['PEST_SPECIES_CODE'][iYr]==meta['LUT']['Dist']['IDW']) & (pest['Modifier AM92'][iYr]<0):
                     continue
 
                 dmec0['Year']=np.append(dmec0['Year'],pest['CAPTURE_YEAR'][iYr])
@@ -1743,17 +1741,24 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 # Western spruce budworm
                 # Populate severity with the ID for severity - it will be revised below
                 # to model mortality that occurs from repeated infestation
-                elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IDW']):
+                elif (psp==meta['LUT']['Dist']['IDW']):
+
+                    # New method based on duration and severity of indiviudal outbreaks (Alfaro and MacLauchlan 1992)
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
-                    ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],sev)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],0) # pest['Modifier AM92'][iYr]
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-25)
+
+                    # OLD standard way
+                    # dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
+                    # ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
+                    # dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],sev)
+                    # dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
 
                 # Other
                 else:
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Beetles'])
                     dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],5)
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],0)
+                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
 
         #--------------------------------------------------------------------------
         # Append to management history list
@@ -2043,7 +2048,7 @@ def GapFill_DMEC_WithAgeFromVRI(meta,dmec,vri,idx):
             dmec[iStand0]['Year']=np.append(dmec[iStand0]['Year'],meta['Project']['Year Project']-Age)
             dmec[iStand0]['ID_Type']=np.append(dmec[iStand0]['ID_Type'],type)
             dmec[iStand0]['MortalityFactor']=np.append(dmec[iStand0]['MortalityFactor'],np.array(100,dtype='int16'))
-            dmec[iStand0]['GrowthFactor']=np.append(dmec[iStand0]['GrowthFactor'],np.array(0,dtype='int16'))
+            dmec[iStand0]['GrowthFactor']=np.append(dmec[iStand0]['GrowthFactor'],-999)
             if 'FCI Funded' in dmec[iStand0]:
                 dmec[iStand0]['FCI Funded']=np.append(dmec[iStand0]['FCI Funded'],np.array(0,dtype='int16'))
             for v in meta['Core']['StringsToFill']:
@@ -2071,7 +2076,7 @@ def GapFill_DMEC_WithAgeFromVRI(meta,dmec,vri,idx):
 #             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],DOE)
 #             dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Wildfire'])
 #             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],np.array(100,dtype='int16'))
-#             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+#             dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
 #             if 'FCI Funded' in dmec[iStand]:
 #                 dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
 #             for v in meta['Core']['StringsToFill']:
@@ -2131,7 +2136,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba):
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
             dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
             if 'FCI Funded' in dmec[iStand]:
                 dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
             for v in meta['Core']['StringsToFill']:
@@ -2141,7 +2146,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba):
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+1)
             dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
             if 'FCI Funded' in dmec[iStand]:
                 dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
             for v in meta['Core']['StringsToFill']:
@@ -2151,7 +2156,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba):
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+2)
             dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Planting'])
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],0)
+            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
             if 'FCI Funded' in dmec[iStand]:
                 dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
             for v in meta['Core']['StringsToFill']:
@@ -2170,7 +2175,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba):
                 dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
                 dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
                 dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
                 if 'FCI Funded' in dmec[iStand]:
                     dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
                 for v in meta['Core']['StringsToFill']:
@@ -2180,7 +2185,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba):
                 dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+1)
                 dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                 dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
                 if 'FCI Funded' in dmec[iStand]:
                     dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
                 for v in meta['Core']['StringsToFill']:
@@ -2190,7 +2195,7 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba):
                 dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+2)
                 dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Planting'])
                 dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
-                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],0)
+                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
                 if 'FCI Funded' in dmec[iStand]:
                     dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
                 for v in meta['Core']['StringsToFill']:
@@ -2347,13 +2352,14 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
     ba['PROJ_AGE_1']=-999*np.ones(meta['Project']['N Stand'])
     ba['Year']=-999*np.ones(meta['Project']['N Stand'])
     ba['LIVE_STAND_VOLUME_125']=-999*np.ones(meta['Project']['N Stand'])
+    ba['P Harvest Weight']=np.zeros(meta['Project']['N Stand'])
 
     # Also keep track of the data source percentages
-    basp={}
-    basp['BEC_ZONE_CODE']={}
-    basp['FIZ']={}
-    basp['Spc_CD1']={}
-    basp['SI']={}
+    ba_Source={}
+    ba_Source['BEC_ZONE_CODE']={}
+    ba_Source['FIZ']={}
+    ba_Source['Spc_CD1']={}
+    ba_Source['SI']={}
 
     #--------------------------------------------------------------------------
     # Specify flag indicating whether subsetting occurs
@@ -2401,8 +2407,8 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
         ba['Year'][iStand0]=vri['Year'][ind0]
         ba['LIVE_STAND_VOLUME_125'][iStand0]=vri['LIVE_STAND_VOLUME_125'][ind0]
 
-    basp['BEC_ZONE_CODE']['From VRI']=N_tot/ba['SI'].size*100
-    basp['FIZ']['From VRI']=N_tot/ba['SI'].size*100
+    ba_Source['BEC_ZONE_CODE']['From VRI']=N_tot/ba['SI'].size*100
+    ba_Source['FIZ']['From VRI']=N_tot/ba['SI'].size*100
 
     # Fill with global assumption
     ind=np.where(ba['BEC_ZONE_CODE']<=0)[0]
@@ -2410,8 +2416,8 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
         ba['BEC_ZONE_CODE'][ind]=meta['LUT']['VRI']['BEC_ZONE_CODE']['SBS']
         ba['FIZ'][ind]=meta['LUT']['TIPSY']['FIZ']['I']
 
-        basp['BEC_ZONE_CODE']['From global gap filling assumption']=ind.size/ba['SI'].size*100
-        basp['FIZ']['From global gap filling assumption']=ind.size/ba['SI'].size*100
+        ba_Source['BEC_ZONE_CODE']['From global gap filling assumption']=ind.size/ba['SI'].size*100
+        ba_Source['FIZ']['From global gap filling assumption']=ind.size/ba['SI'].size*100
 
     #--------------------------------------------------------------------------
     # Best-available species composition (not planted)
@@ -2439,7 +2445,7 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
 
         N_tot=N_tot+1
 
-    basp['Spc_CD1']['From FC inventory']=N_tot/ba['SI'].size*100
+    ba_Source['Spc_CD1']['From FC inventory']=N_tot/ba['SI'].size*100
 
     # Fill with VRI
     N_tot=0
@@ -2465,7 +2471,7 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
                 ba['Spc_Pct' + str(iSpc+1)][iStand0]=vri['SPECIES_PCT_' + str(iSpc+1)][ind0]
         N_tot=N_tot+1
 
-    basp['Spc_CD1']['From VRI']=N_tot/ba['SI'].size*100
+    ba_Source['Spc_CD1']['From VRI']=N_tot/ba['SI'].size*100
 
     # Fill with regional assumptions
     N_tot=0
@@ -2489,285 +2495,344 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
 
         N_tot=N_tot+1
 
-    basp['Spc_CD1']['From regional assumptions']=N_tot/ba['SI'].size*100
+    ba_Source['Spc_CD1']['From regional assumptions']=N_tot/ba['SI'].size*100
 
     #--------------------------------------------------------------------------
     # Import site productivity layer
     #--------------------------------------------------------------------------
 
-    # spl={}
-    # spl['SI_SPL']=-999*np.ones(meta['Project']['N Stand'])
+    spl={}
+    spl['SI_SPL']=-999*np.ones(meta['Project']['N Stand'])
 
-    # spcL=['At','Ba','Bl','Cw','Ep','Fd','Hw','Hm','Lw','Pl','Py','Sb','Sw','Sx','Se']
+    spcL=['At','Ba','Bl','Cw','Ep','Fd','Hw','Hm','Lw','Pl','Py','Sb','Sw','Sx','Se']
 
-    # if 'xlim' in geos:
+    if 'xlim' in geos:
 
-    #     # Tiled project, we can just clip rasters to tile boundaries -> goes super fast
+        # Tiled project, we can just clip rasters to tile boundaries -> goes super fast
 
-    #     for spc in spcL:
+        for spc in spcL:
 
-    #         # Import site productivity layer for focal species
-    #         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
-    #         z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
-    #         zSPL=z['Data'].flatten()
-    #         del z
+            # Import site productivity layer for focal species
+            z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
+            z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
+            zSPL=z['Data'].flatten()
+            del z
 
-    #         # Map SPL species codes to those in VRI
-    #         if spc=='At':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
-    #         elif spc=='Ba':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
-    #         elif spc=='Bl':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
-    #         elif spc=='Cw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
-    #         elif spc=='Ep':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
-    #         elif spc=='Fd':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
-    #         elif spc=='Hw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
-    #         elif spc=='Hm':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
-    #         elif spc=='Lw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
-    #         elif spc=='Pl':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
-    #         elif spc=='Py':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
-    #         elif spc=='Sb':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
-    #         elif spc=='Se':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
-    #         elif spc=='Ss':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
-    #         elif spc=='Sw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
-    #         elif spc=='Sx':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
+            # Map SPL species codes to those in VRI
+            if spc=='At':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
+            elif spc=='Ba':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
+            elif spc=='Bl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
+            elif spc=='Cw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
+            elif spc=='Ep':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
+            elif spc=='Fd':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
+            elif spc=='Hw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
+            elif spc=='Hm':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
+            elif spc=='Lw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
+            elif spc=='Pl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
+            elif spc=='Py':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
+            elif spc=='Sb':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
+            elif spc=='Se':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
+            elif spc=='Ss':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
+            elif spc=='Sw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
+            elif spc=='Sx':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
 
-    #         # Populate dictionary with nearest estimate
-    #         for iStand0 in range(meta['Project']['N Stand']):
+            # Populate dictionary with nearest estimate
+            for iStand0 in range(meta['Project']['N Stand']):
 
-    #             if flag_subset==1:
-    #                 iStand=meta['Project']['iKeep'][iStand0]
-    #             else:
-    #                 iStand=iStand0
+                if flag_subset==1:
+                    iStand=meta['Project']['iKeep'][iStand0]
+                else:
+                    iStand=iStand0
 
-    #             # Populate
-    #             if np.isin(ba['Spc_CD1'][iStand0],ids):
-    #                 if zSPL[iStand]>0:
-    #                     spl['SI_SPL'][iStand0]=zSPL[iStand]
+                # Populate
+                if np.isin(ba['Spc_CD1'][iStand0],ids):
+                    if zSPL[iStand]>0:
+                        spl['SI_SPL'][iStand0]=zSPL[iStand]
 
-    # else:
+    else:
 
-    #     # Not a tiled project
+        # Not a tiled project
 
-    #     # Populate dictionary with nearest estimate
-    #     z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_Ep.tif')
-    #     x=z['X'][0,:]
-    #     y=z['Y'][:,0]
-    #     del z
-    #     garc.collect()
+        # Populate dictionary with nearest estimate
+        z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_Ep.tif')
+        x=z['X'][0,:]
+        y=z['Y'][:,0]
+        del z
+        garc.collect()
 
-    #     ix=np.zeros(meta['Project']['N Stand'],dtype=int)
-    #     iy=np.zeros(meta['Project']['N Stand'],dtype=int)
-    #     for iStand0 in range(meta['Project']['N Stand']):
-    #         if flag_subset==1:
-    #             iStand=meta['Project']['iKeep'][iStand0]
-    #         else:
-    #             iStand=iStand0
-    #         adx=np.abs(geos['Sparse']['X'][iStand]-x)
-    #         ady=np.abs(geos['Sparse']['Y'][iStand]-y)
-    #         ix[iStand0]=np.where(adx==np.min(adx))[0]
-    #         iy[iStand0]=np.where(ady==np.min(ady))[0]
-    #     ind=tuple([iy,ix])
-    #     del x,y
+        ix=np.zeros(meta['Project']['N Stand'],dtype=int)
+        iy=np.zeros(meta['Project']['N Stand'],dtype=int)
+        for iStand0 in range(meta['Project']['N Stand']):
+            if flag_subset==1:
+                iStand=meta['Project']['iKeep'][iStand0]
+            else:
+                iStand=iStand0
+            adx=np.abs(geos['Sparse']['X'][iStand]-x)
+            ady=np.abs(geos['Sparse']['Y'][iStand]-y)
+            ix[iStand0]=np.where(adx==np.min(adx))[0]
+            iy[iStand0]=np.where(ady==np.min(ady))[0]
+        ind=tuple([iy,ix])
+        del x,y
 
-    #     for spc in spcL:
+        for spc in spcL:
 
-    #         # Import site productivity layer for focal species
-    #         z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
-    #         zSPL=np.squeeze(z['Data'])
-    #         zSPL=zSPL[ind]
-    #         del z
+            # Import site productivity layer for focal species
+            z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + spc + '.tif')
+            zSPL=np.squeeze(z['Data'])
+            zSPL=zSPL[ind]
+            del z
 
-    #         # Map SPL species codes to those in VRI
-    #         if spc=='At':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
-    #         elif spc=='Ba':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
-    #         elif spc=='Bl':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
-    #         elif spc=='Cw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
-    #         elif spc=='Ep':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
-    #         elif spc=='Fd':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
-    #         elif spc=='Hw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
-    #         elif spc=='Hm':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
-    #         elif spc=='Lw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
-    #         elif spc=='Pl':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
-    #         elif spc=='Py':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
-    #         elif spc=='Sb':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
-    #         elif spc=='Se':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
-    #         elif spc=='Ss':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
-    #         elif spc=='Sw':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
-    #         elif spc=='Sx':
-    #             ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
+            # Map SPL species codes to those in VRI
+            if spc=='At':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['AT']])
+            elif spc=='Ba':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BA']])
+            elif spc=='Bl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['BL']])
+            elif spc=='Cw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['CW']])
+            elif spc=='Ep':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['EP']])
+            elif spc=='Fd':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['FD'],meta['LUT']['VRI']['SPECIES_CD_1']['FDI'],meta['LUT']['VRI']['SPECIES_CD_1']['FDC']])
+            elif spc=='Hw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HW']])
+            elif spc=='Hm':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['HM']])
+            elif spc=='Lw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['LW']])
+            elif spc=='Pl':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PL'],meta['LUT']['VRI']['SPECIES_CD_1']['PLI'],meta['LUT']['VRI']['SPECIES_CD_1']['PLC']])
+            elif spc=='Py':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['PY']])
+            elif spc=='Sb':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SB']])
+            elif spc=='Se':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SE']])
+            elif spc=='Ss':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SS']])
+            elif spc=='Sw':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SW']])
+            elif spc=='Sx':
+                ids=np.array([meta['LUT']['VRI']['SPECIES_CD_1']['SX']])
 
-    #         # Populate
-    #         for iStand0 in range(meta['Project']['N Stand']):
+            # Populate
+            for iStand0 in range(meta['Project']['N Stand']):
 
-    #             if flag_subset==1:
-    #                 iStand=meta['Project']['iKeep'][iStand0]
-    #             else:
-    #                 iStand=iStand0
+                if flag_subset==1:
+                    iStand=meta['Project']['iKeep'][iStand0]
+                else:
+                    iStand=iStand0
 
-    #             if np.isin(ba['Spc_CD1'][iStand0],ids):
-    #                 if zSPL[iStand]>0:
-    #                     spl['SI_SPL'][iStand0]=zSPL[iStand]
+                if np.isin(ba['Spc_CD1'][iStand0],ids):
+                    if zSPL[iStand]>0:
+                        spl['SI_SPL'][iStand0]=zSPL[iStand]
 
-    #     del zSPL
+        del zSPL
 
-    # garc.collect()
+    garc.collect()
 
     #--------------------------------------------------------------------------
     # Best-available site index
     #--------------------------------------------------------------------------
 
-    # NEW:
+    # # NEW:
 
-    # Populate dictionary with nearest estimate
-    zT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
-    zT['Data']=zT['Data'].astype(float)/10
-    zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
-    zW['Data']=zW['Data'].astype(float)
+    # # Populate dictionary with nearest estimate
+    # zT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
+    # zT['Data']=zT['Data'].astype(float)/10
+    # zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+    # zW['Data']=zW['Data'].astype(float)
 
-    x=zT['X'][0,:]
-    y=zT['Y'][:,0]
-    ix=np.zeros(meta['Project']['N Stand'],dtype=int)
-    iy=np.zeros(meta['Project']['N Stand'],dtype=int)
-    for iStand in range(meta['Project']['N Stand']):
-        adx=np.abs(geos['Sparse']['X'][iStand]-x)
-        ady=np.abs(geos['Sparse']['Y'][iStand]-y)
-        ix[iStand]=np.where(adx==np.min(adx))[0]
-        iy[iStand]=np.where(ady==np.min(ady))[0]
-    ind=tuple([iy,ix])
-    del x,y
+    # x=zT['X'][0,:]
+    # y=zT['Y'][:,0]
+    # ix=np.zeros(meta['Project']['N Stand'],dtype=int)
+    # iy=np.zeros(meta['Project']['N Stand'],dtype=int)
+    # for iStand in range(meta['Project']['N Stand']):
+    #     adx=np.abs(geos['Sparse']['X'][iStand]-x)
+    #     ady=np.abs(geos['Sparse']['Y'][iStand]-y)
+    #     ix[iStand]=np.where(adx==np.min(adx))[0]
+    #     iy[iStand]=np.where(ady==np.min(ady))[0]
+    # ind=tuple([iy,ix])
+    # del x,y
 
-    beta=[-8.00,3.0,0.06]
-    si_hat=beta[0]+beta[1]*zT['Data'][ind]+beta[2]*zW['Data'][ind]
-    ba['SI']=si_hat.astype('int32')
-    basp=[]
+    # beta=[-8.00,3.0,0.06]
+    # si_hat=beta[0]+beta[1]*zT['Data'][ind]+beta[2]*zW['Data'][ind]
+    # ba['SI']=si_hat.astype('int32')
+    # ba_Source=[]
 
     # OLD:
 
-    # ba['SI SPL']=spl['SI_SPL']
+    ba['SI SPL']=spl['SI_SPL']
 
-    # # Populate with site productivity layer
-    # ind=np.where( (spl['SI_SPL']>5) )[0]
-    # ba['SI'][ind]=spl['SI_SPL'][ind]
-    # basp['SI']['From site productivity layer']=ind.size/ba['SI'].size*100
+    # Populate with site productivity layer
+    ind=np.where( (spl['SI_SPL']>5) )[0]
+    ba['SI'][ind]=spl['SI_SPL'][ind]
+    ba_Source['SI']['From site productivity layer']=ind.size/ba['SI'].size*100
 
-    # # Populate with SI from forest cover inventory
-    # N_tot=0
-    # for iStand0 in range(meta['Project']['N Stand']):
+    # Populate with SI from forest cover inventory
+    N_tot=0
+    for iStand0 in range(meta['Project']['N Stand']):
 
-    #     if flag_subset==1:
-    #         iStand=meta['Project']['iKeep'][iStand0]
-    #     else:
-    #         iStand=iStand0
+        if flag_subset==1:
+            iStand=meta['Project']['iKeep'][iStand0]
+        else:
+            iStand=iStand0
 
-    #     if ba['SI'][iStand0]>0:
-    #         # Already populated with Site Productivity Layer
-    #         continue
+        if ba['SI'][iStand0]>0:
+            # Already populated with Site Productivity Layer
+            continue
 
-    #     if idx['fcinv'][iStand]==None:
-    #         # FC layer info unavailable
-    #         continue
+        if idx['fcinv'][iStand]==None:
+            # FC layer info unavailable
+            continue
 
-    #     ind0=idx['fcinv'][iStand]['Index'][0]
-    #     if fcinv['SITE_INDEX'][ind0]>0:
-    #         # Populate with FC layer info
-    #         ba['SI'][iStand0]=fcinv['SITE_INDEX'][ind0]
-    #         N_tot=N_tot+ind0.size
+        ind0=idx['fcinv'][iStand]['Index'][0]
+        if fcinv['SITE_INDEX'][ind0]>0:
+            # Populate with FC layer info
+            ba['SI'][iStand0]=fcinv['SITE_INDEX'][ind0]
+            N_tot=N_tot+ind0.size
 
-    # basp['SI']['From FC Inventory']=N_tot/ba['SI'].size*100
+    ba_Source['SI']['From FC Inventory']=N_tot/ba['SI'].size*100
 
-    # # Where Productivity Layer and Forest Cover are missing, try populating with
-    # # the average value from each project
-    # if flag_projects==1:
-    #     ind=np.where(ba['SI']<5)[0]
-    #     u=np.unique(sxy['ID_atu_polygons'][ind])
-    #     N_tot=0
-    #     for i in range(u.size):
-    #         iGood=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']>5))[0]
-    #         iBad=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']<=5))[0]
-    #         if (iGood.size!=0) & (iBad.size!=0):
-    #             mu=np.mean(ba['SI'][iGood])
-    #             #print(mu)
-    #             ba['SI'][iBad]=mu
-    #             N_tot=N_tot+iGood.size
-    #     basp['SI']['From treatment area average']=N_tot/ba['SI'].size*100
+    # Where Productivity Layer and Forest Cover are missing, try populating with
+    # the average value from each project
+    if flag_projects==1:
+        ind=np.where(ba['SI']<5)[0]
+        u=np.unique(sxy['ID_atu_polygons'][ind])
+        N_tot=0
+        for i in range(u.size):
+            iGood=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']>5))[0]
+            iBad=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']<=5))[0]
+            if (iGood.size!=0) & (iBad.size!=0):
+                mu=np.mean(ba['SI'][iGood])
+                #print(mu)
+                ba['SI'][iBad]=mu
+                N_tot=N_tot+iGood.size
+        ba_Source['SI']['From treatment area average']=N_tot/ba['SI'].size*100
 
-    # # Where there is no FC estimate and no SPL layer, polulate with VRI estimate
-    # N_tot=0
-    # for iStand0 in range(meta['Project']['N Stand']):
+    # Where there is no FC estimate and no SPL layer, polulate with VRI estimate
+    N_tot=0
+    for iStand0 in range(meta['Project']['N Stand']):
 
-    #     if flag_subset==1:
-    #         iStand=meta['Project']['iKeep'][iStand0]
-    #     else:
-    #         iStand=iStand0
+        if flag_subset==1:
+            iStand=meta['Project']['iKeep'][iStand0]
+        else:
+            iStand=iStand0
 
-    #     if idx['vri'][iStand]==None:
-    #         continue
+        if idx['vri'][iStand]==None:
+            continue
 
-    #     ind0=idx['vri'][iStand]['Index'][0]
-    #     ba['SI VRI'][iStand0]=vri['SITE_INDEX'][ind0]
+        ind0=idx['vri'][iStand]['Index'][0]
+        ba['SI VRI'][iStand0]=vri['SITE_INDEX'][ind0]
 
-    #     if ba['SI'][iStand0]>0:
-    #         continue
+        if ba['SI'][iStand0]>0:
+            continue
 
-    #     if vri['SITE_INDEX'][ind0]>0:
-    #         ba['SI'][iStand0]=vri['SITE_INDEX'][ind0]
-    #         N_tot=N_tot+ind0.size
+        if vri['SITE_INDEX'][ind0]>0:
+            ba['SI'][iStand0]=vri['SITE_INDEX'][ind0]
+            N_tot=N_tot+ind0.size
 
-    # basp['SI']['From VRI']=N_tot/ba['SI'].size*100
+    ba_Source['SI']['From VRI']=N_tot/ba['SI'].size*100
 
-    # # Where there is nothing, populate with regional averages
+    # Where there is nothing, populate with regional averages
 
-    # iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
-    # iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
-    # ba['SI'][iToFill1]=np.mean(ba['SI'][iGood])
+    iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
+    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
+    ba['SI'][iToFill1]=np.mean(ba['SI'][iGood])
 
-    # iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
-    # iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
-    # ba['SI'][iToFill2]=np.mean(ba['SI'][iGood])
+    iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
+    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
+    ba['SI'][iToFill2]=np.mean(ba['SI'][iGood])
 
-    # basp['SI']['From regional averages']=(iToFill1.size+iToFill2.size)/ba['SI'].size*100
+    ba_Source['SI']['From regional averages']=(iToFill1.size+iToFill2.size)/ba['SI'].size*100
 
-    # # Where there are still missing values assume mean of whole dataset
-    # ind=np.where(ba['SI']<0)[0]
-    # if ind.size>0:
-    #     iGood=np.where( (ba['SI']>0) )[0]
-    #     ba['SI'][ind]=np.mean(ba['SI'][iGood])
-    #     basp['SI']['From global average']=ind.size/ba['SI'].size*100
+    # Where there are still missing values assume mean of whole dataset
+    ind=np.where(ba['SI']<0)[0]
+    if ind.size>0:
+        iGood=np.where( (ba['SI']>0) )[0]
+        ba['SI'][ind]=np.mean(ba['SI'][iGood])
+        ba_Source['SI']['From global average']=ind.size/ba['SI'].size*100
 
-    # # Convert to integer (for BatchTIPSY)
-    # ba['SI']=np.round(ba['SI']).astype(int)
+    # Convert to integer (for BatchTIPSY)
+    ba['SI']=np.round(ba['SI']).astype(int)
 
-    return ba,basp
+    #--------------------------------------------------------------------------
+    # Import probability of harvest weight
+    #--------------------------------------------------------------------------
+
+    pthin=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\ProbabilityOfHarvest.tif'
+    z=gis.OpenGeoTiff(pthin)
+
+    if 'xlim' in geos:
+
+        # Tiled project, we can just clip rasters to tile boundaries -> goes super fast
+
+        z=gis.ClipRasterByXYLimits(z,geos['xlim'],geos['ylim'])
+        z=z['Data'].flatten()
+        for iStand0 in range(meta['Project']['N Stand']):
+            if flag_subset==1:
+                iStand=meta['Project']['iKeep'][iStand0]
+            else:
+                iStand=iStand0
+            ba['P Harvest Weight'][iStand0]=z[iStand]
+
+    else:
+
+        # Not a tiled project
+
+        # Populate dictionary with nearest estimate
+        x=z['X'][0,:]
+        y=z['Y'][:,0]
+
+        ix=np.zeros(meta['Project']['N Stand'],dtype=int)
+        iy=np.zeros(meta['Project']['N Stand'],dtype=int)
+        for iStand0 in range(meta['Project']['N Stand']):
+            if flag_subset==1:
+                iStand=meta['Project']['iKeep'][iStand0]
+            else:
+                iStand=iStand0
+            adx=np.abs(geos['Sparse']['X'][iStand]-x)
+            ady=np.abs(geos['Sparse']['Y'][iStand]-y)
+            ix[iStand0]=np.where(adx==np.min(adx))[0]
+            iy[iStand0]=np.where(ady==np.min(ady))[0]
+        ind=tuple([iy,ix])
+        del x,y
+
+        z=np.squeeze(z['Data'])
+        z=z[ind]
+
+        for iStand0 in range(meta['Project']['N Stand']):
+            if flag_subset==1:
+                iStand=meta['Project']['iKeep'][iStand0]
+            else:
+                iStand=iStand0
+            ba['P Harvest Weight'][iStand0]=z[iStand]
+
+    # It is giving in per000/yr, convert to annual probability
+    ba['P Harvest Weight'][iStand0]=ba['P Harvest Weight'][iStand0].astype('float64')/1000
+
+    # Convert to a relative weight
+    P_Harvest_Max=0.486
+    ba['P Harvest Weight'][iStand0]=ba['P Harvest Weight'][iStand0]/P_Harvest_Max
+
+    return ba,ba_Source
 
 #%% Get unique growth curves
 
@@ -3121,7 +3186,7 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
 
         # Specify flag indicating whether subsetting occurs
         if np.isin('iKeep',list(meta['Project'].keys()))==True:
-            thlb[iScn]['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']),dtype=np.int8)
+            thlb[iScn]['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int8')
             thlb[iScn]['Baseline']=thlb[iScn]['Actual'].copy()
             thlb[iScn]['Actual WithDef']=thlb[iScn]['Actual'].copy()
             thlb[iScn]['Baseline WithDef']=thlb[iScn]['Actual'].copy()
@@ -3132,7 +3197,7 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
         #------------------------------------------------------------------------------
 
         # Initially assume everything is in the THLB
-        thlb[iScn]['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']),dtype=np.int8)
+        thlb[iScn]['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int8')
         thlb[iScn]['Baseline']=thlb[iScn]['Actual'].copy()
         thlb[iScn]['Actual WithDef']=thlb[iScn]['Actual'].copy()
         thlb[iScn]['Baseline WithDef']=thlb[iScn]['Actual'].copy()
@@ -3400,7 +3465,7 @@ def ExportSummaryActivities_ByMP(meta,par,atu_multipolygons,uMP,geos,atu,op,burn
         for i in range(1000):
             if atu_multipolygons[i][k]!=None:
                 break
-        if (type(atu_multipolygons[i][k])==np.int32) | (type(atu_multipolygons[i][k])==int) | (type(atu_multipolygons[i][k])==np.float64):
+        if (type(atu_multipolygons[i][k])=='int32') | (type(atu_multipolygons[i][k])==int) | (type(atu_multipolygons[i][k])=='float64'):
             dMP[k]=-999*np.ones(dMP['ID_Multipolygon'].size)
         else:
             dMP[k]=np.array(['' for _ in range(dMP['ID_Multipolygon'].size)],dtype=object)
@@ -3409,7 +3474,7 @@ def ExportSummaryActivities_ByMP(meta,par,atu_multipolygons,uMP,geos,atu,op,burn
     for i in range(len(atu_multipolygons)):
         for k in vr:
             if atu_multipolygons[i][k]==None:
-                if (type(dMP[k][i])==np.int32) | (type(dMP[k][i])==int) | (type(dMP[k][i])==np.float64):
+                if (type(dMP[k][i])=='int32') | (type(dMP[k][i])==int) | (type(dMP[k][i])=='float64'):
                     dMP[k][i]=np.nan
                 else:
                     dMP[k][i]=''
@@ -4843,19 +4908,19 @@ def ForestCover_AddArchive(meta,fcinv,fcsilv):
     #pn=meta['LUT']['FC_I']['SILV_POLYGON_NUMBER'][dFC['SILV_POLYGON_NO'][ind0][0]]
     #ind2=np.where( (uO[:,0]==dFC['OPENING_ID'][ind0]) & (uO[:,1]==pn) )[0]
 
-    # ind=np.where(atu['OPENING_ID']==np.float32(15241) )[0]
-    # ind=np.where(fcinv['OPENING_ID']==np.float32(15241) )[0]
+    # ind=np.where(atu['OPENING_ID']=='float32'(15241) )[0]
+    # ind=np.where(fcinv['OPENING_ID']=='float32'(15241) )[0]
     #fcinv['REFERENCE_YEAR'][ind]
 
     #ind0=np.where(fcinv['FOREST_COVER_ID']==767135)[0]
 
     n=int(1e6)
     dToAdd={}
-    dToAdd['IdxToSXY']=np.zeros(n,dtype=np.int32)
-    dToAdd['REFERENCE_YEAR']=np.zeros(n,dtype=np.float32)
-    dToAdd['FOREST_COVER_ID']=np.zeros(n,dtype=np.float32)
-    dToAdd['SILV_POLYGON_NUMBER']=np.zeros(n,dtype=np.float32)
-    dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype=np.float32)
+    dToAdd['IdxToSXY']=np.zeros(n,dtype='int32')
+    dToAdd['REFERENCE_YEAR']=np.zeros(n,dtype='float32')
+    dToAdd['FOREST_COVER_ID']=np.zeros(n,dtype='float32')
+    dToAdd['SILV_POLYGON_NUMBER']=np.zeros(n,dtype='float32')
+    dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype='float32')
     dToAdd['STOCKING_STATUS_CODE']=-999*np.ones(n)
     dToAdd['STOCKING_TYPE_CODE']=-999*np.ones(n)
     dToAdd['I_TOTAL_STEMS_PER_HA']=-999*np.ones(n)
@@ -4999,11 +5064,11 @@ def ForestCover_AddArchive(meta,fcinv,fcsilv):
 
     n=int(1e6)
     dToAdd={}
-    dToAdd['IdxToSXY']=np.zeros(n,dtype=np.int32)
-    dToAdd['FOREST_COVER_ID']=np.zeros(n,dtype=np.float32)
-    dToAdd['SILV_POLYGON_NUMBER']=np.zeros(n,dtype=np.float32)
-    dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype=np.float32)
-    dToAdd['REFERENCE_YEAR']=np.zeros(n,dtype=np.float32)
+    dToAdd['IdxToSXY']=np.zeros(n,dtype='int32')
+    dToAdd['FOREST_COVER_ID']=np.zeros(n,dtype='float32')
+    dToAdd['SILV_POLYGON_NUMBER']=np.zeros(n,dtype='float32')
+    dToAdd['SILV_POLYGON_AREA']=np.zeros(n,dtype='float32')
+    dToAdd['REFERENCE_YEAR']=np.zeros(n,dtype='float32')
     dToAdd['STOCKING_STATUS_CODE']=-999*np.ones(n)
     dToAdd['STOCKING_TYPE_CODE']=-999*np.ones(n)
     dToAdd['S_TOTAL_STEMS_PER_HA']=-999*np.ones(n)
@@ -5412,7 +5477,7 @@ def DefineTypeOfStandEstablishment(meta,dmec):
                 dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
                 dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],ID_GapFill)
                 dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],Mort_GapFill)
-                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
                 for v in meta['Core']['StringsToFill']:
                     dmec[iStand][v]=np.append(dmec[iStand][v],-999)
                 dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
@@ -5443,7 +5508,7 @@ def DefineTypeOfStandEstablishment(meta,dmec):
             dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
             dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],ID_GapFill)
             dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],Mort_GapFill)
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
             dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
             for v in meta['Core']['StringsToFill']:
                 dmec[iStand][v]=np.append(dmec[iStand][v],-999)
@@ -5460,7 +5525,7 @@ def DefineTypeOfStandEstablishment(meta,dmec):
             #        dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
             #        dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],ID_GapFill)
             #        dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],Mort_GapFill)
-            #        dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+            #        dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
             #        for v in meta['Core']['StringsToFill']:
             #            dmec[iStand][v]=np.append(dmec[iStand][v],-999)
             #        dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
@@ -5563,7 +5628,7 @@ def DefineTypeOfStandEstablishment(meta,dmec):
 #                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
 #                dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],ID_GapFill)
 #                dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],Mort_GapFill)
-#                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+#                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
 #                dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
 #                for v in meta['Core']['StringsToFill']:
 #                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
@@ -5580,7 +5645,7 @@ def DefineTypeOfStandEstablishment(meta,dmec):
 #                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
 #                dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],ID_GapFill)
 #                dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],Mort_GapFill)
-#                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+#                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
 #                dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
 #                for v in meta['Core']['StringsToFill']:
 #                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
@@ -5594,7 +5659,7 @@ def DefineTypeOfStandEstablishment(meta,dmec):
 #                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
 #                dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],ID_GapFill)
 #                dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],Mort_GapFill)
-#                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],np.array(0,dtype='int16'))
+#                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
 #                dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
 #                for v in meta['Core']['StringsToFill']:
 #                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
@@ -5696,7 +5761,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT])
                     dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Harvest'])
                     dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],100)
-                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                     if 'IndIncitingEvent' in dmec[iScn][iS]:
                         dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                     for v in meta['Core']['StringsToFill']:
@@ -5706,7 +5771,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+1)
                     dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],100)
-                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                     if 'IndIncitingEvent' in dmec[iScn][iS]:
                         dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                     for v in meta['Core']['StringsToFill']:
@@ -5716,7 +5781,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2)
                     dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Planting'])
                     dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],0)
-                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                     if 'IndIncitingEvent' in dmec[iScn][iS]:
                         dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                     for v in meta['Core']['StringsToFill']:
@@ -5730,7 +5795,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                         dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2+iR*RotationLength)
                         dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Harvest'])
                         dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],100)
-                        dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                        dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                         if 'IndIncitingEvent' in dmec[iScn][iS]:
                             dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                         for v in meta['Core']['StringsToFill']:
@@ -5752,7 +5817,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT])
                     dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Harvest'])
                     dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],100)
-                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                     if 'IndIncitingEvent' in dmec[iScn][iS]:
                         dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                     for v in meta['Core']['StringsToFill']:
@@ -5762,7 +5827,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+1)
                     dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
                     dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],100)
-                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                     if 'IndIncitingEvent' in dmec[iScn][iS]:
                         dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                     for v in meta['Core']['StringsToFill']:
@@ -5772,7 +5837,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2)
                     dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Planting'])
                     dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],0)
-                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                    dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                     if 'IndIncitingEvent' in dmec[iScn][iS]:
                         dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                     for v in meta['Core']['StringsToFill']:
@@ -5786,7 +5851,7 @@ def AddLandSurfaceChangesToDMEC(meta,dmec,lsc):
                         dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2+iR*RotationLength)
                         dmec[iScn][iS]['ID_Type']=np.append(dmec[iScn][iS]['ID_Type'],meta['LUT']['Dist']['Harvest'])
                         dmec[iScn][iS]['MortalityFactor']=np.append(dmec[iScn][iS]['MortalityFactor'],100)
-                        dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],0)
+                        dmec[iScn][iS]['GrowthFactor']=np.append(dmec[iScn][iS]['GrowthFactor'],-999)
                         if 'IndIncitingEvent' in dmec[iScn][iS]:
                             dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
                         for v in meta['Core']['StringsToFill']:
@@ -6004,6 +6069,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
 
     #--------------------------------------------------------------------------
     # Indicate which scenario is affected by events
+    # *** Make sure scenarios have been defined as "baseline" or "actual" ***
     #--------------------------------------------------------------------------
 
     for iScn in range(meta['Project']['N Scenario']):
@@ -6172,7 +6238,8 @@ def ProcessProjectInputs2(meta,ba,dmec):
 
         for iStand in range(meta['Project']['N Stand']):
 
-            c=0
+            # Index to growth curve
+            cnt_gc=0
 
             # Initialize growth curve identifiers in DMEC
             dmec[iScn][iStand]['ID_GC']=1*np.ones(dmec[iScn][iStand]['Year'].size)
@@ -6183,31 +6250,31 @@ def ProcessProjectInputs2(meta,ba,dmec):
                 gc[iScn][iStand][key]=-999*np.ones(12)
 
             #--------------------------------------------------------------------------
-            # Add pre-modern inventory curve
+            # Add pre-modern growth curve
             #--------------------------------------------------------------------------
 
-            gc[iScn][iStand]['ID_Stand'][c]=iStand
-            gc[iScn][iStand]['ID_Scn'][c]=iScn
-            gc[iScn][iStand]['ID_GC'][c]=1
-            gc[iScn][iStand]['regeneration_method'][c]=meta['LUT']['TIPSY']['regeneration_method']['N']
-            gc[iScn][iStand]['s1'][c]=ba['Spc_CD1'][iStand]
-            gc[iScn][iStand]['p1'][c]=ba['Spc_Pct1'][iStand]
-            gc[iScn][iStand]['i1'][c]=ba['SI'][iStand]
-            gc[iScn][iStand]['s2'][c]=ba['Spc_CD2'][iStand]
-            gc[iScn][iStand]['p2'][c]=ba['Spc_Pct2'][iStand]
-            gc[iScn][iStand]['s3'][c]=ba['Spc_CD3'][iStand]
-            gc[iScn][iStand]['p3'][c]=ba['Spc_Pct3'][iStand]
-            gc[iScn][iStand]['s4'][c]=ba['Spc_CD4'][iStand]
-            gc[iScn][iStand]['p4'][c]=ba['Spc_Pct4'][iStand]
-            gc[iScn][iStand]['s5'][c]=ba['Spc_CD5'][iStand]
-            gc[iScn][iStand]['p5'][c]=ba['Spc_Pct5'][iStand]
-            gc[iScn][iStand]['init_density'][c]=2000
-            gc[iScn][iStand]['regen_delay'][c]=2
-            gc[iScn][iStand]['oaf1'][c]=0.85
-            gc[iScn][iStand]['oaf2'][c]=0.95
-            gc[iScn][iStand]['bec_zone'][c]=14#vri['BEC_ZONE_CODE'][iStand]
-            gc[iScn][iStand]['FIZ'][c]=1#ba['FIZ'][iStand]
-            c=c+1
+            gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
+            gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
+            gc[iScn][iStand]['ID_GC'][cnt_gc]=1
+            gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['N']
+            gc[iScn][iStand]['s1'][cnt_gc]=ba['Spc_CD1'][iStand]
+            gc[iScn][iStand]['p1'][cnt_gc]=ba['Spc_Pct1'][iStand]
+            gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
+            gc[iScn][iStand]['s2'][cnt_gc]=ba['Spc_CD2'][iStand]
+            gc[iScn][iStand]['p2'][cnt_gc]=ba['Spc_Pct2'][iStand]
+            gc[iScn][iStand]['s3'][cnt_gc]=ba['Spc_CD3'][iStand]
+            gc[iScn][iStand]['p3'][cnt_gc]=ba['Spc_Pct3'][iStand]
+            gc[iScn][iStand]['s4'][cnt_gc]=ba['Spc_CD4'][iStand]
+            gc[iScn][iStand]['p4'][cnt_gc]=ba['Spc_Pct4'][iStand]
+            gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
+            gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
+            gc[iScn][iStand]['init_density'][cnt_gc]=2000
+            gc[iScn][iStand]['regen_delay'][cnt_gc]=2
+            gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+            gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
+            gc[iScn][iStand]['bec_zone'][cnt_gc]=14#vri['BEC_ZONE_CODE'][iStand]
+            gc[iScn][iStand]['FIZ'][cnt_gc]=1#ba['FIZ'][iStand]
+            cnt_gc=cnt_gc+1
 
             #--------------------------------------------------------------------------
             # Add events from disturbance/management event history
@@ -6253,72 +6320,72 @@ def ProcessProjectInputs2(meta,ba,dmec):
 
                         dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
 
-                        gc[iScn][iStand]['ID_Stand'][c]=iStand
-                        gc[iScn][iStand]['ID_Scn'][c]=iScn
-                        gc[iScn][iStand]['ID_GC'][c]=dmec[iScn][iStand]['ID_GC'][iYr]
-                        gc[iScn][iStand]['regeneration_method'][c]=meta['LUT']['TIPSY']['regeneration_method']['P']
-                        gc[iScn][iStand]['init_density'][c]=int(PlantingDensity)
-                        gc[iScn][iStand]['regen_delay'][c]=0
-                        gc[iScn][iStand]['i1'][c]=ba['SI'][iStand]
+                        gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
+                        gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
+                        gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
+                        gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
+                        gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                        gc[iScn][iStand]['regen_delay'][cnt_gc]=0
+                        gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
 
                         if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
 
                             # *** Adjust site index if it is energy production ***
                             if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]==meta['LUT']['VRI']['SPECIES_CD_1']['AT']):
-                                gc[iScn][iStand]['i1'][c]=30
-                                gc[iScn][iStand]['init_density'][c]=2000
+                                gc[iScn][iStand]['i1'][cnt_gc]=30
+                                gc[iScn][iStand]['init_density'][cnt_gc]=2000
 
                             # Using planting info if it exists
-                            gc[iScn][iStand]['s1'][c]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
-                            gc[iScn][iStand]['p1'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
-                            gc[iScn][iStand]['gain1'][c]=dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr]
-                            gc[iScn][iStand]['selage1'][c]=10
+                            gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
+                            gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
+                            gc[iScn][iStand]['gain1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr]
+                            gc[iScn][iStand]['selage1'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s2'][c]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
-                            gc[iScn][iStand]['p2'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
-                            gc[iScn][iStand]['gain2'][c]=dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr]
-                            gc[iScn][iStand]['selage2'][c]=10
+                            gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
+                            gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
+                            gc[iScn][iStand]['gain2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr]
+                            gc[iScn][iStand]['selage2'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s3'][c]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
-                            gc[iScn][iStand]['p3'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
-                            gc[iScn][iStand]['gain3'][c]=dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr]
-                            gc[iScn][iStand]['selage3'][c]=10
+                            gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
+                            gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
+                            gc[iScn][iStand]['gain3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr]
+                            gc[iScn][iStand]['selage3'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s4'][c]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
-                            gc[iScn][iStand]['p4'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
-                            gc[iScn][iStand]['gain4'][c]=dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr]
-                            gc[iScn][iStand]['selage4'][c]=10
+                            gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
+                            gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
+                            gc[iScn][iStand]['gain4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr]
+                            gc[iScn][iStand]['selage4'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s5'][c]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
-                            gc[iScn][iStand]['p5'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
-                            gc[iScn][iStand]['gain5'][c]=dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr]
-                            gc[iScn][iStand]['selage5'][c]=10
+                            gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
+                            gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
+                            gc[iScn][iStand]['gain5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr]
+                            gc[iScn][iStand]['selage5'][cnt_gc]=10
 
                         else:
 
                             # Otherwise assume best-available inventory spc. comp.
-                            gc[iScn][iStand]['s1'][c]=ba['Spc_CD1'][iStand]
-                            gc[iScn][iStand]['p1'][c]=ba['Spc_Pct1'][iStand]
+                            gc[iScn][iStand]['s1'][cnt_gc]=ba['Spc_CD1'][iStand]
+                            gc[iScn][iStand]['p1'][cnt_gc]=ba['Spc_Pct1'][iStand]
 
-                            gc[iScn][iStand]['s2'][c]=ba['Spc_CD2'][iStand]
-                            gc[iScn][iStand]['p2'][c]=ba['Spc_Pct2'][iStand]
+                            gc[iScn][iStand]['s2'][cnt_gc]=ba['Spc_CD2'][iStand]
+                            gc[iScn][iStand]['p2'][cnt_gc]=ba['Spc_Pct2'][iStand]
 
-                            gc[iScn][iStand]['s3'][c]=ba['Spc_CD3'][iStand]
-                            gc[iScn][iStand]['p3'][c]=ba['Spc_Pct3'][iStand]
+                            gc[iScn][iStand]['s3'][cnt_gc]=ba['Spc_CD3'][iStand]
+                            gc[iScn][iStand]['p3'][cnt_gc]=ba['Spc_Pct3'][iStand]
 
-                            gc[iScn][iStand]['s4'][c]=ba['Spc_CD4'][iStand]
-                            gc[iScn][iStand]['p4'][c]=ba['Spc_Pct4'][iStand]
+                            gc[iScn][iStand]['s4'][cnt_gc]=ba['Spc_CD4'][iStand]
+                            gc[iScn][iStand]['p4'][cnt_gc]=ba['Spc_Pct4'][iStand]
 
-                            gc[iScn][iStand]['s5'][c]=ba['Spc_CD5'][iStand]
-                            gc[iScn][iStand]['p5'][c]=ba['Spc_Pct5'][iStand]
+                            gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
+                            gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
 
-                        gc[iScn][iStand]['oaf1'][c]=0.85
-                        gc[iScn][iStand]['oaf2'][c]=0.95
-                        gc[iScn][iStand]['bec_zone'][c]=14 #vri['BEC_ZONE_CODE'][iStand]
-                        gc[iScn][iStand]['FIZ'][c]=1 #ba['FIZ'][iStand]
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                        gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
+                        gc[iScn][iStand]['bec_zone'][cnt_gc]=14 #vri['BEC_ZONE_CODE'][iStand]
+                        gc[iScn][iStand]['FIZ'][cnt_gc]=1 #ba['FIZ'][iStand]
 
                         # Update counter
-                        c=c+1
+                        cnt_gc=cnt_gc+1
 
                 elif (meta['Project']['Special growth curve methods']=='H'):
 
@@ -6331,57 +6398,57 @@ def ProcessProjectInputs2(meta,ba,dmec):
 
                         dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
 
-                        gc[iScn][iStand]['ID_Stand'][c]=iStand
-                        gc[iScn][iStand]['ID_Scn'][c]=iScn
-                        gc[iScn][iStand]['ID_GC'][c]=dmec[iScn][iStand]['ID_GC'][iYr]
-                        gc[iScn][iStand]['regeneration_method'][c]=meta['LUT']['TIPSY']['regeneration_method']['P']
-                        gc[iScn][iStand]['init_density'][c]=int(PlantingDensity)
-                        gc[iScn][iStand]['regen_delay'][c]=0
-                        gc[iScn][iStand]['i1'][c]=ba['SI'][iStand]
+                        gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
+                        gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
+                        gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
+                        gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
+                        gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                        gc[iScn][iStand]['regen_delay'][cnt_gc]=0
+                        gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
 
                         if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
 
                             # Using planting info if it exists
-                            gc[iScn][iStand]['s1'][c]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
-                            gc[iScn][iStand]['p1'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
+                            gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
+                            gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
 
-                            gc[iScn][iStand]['s2'][c]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
-                            gc[iScn][iStand]['p2'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
+                            gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
+                            gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
 
-                            gc[iScn][iStand]['s3'][c]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
-                            gc[iScn][iStand]['p3'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
+                            gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
+                            gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
 
-                            gc[iScn][iStand]['s4'][c]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
-                            gc[iScn][iStand]['p4'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
+                            gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
+                            gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
 
-                            gc[iScn][iStand]['s5'][c]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
-                            gc[iScn][iStand]['p5'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
+                            gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
+                            gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
 
                         else:
 
                             # Otherwise assume best-available inventory spc. comp.
-                            gc[iScn][iStand]['s1'][c]=ba['Spc_CD1'][iStand]
-                            gc[iScn][iStand]['p1'][c]=ba['Spc_Pct1'][iStand]
+                            gc[iScn][iStand]['s1'][cnt_gc]=ba['Spc_CD1'][iStand]
+                            gc[iScn][iStand]['p1'][cnt_gc]=ba['Spc_Pct1'][iStand]
 
-                            gc[iScn][iStand]['s2'][c]=ba['Spc_CD2'][iStand]
-                            gc[iScn][iStand]['p2'][c]=ba['Spc_Pct2'][iStand]
+                            gc[iScn][iStand]['s2'][cnt_gc]=ba['Spc_CD2'][iStand]
+                            gc[iScn][iStand]['p2'][cnt_gc]=ba['Spc_Pct2'][iStand]
 
-                            gc[iScn][iStand]['s3'][c]=ba['Spc_CD3'][iStand]
-                            gc[iScn][iStand]['p3'][c]=ba['Spc_Pct3'][iStand]
+                            gc[iScn][iStand]['s3'][cnt_gc]=ba['Spc_CD3'][iStand]
+                            gc[iScn][iStand]['p3'][cnt_gc]=ba['Spc_Pct3'][iStand]
 
-                            gc[iScn][iStand]['s4'][c]=ba['Spc_CD4'][iStand]
-                            gc[iScn][iStand]['p4'][c]=ba['Spc_Pct4'][iStand]
+                            gc[iScn][iStand]['s4'][cnt_gc]=ba['Spc_CD4'][iStand]
+                            gc[iScn][iStand]['p4'][cnt_gc]=ba['Spc_Pct4'][iStand]
 
-                            gc[iScn][iStand]['s5'][c]=ba['Spc_CD5'][iStand]
-                            gc[iScn][iStand]['p5'][c]=ba['Spc_Pct5'][iStand]
+                            gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
+                            gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
 
-                        gc[iScn][iStand]['oaf1'][c]=0.85
-                        gc[iScn][iStand]['oaf2'][c]=0.95
-                        gc[iScn][iStand]['bec_zone'][c]=14 #vri['BEC_ZONE_CODE'][iStand]
-                        gc[iScn][iStand]['FIZ'][c]=1 #ba['FIZ'][iStand]
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                        gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
+                        gc[iScn][iStand]['bec_zone'][cnt_gc]=14 #vri['BEC_ZONE_CODE'][iStand]
+                        gc[iScn][iStand]['FIZ'][cnt_gc]=1 #ba['FIZ'][iStand]
 
                         # Update counter
-                        c=c+1
+                        cnt_gc=cnt_gc+1
 
                 elif meta['Project']['Special growth curve methods']=='NOSE':
 
@@ -6410,13 +6477,13 @@ def ProcessProjectInputs2(meta,ba,dmec):
                                 print('Problem with NOSE project - cant find an inciting event (unitentified SE Type)!')
                                 dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
 
-                            gc[iScn][iStand]['regeneration_method'][c]=meta['LUT']['TIPSY']['regeneration_method']['N']
+                            gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['N']
                             if meta['Project']['SE Type'][iStand]==3:
-                                gc[iScn][iStand]['init_density'][c]=200
-                                gc[iScn][iStand]['regen_delay'][c]=5
+                                gc[iScn][iStand]['init_density'][cnt_gc]=200
+                                gc[iScn][iStand]['regen_delay'][cnt_gc]=5
                             else:
-                                gc[iScn][iStand]['init_density'][c]=1800
-                                gc[iScn][iStand]['regen_delay'][c]=1
+                                gc[iScn][iStand]['init_density'][cnt_gc]=1800
+                                gc[iScn][iStand]['regen_delay'][cnt_gc]=1
 
                         else:
 
@@ -6425,67 +6492,67 @@ def ProcessProjectInputs2(meta,ba,dmec):
                             # Growth curve update: Project scenarios with planting at iYr
                             dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
 
-                            gc[iScn][iStand]['regeneration_method'][c]=meta['LUT']['TIPSY']['regeneration_method']['P']
-                            gc[iScn][iStand]['init_density'][c]=int(PlantingDensity)
-                            gc[iScn][iStand]['regen_delay'][c]=0
+                            gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
+                            gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                            gc[iScn][iStand]['regen_delay'][cnt_gc]=0
 
-                        gc[iScn][iStand]['ID_Stand'][c]=iStand
-                        gc[iScn][iStand]['ID_Scn'][c]=iScn
-                        gc[iScn][iStand]['ID_GC'][c]=dmec[iScn][iStand]['ID_GC'][iYr]
-                        gc[iScn][iStand]['i1'][c]=ba['SI'][iStand]
-                        gc[iScn][iStand]['oaf1'][c]=0.85
-                        gc[iScn][iStand]['oaf2'][c]=0.95
-                        gc[iScn][iStand]['bec_zone'][c]=ba['BEC_ZONE_CODE'][iStand]
-                        gc[iScn][iStand]['FIZ'][c]=ba['FIZ'][iStand]
+                        gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
+                        gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
+                        gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
+                        gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                        gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
+                        gc[iScn][iStand]['bec_zone'][cnt_gc]=ba['BEC_ZONE_CODE'][iStand]
+                        gc[iScn][iStand]['FIZ'][cnt_gc]=ba['FIZ'][iStand]
 
                         if (np.isin(iScn,meta['Project']['Baseline Indices'])==False) & (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
 
                             # Include genetic gain
-                            gc[iScn][iStand]['s1'][c]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
-                            gc[iScn][iStand]['p1'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
-                            gc[iScn][iStand]['gain1'][c]=int(dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr])
-                            gc[iScn][iStand]['selage1'][c]=10
+                            gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
+                            gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
+                            gc[iScn][iStand]['gain1'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr])
+                            gc[iScn][iStand]['selage1'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s2'][c]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
-                            gc[iScn][iStand]['p2'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
-                            gc[iScn][iStand]['gain2'][c]=int(dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr])
-                            gc[iScn][iStand]['selage2'][c]=10
+                            gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
+                            gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
+                            gc[iScn][iStand]['gain2'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr])
+                            gc[iScn][iStand]['selage2'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s3'][c]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
-                            gc[iScn][iStand]['p3'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
-                            gc[iScn][iStand]['gain3'][c]=int(dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr])
-                            gc[iScn][iStand]['selage3'][c]=10
+                            gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
+                            gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
+                            gc[iScn][iStand]['gain3'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr])
+                            gc[iScn][iStand]['selage3'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s4'][c]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
-                            gc[iScn][iStand]['p4'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
-                            gc[iScn][iStand]['gain4'][c]=int(dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr])
-                            gc[iScn][iStand]['selage4'][c]=10
+                            gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
+                            gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
+                            gc[iScn][iStand]['gain4'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr])
+                            gc[iScn][iStand]['selage4'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s5'][c]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
-                            gc[iScn][iStand]['p5'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
-                            gc[iScn][iStand]['gain5'][c]=int(dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr])
-                            gc[iScn][iStand]['selage5'][c]=10
+                            gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
+                            gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
+                            gc[iScn][iStand]['gain5'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr])
+                            gc[iScn][iStand]['selage5'][cnt_gc]=10
 
                         else:
 
                             # Baseline
-                            gc[iScn][iStand]['s1'][c]=ba['Spc_CD1'][iStand]
-                            gc[iScn][iStand]['p1'][c]=ba['Spc_Pct1'][iStand]
+                            gc[iScn][iStand]['s1'][cnt_gc]=ba['Spc_CD1'][iStand]
+                            gc[iScn][iStand]['p1'][cnt_gc]=ba['Spc_Pct1'][iStand]
 
-                            gc[iScn][iStand]['s2'][c]=ba['Spc_CD2'][iStand]
-                            gc[iScn][iStand]['p2'][c]=ba['Spc_Pct2'][iStand]
+                            gc[iScn][iStand]['s2'][cnt_gc]=ba['Spc_CD2'][iStand]
+                            gc[iScn][iStand]['p2'][cnt_gc]=ba['Spc_Pct2'][iStand]
 
-                            gc[iScn][iStand]['s3'][c]=ba['Spc_CD3'][iStand]
-                            gc[iScn][iStand]['p3'][c]=ba['Spc_Pct3'][iStand]
+                            gc[iScn][iStand]['s3'][cnt_gc]=ba['Spc_CD3'][iStand]
+                            gc[iScn][iStand]['p3'][cnt_gc]=ba['Spc_Pct3'][iStand]
 
-                            gc[iScn][iStand]['s4'][c]=ba['Spc_CD4'][iStand]
-                            gc[iScn][iStand]['p4'][c]=ba['Spc_Pct4'][iStand]
+                            gc[iScn][iStand]['s4'][cnt_gc]=ba['Spc_CD4'][iStand]
+                            gc[iScn][iStand]['p4'][cnt_gc]=ba['Spc_Pct4'][iStand]
 
-                            gc[iScn][iStand]['s5'][c]=ba['Spc_CD5'][iStand]
-                            gc[iScn][iStand]['p5'][c]=ba['Spc_Pct5'][iStand]
+                            gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
+                            gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
 
                         # Update counter
-                        c=c+1
+                        cnt_gc=cnt_gc+1
 
                     #----------------------------------------------------------------------
                     # Planting (obligation)
@@ -6495,61 +6562,123 @@ def ProcessProjectInputs2(meta,ba,dmec):
 
                         dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
 
-                        gc[iScn][iStand]['ID_Stand'][c]=iStand
-                        gc[iScn][iStand]['ID_Scn'][c]=iScn
-                        gc[iScn][iStand]['ID_GC'][c]=dmec[iScn][iStand]['ID_GC'][iYr]
-                        gc[iScn][iStand]['regeneration_method'][c]=meta['LUT']['TIPSY']['regeneration_method']['P']
-                        gc[iScn][iStand]['i1'][c]=ba['SI'][iStand]
-                        gc[iScn][iStand]['init_density'][c]=int(PlantingDensity)
-                        gc[iScn][iStand]['regen_delay'][c]=0
-                        gc[iScn][iStand]['oaf1'][c]=0.85
-                        gc[iScn][iStand]['oaf2'][c]=0.95
-                        gc[iScn][iStand]['bec_zone'][c]=ba['BEC_ZONE_CODE'][iStand]
-                        gc[iScn][iStand]['FIZ'][c]=ba['FIZ'][iStand]
+                        gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
+                        gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
+                        gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
+                        gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
+                        gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
+                        gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                        gc[iScn][iStand]['regen_delay'][cnt_gc]=0
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                        gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
+                        gc[iScn][iStand]['bec_zone'][cnt_gc]=ba['BEC_ZONE_CODE'][iStand]
+                        gc[iScn][iStand]['FIZ'][cnt_gc]=ba['FIZ'][iStand]
 
                         if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
-                            gc[iScn][iStand]['s1'][c]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
-                            gc[iScn][iStand]['p1'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
-                            gc[iScn][iStand]['gain1'][c]=dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr]
-                            gc[iScn][iStand]['selage1'][c]=10
+                            gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
+                            gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
+                            gc[iScn][iStand]['gain1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr]
+                            gc[iScn][iStand]['selage1'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s2'][c]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
-                            gc[iScn][iStand]['p2'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
-                            gc[iScn][iStand]['gain2'][c]=dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr]
-                            gc[iScn][iStand]['selage2'][c]=10
+                            gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
+                            gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
+                            gc[iScn][iStand]['gain2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr]
+                            gc[iScn][iStand]['selage2'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s3'][c]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
-                            gc[iScn][iStand]['p3'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
-                            gc[iScn][iStand]['gain3'][c]=dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr]
-                            gc[iScn][iStand]['selage3'][c]=10
+                            gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
+                            gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
+                            gc[iScn][iStand]['gain3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr]
+                            gc[iScn][iStand]['selage3'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s4'][c]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
-                            gc[iScn][iStand]['p4'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
-                            gc[iScn][iStand]['gain4'][c]=dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr]
-                            gc[iScn][iStand]['selage4'][c]=10
+                            gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
+                            gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
+                            gc[iScn][iStand]['gain4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr]
+                            gc[iScn][iStand]['selage4'][cnt_gc]=10
 
-                            gc[iScn][iStand]['s5'][c]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
-                            gc[iScn][iStand]['p5'][c]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
-                            gc[iScn][iStand]['gain5'][c]=dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr]
-                            gc[iScn][iStand]['selage5'][c]=10
+                            gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
+                            gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
+                            gc[iScn][iStand]['gain5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr]
+                            gc[iScn][iStand]['selage5'][cnt_gc]=10
                         else:
-                            gc[iScn][iStand]['s1'][c]=ba['Spc_CD1'][iStand]
-                            gc[iScn][iStand]['p1'][c]=ba['Spc_Pct1'][iStand]
+                            gc[iScn][iStand]['s1'][cnt_gc]=ba['Spc_CD1'][iStand]
+                            gc[iScn][iStand]['p1'][cnt_gc]=ba['Spc_Pct1'][iStand]
 
-                            gc[iScn][iStand]['s2'][c]=ba['Spc_CD2'][iStand]
-                            gc[iScn][iStand]['p2'][c]=ba['Spc_Pct2'][iStand]
+                            gc[iScn][iStand]['s2'][cnt_gc]=ba['Spc_CD2'][iStand]
+                            gc[iScn][iStand]['p2'][cnt_gc]=ba['Spc_Pct2'][iStand]
 
-                            gc[iScn][iStand]['s3'][c]=ba['Spc_CD3'][iStand]
-                            gc[iScn][iStand]['p3'][c]=ba['Spc_Pct3'][iStand]
+                            gc[iScn][iStand]['s3'][cnt_gc]=ba['Spc_CD3'][iStand]
+                            gc[iScn][iStand]['p3'][cnt_gc]=ba['Spc_Pct3'][iStand]
 
-                            gc[iScn][iStand]['s4'][c]=ba['Spc_CD4'][iStand]
-                            gc[iScn][iStand]['p4'][c]=ba['Spc_Pct4'][iStand]
+                            gc[iScn][iStand]['s4'][cnt_gc]=ba['Spc_CD4'][iStand]
+                            gc[iScn][iStand]['p4'][cnt_gc]=ba['Spc_Pct4'][iStand]
 
-                            gc[iScn][iStand]['s5'][c]=ba['Spc_CD5'][iStand]
-                            gc[iScn][iStand]['p5'][c]=ba['Spc_Pct5'][iStand]
+                            gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
+                            gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
 
                         # Update counter
-                        c=c+1
+                        cnt_gc=cnt_gc+1
+
+            # Add a planted stand if missing:
+            # Some stands may have no recorded historical management, but then they
+            # may be harvested on-the-fly. Add a second growth curve for the planting.
+            if cnt_gc==1:
+
+                gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
+                gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
+                gc[iScn][iStand]['ID_GC'][cnt_gc]=np.max(gc[iScn][iStand]['ID_GC'])+1
+                gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
+                gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
+                gc[iScn][iStand]['init_density'][cnt_gc]=int(1500)
+                gc[iScn][iStand]['regen_delay'][cnt_gc]=0
+                gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
+                gc[iScn][iStand]['bec_zone'][cnt_gc]=ba['BEC_ZONE_CODE'][iStand]
+                gc[iScn][iStand]['FIZ'][cnt_gc]=ba['FIZ'][iStand]
+
+                # The natural species composition may not be realistic. Use regional
+                # default planting composition
+
+                gain=15
+
+                if (ba['BEC_ZONE_CODE'][iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | (ba['BEC_ZONE_CODE'][iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']):
+
+                    # Coastal
+                    gc[iScn][iStand]['s1'][cnt_gc]=meta['LUT']['VRI']['SPECIES_CD_1']['FDC']
+                    gc[iScn][iStand]['p1'][cnt_gc]=70
+                    gc[iScn][iStand]['gain1'][cnt_gc]=gain
+                    gc[iScn][iStand]['selage1'][cnt_gc]=10
+                    gc[iScn][iStand]['s2'][cnt_gc]=meta['LUT']['VRI']['SPECIES_CD_1']['CW']
+                    gc[iScn][iStand]['p2'][cnt_gc]=15
+                    gc[iScn][iStand]['gain2'][cnt_gc]=gain
+                    gc[iScn][iStand]['selage2'][cnt_gc]=10
+                    gc[iScn][iStand]['s3'][cnt_gc]=meta['LUT']['VRI']['SPECIES_CD_1']['BA']
+                    gc[iScn][iStand]['p3'][cnt_gc]=15
+                    gc[iScn][iStand]['gain3'][cnt_gc]=gain
+                    gc[iScn][iStand]['selage3'][cnt_gc]=10
+
+                elif (ba['BEC_ZONE_CODE'][iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['ICH']):
+
+                    # Interior wetbelt
+                    gc[iScn][iStand]['s1'][cnt_gc]=meta['LUT']['VRI']['SPECIES_CD_1']['CW']
+                    gc[iScn][iStand]['p1'][cnt_gc]=70
+                    gc[iScn][iStand]['gain1'][cnt_gc]=gain
+                    gc[iScn][iStand]['selage1'][cnt_gc]=10
+                    gc[iScn][iStand]['s2'][cnt_gc]=meta['LUT']['VRI']['SPECIES_CD_1']['HW']
+                    gc[iScn][iStand]['p2'][cnt_gc]=15
+                    gc[iScn][iStand]['gain2'][cnt_gc]=gain
+                    gc[iScn][iStand]['selage2'][cnt_gc]=10
+
+                else:
+
+                    # Interior
+                    gc[iScn][iStand]['s1'][cnt_gc]=meta['LUT']['VRI']['SPECIES_CD_1']['PL']
+                    gc[iScn][iStand]['p1'][cnt_gc]=60
+                    gc[iScn][iStand]['gain1'][cnt_gc]=gain
+                    gc[iScn][iStand]['selage1'][cnt_gc]=10
+                    gc[iScn][iStand]['s2'][cnt_gc]=meta['LUT']['VRI']['SPECIES_CD_1']['SW']
+                    gc[iScn][iStand]['p2'][cnt_gc]=40
+                    gc[iScn][iStand]['gain2'][cnt_gc]=gain
+                    gc[iScn][iStand]['selage2'][cnt_gc]=10
 
     # Get rid of rows with no info
     for iScn in range(meta['Project']['N Scenario']):
@@ -6645,7 +6774,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
             N_StandsInBatch=len(indBat)
 
             # BEC zone
-            inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype=np.int)
+            inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype='int16')
             for i in range(inv['ID_BECZ'].size):
                 try:
                     inv['ID_BECZ'][0,i]=ba['BEC_ZONE_CODE'][indBat[i]]
@@ -6653,7 +6782,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
                     inv['ID_BECZ'][0,i]=meta['LUT']['VRI']['BEC_ZONE_CODE']['SBS'] #meta['LUT']['BGC Zone']['SBS']
 
             # Region code
-            inv['Region Code']=np.zeros( (1,N_StandsInBatch) ,dtype=np.int)
+            inv['Region Code']=np.zeros( (1,N_StandsInBatch) ,dtype='int16')
             u=np.unique(inv['ID_BECZ'][0,:])
             for iU in range(u.size):
                 cd=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])[0]
@@ -6681,18 +6810,21 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
 
             # Sawtooth species-region samples
             if meta['Project']['Biomass Module']=='Sawtooth':
-                inv['Srs1_ID']=meta['LUT']['Spc'][meta['Scenario'][iScn]['SRS1_CD']]*np.ones((1,N_StandsInBatch),dtype=np.int)
+                inv['Srs1_ID']=meta['LUT']['Spc'][meta['Scenario'][iScn]['SRS1_CD']]*np.ones((1,N_StandsInBatch),dtype='int16')
             else:
-                inv['Srs1_ID']=9999*np.ones((1,N_StandsInBatch),dtype=np.int)
+                inv['Srs1_ID']=9999*np.ones((1,N_StandsInBatch),dtype='int16')
 
-            inv['Spc1_ID']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
-            inv['Spc1_Pct']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
-            inv['Spc2_ID']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
-            inv['Spc2_Pct']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
-            inv['Spc3_ID']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
-            inv['Spc3_Pct']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
-            inv['Spc3_ID']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
-            inv['Spc3_Pct']=0*np.ones((1,N_StandsInBatch),dtype=np.int)
+            inv['Spc1_ID']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+            inv['Spc1_Pct']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+            inv['Spc2_ID']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+            inv['Spc2_Pct']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+            inv['Spc3_ID']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+            inv['Spc3_Pct']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+            inv['Spc3_ID']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+            inv['Spc3_Pct']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+
+            # Probability of harvest (%/yr) from spatial map
+            inv['P Harvest Weight']=ba['P Harvest Weight']
 
             # Save
             gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + cbu.FixFileNum(iBat) + '.pkl',inv)
@@ -6704,7 +6836,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
     #--------------------------------------------------------------------------
 
     if (meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Future']=='On'):
-        if meta['Project']['Use Frozen Ensembles']=='Off':
+        if meta['Project']['Frozen Ensembles Status']=='Off':
             print('Generating wildfire information')
             t0=time.time()
             asm.SimulateWildfireFromAAO(meta,ba)
@@ -6715,7 +6847,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
     #--------------------------------------------------------------------------
 
     if (meta['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta['Scenario'][iScn]['MPB Status Modern']=='On') | (meta['Scenario'][iScn]['MPB Status Future']=='On'):
-        if meta['Project']['Use Frozen Ensembles']=='Off':
+        if meta['Project']['Frozen Ensembles Status']=='Off':
             print('Generating MPB information')
             t0=time.time()
             asm.SimulateIBMFromAAO(meta,ba)
@@ -6733,10 +6865,10 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
             if (meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Future']=='On'):
 
                 # Import wildfire from aspatial stats model
-                if meta['Project']['Use Frozen Ensembles']=='Off':
+                if meta['Project']['Frozen Ensembles Status']=='Off':
                     wf_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
                 else:
-                    wf_sim=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
+                    wf_sim=gu.ipickle(meta['Project']['Frozen Ensembles Path'] + '\\wf_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
                 if 'idx' in wf_sim:
                     idx=wf_sim['idx']
                     tmp=wf_sim.copy()
@@ -6767,10 +6899,10 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
             if (meta['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta['Scenario'][iScn]['MPB Status Modern']=='On') | (meta['Scenario'][iScn]['MPB Status Future']=='On'):
 
                 # Import simulated mountain pine beetle
-                if meta['Project']['Use Frozen Ensembles']=='Off':
+                if meta['Project']['Frozen Ensembles Status']=='Off':
                     ibm_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
                 else:
-                    ibm_sim=gu.ipickle(meta['Project']['Use Frozen Ensembles'] + '\\ibm_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
+                    ibm_sim=gu.ipickle(meta['Project']['Frozen Ensembles Path'] + '\\ibm_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl')
                 if 'idx' in ibm_sim:
                     idx=ibm_sim['idx']
                     tmp=ibm_sim.copy()
@@ -6867,7 +6999,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
                         # Populate
                         ec['ID_Type'][ind[0],ind[1],iEPY]=meta['LUT']['Dist']['Wildfire']
                         ec['MortalityFactor'][ind[0],ind[1],iEPY]=Mort[ind[0],ind[1]]
-                        ec['GrowthFactor'][ind[0],ind[1],iEPY]=0
+                        ec['GrowthFactor'][ind[0],ind[1],iEPY]=-999
                         ec['ID_GrowthCurve'][ind[0],ind[1],iEPY]=1
 
                         # Eliminate occurrence so that it is not populated again as loop
@@ -6886,7 +7018,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
                             # Populate
                             ec['ID_Type'][ind[0],ind[1],iEPY]=meta['LUT']['Dist']['Wildfire']
                             ec['MortalityFactor'][ind[0],ind[1],iEPY]=Mort[ind[0],ind[1]]
-                            ec['GrowthFactor'][ind[0],ind[1],iEPY]=0
+                            ec['GrowthFactor'][ind[0],ind[1],iEPY]=-999
                             ec['ID_GrowthCurve'][ind[0],ind[1],iEPY]=1
 
                             # Eliminate occurrence so that it is not populated again as loop
@@ -6909,7 +7041,7 @@ def ProcessProjectInputs3(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
                         # Populate
                         ec['ID_Type'][ind[0],ind[1],iEPY]=meta['LUT']['Dist']['IBM']
                         ec['MortalityFactor'][ind[0],ind[1],iEPY]=Mort[ind[0],ind[1]]
-                        ec['GrowthFactor'][ind[0],ind[1],iEPY]=0
+                        ec['GrowthFactor'][ind[0],ind[1],iEPY]=-999
                         ec['ID_GrowthCurve'][ind[0],ind[1],iEPY]=1
 
                         # Eliminate occurrence so that it is not populated again as loop
@@ -7006,4 +7138,43 @@ def LSC_Scenario_Crosswalk(lsc,name):
         if lsc['Scenarios'][i]['Name']==name:
             return i
 
+#%% Add WSB outbreak to pest inventory
 
+def wsb_add_to_inventory(meta,idx,pest):
+
+    # Outbreaks evaluated with consistent spatial subsampling as modelling
+    ob=gu.ipickle(r'C:\Users\rhember\Documents\Data\Taz Datasets\Western Spruce Budworm\outbreaks.pkl')
+
+    # Parameters
+    beta=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_WSB_NetGrowthEffect_AM92.xlsx')
+
+    ID_Type=meta['LUT']['Dist']['IDW']
+
+    pest['Modifier AM92']=-999*np.ones(pest['IdxToSXY'].size)
+
+    for iStand in range(meta['Project']['N Stand']):
+
+        indOB=np.where(ob['IndexToiMask']==iStand)[0]
+
+        if indOB.size==0:
+            continue
+
+        for iOB in indOB:
+
+            idx['pest'][iStand]['Index']=np.append(idx['pest'][iStand]['Index'],pest['CAPTURE_YEAR'].size)
+
+            dur=ob['Duration'][iOB]
+            sev=ob['Severity Mean'][iOB]
+            if sev==2:
+                Mod=beta['Light'][dur-1]
+            elif sev==3:
+                Mod=beta['Moderate'][dur-1]
+            elif sev==4:
+                Mod=beta['Severe'][dur-1]
+
+            pest['CAPTURE_YEAR']=np.append(pest['CAPTURE_YEAR'],ob['Year Start'][iOB])
+            pest['PEST_SPECIES_CODE']=np.append(pest['PEST_SPECIES_CODE'],ID_Type)
+            pest['PEST_SEVERITY_CODE']=np.append(pest['PEST_SEVERITY_CODE'],-999)
+            pest['Modifier AM92']=np.append(pest['Modifier AM92'],Mod)
+
+    return idx,pest
