@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import geopandas as gpd
 from rasterio.transform import from_origin
 import pandas as pd
+import scipy.io as spio
 import fiona
 import rasterio
 from rasterio import features
@@ -174,6 +175,18 @@ gis.ClipToRaster_ByFile(fin,fout,fref)
 # VRI SI
 fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\si.tif'
 fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\si.tif'
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\sphdead.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\sphdead.tif'
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\crownc.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\crownc.tif'
+gis.ClipToRaster_ByFile(fin,fout,fref)
+
+fin=r'C:\Users\rhember\Documents\Data\BC1ha\SPL\Site_Prod_Pl.tif'
+fout=r'C:\Users\rhember\Documents\Data\BC1ha\SPL\Site_Prod_Pl.tif'
 gis.ClipToRaster_ByFile(fin,fout,fref)
 
 # Mean annual temp
@@ -373,7 +386,6 @@ meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\c
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
 meta=invu.Load_LUTs(meta)
-
 
 # Input path to RESULTS database (downloaded from BC data catalogue)
 pthin=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210930\LandUse.gdb'
@@ -578,10 +590,11 @@ for i in range(len(u_Severity_New)):
     ind=np.where(df['PEST_SEVERITY_CODE']==u_Severity_New[i])[0]
     df.loc[ind,'ID_Severity']=i+1
 
-tv=np.arange(1950,2022,1)
+tv=np.arange(1990,2022,1)
 
 #fcd=['IDL','IBM','IBD','IBS','IDW','DFL']
-fcd=['IDW']
+#fcd=['IBM']
+fcd=['IBS','IBB','IBD']
 
 for iP in range(len(fcd)):
     for iT in range(tv.size):
@@ -988,3 +1001,68 @@ for i in range(lutBGC['VALUE'].size):
 df=pd.DataFrame(lutBGC)
 df.to_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\tmp.xlsx')
 
+
+#%% Convert old BC1ha .mat files to new BC1ha geotiffs with standardized extent
+
+def ConvertClimateNormals():
+
+    #zRef=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_tmean_gs_norm_1971to2000_si_hist_v1_c.tif')
+    zRef=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\BC_Land_Mask.tif')
+
+    for mo in range(12):
+        print(mo+1)
+        z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
+        idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
+        iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
+        z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
+        z1=zRef.copy()
+        z1['Data']=z0
+        z1=gis.ClipToRaster(z1,zRef)
+        gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
+
+    for mo in range(12):
+        print(mo+1)
+        z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
+        idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
+        iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
+        z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
+        z1=zRef.copy()
+        z1['Data']=z0
+        z1=gis.ClipToRaster(z1,zRef)
+        gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
+
+    for mo in range(12):
+        print(mo+1)
+        z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
+        idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
+        iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
+        z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
+        z1=zRef.copy()
+        z1['Data']=z0
+        z1=gis.ClipToRaster(z1,zRef)
+        gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
+
+    for mo in range(12):
+        print(mo+1)
+        z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
+        idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
+        iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
+        z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
+        z1=zRef.copy()
+        z1['Data']=z0
+        z1=gis.ClipToRaster(z1,zRef)
+        gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
+
+    for mo in range(12):
+        print(mo+1)
+        z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_etp_tmw_norm_1971to2000_comp_hist_v1\BC1ha_etp_mon_norm_1971to2000_comp_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
+        idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
+        iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
+        z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
+        z0=z0*100
+        z1=zRef.copy()
+        z1['Data']=z0.astype('int16')
+        z1=gis.ClipToRaster(z1,zRef)
+        gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_etp_tmw_norm_1971to2000_comp_hist_v1\BC1ha_etp_mon_norm_1971to2000_comp_hist_v1_' + str(mo+1) + '.tif')
+
+    return

@@ -33,6 +33,7 @@ import fiona
 import time
 import gc as garc
 import matplotlib.pyplot as plt
+import scipy.io as spio
 from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
@@ -1355,41 +1356,43 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
         # occurred after planting. Assume month is August for now.
         #--------------------------------------------------------------------------
 
-        if indS_burnsev!=None:
+        # # Burn severity layer
+        # if indS_burnsev!=None:
 
-            indS=indS_burnsev['Index']
+        #     indS=indS_burnsev['Index']
 
-            for i in range(indS.size):
+        #     for i in range(indS.size):
 
-                # Only continue if nothing yet added through burnsev layer
-                ind=np.where( ( np.floor(dmec0['Year'])==np.floor(burnsev['FIRE_YEAR'][indS[i]]) ) & (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
-                if ind.size>0:
-                    continue
+        #         # Only continue if nothing yet added through burnsev layer
+        #         ind=np.where( ( np.floor(dmec0['Year'])==np.floor(burnsev['FIRE_YEAR'][indS[i]]) ) & (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
+        #         if ind.size>0:
+        #             continue
 
-                bsr=burnsev['BURN_SEVERITY_RATING'][indS[i]]
-                if bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['Low']:
-                    Severity=50
-                elif bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['Medium']:
-                    Severity=90
-                elif bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['High']:
-                    Severity=100
-                else:
-                    Severity=5
+        #         bsr=burnsev['BURN_SEVERITY_RATING'][indS[i]]
+        #         if bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['Low']:
+        #             Severity=10
+        #         elif bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['Medium']:
+        #             Severity=50
+        #         elif bsr==meta['LUT']['BS']['BURN_SEVERITY_RATING']['High']:
+        #             Severity=100
+        #         else:
+        #             Severity=5
 
-                Month=8
-                dmec0['Year']=np.append(dmec0['Year'],burnsev['FIRE_YEAR'][indS[i]]+Month/12)
-                dmec0['Month']=np.append(dmec0['Month'],Month)
-                dmec0['Day']=np.append(dmec0['Day'],-999)
-                dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])
-                dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],Severity)
-                dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
-                dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
-                dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
-                dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
-                dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
-                dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],-999)
-                dmec0=AddPlantingWithNoData(dmec0)
+        #         Month=8
+        #         dmec0['Year']=np.append(dmec0['Year'],burnsev['FIRE_YEAR'][indS[i]]+Month/12)
+        #         dmec0['Month']=np.append(dmec0['Month'],Month)
+        #         dmec0['Day']=np.append(dmec0['Day'],-999)
+        #         dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])
+        #         dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],Severity)
+        #         dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
+        #         dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
+        #         dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
+        #         dmec0['FIA_PROJECT_ID']=np.append(dmec0['FIA_PROJECT_ID'],-999)
+        #         dmec0['ACTUAL_TREATMENT_AREA']=np.append(dmec0['ACTUAL_TREATMENT_AREA'],-999)
+        #         dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],-999)
+        #         dmec0=AddPlantingWithNoData(dmec0)
 
+        # Wildfire perimeters
         if indS_fire!=None:
 
             indS=indS_fire['Index']
@@ -1397,15 +1400,15 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
             for i in range(indS.size):
 
                 # Only continue if nothing yet added through burnsev layer
-                ind=np.where( ( np.floor(dmec0['Year'])==np.floor(fire['FIRE_YEAR'][indS[i]]) ) & (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
-                if ind.size>0:
-                    continue
+                #ind=np.where( ( np.floor(dmec0['Year'])==np.floor(fire['FIRE_YEAR'][indS[i]]) ) & (dmec0['ID_Type']==meta['LUT']['Dist']['Wildfire']) )[0]
+                #if ind.size>0:
+                #    continue
 
                 dmec0['Year']=np.append(dmec0['Year'],fire['FIRE_YEAR'][indS[i]]+fire['Month'][indS[i]]/12)
                 dmec0['Month']=np.append(dmec0['Month'],fire['Month'][indS[i]])
                 dmec0['Day']=np.append(dmec0['Day'],fire['Day'][indS[i]])
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])
-                dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],50)
+                dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],25)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
@@ -1414,9 +1417,9 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 dmec0['ACTUAL_PLANTED_NUMBER']=np.append(dmec0['ACTUAL_PLANTED_NUMBER'],999)
                 dmec0=AddPlantingWithNoData(dmec0)
 
-        #--------------------------------------------------------------------------
+        #----------------------------------------------------------------------
         # Consolidated cutblocks
-        #------------------------------------------------------------------------
+        #----------------------------------------------------------------------
 
         if indS_cut!=None:
 
@@ -1689,8 +1692,16 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                     continue
 
                 # Turn off western spruce budworm
-                if (pest['PEST_SPECIES_CODE'][iYr]==meta['LUT']['Dist']['IDW']) & (pest['Modifier AM92'][iYr]<0):
-                    continue
+                if 'Modifier AM92' in pest:
+                    if (pest['PEST_SPECIES_CODE'][iYr]==meta['LUT']['Dist']['IDW']) & (pest['Modifier AM92'][iYr]<0):
+                        continue
+
+                # Don't include back-to-back beetles
+                exb2bL=['IBM','IBB','IBD','IBS']
+                for exb2b in exb2bL:
+                    ind=np.where( (dmec0['Year']>=pest['CAPTURE_YEAR'][iYr]-5) & (dmec0['Year']<=pest['CAPTURE_YEAR'][iYr]) & (dmec0['ID_Type']==meta['LUT']['Dist'][exb2b]) )[0]
+                    if ind.size>0:
+                        continue
 
                 dmec0['Year']=np.append(dmec0['Year'],pest['CAPTURE_YEAR'][iYr])
                 dmec0['Month']=np.append(dmec0['Month'],-999)
@@ -1711,7 +1722,8 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 if (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBM']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBM'])
                     ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBM') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    #dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],25)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
 
                 # Western Balsam Bark Beetle
@@ -1719,7 +1731,8 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBB']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBB'])
                     ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBB') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    #dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],30)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
 
                 # Douglas-fir beetle
@@ -1727,7 +1740,8 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBD']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBD'])
                     ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBD') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    #dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],10)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
 
                 # Spruce beetle
@@ -1735,7 +1749,8 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 elif (psp==meta['LUT']['Pest']['PEST_SPECIES_CODE']['IBS']):
                     dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IBS'])
                     ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IBS') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    #dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],meta['Param']['BE']['DistBySC']['MortalityFactor'][ind])
+                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],10)
                     dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
 
                 # Western spruce budworm
@@ -1743,16 +1758,18 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 # to model mortality that occurs from repeated infestation
                 elif (psp==meta['LUT']['Dist']['IDW']):
 
-                    # New method based on duration and severity of indiviudal outbreaks (Alfaro and MacLauchlan 1992)
-                    dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
-                    dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],0) # pest['Modifier AM92'][iYr]
-                    dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-25)
-
-                    # OLD standard way
-                    # dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
-                    # ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
-                    # dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],sev)
-                    # dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
+                    if 'Modifier AM92' in pest:
+                        # New method based on duration and severity of indiviudal outbreaks (Alfaro and MacLauchlan 1992)
+                        Mod=pest['Modifier AM92'][iYr]
+                        dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
+                        dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],Mod)
+                        dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-Mod)
+                    else:
+                        # OLD standard way
+                        dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['IDW'])
+                        ind=np.where( (meta['Param']['BE']['DistBySC']['Name']=='IDW') & (meta['Param']['BE']['DistBySC']['SeverityCD']==sev_s) )[0]
+                        dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],sev)
+                        dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],meta['Param']['BE']['DistBySC']['GrowthFactor'][ind])
 
                 # Other
                 else:
@@ -1958,6 +1975,32 @@ def Exclude_BackToBack_Harvesting(meta,dmec):
                 continue
 
             dmec[iStand][key]=dmec[iStand][key][ikp]
+
+    return dmec
+
+#%% Exclude MPB 2000s outbreak (used in MPB response evaluation)
+
+def Exclude_MPB_2000s_Outbreak(meta,dmec):
+
+    for iScn in range(meta['Project']['N Scenario']):
+
+        if 'Exclude MPB 2000s outbreak' in meta['Scenario'][iScn]:
+
+            if meta['Scenario'][iScn]['Exclude MPB 2000s outbreak']=='On':
+
+                for iStand in range(meta['Project']['N Stand']):
+
+                    if dmec[iScn][iStand]==None:
+                        continue
+
+                    # Index to everything but post-1998 MPB
+                    ikp=np.where( (dmec[iScn][iStand]['Year']<1999) | (dmec[iScn][iStand]['Year']>=1999) & (dmec[iScn][iStand]['ID_Type']!=meta['LUT']['Dist']['IBM']) )[0]
+
+                    if ikp.size==dmec[iScn][iStand]['Year'].size:
+                        continue
+                    else:
+                        for k in dmec[iScn][iStand]:
+                            dmec[iScn][iStand][k]=dmec[iScn][iStand][k][ikp]
 
     return dmec
 
@@ -2652,133 +2695,179 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
     # Best-available site index
     #--------------------------------------------------------------------------
 
-    # # NEW:
+    flg_SI_Method='SPL'
+    #flg_SI_Method='BGC Zone Averages'
+    #flg_SI_Method='Climate Model'
+    #flg_SI_Method='VRI'
 
-    # # Populate dictionary with nearest estimate
-    # zT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
-    # zT['Data']=zT['Data'].astype(float)/10
-    # zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
-    # zW['Data']=zW['Data'].astype(float)
 
-    # x=zT['X'][0,:]
-    # y=zT['Y'][:,0]
-    # ix=np.zeros(meta['Project']['N Stand'],dtype=int)
-    # iy=np.zeros(meta['Project']['N Stand'],dtype=int)
-    # for iStand in range(meta['Project']['N Stand']):
-    #     adx=np.abs(geos['Sparse']['X'][iStand]-x)
-    #     ady=np.abs(geos['Sparse']['Y'][iStand]-y)
-    #     ix[iStand]=np.where(adx==np.min(adx))[0]
-    #     iy[iStand]=np.where(ady==np.min(ady))[0]
-    # ind=tuple([iy,ix])
-    # del x,y
+    if flg_SI_Method=='SPL':
 
-    # beta=[-8.00,3.0,0.06]
-    # si_hat=beta[0]+beta[1]*zT['Data'][ind]+beta[2]*zW['Data'][ind]
-    # ba['SI']=si_hat.astype('int32')
-    # ba_Source=[]
+        # Based on site productivity layer
 
-    # OLD:
+        ba['SI SPL']=spl['SI_SPL']
 
-    ba['SI SPL']=spl['SI_SPL']
+        # Populate with site productivity layer
+        ind=np.where( (spl['SI_SPL']>5) )[0]
+        ba['SI'][ind]=spl['SI_SPL'][ind]
+        ba_Source['SI']['From site productivity layer']=ind.size/ba['SI'].size*100
 
-    # Populate with site productivity layer
-    ind=np.where( (spl['SI_SPL']>5) )[0]
-    ba['SI'][ind]=spl['SI_SPL'][ind]
-    ba_Source['SI']['From site productivity layer']=ind.size/ba['SI'].size*100
-
-    # Populate with SI from forest cover inventory
-    N_tot=0
-    for iStand0 in range(meta['Project']['N Stand']):
-
-        if flag_subset==1:
-            iStand=meta['Project']['iKeep'][iStand0]
-        else:
-            iStand=iStand0
-
-        if ba['SI'][iStand0]>0:
-            # Already populated with Site Productivity Layer
-            continue
-
-        if idx['fcinv'][iStand]==None:
-            # FC layer info unavailable
-            continue
-
-        ind0=idx['fcinv'][iStand]['Index'][0]
-        if fcinv['SITE_INDEX'][ind0]>0:
-            # Populate with FC layer info
-            ba['SI'][iStand0]=fcinv['SITE_INDEX'][ind0]
-            N_tot=N_tot+ind0.size
-
-    ba_Source['SI']['From FC Inventory']=N_tot/ba['SI'].size*100
-
-    # Where Productivity Layer and Forest Cover are missing, try populating with
-    # the average value from each project
-    if flag_projects==1:
-        ind=np.where(ba['SI']<5)[0]
-        u=np.unique(sxy['ID_atu_polygons'][ind])
+        # Populate with SI from forest cover inventory
         N_tot=0
-        for i in range(u.size):
-            iGood=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']>5))[0]
-            iBad=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']<=5))[0]
-            if (iGood.size!=0) & (iBad.size!=0):
-                mu=np.mean(ba['SI'][iGood])
-                #print(mu)
-                ba['SI'][iBad]=mu
-                N_tot=N_tot+iGood.size
-        ba_Source['SI']['From treatment area average']=N_tot/ba['SI'].size*100
+        for iStand0 in range(meta['Project']['N Stand']):
 
-    # Where there is no FC estimate and no SPL layer, polulate with VRI estimate
-    N_tot=0
-    for iStand0 in range(meta['Project']['N Stand']):
+            if flag_subset==1:
+                iStand=meta['Project']['iKeep'][iStand0]
+            else:
+                iStand=iStand0
 
-        if flag_subset==1:
-            iStand=meta['Project']['iKeep'][iStand0]
-        else:
-            iStand=iStand0
+            if ba['SI'][iStand0]>0:
+                # Already populated with Site Productivity Layer
+                continue
 
-        if idx['vri'][iStand]==None:
-            continue
+            if idx['fcinv'][iStand]==None:
+                # FC layer info unavailable
+                continue
 
-        ind0=idx['vri'][iStand]['Index'][0]
-        ba['SI VRI'][iStand0]=vri['SITE_INDEX'][ind0]
+            ind0=idx['fcinv'][iStand]['Index'][0]
+            if fcinv['SITE_INDEX'][ind0]>0:
+                # Populate with FC layer info
+                ba['SI'][iStand0]=fcinv['SITE_INDEX'][ind0]
+                N_tot=N_tot+ind0.size
 
-        if ba['SI'][iStand0]>0:
-            continue
+        ba_Source['SI']['From FC Inventory']=N_tot/ba['SI'].size*100
 
-        if vri['SITE_INDEX'][ind0]>0:
+        # Where Productivity Layer and Forest Cover are missing, try populating with
+        # the average value from each project
+        if flag_projects==1:
+            ind=np.where(ba['SI']<5)[0]
+            u=np.unique(sxy['ID_atu_polygons'][ind])
+            N_tot=0
+            for i in range(u.size):
+                iGood=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']>5))[0]
+                iBad=np.where((sxy['ID_atu_polygons']==u[i]) & (ba['SI']<=5))[0]
+                if (iGood.size!=0) & (iBad.size!=0):
+                    mu=np.mean(ba['SI'][iGood])
+                    #print(mu)
+                    ba['SI'][iBad]=mu
+                    N_tot=N_tot+iGood.size
+            ba_Source['SI']['From treatment area average']=N_tot/ba['SI'].size*100
+
+        # Where there is no FC estimate and no SPL layer, polulate with VRI estimate
+        N_tot=0
+        for iStand0 in range(meta['Project']['N Stand']):
+
+            if flag_subset==1:
+                iStand=meta['Project']['iKeep'][iStand0]
+            else:
+                iStand=iStand0
+
+            if idx['vri'][iStand]==None:
+                continue
+
+            ind0=idx['vri'][iStand]['Index'][0]
+            ba['SI VRI'][iStand0]=vri['SITE_INDEX'][ind0]
+
+            if ba['SI'][iStand0]>0:
+                continue
+
+            if vri['SITE_INDEX'][ind0]>0:
+                ba['SI'][iStand0]=vri['SITE_INDEX'][ind0]
+                N_tot=N_tot+ind0.size
+
+        ba_Source['SI']['From VRI']=N_tot/ba['SI'].size*100
+
+        # Where there is nothing, populate with regional averages
+
+        iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
+        iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
+        ba['SI'][iToFill1]=np.mean(ba['SI'][iGood])
+
+        iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
+        iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
+        ba['SI'][iToFill2]=np.mean(ba['SI'][iGood])
+
+        ba_Source['SI']['From regional averages']=(iToFill1.size+iToFill2.size)/ba['SI'].size*100
+
+        # Where there are still missing values assume mean of whole dataset
+        ind=np.where(ba['SI']<0)[0]
+        if ind.size>0:
+            iGood=np.where( (ba['SI']>0) )[0]
+            ba['SI'][ind]=np.mean(ba['SI'][iGood])
+            ba_Source['SI']['From global average']=ind.size/ba['SI'].size*100
+
+        # Convert to integer (for BatchTIPSY)
+        ba['SI']=np.round(ba['SI']).astype(int)
+
+    elif flg_SI_Method=='VRI':
+
+        for iStand0 in range(meta['Project']['N Stand']):
+
+            if flag_subset==1:
+                iStand=meta['Project']['iKeep'][iStand0]
+            else:
+                iStand=iStand0
+
+            if idx['vri'][iStand]==None:
+                continue
+
+            ind0=idx['vri'][iStand]['Index'][0]
             ba['SI'][iStand0]=vri['SITE_INDEX'][ind0]
-            N_tot=N_tot+ind0.size
 
-    ba_Source['SI']['From VRI']=N_tot/ba['SI'].size*100
+        iMissing=np.where(ba['SI']<=0)[0]
+        if iMissing.size>0:
+            iGood=np.where( (ba['SI']>0) )[0]
+            ba['SI'][iMissing]=np.mean(ba['SI'][iGood])
 
-    # Where there is nothing, populate with regional averages
+    elif flg_SI_Method=='BGC Zone Averages':
 
-    iToFill1=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
-    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['I']) )[0]
-    ba['SI'][iToFill1]=np.mean(ba['SI'][iGood])
+        # Site index from BGC zone-averages
 
-    iToFill2=np.where( (ba['SI']<0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
-    iGood=np.where( (ba['SI']>0) & (ba['FIZ']==meta['LUT']['TIPSY']['FIZ']['C']) )[0]
-    ba['SI'][iToFill2]=np.mean(ba['SI'][iGood])
+        #ba['SI']=ba['SI VRI'].astype('int32')
+        #bBGC=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_ByBGC.xlsx')
+        ba['SI']=np.zeros(ba['SI'].size,dtype=int)
+        u=np.unique(ba['BEC_ZONE_CODE'])
+        for iU in range(u.size):
+            ind0=np.where(ba['BEC_ZONE_CODE']==u[iU])[0]
+            ind1=np.where(meta['Param']['BE']['ClimateByBGC']['Name']==cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])[0])[0]
+            ba['SI'][ind0]=meta['Param']['BE']['ClimateByBGC']['SI ByBGC Zone'][ind1[0]]
 
-    ba_Source['SI']['From regional averages']=(iToFill1.size+iToFill2.size)/ba['SI'].size*100
+    elif flg_SI_Method=='Climate Model':
 
-    # Where there are still missing values assume mean of whole dataset
-    ind=np.where(ba['SI']<0)[0]
-    if ind.size>0:
-        iGood=np.where( (ba['SI']>0) )[0]
-        ba['SI'][ind]=np.mean(ba['SI'][iGood])
-        ba_Source['SI']['From global average']=ind.size/ba['SI'].size*100
+        # Populate dictionary with nearest estimate
+        zT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
+        zT['Data']=zT['Data'].astype(float)/10
+        zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+        zW['Data']=zW['Data'].astype(float)
 
-    # Convert to integer (for BatchTIPSY)
-    ba['SI']=np.round(ba['SI']).astype(int)
+        x=zT['X'][0,:]
+        y=zT['Y'][:,0]
+        ix=np.zeros(meta['Project']['N Stand'],dtype=int)
+        iy=np.zeros(meta['Project']['N Stand'],dtype=int)
+        for iStand in range(meta['Project']['N Stand']):
+            adx=np.abs(geos['Sparse']['X'][iStand]-x)
+            ady=np.abs(geos['Sparse']['Y'][iStand]-y)
+            ix[iStand]=np.where(adx==np.min(adx))[0]
+            iy[iStand]=np.where(ady==np.min(ady))[0]
+        ind=tuple([iy,ix])
+        del x,y
+
+        beta=[-8.00,3.0,0.06]
+        si_hat=beta[0]+beta[1]*zT['Data'][ind]+beta[2]*zW['Data'][ind]
+        ba['SI']=si_hat.astype('int32')
+        ba_Source=[]
+
+    else:
+
+        pass
 
     #--------------------------------------------------------------------------
     # Import probability of harvest weight
     #--------------------------------------------------------------------------
 
-    pthin=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\ProbabilityOfHarvest.tif'
+    pthin=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\HarvestProbability.tif'
     z=gis.OpenGeoTiff(pthin)
+    z['Data']=z['Data'].astype('float64')/100
 
     if 'xlim' in geos:
 
@@ -2800,7 +2889,6 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
         # Populate dictionary with nearest estimate
         x=z['X'][0,:]
         y=z['Y'][:,0]
-
         ix=np.zeros(meta['Project']['N Stand'],dtype=int)
         iy=np.zeros(meta['Project']['N Stand'],dtype=int)
         for iStand0 in range(meta['Project']['N Stand']):
@@ -2825,12 +2913,19 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
                 iStand=iStand0
             ba['P Harvest Weight'][iStand0]=z[iStand]
 
-    # It is giving in per000/yr, convert to annual probability
-    ba['P Harvest Weight'][iStand0]=ba['P Harvest Weight'][iStand0].astype('float64')/1000
-
     # Convert to a relative weight
-    P_Harvest_Max=0.486
+    P_Harvest_Max=0.486 # (%/yr)
     ba['P Harvest Weight'][iStand0]=ba['P Harvest Weight'][iStand0]/P_Harvest_Max
+
+    #--------------------------------------------------------------------------
+    # Thornthwaite's climate classification
+    #--------------------------------------------------------------------------
+
+    zCC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ThornthwaiteClimateClassCondensed_norm_1971to2000.tif')
+
+    ind=gis.GetGridIndexToPoints(zCC,geos['Sparse']['X'],geos['Sparse']['Y'])
+    cc=zCC['Data'][ind]
+    ba['ClimateClass']=cc
 
     return ba,ba_Source
 
@@ -3204,12 +3299,12 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
 
         # Index to stands that are uneconomic
         iUneconomic=np.where(ba['SI']<=5)[0]
-
-        # Remove uneconomic stands from THLB
-        thlb[iScn]['Actual'][:,iUneconomic]=0
-        thlb[iScn]['Actual WithDef'][:,iUneconomic]=0
-        thlb[iScn]['Baseline'][:,iUneconomic]=0
-        thlb[iScn]['Baseline WithDef'][:,iUneconomic]=0
+        if iUneconomic.size>0:
+            # Remove uneconomic stands from THLB
+            thlb[iScn]['Actual'][:,iUneconomic]=0
+            thlb[iScn]['Actual WithDef'][:,iUneconomic]=0
+            thlb[iScn]['Baseline'][:,iUneconomic]=0
+            thlb[iScn]['Baseline WithDef'][:,iUneconomic]=0
 
         # Idenify stands that have been harvested
         has_been_harvested=np.zeros(meta['Project']['N Stand'])
@@ -6007,7 +6102,7 @@ def ProcessProjectInputs1(meta,geos,atu,op,burnsev,vri,fcinv,fcsilv,fcres,pl,fir
     # Define project type (salvage, knockdown, underplanting, NSR backlog)
     #--------------------------------------------------------------------------
 
-    if meta['Project']['Special growth curve methods']=='NOSE':
+    if meta['Project']['Special Attribution Method']=='NOSE':
         print('Defining types of stand establishment')
         t0=time.time()
         dmec=DefineTypeOfStandEstablishment(meta,dmec)
@@ -6079,13 +6174,13 @@ def ProcessProjectInputs2(meta,ba,dmec):
             # Initialize indicator for each scenario
             dmec[iScn][iStand]['ScnAffected']=np.zeros(dmec[iScn][iStand]['Year'].size)
 
-            if meta['Project']['Special growth curve methods']=='None':
+            if meta['Project']['Special Attribution Method']=='None':
 
                 # All events occur in all scenarios
                 for iT in range(dmec[iScn][iStand]['Year'].size):
                     dmec[iScn][iStand]['ScnAffected'][iT]=1
 
-            elif meta['Project']['Special growth curve methods']=='Anthro':
+            elif meta['Project']['Special Attribution Method']=='Actual':
 
                 meta['Project']['Activities To Exclude From Baseline']=np.array([meta['LUT']['Dist']['Direct Seeding'],
                    meta['LUT']['Dist']['Dwarf Mistletoe Control'],
@@ -6095,7 +6190,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                    meta['LUT']['Dist']['Harvest'],
                    meta['LUT']['Dist']['Harvest Salvage'],
                    meta['LUT']['Dist']['Thinning'],
-                   meta['LUT']['Dist']['IDW Btk Spray'],
+                   meta['LUT']['Dist']['Aerial Spray'],
                    meta['LUT']['Dist']['Planting'],
                    meta['LUT']['Dist']['Fertilization Aerial'],
                    meta['LUT']['Dist']['Fertilization Hand'],
@@ -6118,7 +6213,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                     else:
                         pass
 
-            elif meta['Project']['Special growth curve methods']=='H':
+            elif meta['Project']['Special Attribution Method']=='BAU':
 
                 meta['Project']['Activities To Exclude From Baseline']=np.array([
                    meta['LUT']['Dist']['Direct Seeding'],
@@ -6129,7 +6224,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                    meta['LUT']['Dist']['Harvest'],
                    meta['LUT']['Dist']['Harvest Salvage'],
                    meta['LUT']['Dist']['Thinning'],
-                   meta['LUT']['Dist']['IDW Btk Spray'],
+                   meta['LUT']['Dist']['Aerial Spray'],
                    meta['LUT']['Dist']['Planting'],
                    meta['LUT']['Dist']['Fertilization Aerial'],
                    meta['LUT']['Dist']['Fertilization Hand'],
@@ -6142,7 +6237,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                    meta['LUT']['Dist']['Ripping'],
                    meta['LUT']['Dist']['Disc Trenching'],
                    meta['LUT']['Dist']['Thinning'],
-                   meta['LUT']['Dist']['IDW Btk Spray'],
+                   meta['LUT']['Dist']['Aerial Spray'],
                    meta['LUT']['Dist']['Fertilization Aerial'],
                    meta['LUT']['Dist']['Fertilization Hand'],
                    meta['LUT']['Dist']['Fertilization Teabag'],
@@ -6169,7 +6264,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                     else:
                         pass
 
-            elif meta['Project']['Special growth curve methods']=='NOSE':
+            elif meta['Project']['Special Attribution Method']=='NOSE':
 
                 # Non-obligation stand establishment
 
@@ -6212,7 +6307,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                         # Otherwise, everything occurs in all scenarios
                         dmec[iScn][iStand]['ScnAffected'][iT]=1
 
-            elif meta['Project']['Special growth curve methods']=='Nutrient Management':
+            elif meta['Project']['Special Attribution Method']=='Nutrient Management':
 
                 for iT in range(dmec[iScn][iStand]['Year'].size):
 
@@ -6228,6 +6323,17 @@ def ProcessProjectInputs2(meta,ba,dmec):
 
     print('Preparing growth curves')
     t0=time.time()
+
+    # Prepare parameters for natural establishment (by BGC)
+    pByBGC=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_ByBGC.xlsx')
+    SPH_Init_Nat=1500*np.ones(meta['Project']['N Stand'],dtype='int16')
+    RegenDelay_Nat=1500*np.ones(meta['Project']['N Stand'],dtype='int16')
+    u=np.unique(ba['BEC_ZONE_CODE'])
+    for iU in range(u.size):
+        ind0=np.where(ba['BEC_ZONE_CODE']==u[iU])[0]
+        ind1=np.where(pByBGC['Name']==cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])[0])[0]
+        SPH_Init_Nat[ind0]=pByBGC['Natural Initial Tree Density'][ind1[0]]
+        RegenDelay_Nat[ind0]=pByBGC['Natural Regeneration Delay'][ind1[0]]
 
     # Initialize list
     gc=[None]*meta['Project']['N Scenario']
@@ -6268,8 +6374,8 @@ def ProcessProjectInputs2(meta,ba,dmec):
             gc[iScn][iStand]['p4'][cnt_gc]=ba['Spc_Pct4'][iStand]
             gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
             gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
-            gc[iScn][iStand]['init_density'][cnt_gc]=2000
-            gc[iScn][iStand]['regen_delay'][cnt_gc]=2
+            gc[iScn][iStand]['init_density'][cnt_gc]=SPH_Init_Nat[iStand]
+            gc[iScn][iStand]['regen_delay'][cnt_gc]=RegenDelay_Nat[iStand]
             gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
             gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
             gc[iScn][iStand]['bec_zone'][cnt_gc]=14#vri['BEC_ZONE_CODE'][iStand]
@@ -6310,7 +6416,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                 # Non-obligation status
                 StatusNO=QueryNonObStandEstablishment(meta,dmec[iScn][iStand]['SILV_FUND_SOURCE_CODE'][iYr])
 
-                if (meta['Project']['Special growth curve methods']=='None') | (meta['Project']['Special growth curve methods']=='Nutrient Management'):
+                if (meta['Project']['Special Attribution Method']=='None') | (meta['Project']['Special Attribution Method']=='Actual') | (meta['Project']['Special Attribution Method']=='Nutrient Management'):
 
                     #--------------------------------------------------------------
                     # None or nutrient management
@@ -6387,11 +6493,12 @@ def ProcessProjectInputs2(meta,ba,dmec):
                         # Update counter
                         cnt_gc=cnt_gc+1
 
-                elif (meta['Project']['Special growth curve methods']=='H'):
+                elif (meta['Project']['Special Attribution Method']=='BAU'):
 
                     #--------------------------------------------------------------
                     # Harvesting
-                    # No genetic gain
+                    # Exclude incremental improvements in silviculture, including:
+                    #  - genetic gains
                     #--------------------------------------------------------------
 
                     if (dmec[iScn][iStand]['ScnAffected'][iYr]==1) & (dmec[iScn][iStand]['ID_Type'][iYr]==meta['LUT']['Dist']['Planting']):
@@ -6450,7 +6557,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                         # Update counter
                         cnt_gc=cnt_gc+1
 
-                elif meta['Project']['Special growth curve methods']=='NOSE':
+                elif (meta['Project']['Special Attribution Method']=='NOSE'):
 
                     #--------------------------------------------------------------
                     # Non-obligation stand establishment
@@ -7178,3 +7285,90 @@ def wsb_add_to_inventory(meta,idx,pest):
             pest['Modifier AM92']=np.append(pest['Modifier AM92'],Mod)
 
     return idx,pest
+
+#%% Add aerial spray to DMEC
+
+def AddAerialSprayToDMEC(meta,dmec,scnL):
+
+    # Import mask of treatment areas
+    ob=gu.ipickle(r'C:\Users\rhember\Documents\Data\Taz Datasets\Western Spruce Budworm\outbreaks.pkl')
+
+    for iScn in scnL:
+
+        for iStand in range(meta['Project']['N Stand']):
+
+            indT=np.where( (ob['IndexToiMask']==iStand) & (ob['Year Treatment']>0) )[0]
+
+            if indT.size==0:
+                continue
+
+            for iT in range(indT.size):
+
+                # Add aerial spray
+                for k in dmec[iScn][iStand].keys():
+                    dmec[iScn][iStand][k]=np.append(dmec[iScn][iStand][k],-999)
+                dmec[iScn][iStand]['Year'][-1]=ob['Year Treatment'][indT[iT]]
+                dmec[iScn][iStand]['ID_Type'][-1]=meta['LUT']['Dist']['Aerial Spray']
+                dmec[iScn][iStand]['MortalityFactor'][-1]=0
+
+                # Revise outbreak impacts to growth and mortality
+                Efficacy=0.6
+                iOB=np.where( (dmec[iScn][iStand]['ID_Type']==meta['LUT']['Dist']['IDW']) & (dmec[iScn][iStand]['Year']<=ob['Year Treatment'][indT[iT]]) )[0]
+                if iOB.size>0:
+                    dmec[iScn][iStand]['MortalityFactor'][iOB]=Efficacy*dmec[iScn][iStand]['MortalityFactor'][iOB]
+                    dmec[iScn][iStand]['GrowthFactor'][iOB]=Efficacy*dmec[iScn][iStand]['GrowthFactor'][iOB]
+
+    return dmec
+
+#%% Import environmental variables
+
+def ImportEnviornmentalVariables(meta,geos):
+
+    #--------------------------------------------------------------------------
+    # Import climate normals
+    #--------------------------------------------------------------------------
+
+    zT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_tmean_gs_norm_1971to2000_si_hist_v1.tif')
+    zT['Data']=zT['Data'].astype('float32')/10
+    zW=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+    zW['Data']=zW['Data'].astype('float32')
+
+    x=zT['X'][0,:]
+    y=zT['Y'][:,0]
+    ix=np.zeros(meta['Project']['N Stand'],dtype='int32')
+    iy=np.zeros(meta['Project']['N Stand'],dtype='int32')
+    for iStand in range(meta['Project']['N Stand']):
+        adx=np.abs(geos['Sparse']['X'][iStand]-x)
+        ady=np.abs(geos['Sparse']['Y'][iStand]-y)
+        ix[iStand]=np.where(adx==np.min(adx))[0]
+        iy[iStand]=np.where(ady==np.min(ady))[0]
+    ind=tuple([iy,ix])
+
+    ta_mu=zT['Data'][ind]
+    ws_mu=zW['Data'][ind]
+
+    del x,y,zT,zW
+
+    #--------------------------------------------------------------------------
+    # Import subgrid climate
+    #--------------------------------------------------------------------------
+
+    z=spio.loadmat(r'C:\Users\rhember\Documents\Data\Climate\Gaia\Seasonal\SubgridCoordsGeo.mat',squeeze_me=True)
+    ll=np.asarray(z['ll'][()])
+    srs=gis.ImportSRSs()
+    x,y=srs['Proj']['BC1ha'](ll[:,1],ll[:,0])
+
+    csg={}
+    cscn='rcp45'
+    z=spio.loadmat(r'C:\Users\rhember\Documents\Data\Climate\Gaia\Seasonal\SubgridClimate_AnnualSummaries_CanESM2.mat',squeeze_me=True)
+    csg['tv']=z['z']['tva']
+
+    iDat=np.where(np.asarray(z['z'][cscn][()].dtype.names)=='tmean_mjjas_r')[0][0]
+    csg['tmean']=z['z'][cscn][()][()][iDat].astype('float32')
+    iDat=np.where(np.asarray(z['z'][cscn][()].dtype.names)=='ws_mjjas_r')[0][0]
+    csg['ws']=z['z'][cscn][()][()][iDat].astype('float32')
+    iDat=np.where(np.asarray(z['z'][cscn][()].dtype.names)=='etp_pt_mjjas_r')[0][0]
+    csg['etp']=z['z'][cscn][()][()][iDat].astype('float32')
+
+
+

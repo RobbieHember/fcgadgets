@@ -277,7 +277,7 @@ def SimulateIBMFromAAO(meta,ba):
     if 'ID_BECZ' in ba:
         ba['BEC_ZONE_CODE']=ba['ID_BECZ']
 
-     # Import IBM stats
+    # Import IBM stats
     ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
 
     # Prepare mortality probability coefficients
@@ -316,6 +316,12 @@ def SimulateIBMFromAAO(meta,ba):
             for iT in range(meta['Year'].size):
                 N_t=1
                 P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+
+        # *** Add historical outbreaks ***
+        #yrL=[1835,1865,1875,1905,1915,1945,1955]
+        #for iY in yrL:
+        #    iT=np.where(meta['Year']==iY)[0]
+        #    P_oc[iT,:]=0.1
 
         #--------------------------------------------------------------------------
         # Loop through scenarios

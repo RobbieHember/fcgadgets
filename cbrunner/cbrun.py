@@ -77,38 +77,43 @@ def MeepMeep(meta):
                 # Indices to ecosystem pools
                 iEP=meta['Core']['iEP']
 
+                #--------------------------------------------------------------
                 # Try to start at a later date and adopt spinup from a previous run
-                if (meta['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
-                    #Start from beginning
-                    t_start=1
-                else:
-                    # Start at an advanced date using previous data for spinup period
-                    t_start=np.where(meta['Year']==meta['Project']['Year Start Saving'])[0][0]
+                #--------------------------------------------------------------
 
-                    # Get output variables from first run of this batch
-                    it=np.where(meta['Year']==meta['Project']['Year Start Saving']-1)[0]
-                    for k in vo.keys():
-                        if (k=='C_M_ByAgent'):
-                            continue
-                        if vo[k].size==0:
-                            continue
-                        vo[k][it,:]=vo_full[k]
+                t_start=1
 
-                    # Set future periods to zero
-                    it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]
-                    for k in vo.keys():
-                        if (k=='C_M_ByAgent'):
-                            # Nested dictionaries
-                            # *** These are already shortened time periods so set whole array to zero
-                            for k2 in vo[k].keys():
-                                vo[k][k2]=0*vo[k][k2]
-                        else:
+                # if (meta['Project']['N Ensemble']==1): # | (iEns==0): # (iScn==0) &
+                #     # Start from beginning
+                #     t_start=1
+                # else:
+                #     # Start at an advanced date using previous data for spinup period
+                #     t_start=np.where(meta['Year']==meta['Project']['Year Start Saving'])[0][0]
 
-                            if vo[k].size==0:
-                                continue
+                #     # Get output variables from first run of this batch
+                #     it=np.where(meta['Year']==meta['Project']['Year Start Saving']-1)[0]
+                #     for k in vo.keys():
+                #         if (k=='C_M_ByAgent'):
+                #             continue
+                #         if vo[k].size==0:
+                #             continue
+                #         vo[k][it,:]=vo_full[k]
 
-                            # Not a nested dictionary
-                            vo[k][it,:]=0*vo[k][it,:]
+                #     # Set future periods to zero
+                #     it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]
+                #     for k in vo.keys():
+                #         if (k=='C_M_ByAgent'):
+                #             # Nested dictionaries
+                #             # *** These are already shortened time periods so set whole array to zero
+                #             for k2 in vo[k].keys():
+                #                 vo[k][k2]=0*vo[k][k2]
+                #         else:
+
+                #             if vo[k].size==0:
+                #                 continue
+
+                #             # Not a nested dictionary
+                #             vo[k][it,:]=0*vo[k][it,:]
 
                 # Track time
                 t3=time.time()
@@ -189,12 +194,12 @@ def MeepMeep(meta):
                 meta['Project']['Run Time Summary']['Run geological']=t6-t5
 
                 # Export simulation results to file
-                #ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
-                if (meta['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
-                    # Only save output if it is the first instance of a batch
-                    vo_full=ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
-                else:
-                    ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
+                ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
+                # if (meta['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
+                #     # Only save output if it is the first instance of a batch
+                #     vo_full=ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
+                # else:
+                #     ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
 
                 # Track time
                 t7=time.time()
@@ -331,6 +336,11 @@ def InitializeStands(meta,iScn,iEns,iBat):
 
     # Aggregate pools (Mg C ha-1) (polulated upon export)
     vo['C_Biomass_Tot']=np.array([])
+    vo['C_Stemwood_Tot']=np.array([])
+    vo['C_Foliage_Tot']=np.array([])
+    vo['C_Branch_Tot']=np.array([])
+    vo['C_Bark_Tot']=np.array([])
+    vo['C_Root_Tot']=np.array([])
     vo['C_Piled_Tot']=np.array([])
     vo['C_Litter_Tot']=np.array([])
     vo['C_DeadWood_Tot']=np.array([])
@@ -347,7 +357,7 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_M_Dist']=np.zeros((m,n))
     vo['C_M_ByAgent']={}
     for k in meta['LUT']['Dist']:
-        vo['C_M_ByAgent'][k]=np.zeros((m,1))
+        vo['C_M_ByAgent'][k]=np.zeros((m,n),dtype='int16')
     vo['C_LF']=np.zeros((m,n,o))
     vo['C_RH']=np.zeros((m,n,o))
 
@@ -554,6 +564,9 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
 
     meta['Param']['BEV']=copy.deepcopy(meta['Param']['BE'])
 
+    # Index to batch
+    indBat=cbu.IndexToBatch(meta,iBat)
+
     #--------------------------------------------------------------------------
     # Add error variance to parameters
     #--------------------------------------------------------------------------
@@ -627,8 +640,6 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
     # Papulate batch-specific parameters
     if meta['Project']['Scenario Source']=='Portfolio':
 
-        indBat=cbu.IndexToBatch(meta,iBat)
-
         # Isolate felled fate scenario names within this batch
         Scenario=meta['Project']['Portfolio']['Felled Fate Scenario'][indBat]
 
@@ -663,9 +674,6 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             meta['Param']['BEV']['Felled Fate'][k]=x
 
     elif meta['Project']['Scenario Source']=='Script':
-
-        # Index to batch
-        indBat=cbu.IndexToBatch(meta,iBat)
 
         # Isolate felled fate scenario names within this batch
         HistoricalRegime=meta['Scenario'][meta['iScn']]['Felled Fate Historical Regime']
@@ -705,8 +713,6 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
     # Papulate batch-specific parameters
     if meta['Project']['Scenario Source']=='Portfolio':
 
-        indBat=cbu.IndexToBatch(meta,iBat)
-
         # Isolate Removal Fate scenario names within this batch
         Scenario=meta['Project']['Portfolio']['Removed Fate Change Scenario'][indBat]
 
@@ -741,9 +747,6 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             meta['Param']['BEV']['Removed Fate'][k]=x
 
     elif meta['Project']['Scenario Source']=='Script':
-
-        # Index to batch
-        indBat=cbu.IndexToBatch(meta,iBat)
 
         # Isolate Removal Fate scenario names within this batch
         HistoricalRegime=meta['Scenario'][meta['iScn']]['Removed Fate Historical Regime']
@@ -815,8 +818,6 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
     # Papulate batch-specific parameters
     if meta['Project']['Scenario Source']=='Portfolio':
 
-        indBat=cbu.IndexToBatch(meta,iBat)
-
         # Isolate scenario names within this batch
         Scenario=meta['Project']['Portfolio']['HWP End Use Scenario'][indBat]
 
@@ -853,9 +854,6 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
 
     else:
 
-        # Index to batch
-        indBat=cbu.IndexToBatch(meta,iBat)
-
         # Isolate Removal Fate scenario names within this batch
         HistoricalRegime=meta['Scenario'][meta['iScn']]['Removed Fate Historical Regime']
         ChangeScenario=meta['Scenario'][meta['iScn']]['HWP End Use Change Scenario']
@@ -875,6 +873,33 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
                 x=meta['Param']['BE']['HWP End Use'][ChangeScenario][HistoricalRegime][k]
                 for i in range(indBat.size):
                     meta['Param']['BEV']['HWP End Use'][k][:,i]=x
+
+    #--------------------------------------------------------------------------
+    # Growth enhancement factors
+    #--------------------------------------------------------------------------
+
+    if 'Growth Enhancement Status' in meta['Scenario'][iScn]:
+        if meta['Scenario'][iScn]['Growth Enhancement Status']=='On':
+
+            tv=meta['Year'].copy()
+            meta['Project']['Growth Enhancement']=np.zeros((tv.size,indBat.size))
+            bgcz=vi['Inv']['ID_BECZ'].flatten()
+            u=np.unique(bgcz)
+            for iU in range(u.size):
+                indS=np.where(bgcz==u[iU])[0]
+                indP=np.where(meta['Param']['BE']['ClimateByBGC']['Name']==cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])[0])[0]
+
+                fG_PreI=meta['Param']['BE']['ClimateByBGC']['Growth Enhancement Factor'][indP[0]]
+                fG_PosI=1.0
+                fG=fG_PreI*np.ones(tv.size)
+                it1=np.where(tv==1860)[0]
+                it2=np.where(tv==2010)[0]
+                ind=np.arange(it1,it2+1,dtype='int16')
+
+                fG[ind]=np.linspace(fG_PreI,fG_PosI,ind.size)
+                fG[it2[0]:]=fG_PosI
+                #plt.plot(tv,fG,'b-')
+                meta['Project']['Growth Enhancement'][:,indS]=np.tile(fG,(indS.size,1)).T
 
     return meta,vi
 
@@ -1023,6 +1048,12 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     # Calculate carbon content of dead wood, organic and mineral soil horizons following Shaw et al. (2017)
     vo['C_Soil_OHorizon']=vo['C_Eco_Pools'][:,:,iEP['LitterVF']]+vo['C_Eco_Pools'][:,:,iEP['LitterS']]
 
+    vo['C_Stemwood_Tot']=vo['C_Eco_Pools'][:,:,iEP['StemMerch']]+vo['C_Eco_Pools'][:,:,iEP['StemNonMerch']]
+    vo['C_Foliage_Tot']=vo['C_Eco_Pools'][:,:,iEP['Foliage']]
+    vo['C_Branch_Tot']=vo['C_Eco_Pools'][:,:,iEP['Branch']]
+    vo['C_Bark_Tot']=vo['C_Eco_Pools'][:,:,iEP['Bark']]
+    vo['C_Root_Tot']=vo['C_Eco_Pools'][:,:,iEP['RootFine']]+vo['C_Eco_Pools'][:,:,iEP['RootCoarse']]
+
     if meta['Project']['Save Biomass Pools']!='On':
 
         # Aggregate pools
@@ -1079,10 +1110,17 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
 
     # Mortality summary by agent
     for k in vo['C_M_ByAgent'].keys():
-        if np.max(vo['C_M_ByAgent'][k]<32767):
-            vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype('int16')
-        else:
-            vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype(int)
+        idx=np.where(vo['C_M_ByAgent'][k]>0)
+        M=vo['C_M_ByAgent'][k][idx].copy()
+        vo['C_M_ByAgent'][k]={}
+        vo['C_M_ByAgent'][k]['idx']=idx
+        vo['C_M_ByAgent'][k]['M']=M
+
+    #for k in vo['C_M_ByAgent'].keys():
+    #    if np.max(vo['C_M_ByAgent'][k]<32767):
+    #        vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype('int16')
+    #    else:
+    #        vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype(int)
 
     #--------------------------------------------------------------------------
     # Save data

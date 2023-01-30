@@ -23,6 +23,10 @@ from fcgadgets.macgyver import utilities_general as gu
 
 def ImportSRSs():
 
+    # Example:
+    #    srs=gis.ImportSRSs()
+    #    x,y=srs['Proj']['BC1ha'](ll[:,1],ll[:,0])
+
     srs={}
     srs['String']={}
     srs['Proj']={}
@@ -496,6 +500,29 @@ def UpdateGridCellsize(z_in,scale_factor):
     t[5]=t[4]*scale_factor
     z['Transform']=tuple(t)
     return z
+
+#%% Get grid index of points from x and y
+
+def GetGridIndexToPoints(z,x,y):
+    Xg=z['X'][0,:]
+    Yg=z['Y'][:,0]
+    ix=np.zeros(x.size,dtype='int16')
+    iy=np.zeros(x.size,dtype='int16')
+    for iPoint in range(x.size):
+        if np.isnan(x[iPoint])==True:
+            continue
+        adx=np.abs(x[iPoint]-Xg)
+        ady=np.abs(y[iPoint]-Yg)
+        ind=np.where(adx==np.min(adx))[0]
+        if ind.size>1:
+            ind=ind[0]
+        ix[iPoint]=ind
+        ind=np.where(ady==np.min(ady))[0]
+        if ind.size>1:
+            ind=ind[0]
+        iy[iPoint]=ind
+    ind=tuple([iy,ix])
+    return ind
 
 #%% Import Cities
 

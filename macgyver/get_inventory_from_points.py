@@ -20,15 +20,20 @@ import fcgadgets.macgyver.utilities_inventory as invu
 
 #%% Project name
 
-name='BCFCS_Defol_2k'
+#name='BCFCS_EvalAtPlots'
+#name='BCFCS_MPB_Calib_10k'
+#name='BCFCS_Actual_4k'
+#name='BCFCS_Actual_20k'
 #name='BCFCS_Bioenergy_20k'
-#name='SummaryBC20k_H'
-#name='SummaryBC20k_HAR'
-#name='SummaryBC20k_NA'
+#name='BCFCS_BAU_20k'
+#name='BCFCS_HAR_20k'
+#name='BCFCS_NA_20k'
 #name='SummaryBC4k_HAR'
 #name='SummaryBC4k_BAU'
+#name='BCFCS_Defol_2k'
 #name='LICS Hanceville'
-#name='SummaryBC_NOSE'
+name='BCFCS_NA_1k_Sparse'
+#name='BCFCS_NOSE_Sparse'
 #name='SummaryBC_OHS'
 #name='ComparisonWithPlotsSoil'
 #name='HancevilleFire'
@@ -36,9 +41,10 @@ name='BCFCS_Defol_2k'
 #%% Define paths
 
 meta={}
+meta['Project']={}
 meta['Paths']={}
 meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + name
-meta['Paths']['Geospatial']=meta['Paths']['Project'] + '\\Geospatial'
+meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\' + name
 meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
 meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
 meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422'
@@ -53,9 +59,6 @@ gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Metadata.pkl',meta)
 
 # Import BC boundary
 gdf_bc_boundary=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
-
-# Import reference grid
-#zRef=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\FAIB_Standard.tif')
 
 # Import TSA grid (adjusted to be the same as the new FAIB standard)
 zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
@@ -73,10 +76,10 @@ geos={}
 # Define regular grid sampling frequency
 #geos['rgsf']=1 # 100 m
 #geos['rgsf']=5 # 500 m
-#geos['rgsf']=10 # 1 km
+geos['rgsf']=10 # 1 km
 #geos['rgsf']=20 # 2 km
 #geos['rgsf']=40 # 4 km
-geos['rgsf']=50 # 5 km
+#geos['rgsf']=50 # 5 km
 #geos['rgsf']=100 # 10 km
 #geos['rgsf']=200 # 20 km
 
@@ -91,7 +94,7 @@ zTSA_r=gis.UpdateGridCellsize(zTSA,geos['rgsf'])
 
 # Define additional sampling criteria
 
-if (name=='SummaryBC4k_BAU') | (name=='SummaryBC4k_TDAF') | (name=='SummaryBC4k_HAR') | (name=='SummaryBC20k_BAU') | (name=='SummaryBC20k_TDAF') | (name=='SummaryBC20k_HAR'):
+if (name=='BCFCS_BAU_4k') | (name=='BCFCS_BAU_20k') | (name=='BCFCS_Actual_4k') | (name=='BCFCS_Actual_20k') | (name=='BCFCS_HAR_20k') | (name=='BCFCS_Bioenergy_20k'):
 
     # Index to treed land
     iMask_Full=np.where( (zLC2['Data']==4) )
@@ -100,6 +103,68 @@ if (name=='SummaryBC4k_BAU') | (name=='SummaryBC4k_TDAF') | (name=='SummaryBC4k_
     # Area expansion factor
     geos['AEF']=iMask_Full[0].size/geos['iMask'][0].size
     #geos['AEF']=bc_grid_size/(geos['Grid']['m']*geos['Grid']['n'])
+
+elif (name=='BCFCS_NOSE_Sparse'):
+
+    # Includes subsampling
+    x=geos['Grid']['X'].flatten()
+    y=geos['Grid']['Y'].flatten()
+    points=[]
+    for k in range(x.size):
+        points.append(Point(x[k],y[k]))
+    gdf_xy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':1})
+    gdf_xy.crs=gdf_bc_boundary.crs
+
+    # Import polygons of non-obligatoin stand establishment (from query script)
+    gdf_nose=gpd.read_file(meta['Paths']['Project'] + '\\Geospatial\\NOSE_polygons.geojson')
+
+    # Get points within polygons
+    gdf_sxy=gpd.sjoin(gdf_xy,gdf_nose,op='within')
+
+    geos['Sparse']={}
+    geos['Sparse']['X']=gdf_sxy['geometry'].x.values
+    geos['Sparse']['Y']=gdf_sxy['geometry'].y.values
+
+    for i in range(geos['Sparse']['X'].size):
+        ind=np.where( (geos['Grid']['X']==geos['Sparse']['X'][i]) & (geos['Grid']['Y']==geos['Sparse']['Y'][i]) )
+        geos['Grid']['Data'][ind]=1
+
+    geos['iMask']=np.where( (geos['Grid']['Data']==1) )
+
+elif (name=='BCFCS_NA_1k_Sparse'):
+
+    # Includes subsampling
+    x=geos['Grid']['X'].flatten()
+    y=geos['Grid']['Y'].flatten()
+    points=[]
+    for k in range(x.size):
+        points.append(Point(x[k],y[k]))
+    gdf_xy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':1})
+    gdf_xy.crs=gdf_bc_boundary.crs
+
+    # Import polygons of non-obligatoin stand establishment (from query script)
+    gdf_nose=gpd.read_file(meta['Paths']['Project'] + '\\Geospatial\\NA_polygons.geojson')
+
+    # Get points within polygons
+    gdf_sxy=gpd.sjoin(gdf_xy,gdf_nose,op='within')
+
+    geos['Sparse']={}
+    geos['Sparse']['X']=gdf_sxy['geometry'].x.values
+    geos['Sparse']['Y']=gdf_sxy['geometry'].y.values
+
+    for i in range(geos['Sparse']['X'].size):
+        ind=np.where( (geos['Grid']['X']==geos['Sparse']['X'][i]) & (geos['Grid']['Y']==geos['Sparse']['Y'][i]) )
+        geos['Grid']['Data'][ind]=1
+
+    geos['iMask']=np.where( (geos['Grid']['Data']==1) )
+
+elif (name=='BCFCS_MPB_Calib_10k'):
+
+    # Index to treed land
+    zMask=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\IBM_Mask_ExcTrace.tif')
+    iMask_Full=np.where( (zLC2['Data']==4) & (zMask['Data']==1) )
+    geos['iMask']=np.where( (zLC2_r['Data']==4) )
+    geos['AEF']=iMask_Full[0].size/geos['iMask'][0].size
 
 elif (name=='SummaryBC_Quesnel'):
 
@@ -142,33 +207,6 @@ elif (name=='20k_SS'):
 
     geos['iMask']=np.where( (zLC2['Data']==4) & (zMask==1) )
 
-elif (name=='SummaryBC_NOSE'):
-
-    # Includes subsampling
-    x=geos['X'].flatten()
-    y=geos['Y'].flatten()
-    points=[]
-    for k in range(x.size):
-        points.append(Point(x[k],y[k]))
-    gdf_xy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':1})
-    gdf_xy.crs=gdf_bc_boundary.crs
-
-    # Import polygons of non-obligatoin stand establishment (from query script)
-    gdf_nose=gpd.read_file(r'D:\Data\FCI_Projects\SummaryBC_NOSE\Geospatial\NOSE_query.geojson')
-
-    # Get points within polygons
-    gdf_sxy=gpd.sjoin(gdf_xy,gdf_nose,op='within')
-
-    geos['Sparse']={}
-    geos['Sparse']['X']=gdf_sxy['geometry'].x.values
-    geos['Sparse']['Y']=gdf_sxy['geometry'].y.values
-
-    for i in range(geos['Sparse']['X'].size):
-        ind=np.where( (geos['X']==geos['Sparse']['X'][i]) & (geos['Y']==geos['Sparse']['Y'][i]) )
-        geos['Mask'][ind]=1
-
-    geos['iMask']=np.where( (geos['Mask']==1) )
-
 elif (name=='BCFCS_Defol_2k'):
 
     # Includes subsampling
@@ -202,24 +240,16 @@ elif (name=='BCTS'):
     zBCTS['Data']=zBCTS['Data'][0::geos['rgsf'],0::geos['rgsf']]
     geos['iMask']=np.where( (zLC2['Data']==4) & (zBCTS['Data']>0) )
 
-elif (name=='ComparisonWithPlotsSoil'):
+elif (name=='BCFCS_EvalAtPlots'):
 
+    # Import ground plots
+    gplts=gu.ipickle(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2\Processed\L2\L2_BC.pkl')
     soils=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
 
-    # Some pits have the same cell so the size deviates -> allow duplicates
-    #z=np.zeros(zLC2['X'].shape)
-    Lx=[]; Ly=[]
-    for i in range(soils['x'].size):
-        dx=np.abs(zLC2['X'][0,:]-soils['x'][i])
-        dy=np.abs(zLC2['Y'][:,0]-soils['y'][i])
-        ix=np.where( dx==np.min(dx) )[0]
-        iy=np.where( dy==np.min(dy) )[0]
-        #z[iy,ix]=1
-        Lx.append(ix[0])
-        Ly.append(iy[0])
-    geos['iMask']=tuple( np.array([Ly,Lx],dtype=int) )
-    #geos['iMask']=np.where(z==1)
-
+    x=np.append(gplts['sobs']['X'],soils['x'])
+    y=np.append(gplts['sobs']['Y'],soils['y'])
+    xy=np.unique(np.column_stack((x,y)),axis=0)
+    geos['iMask']=gis.GetGridIndexToPoints(zTSA,xy[:,0],xy[:,1])
     geos['AEF']=1.0
 
 elif (name=='HancevilleFire'):
@@ -244,7 +274,9 @@ geos['Sparse']['ID_TSA']=zTSA_r['Data'][geos['iMask']]
 # Flatten coordinate matrices first to save space
 geos['Grid']['X']=geos['Grid']['X'][0,:]
 geos['Grid']['Y']=geos['Grid']['Y'][:,0]
-gu.opickle(meta['Paths']['Geospatial'] + '\\geos.pkl',geos)
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\geos.pkl',geos)
+
+print('Number of stands = ' + str(geos['Sparse']['X'].size))
 
 # Save mask as geotiff
 #gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\geos_grid.tiff')
@@ -258,17 +290,17 @@ if flg==1:
         points.append(Point(geos['Sparse']['X'][k],geos['Sparse']['Y'][k]))
     gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_TSA':geos['Sparse']['ID_TSA']})
     gdf_sxy.crs=gdf_bc_boundary.crs
-    gdf_sxy.to_file(meta['Paths']['Geospatial'] + '\\geos.geojson',driver='GeoJSON')
+    gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\geos.geojson',driver='GeoJSON')
 
 #%% Plot
 
 flg=0
 if flg==1:
 
-    #gdf_sxy=gpd.read_file(meta['Paths']['Geospatial'] + '\\geos.geojson')
+    #gdf_sxy=gpd.read_file(meta['Paths']['Project'] + '\\Geospatial\\geos.geojson')
 
     plt.close('all')
-    fig,ax=plt.subplots(figsize=gu.cm2inch(7.8,6.6)); ms=3
+    fig,ax=plt.subplots(figsize=gu.cm2inch(14,14)); ms=2
     #mngr=plt.get_current_fig_manager()
     #mngr.window.setGeometry(700,20,620,600)
     gdf_bc_boundary.plot(ax=ax,facecolor=[0.8,0.8,0.8],edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
@@ -278,6 +310,7 @@ if flg==1:
     gdf_sxy.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1)
     ax.grid(color='k',linestyle='-',linewidth=0.25)
     ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\Map_GroundPlots','png',900)
     #plt.savefig(PathProject + '\\SparseGrid_Map.png',format='png',dpi=900)
     #plt.close('all')
     #garc.collect()
@@ -578,8 +611,8 @@ for iLyr in range(len(InvLyrInfo)):
     # Save to file
     #--------------------------------------------------------------------------
 
-    gu.opickle(meta['Paths']['Geospatial'] + '\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
-    gu.opickle(meta['Paths']['Geospatial'] + '\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
+    gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '.pkl',data)
+    gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\' + InvLyrInfo[iLyr]['Layer Name'] + '_IdxToInv.pkl',IdxToInv)
 
 #%% Retrieve planting information
 # Some projects did not report spatial planting info. Without the spatial info
@@ -673,8 +706,8 @@ t1=time.time()
 print(t1-t0)
 
 # Save
-gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW.pkl',pl)
-gu.opickle(meta['Paths']['Geospatial'] + '\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_PLANTING_SVW.pkl',pl)
+gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_PLANTING_SVW_IdxToInv.pkl',IdxToInv)
 
 #%% Add FC Archive to FC Inventory dictionary
 
@@ -704,7 +737,6 @@ if flg==1:
     # Save revised versions
     gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_INV_SVW.pkl',fcinv)
     gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\RSLT_FOREST_COVER_SILV_SVW.pkl',fcsilv)
-
 
 #%%
 

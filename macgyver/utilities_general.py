@@ -15,6 +15,7 @@ from matplotlib import path
 from scipy import stats, linalg
 import pickle
 from scipy.io import loadmat
+from scipy import stats
 from subprocess import call
 import netCDF4 as nc
 import statsmodels.api as sm
@@ -226,12 +227,6 @@ def axletters(ax,plt,rx,ry,**kwargs):
 
     return
 
-#%% BUNCH CONTENTS OF DICTIONARY
-
-class Bunch(object):
-    def __init__(self, adict):
-        self.__dict__.update(adict)
-
 #%% CONVERT CM TO INCHES
 
 def cm2inch(*tupl):
@@ -367,9 +362,12 @@ def tvec(res,year1,year2):
 
 #%% DIESCRETE RESPONSE (BINNED RESPONSE)
 
+# N,mu,med,sig,se=gu.discres(x,y,bw,bin)
+
 def discres(x,y,bw,bin):
     N=np.nan*np.ones(bin.size)
     mu=np.nan*np.ones(bin.size)
+    med=np.nan*np.ones(bin.size)
     sig=np.nan*np.ones(bin.size)
     se=np.nan*np.ones(bin.size)
     for i in range(bin.size):
@@ -378,9 +376,10 @@ def discres(x,y,bw,bin):
         if ind.size==0:
             continue
         mu[i]=np.nanmean(y[ind])
+        med[i]=np.nanmedian(y[ind])
         sig[i]=np.nanstd(y[ind])
         se[i]=np.nanstd(y[ind])/np.sqrt(ind.size)
-    return N,mu,sig,se
+    return N,mu,med,sig,se
 
 #%% Binned sum
 
@@ -792,3 +791,17 @@ def Clamp(x,xmin,xmax):
         y=np.max(np.min(xmax,x),xmin)
 
     return y
+
+#%% Density profile
+
+def ksdensity(y):
+    kde=stats.gaussian_kde(y)
+    x=np.linspace(y.min(),y.max(),100)
+    p=kde(x)
+    return p
+
+#%% BUNCH CONTENTS OF DICTIONARY
+
+class Bunch(object):
+    def __init__(self, adict):
+        self.__dict__.update(adict)

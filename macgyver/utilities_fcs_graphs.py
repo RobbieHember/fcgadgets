@@ -9,7 +9,8 @@ from matplotlib.patches import Rectangle
 import gc as garc
 import warnings
 import time
-#import matplotlib.colors
+import copy
+import matplotlib.colors
 #from matplotlib import animation
 from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_general as gu
@@ -20,7 +21,8 @@ from fcexplore.psp.Processing import psp_utilities as utl_gp
 
 flag_printfigs='On'
 
-gp=gu.SetGraphics('Presentation Dark')
+#gp=gu.SetGraphics('Presentation Dark')
+gp=gu.SetGraphics('Manuscript')
 
 #%% THLB
 def Plot_THLB(meta,tv,AEF,thlb,iScn):
@@ -333,7 +335,7 @@ def PlotVolumePerHectare(meta,mos,tv,iScn,iT,iPS,iSS,AEF):
     V_Harvest=AEF*mos['Scenarios'][iScn]['Sum']['V_ToMillMerchTotal']['Ensemble Mean'][:,iPS,iSS]
     rat=np.maximum(0,V_Harvest/A_Harvest)
     rat_ma=gu.movingave(rat,5,'historical')
-    ax.plot(tv[iT],rat_ma[iT],'-go',lw=1,mfc=[0.6,0.96,0],mec=[0.6,0.96,0],color=[0.6,0.96,0],ms=2.5,label='FCS prediction')
+    ax.plot(tv[iT],rat_ma[iT],'-go',lw=0.5,mew=0.5,mfc=[1,1,1],mec=[0.5,0.85,0],color=[0.5,0.85,0],ms=2,label='FCS prediction')
 
     # Observations
     d={}
@@ -347,7 +349,7 @@ def PlotVolumePerHectare(meta,mos,tv,iScn,iT,iPS,iSS,AEF):
 
     H_HBS=gu.ipickle(r'C:\Users\rhember\Documents\Data\Harvest\HBS\HBS_AnnualSummary.pkl')
     ind=np.where( (d['Year']>=H_HBS['Year'][0]) & (d['Year']<=H_HBS['Year'][-1]) )[0]
-    d['V'][ind]=np.maximum(d['V'][ind],H_HBS['V All (Mm3/yr)']*1e6)
+    d['V'][ind]=np.maximum(d['V'][ind],H_HBS['V All Abs (Mm3/yr)']*1e6)
 
     A_CCB=gu.ipickle(r'C:\Users\rhember\Documents\Data\Harvest\Harvest Area\AnnualHarvestAreaFromConCutblocksDB.pkl')
     ind=np.where( (d['Year']>=A_CCB['Year'][0]) & (d['Year']<=A_CCB['Year'][-1]) )[0]
@@ -359,7 +361,7 @@ def PlotVolumePerHectare(meta,mos,tv,iScn,iT,iPS,iSS,AEF):
 
     iT3=np.where( (d['Year']>=tv[iT[0]]) & (d['Year']<=tv[iT[-1]]) )[0]
 
-    plt.plot(d['Year'][iT3],d['V'][iT3]/d['A'][iT3],'-bs',color=[0.27,0.49,0.79],mfc=[0.27,0.49,0.79],mec=[0.27,0.49,0.79],ms=2.5,lw=1,label='HBS + Harvest Area Analysis')
+    plt.plot(d['Year'][iT3],d['V'][iT3]/d['A'][iT3],'-bs',color=[0.27,0.49,0.79],mfc=[0.27,0.49,0.79],mec=[0.27,0.49,0.79],ms=2,lw=0.5,mew=0.5,label='HBS + Harvest Area Analysis')
 
     ax.set(position=[0.1,0.12,0.88,0.84],xticks=np.arange(tv[iT[0]],2250,5),xlabel='Time, years', \
            yticks=np.arange(0,2000,100),ylabel='Harvest volume (m$^3$ ha$^-$$^1$)',
@@ -405,8 +407,12 @@ def PlotGHGBalance(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
 
     ax.plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'k-.',color=[0.4,0.6,0.15],mfc='w',ms=2,mew=0.5,label='Net ecosystem exchange')
 
-    ax.set(position=[0.075,0.085,0.9,0.86],xticks=np.arange(tv[iT[0]],2250,20),ylim=[-160,160],yticks=np.arange(-200,200,25),
-           ylabel='GHG fluxes (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
+    if tv[iT[0]]>=1800:
+        ax.set(position=[0.1,0.11,0.89,0.83],xticks=np.arange(tv[iT[0]],2200,20), \
+               yticks=np.arange(-200,300,25),ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',ylim=[-180,180],xlim=[tv[iT[0]],tv[iT[-1]]])
+    else:
+        ax.set(position=[0.1,0.11,0.89,0.83],xticks=np.arange(tv[iT[0]],2200,50), \
+               yticks=np.arange(-200,300,25),ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',ylim=[-180,180],xlim=[tv[iT[0]],tv[iT[-1]]])
     ax.legend(loc='lower right',fontsize=gp['fs3'],frameon=False,facecolor='w',edgecolor='w');
     #plt.grid()
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
@@ -417,6 +423,41 @@ def PlotGHGBalance(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
         nam_ps=meta['Project']['Strata']['Project']['Unique CD'][iPS]
         nam_ss=meta['Project']['Strata']['Spatial']['Unique CD'][iSS]
         gu.PrintFig(meta['Paths']['Figures'] + '\\' + nam_ps + '_' + nam_ss + '_GHGBalance_Scn' + str(iScn+1),'png',900)
+
+#%% Plot net sector GHG balance (simple)
+def PlotGHGBalanceSimple(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
+
+    v1='E_CO2e_AGHGB_WSub'
+    v2='E_CO2e_AGHGB_WOSub'
+
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(13,7.5));
+    ax.plot(tv[iT],np.zeros(iT.size),color=gp['cla'],lw=0.5)
+    ylo1=(mos['Scenarios'][iScn]['Sum'][v1]['Ensemble P250'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum'][v2]['Ensemble P250'][iT,iPS,iSS])/2/1e6*AEF
+    yhi1=(mos['Scenarios'][iScn]['Sum'][v1]['Ensemble P750'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum'][v2]['Ensemble P750'][iT,iPS,iSS])/2/1e6*AEF
+    ylo2=(mos['Scenarios'][iScn]['Sum'][v1]['Ensemble P025'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum'][v2]['Ensemble P025'][iT,iPS,iSS])/2/1e6*AEF
+    yhi2=(mos['Scenarios'][iScn]['Sum'][v1]['Ensemble P975'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum'][v2]['Ensemble P975'][iT,iPS,iSS])/2/1e6*AEF
+    mu=(mos['Scenarios'][iScn]['Sum'][v1]['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum'][v2]['Ensemble Mean'][iT,iPS,iSS])/2/1e6*AEF
+
+    cs=np.column_stack((ylo1,ylo2,yhi1,yhi2))
+    ymx=np.max(np.max(cs,axis=1)); ymn=np.min(np.min(cs,axis=1))
+    ax.fill_between(tv[iT],ylo1,yhi1,color=gp['cl1'],alpha=0.3,lw=0,label='50% C.I.')
+    ax.fill_between(tv[iT],ylo2,yhi2,color=gp['cl1'],alpha=0.1,lw=0,label='95% C.I.')
+
+    ax.plot(tv[iT],mu,'k-',color=gp['cl1'],mew=0.5,ms=2,label='Best estimate')
+    leg=ax.legend(loc='upper right',frameon=False,facecolor=None,edgecolor='w')
+    ax.text(tv[iT[0]]+7,165,'Source',fontsize=11,style='italic',weight='bold',color=[0.75,0.75,0.75],va='center')
+    ax.text(tv[iT[0]]+7,-165,'Sink',fontsize=11,style='italic',weight='bold',color=[0.75,0.75,0.75],va='center')
+    if tv[iT[0]]>=1800:
+        ax.set(position=[0.1,0.11,0.89,0.83],xticks=np.arange(tv[iT[0]],2200,20), \
+               yticks=np.arange(-200,300,25),ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',ylim=[-200,200],xlim=[tv[iT[0]],tv[iT[-1]]])
+    else:
+        ax.set(position=[0.1,0.11,0.89,0.83],xticks=np.arange(tv[iT[0]],2200,50), \
+               yticks=np.arange(-200,300,25),ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',ylim=[-200,200],xlim=[tv[iT[0]],tv[iT[-1]]])
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+
+    nam_ps=meta['Project']['Strata']['Project']['Unique CD'][iPS];
+    nam_ss=meta['Project']['Strata']['Spatial']['Unique CD'][iSS];
+    gu.PrintFig(meta['Paths']['Figures'] + '\\' + nam_ps + '_' + nam_ss + '_E_CO2e_AGHGB_AverageSubs','png',900);
 
 #%% Plot scenario comparisons
 def PlotGHGBalanceAndBenefitWithCumulative(meta,mos,tv,AEF,cmp,iT,iPS,iSS):
@@ -475,7 +516,7 @@ def PlotGHGBalanceAndBenefitWithCumulative(meta,mos,tv,AEF,cmp,iT,iPS,iSS):
         cs=np.column_stack((ylo,ymu,yhi))
         ymx=np.max(np.max(cs,axis=1)); ymn=np.min(np.min(cs,axis=1))
         ax[1,0].plot(tv[iT],np.zeros(iT.size),color=gp['cla'])
-        ax[1,0].fill_between(tv[iT],ylo,yhi,color=gp['cl3'],alpha=gp['Alpha2'],lw=0,label='95% C.I.')
+        ax[1,0].fill_between(tv[iT],ylo,yhi,color=gp['cl3'],alpha=gp['Alpha1'],lw=0,label='95% C.I.')
 
         ylo2=mos['Delta'][cmp]['ByStrata']['Sum'][v1[iV]]['Ensemble P250'][iT,iPS,iSS]/1e6*AEF
         yhi2=mos['Delta'][cmp]['ByStrata']['Sum'][v1[iV]]['Ensemble P750'][iT,iPS,iSS]/1e6*AEF
@@ -581,28 +622,28 @@ def PlotComparisonWithPIR(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
     iT=np.where( (tv>=1900) & (tv<=2022) )[0]
 
     plt.close('all')
-    fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(16,8));
+    fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(16,8)); cl=np.array([[0.27,0.47,0.79],[0,1,1]]);
     ax[0,0].plot(tv[iT],np.zeros(iT.size),'k-',color=gp['cla'])
 
-    ax[0,0].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='FCAST')
-    ax[0,0].plot(dPIR['Year'],dPIR['Forest Growth Minus Decay']/1e3,'rs-',mfc=[1,1,1],ms=2.5,label='PIR')
+    ax[0,0].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=gp['lw1'],mew=0.5,ms=2,label='FCS')
+    ax[0,0].plot(dPIR['Year'],dPIR['Forest Growth Minus Decay']/1e3,'rs-',mfc=[1,1,1],ms=2,mew=0.5,lw=gp['lw1'],label='PIR')
     ax[0,0].set(position=[0.08,0.59,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-120,300,20),
-           ylabel='Growth - Decay (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-100,60])
+           ylabel='Growth - Decay (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-120,60])
     ax[0,0].legend(loc='lower left',frameon=False,facecolor='w',edgecolor='w')
     ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=gp['tickl'])
 
-    ax[0,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='Net ecosystem exchange')
-    ax[0,1].plot(dPIR['Year'],dPIR['Wildfires']/1e3,'rs-',mfc=[1,1,1],ms=2.5,label='PIR')
+    ax[0,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=gp['lw1'],mew=0.5,ms=2,label='Net ecosystem exchange')
+    ax[0,1].plot(dPIR['Year'],dPIR['Wildfires']/1e3,'rs-',mfc=[1,1,1],mew=0.5,ms=2,lw=gp['lw1'],label='PIR')
     ax[0,1].set(position=[0.57,0.59,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(0,300,25),
            ylabel='Wildfire (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,220])
     ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=gp['tickl'])
 
     #ax[1,0].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_OpenBurning']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='Net ecosystem exchange')
     #ax[1,0].plot(dPIR['Year'],dPIR['Slash Pile Burning']/1e3,'rs-',mfc=[1,1,1],label='PIR')
-    ax[1,0].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='HWP decay (FCS)')
-    ax[1,0].plot(tv[iT],(mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,iPS,iSS])/1e6*AEF,'oc-',mfc='w',mew=0.5,ms=2,label='HWP decay + bioenergy (FCS)')
+    ax[1,0].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=gp['lw1'],mew=0.5,ms=2,label='HWP decay (FCS)')
+    ax[1,0].plot(tv[iT],(mos['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,iPS,iSS])/1e6*AEF,'oc-',mfc='w',lw=gp['lw1'],mew=0.5,ms=2,label='HWP decay + bioenergy (FCS)')
     #ax[1,0].plot(tv[iT],gu.movingave(mos['Scenarios'][iScn]['Sum']['C_ToMill']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF*3.667,10,'center'),'og-',mfc='w',mew=0.5,ms=2,label='Harvest removals (FCAST)')
-    ax[1,0].plot(dPIR['Year'],dPIR['Decomposition of Harvested Wood Products']/1e3,'rs-',mfc=[1,1,1],ms=2.5,label='HWP decay (PIR)')
+    ax[1,0].plot(dPIR['Year'],dPIR['Decomposition of Harvested Wood Products']/1e3,'rs-',mfc=[1,1,1],mew=0.5,lw=gp['lw1'],ms=2,label='HWP decay (PIR)')
     ax[1,0].set(position=[0.08,0.09,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-120,300,20),
            ylabel='HWP (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,100])
     ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=gp['tickl'])
@@ -611,10 +652,10 @@ def PlotComparisonWithPIR(meta,mos,tv,AEF,iScn,iT,iPS,iSS):
     #ax[1,0].plot(Harvest['Year'],Harvest['Total_harvest_millions_m3']*0.46*0.5*3.667,'k-',lw=0.75,label='FLNRORD estimate')
     #ax.plot(H_HBS['Year'],H_HBS['V All m3']/1e6,'-cd')
 
-    ax[1,1].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.5)
-    ax[1,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',mfc='w',mew=0.5,ms=2,label='With subs. (FCS)')
-    ax[1,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'sb-',color='c',mec='c',mfc='w',mew=0.5,ms=2,label='W/O subs. (FCS)')
-    ax[1,1].plot(dPIR['Year'],dPIR['Forest Management']/1e3,'rs-',lw=0.25,ms=2.5,mfc='w',label='Forest Management (PIR)')
+    ax[1,1].plot(tv[iT],np.zeros(iT.size),'k-',color=gp['cla'])
+    ax[1,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=gp['lw1'],mew=0.5,ms=2,label='With subs. (FCS)')
+    ax[1,1].plot(tv[iT],mos['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS]/1e6*AEF,'sb-',color='c',mec='c',mfc='w',lw=gp['lw1'],mew=0.5,ms=2,label='W/O subs. (FCS)')
+    ax[1,1].plot(dPIR['Year'],dPIR['Forest Management']/1e3,'rs-',ms=2,mfc='w',mew=0.5,lw=gp['lw1'],label='Forest Management (PIR)')
     ax[1,1].set(position=[0.57,0.09,0.41,0.4],xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-150,300,50),
            ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-150,250])
     ax[1,1].legend(loc='upper center',frameon=False,facecolor='w',edgecolor='w')
@@ -642,12 +683,12 @@ def PlotAreaDisturbed(meta,mos,tv,AEF,ivlT,iScn,iT,iPS,iSS):
         bottom=0;
         if i!=0:
             for j in range(i):
-                bottom=bottom+A['Nat Dist'][j]['Data']/1000
-        pl_d[i]=ax[0].bar(A['tv'],A['Nat Dist'][i]['Data']/1000,ivlT,color=A['Nat Dist'][i]['Color'],bottom=bottom)
+                bottom=bottom+A['Nat Dist'][j]['Data']/1000000
+        pl_d[i]=ax[0].bar(A['tv'],A['Nat Dist'][i]['Data']/1000000,ivlT,color=A['Nat Dist'][i]['Color'],bottom=bottom)
         nams_d[i]=A['Nat Dist'][i]['Name']
     ax[0].legend(pl_d,nams_d,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False);
     ax[0].set(position=[0.06,0.56,0.92,0.43],yscale='linear', \
-      xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,20),ylabel='Area affected (ha x 1000)',xlim=[yr_start,np.max(A['tv'])]);
+      xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,20),ylabel='Area affected (Mha)',xlim=[yr_start,np.max(A['tv'])]);
     #ax[0].text((2020+1920)/2,1050,'Observation Period',ha='center',fontsize=6,style='normal',weight='normal',color=[0,0,0])
 
     #ax[1].fill_between([1920,2020],[0,0],[1100,1100],color=[0.9,0.9,0.9],lw=0)
@@ -656,13 +697,13 @@ def PlotAreaDisturbed(meta,mos,tv,AEF,ivlT,iScn,iT,iPS,iSS):
         bottom=0;
         if i!=0:
             for j in range(i):
-                bottom=bottom+A['Management'][j]['Data']/1000
-        pl_m[i]=ax[1].bar(A['tv'],A['Management'][i]['Data']/1000,ivlT,color=A['Management'][i]['Color'],bottom=bottom)
+                bottom=bottom+A['Management'][j]['Data']/1000000
+        pl_m[i]=ax[1].bar(A['tv'],A['Management'][i]['Data']/1000000,ivlT,color=A['Management'][i]['Color'],bottom=bottom)
         nams_m[i]=A['Management'][i]['Name']
     #ax[1].plot([2020,2020],[0,5500],'k--')
     ax[1].legend(pl_m,nams_m,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False)
     ax[1].set(position=[0.06,0.08,0.92,0.43],yscale='linear',
-      xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,20),xlabel='Time, years',ylabel='Area affected (ha x 1000)',xlim=[yr_start,np.max(A['tv'])]);
+      xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,20),xlabel='Time, years',ylabel='Area affected (Mha)',xlim=[yr_start,np.max(A['tv'])]);
     ax[1].tick_params(length=gp['tickl'])
     gu.axletters(ax,plt,0.01,0.91)
 
@@ -671,16 +712,23 @@ def PlotAreaDisturbed(meta,mos,tv,AEF,ivlT,iScn,iT,iPS,iSS):
     gu.PrintFig(meta['Paths']['Figures'] + '\\' + nam_ps + '_' + nam_ss + '_AreaDisturbedAndManaged_Scn' + str(iScn+1),'png',900)
 
 #%% Mortality summary
-def MortalitySummary(meta,mos,C_M_ByAgent,tv,iScn,iT,ivlT,iPS,iSS):
+def MortalitySummary(meta,mos,tv,iScn,iT,ivlT,iPS,iSS):
 
-    y=[None]*7; c=-1
+    y=[None]*6; c=-1
     c=c+1; y[c]={}; y[c]['Name']='Competition'; y[c]['Color']=[0.9,0.85,1]; y[c]['Data']=mos['Scenarios'][iScn]['Mean']['C_M_Reg_Tot']['Ensemble Mean'][iT,iPS,iSS]
-    c=c+1; y[c]={}; y[c]['Name']='Weather & disease'; y[c]['Color']=[1,0.95,0.8]; y[c]['Data']=C_M_ByAgent[iScn]['Mechanical'][iT]
-    c=c+1; y[c]={}; y[c]['Name']='Wildfire'; y[c]['Color']=[0.75,0,0]; y[c]['Data']=C_M_ByAgent[iScn]['Wildfire'][iT]
-    c=c+1; y[c]={}; y[c]['Name']='Beetles'; y[c]['Color']=[0.5,0.8,0]; y[c]['Data']=C_M_ByAgent[iScn]['IBM'][iT]+C_M_ByAgent[iScn]['Beetles'][iT]+C_M_ByAgent[iScn]['IBB'][iT]
-    c=c+1; y[c]={}; y[c]['Name']='Weevils'; y[c]['Color']=[0.5,0.75,0.75]; y[c]['Data']=C_M_ByAgent[iScn]['Weevils'][iT]
-    c=c+1; y[c]={}; y[c]['Name']='Defoliators'; y[c]['Color']=[0.65,1,0]; y[c]['Data']=C_M_ByAgent[iScn]['Defoliators'][iT]
-    c=c+1; y[c]={}; y[c]['Name']='Harvest'; y[c]['Color']=[0.75,0.9,1]; y[c]['Data']=C_M_ByAgent[iScn]['Harvest'][iT]+C_M_ByAgent[iScn]['Harvest Salvage'][iT]
+    c=c+1; y[c]={}; y[c]['Name']='Weather & disease'; y[c]['Color']=[1,0.95,0.8]; y[c]['Data']=mos['Scenarios'][iScn]['Mean']['C_M_Mechanical']['Ensemble Mean'][iT,iPS,iSS]
+    c=c+1; y[c]={}; y[c]['Name']='Wildfire'; y[c]['Color']=[0.75,0,0]; y[c]['Data']=mos['Scenarios'][iScn]['Mean']['C_M_Wildfire']['Ensemble Mean'][iT,iPS,iSS]
+    c=c+1; y[c]={}; y[c]['Name']='Beetles'; y[c]['Color']=[0.5,0.8,0]; y[c]['Data']=mos['Scenarios'][iScn]['Mean']['C_M_IBM']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_Beetles']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_IBB']['Ensemble Mean'][iT,iPS,iSS]
+    #c=c+1; y[c]={}; y[c]['Name']='Weevils'; y[c]['Color']=[0.5,0.75,0.75]; y[c]['Data']=mos['Scenarios'][iScn]['Mean']['C_M_Weevils'][iT,iPS,iSS]
+    c=c+1; y[c]={}; y[c]['Name']='Defoliators'; y[c]['Color']=[0.65,1,0]; y[c]['Data']=mos['Scenarios'][iScn]['Mean']['C_M_Defoliators']['Ensemble Mean'][iT,iPS,iSS]
+    c=c+1; y[c]={}; y[c]['Name']='Harvest'; y[c]['Color']=[0.75,0.9,1]; y[c]['Data']=mos['Scenarios'][iScn]['Mean']['C_M_Harvest']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_Harvest Salvage']['Ensemble Mean'][iT,iPS,iSS]
+    # OLD
+    # c=c+1; y[c]={}; y[c]['Name']='Weather & disease'; y[c]['Color']=[1,0.95,0.8]; y[c]['Data']=C_M_ByAgent[iScn]['Mechanical'][iT]
+    # c=c+1; y[c]={}; y[c]['Name']='Wildfire'; y[c]['Color']=[0.75,0,0]; y[c]['Data']=C_M_ByAgent[iScn]['Wildfire'][iT]
+    # c=c+1; y[c]={}; y[c]['Name']='Beetles'; y[c]['Color']=[0.5,0.8,0]; y[c]['Data']=C_M_ByAgent[iScn]['IBM'][iT]+C_M_ByAgent[iScn]['Beetles'][iT]+C_M_ByAgent[iScn]['IBB'][iT]
+    # c=c+1; y[c]={}; y[c]['Name']='Weevils'; y[c]['Color']=[0.5,0.75,0.75]; y[c]['Data']=C_M_ByAgent[iScn]['Weevils'][iT]
+    # c=c+1; y[c]={}; y[c]['Name']='Defoliators'; y[c]['Color']=[0.65,1,0]; y[c]['Data']=C_M_ByAgent[iScn]['Defoliators'][iT]
+    # c=c+1; y[c]={}; y[c]['Name']='Harvest'; y[c]['Color']=[0.75,0.9,1]; y[c]['Data']=C_M_ByAgent[iScn]['Harvest'][iT]+C_M_ByAgent[iScn]['Harvest Salvage'][iT]
 
     # Convert to x-year intervals
     y[0]['tv']=gu.BlockMean(tv[iT],ivlT)
@@ -698,8 +746,12 @@ def MortalitySummary(meta,mos,C_M_ByAgent,tv,iScn,iT,ivlT,iPS,iSS):
         pl_d[i]=ax.bar(y[0]['tv'],y[i]['Data'],ivlT,color=y[i]['Color'],bottom=bottom)
         nams_d[i]=y[i]['Name']
     ax.legend(pl_d,nams_d,loc='upper left',bbox_to_anchor=(0.03,0.96),labelspacing=0.12,facecolor=[1,1,1],frameon=False)
+    if yr_start<1800:
+        xivl=50
+    else:
+        xivl=20
     ax.set(position=[0.07,0.08,0.92,0.9],ylim=[0,2.8],yticks=np.arange(0,3,0.2),ylabel='Mortality (MgC/ha/yr)', \
-           xlim=[yr_start,np.max(y[0]['tv'])],xticks=np.arange(np.min(y[0]['tv']),np.max(y[0]['tv'])+1,20),xlabel='Time, years');
+           xlim=[yr_start,np.max(y[0]['tv'])],xticks=np.arange(np.min(y[0]['tv']),np.max(y[0]['tv'])+1,xivl),xlabel='Time, years');
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
     if flag_printfigs=='On':
         nam_ps=meta['Project']['Strata']['Project']['Unique CD'][iPS]
@@ -711,7 +763,7 @@ def MortalitySummary(meta,mos,C_M_ByAgent,tv,iScn,iT,ivlT,iPS,iSS):
 def PlotAllVariableTimeSeries(meta,mos,tv,iScn,iT,iPS,iSS):
     for k in mos['Scenarios'][iScn]['Sum']:
         plt.close('all')
-        fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,7))
+        fig,ax=plt.subplots(1,figsize=gu.cm2inch(20,12))
         mxn=np.zeros(2)
         for iScn in range(meta['Project']['N Scenario']):
             #mu=mos[iScn]['v1'][k]['Mean']
@@ -883,7 +935,7 @@ def PlotCarbonPoolTS(meta,mos,tv,iT,iB,iP,iPS,iSS):
     gu.PrintFig(meta['Paths']['Figures'] + '\\' + nam_ps + '_' + nam_ss + '_CarbonPools_Scns' + str(iB) + 'and' + str(iP),'png',900)
 
 #%% Plot net growth
-def PlotNetGrowthTS(meta,mos,tv,C_M_ByAgent,iT,iScn,iPS,iSS):
+def PlotNetGrowthTS(meta,mos,tv,iT,iScn,iPS,iSS):
 
     #ms=2; Alpha=0.16; lw=1; cl0=[0.27,0.44,0.79]; cl1=[0.4,0.8,0]; cl2=[0,0.9,0.9]
     plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(18,10))
@@ -909,7 +961,7 @@ def PlotNetGrowthTS(meta,mos,tv,C_M_ByAgent,iT,iScn,iPS,iSS):
     mu2=mos['Scenarios'][iScn]['Mean'][v]['Ensemble Mean'][iT,iPS,iSS]
 
     # Mortality from beetles
-    Mb=C_M_ByAgent[iScn]['Beetles'][iT]+C_M_ByAgent[iScn]['IBM'][iT]+C_M_ByAgent[iScn]['IBS'][iT]+C_M_ByAgent[iScn]['IBB'][iT]
+    #Mb=C_M_ByAgent[iScn]['Beetles'][iT]+C_M_ByAgent[iScn]['IBM'][iT]+C_M_ByAgent[iScn]['IBS'][iT]+C_M_ByAgent[iScn]['IBB'][iT]
 
     lo3=lo1+lo2
     hi3=hi1+hi2
@@ -918,9 +970,9 @@ def PlotNetGrowthTS(meta,mos,tv,C_M_ByAgent,iT,iScn,iPS,iSS):
     #ax.plot(tv[iT],mu3,'-',color='y',label='Mortality'+0.25)
 
     mth='center'
-    lo4=gu.movingave(lo-Mb,7,mth)
-    hi4=gu.movingave(hi-Mb,7,mth)
-    mu4=gu.movingave(mu-Mb,7,mth)
+    lo4=gu.movingave(lo,7,mth)
+    hi4=gu.movingave(hi,7,mth)
+    mu4=gu.movingave(mu,7,mth)
     ax.fill_between(tv[iT],lo4,hi4,color='y',alpha=gp['Alpha1'],lw=0)
     ax.plot(tv[iT],mu4,'-',color='y',label='Net growth (with insects)')
 
@@ -952,7 +1004,7 @@ def GetMortalityFrequencyDistribution(meta,iScn):
     M=[None]*meta['Project']['N Scenario']
     #for iScn in range(meta['Project']['N Scenario']):
 
-    tv=np.arange(meta['Year Start Saving'],meta['Year End']+1,1)
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
     M[iScn]={}
     M[iScn]['Ma']={}
     M[iScn]['Mr']={}
@@ -974,7 +1026,7 @@ def GetMortalityFrequencyDistribution(meta,iScn):
             idx=dmec['idx']
             tmp=dmec.copy()
             for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
-                dmec[v]=np.zeros((meta['N Time'],meta['N Stand'],meta['Core']['Max Events Per Year']),dtype='int16')
+                dmec[v]=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand'],meta['Core']['Max Events Per Year']),dtype='int16')
                 dmec[v][idx[0],idx[1],idx[2]]=tmp[v]
             del tmp
 
@@ -990,9 +1042,9 @@ def GetMortalityFrequencyDistribution(meta,iScn):
                         continue
                     nam=cbu.lut_n2s(meta['LUT']['Dist'],id)[0]
                     M[iScn]['Ma'][nam][iYr,iStand]=d1['C_M_Dist'][iYr,iStandInBat]
-                    M[iScn]['Mr'][nam][iYr,iStand]=d1['C_M_Dist'][iYr,iStandInBat]/np.maximum(0.0001,d1['C_Biomass'][iYr-1,iStandInBat])
+                    M[iScn]['Mr'][nam][iYr,iStand]=d1['C_M_Dist'][iYr,iStandInBat]/np.maximum(0.0001,d1['C_Biomass_Tot'][iYr-1,iStandInBat])
                     M[iScn]['Ma']['Reg'][iYr,iStand]=d1['C_M_Reg'][iYr,iStandInBat]
-                    M[iScn]['Mr']['Reg'][iYr,iStand]=d1['C_M_Reg'][iYr,iStandInBat]/np.maximum(0.0001,d1['C_Biomass'][iYr-1,iStandInBat])
+                    M[iScn]['Mr']['Reg'][iYr,iStand]=d1['C_M_Reg'][iYr,iStandInBat]/np.maximum(0.0001,d1['C_Biomass_Tot'][iYr-1,iStandInBat])
         del d1,dmec
         garc.collect()
 
@@ -1073,29 +1125,29 @@ def PlotSitesOfInterest(meta):
 
 #%% QA - biomass by BGC zone
 
-def QA_Biomass_ByBGCZone(meta,mu_mod):
+def QA_Biomass_ByBGCZone(meta,mos,iScn):
 
-    # Import best-available inventory
-    ba=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\ba.pkl')
-
-    # Import ground plot data
+    # Ground plot data
     metaGP={}
     metaGP['Paths']={}
     metaGP['Paths']['DB']=r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2'
     metaGP=utl_gp.ImportParameters(metaGP)
     d=gu.ipickle(metaGP['Paths']['DB'] + '\\Processed\\L2\\L2_BC.pkl')
-    sl=d['sobs']
+    gplt=d['sobs']
     del d
 
-    # Filter
-    sl['pt_ind']=np.zeros(sl['ID Plot'].size)
-    ind=np.where( (sl['Plot Type']==metaGP['LUT']['Plot Type BC']['CMI']) | (sl['Plot Type']==metaGP['LUT']['Plot Type BC']['NFI']) & (sl['Lat']>0) & (sl['Lon']!=0) )[0]
-    sl['pt_ind'][ind]=1
+    gplt['pt_ind']=np.zeros(gplt['ID Plot'].size)
+    ind=np.where( (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['CMI']) |
+                 (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['NFI']) &
+                 (gplt['Lat']>0) & (gplt['Lon']!=0) )[0]
+    gplt['pt_ind'][ind]=1
 
-    # Calculate stats by BGC zone
-    vL=['Age t0','Cbk L t0','Cbr L t0','Cf L t0','Csw L t0','Cr L t0','Cag L t0','Ctot L t0']
-    u=np.unique(sl['Ecozone BC L1'][sl['Ecozone BC L1']>0])
+    # Unique BGC zones
+    u=np.unique(gplt['Ecozone BC L1'][gplt['Ecozone BC L1']>0])
     lab=np.array(['' for _ in range(u.size)],dtype=object)
+
+    # Ground plot stats
+    vL=['Age t0','Cbk L t0','Cbr L t0','Cf L t0','Csw L t0','Cr L t0','Cag L t0','Ctot L t0']
     d={}
     for v in vL:
         d[v]={}
@@ -1106,29 +1158,37 @@ def QA_Biomass_ByBGCZone(meta,mu_mod):
 
     for i in range(u.size):
         lab[i]=utl_gp.lut_id2cd(metaGP,'Ecozone BC L1',u[i])
-
-        # Observed values
         for v in vL:
-            ind=np.where( (sl['Ecozone BC L1']==u[i]) &
-                         (sl['pt_ind']==1) &
-                         (sl['Cbk L t0']>=0) & (sl['Cbk L t0']<2000) &
-                         (sl['Cbr L t0']>=0) & (sl['Cbr L t0']<2000) &
-                         (sl['Cf L t0']>=0) & (sl['Cf L t0']<2000) &
-                         (sl['Cr L t0']>=0) & (sl['Cr L t0']<2000) &
-                         (sl['Csw L t0']>=0) & (sl['Csw L t0']<2000) &
-                         (sl['Ctot L t0']>=0) & (sl['Ctot L t0']<10000))[0]
+            ind=np.where( (gplt['Ecozone BC L1']==u[i]) &
+                         (gplt['pt_ind']==1) &
+                         (gplt['Cbk L t0']>=0) & (gplt['Cbk L t0']<2000) &
+                         (gplt['Cbr L t0']>=0) & (gplt['Cbr L t0']<2000) &
+                         (gplt['Cf L t0']>=0) & (gplt['Cf L t0']<2000) &
+                         (gplt['Cr L t0']>=0) & (gplt['Cr L t0']<2000) &
+                         (gplt['Csw L t0']>=0) & (gplt['Csw L t0']<2000) &
+                         (gplt['Ctot L t0']>=0) & (gplt['Ctot L t0']<10000))[0]
             d[v]['N'][i]=ind.size
-            d[v]['mu'][i]=np.nanmean(sl[v][ind])
-            d[v]['sd'][i]=np.nanstd(sl[v][ind])
-            #d[v]['se'][i]=np.nanstd(sl[v][ind])/np.sqrt(ind[0].size)
+            d[v]['mu'][i]=np.nanmean(gplt[v][ind])
+            d[v]['sd'][i]=np.nanstd(gplt[v][ind])
+            #d[v]['se'][i]=np.nanstd(gplt[v][ind])/np.sqrt(ind.size)
 
-    # Modelled values
-    d['Model Biomass C']={'mu':np.zeros(u.size),'SS':np.zeros(u.size)}
+    # Remove classes with inadequate data
+    ind=np.where(d['Ctot L t0']['N']>=3)[0]
+    for v in vL:
+        for k in d[v].keys():
+            d[v][k]=d[v][k][ind]
+    u=u[ind]
+    lab=lab[ind]
+
+    # Modelled estimates
+    iPS=0
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    iT=np.where( (tv>=2001) & (tv<=2020) )[0]
+    d['Model Biomass C']={'mu':np.zeros(u.size),'N':np.zeros(u.size)}
     for i in range(u.size):
-        id=meta['LUT']['VRI']['BEC_ZONE_CODE'][lab[i]][0]
-        ind_mod=np.where( (ba['BEC_ZONE_CODE']==id) & (ba['SI']>5) )[0]
-        d['Model Biomass C']['SS'][i]=ind_mod.size
-        d['Model Biomass C']['mu'][i]=np.nanmean(mu_mod['C_Biomass_Tot'][ind_mod])
+        iSS=np.where(meta['Project']['Strata']['Spatial']['Unique CD']==lab[i])[0]
+        d['Model Biomass C']['N'][i]=iSS.size
+        d['Model Biomass C']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_Biomass_Tot']['Ensemble Mean'][iT,iPS,iSS])
 
     # Put in order
     d['Ctot L t0']['mu']=d['Cbk L t0']['mu']+d['Cbr L t0']['mu']+d['Cf L t0']['mu']+d['Cr L t0']['mu']+d['Csw L t0']['mu']
@@ -1139,16 +1199,15 @@ def QA_Biomass_ByBGCZone(meta,mu_mod):
             d[v][k]=np.flip(d[v][k][ord])
 
     # Plot bar chart
-    cl=np.array([[0.85,1,0.55],[0.45,0.65,0.15]])
-    barw=0.3
+    cl=np.array([[0.85,0.85,0.95],[0.75,0.85,0.75]])
+    barw=0.32
 
     plt.close('all')
     fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
-    ax.bar(np.arange(u.size)-barw/2,d['Ctot L t0']['mu'],barw,facecolor=cl[0,:],label='Ground plots')
-    ax.bar(np.arange(u.size)+barw/2,d['Model Biomass C']['mu'],barw,facecolor=cl[1,:],label='Predicted 2010-2020 (FCS)')
+    ax.bar(np.arange(u.size)-barw/2-0.01,d['Ctot L t0']['mu'],barw,facecolor=cl[0,:],label='Ground plots')
+    ax.bar(np.arange(u.size)+barw/2+0.01,d['Model Biomass C']['mu'],barw,facecolor=cl[1,:],label='Prediction (FCS)')
     for i in range(u.size):
         ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
-        #ax.text(i,30,str(soc['Model SS'][i].astype(int)),color='c',ha='center',fontsize=8)
     ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Biomass (MgC ha$^{-1}$)',xlim=[-0.5,u.size-0.5],ylim=[0,200])
     plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
@@ -1157,16 +1216,18 @@ def QA_Biomass_ByBGCZone(meta,mu_mod):
     # Scatterplot
     x=d['Ctot L t0']['mu']
     y=d['Model Biomass C']['mu']
-    ikp=np.where(np.isnan(x+y)==False)[0]
+    ikp=np.where( (np.isnan(x+y)==False) & (d['Ctot L t0']['N']>=30) )[0]
     rs,txt=gu.GetRegStats(x[ikp],y[ikp])
 
     fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,11))
-    ax.plot([0,500],[0,500],'-k',lw=3,color=gp['cla'])
-    ax.plot(x,y,'ko',mfc=[0.29,0.49,0.78],mec=[0.29,0.49,0.78],lw=0.5,ms=4)
-    ax.plot(rs['xhat'],rs['yhat'],'r-',lw=1,label='Best fit')
-    ax.text(155,30,txt,fontsize=10,color='r',ha='right')
-    ax.text(150,150,'1:1',fontsize=8,ha='center')
-    ax.set(position=[0.1,0.1,0.86,0.86],xlabel='Observed biomass (MgC ha$^{-1}$)',ylabel='Predicted biomass (MgC ha$^{-1}$)',xlim=[0,175],ylim=[0,175])
+    ax.plot([0,500],[0,500],'-k',lw=2,color=[0.75,0.75,0.75])
+    #ax.plot(x[ikp],y[ikp],'ko',mfc=[0.29,0.49,0.78],mec=[0.29,0.49,0.78],lw=0.5,ms=5)
+    for i in range(ikp.size):
+        ax.text(x[ikp[i]],y[ikp[i]],lab[ikp[i]],color='k',ha='center',fontsize=8)
+    ax.plot(rs['xhat'],rs['yhat'],'k-',lw=1,label='Best fit')
+    ax.text(155,30,txt,fontsize=10,color='k',ha='right')
+    ax.text(190,190,'1:1',fontsize=8,ha='center')
+    ax.set(position=[0.1,0.1,0.86,0.86],xlabel='Observed biomass (MgC ha$^{-1}$)',ylabel='Predicted biomass (MgC ha$^{-1}$)',xlim=[0,200],ylim=[0,200])
     #plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
     gu.PrintFig(meta['Paths']['Figures'] + '\\QA_Biomass_ByBGCZone_Scatterplot','png',900)
@@ -1175,7 +1236,7 @@ def QA_Biomass_ByBGCZone(meta,mu_mod):
 
 #%% QA - soil organic carbon stocks by BGC zone
 
-def QA_SOC_ByBGCZone(meta,mu_mod):
+def QA_SOC_ByBGCZone(meta,mos,iScn):
 
     # Import soils (see soil_Shawetal2018_01_process.py
     soils=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
@@ -1183,90 +1244,101 @@ def QA_SOC_ByBGCZone(meta,mu_mod):
     # Lookup table for BGC zone (based on raster map that was used to populate values in the soils DB)
     lutBGC=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz_lut.xlsx')
 
-    # Import best-available inventory
-    ba=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\ba.pkl')
-
     # Calculate mean by BGC zone
     u=np.unique(soils['becz'])
-    lab=np.array(['' for _ in range(u.size)],dtype=object)
-    d={}
-    d['SS']=np.zeros(u.size)
-    d['mu tot']=np.zeros(u.size)
-    d['se']=np.zeros(u.size)
-    d['mu min']=np.zeros(u.size)
-    d['mu org']=np.zeros(u.size)
-    for i in range(u.size):
-        ind=np.where( (soils['becz']==u[i]) & (soils['TOT_C_THA']>0) )[0]
-        d['SS'][i]=ind.size
-        d['mu tot'][i]=np.nanmean(soils['TOT_C_THA'][ind])
-        d['se'][i]=np.nanstd(soils['TOT_C_THA'][ind])/np.sqrt(ind.size)
-        d['mu min'][i]=np.nanmean(soils['MIN_C_THA'][ind])
-        d['mu org'][i]=np.nanmean(soils['ORG_C_THA'][ind])
 
+    # Label
+    lab=np.array(['' for _ in range(u.size)],dtype=object)
+    for i in range(u.size):
         ind=np.where(lutBGC['VALUE']==u[i])[0]
         if ind.size>0:
             lab[i]=lutBGC['ZONE'][ind][0]
 
-    d['Model Soil C']=np.zeros(u.size)
-    d['Model SS']=np.zeros(u.size)
-    d['Model SI']=np.zeros(u.size)
-    #d['Model SI SPL']=np.zeros(u.size)
-    for i in range(u.size):
-        id=meta['LUT']['VRI']['BEC_ZONE_CODE'][lab[i]][0]
-        ind_mod=np.where( (ba['BEC_ZONE_CODE']==id) & (ba['SI']>5) )[0]
-        d['Model SS'][i]=ind_mod.size
-        d['Model Soil C'][i]=np.nanmedian(mu_mod['C_Soil_Tot'][ind_mod])
-        d['Model SI'][i]=np.nanmean(ba['SI'][ind_mod])
-        #ind_mod=np.where( (ba['BEC_ZONE_CODE']==id) & (ba['SI SPL']>5) )[0]
-        #d['Model SI SPL'][i]=np.nanmean(ba['SI SPL'][ind_mod])
+    # Ground plots
+    vL=['TOT_C_THA','MIN_C_THA','ORG_C_THA']
+    d={}
+    for v in vL:
+        d[v]={}
+        d[v]['N']=np.zeros(u.size)
+        d[v]['mu']=np.zeros(u.size)
+        d[v]['sd']=np.zeros(u.size)
+        d[v]['se']=np.zeros(u.size)
+        for i in range(u.size):
+            ind=np.where(lutBGC['VALUE']==u[i])[0]
+            if ind.size>0:
+                ind=np.where( (soils['becz']==u[i]) & (soils['TOT_C_THA']>0) )[0]
+                d[v]['N'][i]=ind.size
+                d[v]['mu'][i]=np.nanmean(soils[v][ind])
+                d[v]['sd'][i]=np.nanstd(soils[v][ind])
+                d[v]['se'][i]=np.nanstd(soils[v][ind])/np.sqrt(ind.size)
+
+    # Remove classes with inadequate data
+    ind=np.where(d['TOT_C_THA']['N']>=3)[0]
+    for v in vL:
+        for k in d[v].keys():
+            d[v][k]=d[v][k][ind]
+    u=u[ind]
+    lab=lab[ind]
+
+    # Model
+    iPS=0
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    iT=np.where( (tv>=2001) & (tv<=2020) )[0]
+    vL=['C_Soil_Tot','C_Soil_OHorizon']
+    for v in vL:
+        d[v]={}
+        d[v]['N']=np.zeros(u.size)
+        d[v]['mu']=np.zeros(u.size)
+        d[v]['med']=np.zeros(u.size)
+        d[v]['se']=np.zeros(u.size)
+        for i in range(u.size):
+            iSS=np.where(meta['Project']['Strata']['Spatial']['Unique CD']==lab[i])[0]
+            d[v]['N'][i]=iSS.size
+            d[v]['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean'][v]['Ensemble Mean'][iT,iPS,iSS])
+            d[v]['med'][i]=np.nanmedian(mos['Scenarios'][iScn]['Mean'][v]['Ensemble Mean'][iT,iPS,iSS])
+            d[v]['se'][i]=np.nanstd(mos['Scenarios'][iScn]['Mean'][v]['Ensemble Mean'][iT,iPS,iSS])/np.sqrt(iSS.size)
 
     # Put in order
-    ord=np.argsort(d['mu min'])
-    for k in d:
-        d[k]=np.flip(d[k][ord])
+    ord=np.argsort(d['TOT_C_THA']['mu'])
     lab=np.flip(lab[ord])
-    d['Zone']=lab
+    for v in d:
+        for k in d[v].keys():
+            d[v][k]=np.flip(d[v][k][ord])
 
     # Plot bar chart
-    w=0.3
-    cl=np.array([[0.6,0.4,0.2],[0.8,0.6,0.4]])
+    barw=0.32
+    cl=np.array([[0.9,0.9,1.0],[0.8,0.8,0.9],[0.9,1,0.9],[0.8,0.9,0.8]])
 
     plt.close('all')
     fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
-    ax.bar(np.arange(u.size)-w/2,d['mu min'],w,facecolor=cl[0,:],label='Ground sampling (Shaw et al. 2018)')
-    ax.bar(np.arange(u.size)+w/2,d['Model Soil C'],w,facecolor=cl[1,:],label='Prediction 2010-2020 (FCS)')
-    #ax.bar(np.arange(u.size),d['org_mu'],facecolor=[0.15,0.05,0.05],bottom=d['min_mu'],label='Organic horizon')
-    ax.errorbar(np.arange(u.size)-w/2,d['mu min'],yerr=d['se'],color=gp['cla'],fmt='none',capsize=2)
-    #ax.plot(np.arange(u.size),d['Model Soil C'],'co',lw=0.75,ms=4,mfc='w')
-    for i in range(u.size):
-        ax.text(i,8,str(d['SS'][i].astype(int)),color=gp['cla'],ha='center',fontsize=8)
-        #ax.text(i,30,str(d['Model SS'][i].astype(int)),color='c',ha='center',fontsize=8)
+    ax.bar(np.arange(u.size)-barw/2-0.01,d['MIN_C_THA']['mu'],barw,facecolor=cl[0,:],label='Ground plots, mineral horizon (Shaw et al. 2018)')
+    ax.bar(np.arange(u.size)-barw/2-0.01,d['ORG_C_THA']['mu'],barw,facecolor=cl[1,:],bottom=d['MIN_C_THA']['mu'],label='Ground plots, organic horizon (Shaw et al. 2018)')
+    ax.bar(np.arange(u.size)+barw/2+0.01,d['C_Soil_Tot']['mu'],barw,facecolor=cl[2,:],label='Prediction, mineral horizon (FCS)')
+    ax.bar(np.arange(u.size)+barw/2+0.01,d['C_Soil_OHorizon']['mu'],barw,facecolor=cl[3,:],bottom=d['C_Soil_Tot']['mu'],label='Prediction, organic horizon (FCS)')
+    ax.errorbar(np.arange(u.size)-barw/2-0.01,d['MIN_C_THA']['mu']+d['ORG_C_THA']['mu'],yerr=d['TOT_C_THA']['se'],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+    ax.errorbar(np.arange(u.size)+barw/2+0.01,d['C_Soil_Tot']['mu']+d['C_Soil_OHorizon']['mu'],yerr=d['C_Soil_Tot']['se']+d['C_Soil_OHorizon']['se'],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+    #for i in range(u.size):
+    #    ax.text(i,8,str(d['TOT_C_THA']['N'][i].astype(int)),color=gp['cla'],ha='center',fontsize=7)
+    #    #ax.text(i,30,str(d['Model SS'][i].astype(int)),color='c',ha='center',fontsize=8)
     ax.set(position=[0.08,0.12,0.9,0.86],xlim=[-0.5,u.size-0.5],ylim=[0,375],xticks=np.arange(u.size),
            xticklabels=lab,ylabel='Soil organic carbon (MgC ha$^{-1}$ yr$^{-1}$)')
     plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
     gu.PrintFig(meta['Paths']['Figures'] + '\\QA_SOC_ByBGCZone_BarChart','png',900)
 
-    plt.close('all')
-    fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
-    ax.bar(np.arange(u.size)-w/2,d['Model SI'],w,facecolor=cl[0,:],label='VRI')
-    #ax.bar(np.arange(u.size)+w/2,d['Model SI SPL'],w,facecolor=cl[1,:],label='Site Productivity Layer')
-    ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Site index (m)',xlim=[-0.5,u.size-0.5],ylim=[0,26])
-    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
-    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
-    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_SI_ByBGCZone_BarChart','png',900)
-
     # Scatterplot
-    x=d['mu min']
-    y=d['Model Soil C']
-    ikp=np.where(np.isnan(x+y)==False)[0]
+    x=d['TOT_C_THA']['mu']
+    y=d['C_Soil_Tot']['mu']
+    ikp=np.where( (np.isnan(x+y)==False) & (d['TOT_C_THA']['N']>=15) )[0]
     rs,txt=gu.GetRegStats(x[ikp],y[ikp])
 
     fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,11))
-    ax.plot([0,1000],[0,1000],'-k',lw=3,color=[0.8,0.8,0.8])
-    ax.plot(x,y,'ko',mfc=[0.29,0.49,0.78],mec=[0.29,0.49,0.78],lw=0.5,ms=4)
-    ax.plot(rs['xhat'],rs['yhat'],'r-',lw=1,label='Best fit')
-    ax.text(330,30,txt,fontsize=10,color='r',ha='right')
+    ax.plot([0,1000],[0,1000],'-k',lw=2,color=[0.8,0.8,0.8])
+    #ax.plot(x[ikp],y[ikp],'ko',mfc=[0.29,0.49,0.78],mec=[0.29,0.49,0.78],lw=0.5,ms=5)
+    ax.plot(rs['xhat'],rs['yhat'],'k-',lw=1,label='Best fit')
+    for i in range(ikp.size):
+        ax.text(x[ikp[i]],y[ikp[i]],lab[ikp[i]],color='k',ha='center',fontsize=8)
+    ax.text(330,30,txt,fontsize=10,color='k',ha='right')
     ax.text(300,300,'1:1',fontsize=8,ha='center')
     ax.set(position=[0.1,0.1,0.86,0.86],xlabel='Observed SOC (MgC ha$^{-1}$)',ylabel='Predicted SOC (MgC ha$^{-1}$)',xlim=[0,350],ylim=[0,350])
     #plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
@@ -1274,6 +1346,392 @@ def QA_SOC_ByBGCZone(meta,mu_mod):
     gu.PrintFig(meta['Paths']['Figures'] + '\\QA_SOC_ByBGCZone_Scatterplot','png',900)
 
     return d
+
+#%% QA biomass production (by BGC zone)
+
+def QA_BiomassProductionByBGCZone(meta,mos,iScn):
+
+    plt.rcParams['hatch.linewidth']=0.5
+
+    #--------------------------------------------------------------------------
+    # Ground plots
+    #--------------------------------------------------------------------------
+    metaGP={}
+    metaGP['Paths']={}
+    metaGP['Paths']['DB']=r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2'
+    metaGP=utl_gp.ImportParameters(metaGP)
+    d=gu.ipickle(metaGP['Paths']['DB'] + '\\Processed\\L2\\L2_BC.pkl')
+    gplt=d['sobs']
+    del d
+
+    gplt['Ctot G Tot']=gplt['Ctot G Surv']+gplt['Ctot G Recr']
+    vL=['Ctot G Surv','Ctot G Recr','Ctot Mort','Ctot Mort Harv','Ctot Net','Ctot G Tot']
+    u=np.unique(gplt['Ecozone BC L1'])
+    u=u[u>0]
+    lab=np.array(['' for _ in range(u.size)],dtype=object)
+
+    gplt['Flag Keep CMI+NFI']=np.zeros(gplt['ID Plot'].size)
+    ind=np.where( (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['CMI']) | (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['NFI']) )[0]
+    gplt['Flag Keep CMI+NFI'][ind]=1
+
+    d={}
+    for v in vL:
+        d[v]={}
+        d[v]['N']=np.zeros(u.size)
+        d[v]['mu']=np.zeros(u.size)
+        d[v]['sd']=np.zeros(u.size)
+        d[v]['se']=np.zeros(u.size)
+
+    for i in range(u.size):
+        lab[i]=utl_gp.lut_id2cd(metaGP,'Ecozone BC L1',u[i])
+        for v in vL:
+            ind=np.where( (gplt['Ecozone BC L1']==u[i]) &
+                         (gplt['Flag Keep CMI+NFI']==1) &
+                         (gplt['Ctot Net']>=-1000) & (gplt['Ctot Net']<1000) )[0]
+            d[v]['N'][i]=ind.size
+            d[v]['mu'][i]=np.nanmean(gplt[v][ind])
+            d[v]['sd'][i]=np.nanstd(gplt[v][ind])
+            d[v]['se'][i]=np.nanstd(gplt[v][ind])/np.sqrt(ind.size)
+
+    # Remove classes with inadequate data
+    ind=np.where(d['Ctot Net']['N']>=3)[0]
+    for v in vL:
+        for k in d[v].keys():
+            d[v][k]=d[v][k][ind]
+    u=u[ind]
+    lab=lab[ind]
+
+    #--------------------------------------------------------------------------
+    # Modelled
+    #--------------------------------------------------------------------------
+    iPS=0
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    iT=np.where( (tv>=2001) & (tv<=2020) )[0]
+    d['Model G Gross']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model G Net']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model M Reg']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model M Dist']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model M Harvest']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model M Wildfire']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model M Insects']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model M Mechanical']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    d['Model M Disease']={'mu':np.zeros(u.size),'N':np.zeros(u.size),'se':np.zeros(u.size)}
+    for i in range(u.size):
+        iSS=np.where(meta['Project']['Strata']['Spatial']['Unique CD']==lab[i])[0]
+        d['Model G Net']['N'][i]=iSS.size
+        d['Model G Gross']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_G_Gross_Tot']['Ensemble Mean'][iT,iPS,iSS])
+        d['Model G Net']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_G_Net_Tot']['Ensemble Mean'][iT,iPS,iSS]-mos['Scenarios'][iScn]['Mean']['C_M_Dist']['Ensemble Mean'][iT,iPS,iSS])
+        d['Model M Reg']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Reg_Tot']['Ensemble Mean'][iT,iPS,iSS])
+        d['Model M Dist']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Dist']['Ensemble Mean'][iT,iPS,iSS])
+        d['Model M Harvest']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Harvest']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_Harvest Salvage']['Ensemble Mean'][iT,iPS,iSS])
+        d['Model M Wildfire']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Wildfire']['Ensemble Mean'][iT,iPS,iSS])
+        d['Model M Insects']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Beetles']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_IBM']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_IBB']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_IBS']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_IBD']['Ensemble Mean'][iT,iPS,iSS])
+        d['Model M Mechanical']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Mechanical']['Ensemble Mean'][iT,iPS,iSS])
+        #d['Model M Disease']['mu'][i]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Mechanical']['Ensemble Mean'][iT,iPS,iSS])
+
+    # Area
+    dBGC=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_ByBGC.xlsx')
+    Area=np.zeros(lab.size)
+    for i in range(lab.size):
+        ind1=np.where(dBGC['Name']==lab[i])[0]
+        Area[i]=dBGC['Area Treed (Mha)'][ind1]
+
+    #--------------------------------------------------------------------------
+    # Plot gross growth
+    #--------------------------------------------------------------------------
+
+    lab2=lab.copy()
+    d2=copy.deepcopy(d)
+    u2=u.copy()
+
+    # Put in order
+    ord=np.argsort(d2['Ctot G Tot']['mu'])
+    lab2=np.flip(lab2[ord])
+    for v in d2:
+        for k in d2[v].keys():
+            d2[v][k]=np.flip(d2[v][k][ord])
+
+    # Area weighting
+    for v in d2:
+        d2[v]['mu']=np.append(d2[v]['mu'],np.sum(d2[v]['mu']*Area)/np.sum(Area))
+        d2[v]['se']=np.append(d2[v]['se'],np.sum(d2[v]['se']*Area)/np.sum(Area))
+    lab2=np.append(lab2,'Area\nweighted')
+    u2=np.append(u2,0.0)
+
+    d2['Model G Gross']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_G_Gross_Tot']['Ensemble Mean'][iT,0,0])
+
+    cl=np.array([[0.75,0.75,0.85],[0.85,0.85,0.95],[0.75,0.85,0.75],[0.45,0.75,1],[0.6,1,0]])
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,7.5)); barw=0.3;
+    ax.bar(np.arange(u2.size)-barw/2-0.01,d2['Ctot G Surv']['mu'],barw,facecolor=cl[0,:],label='Ground plots (survivor)')
+    ax.bar(np.arange(u2.size)-barw/2-0.01,d2['Ctot G Recr']['mu'],barw,bottom=d2['Ctot G Surv']['mu'],facecolor=cl[1,:],label='Ground plots (recruitment)')
+    for i in range(u2.size):
+        ax.errorbar(i-barw/2-0.01,d2['Ctot G Tot']['mu'][i],yerr=d2['Ctot G Tot']['se'][i],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+
+    ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model G Gross']['mu'],barw,facecolor=cl[2,:],label='Predictions (FCS)') # ,hatch='oo',edgecolor='w'
+    for i in range(u2.size):
+        ax.errorbar(i+barw/2+0.01,d2['Model G Gross']['mu'][i],yerr=d2['Model G Gross']['se'][i],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+
+    ax.plot([-1,20],[0,0],'-k',color=gp['cla'],lw=0.5)
+    ax.set(position=[0.08,0.075,0.9,0.91],yticks=np.arange(-5,5,0.2),xticks=np.arange(u2.size),xticklabels=lab2,
+           ylabel='Gross growth (MgC ha$^{-1}$ yr$^{-1}$)',
+           xlim=[-0.5,u2.size-0.5],ylim=[0,3])
+    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_GrossGrowth_ByBGC_Barchart','png',900)
+
+    #--------------------------------------------------------------------------
+    # Plot mortality
+    #--------------------------------------------------------------------------
+
+    lab2=lab.copy()
+    d2=copy.deepcopy(d)
+    u2=u.copy()
+
+    # Put in order
+    ord=np.argsort(d2['Ctot Mort']['mu'])
+    lab2=np.flip(lab2[ord])
+    for v in d2:
+        for k in d2[v].keys():
+            d2[v][k]=np.flip(d2[v][k][ord])
+
+    # Area weighting
+    for v in d2:
+        d2[v]['mu']=np.append(d2[v]['mu'],np.sum(d2[v]['mu']*Area)/np.sum(Area))
+        d2[v]['se']=np.append(d2[v]['se'],np.sum(d2[v]['se']*Area)/np.sum(Area))
+    lab2=np.append(lab2,'Area\nweighted')
+    u2=np.append(u2,0.0)
+
+    d2['Model M Reg']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Reg_Tot']['Ensemble Mean'][iT,0,0])
+    d2['Model M Dist']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Dist']['Ensemble Mean'][iT,0,0])
+    d2['Model M Harvest']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Harvest']['Ensemble Mean'][iT,0,0]+mos['Scenarios'][iScn]['Mean']['C_M_Harvest Salvage']['Ensemble Mean'][iT,0,0])
+    d2['Model M Wildfire']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Wildfire']['Ensemble Mean'][iT,0,0])
+    d2['Model M Insects']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Beetles']['Ensemble Mean'][iT,0,0]+mos['Scenarios'][iScn]['Mean']['C_M_IBM']['Ensemble Mean'][iT,0,0]+mos['Scenarios'][iScn]['Mean']['C_M_IBD']['Ensemble Mean'][iT,0,0]+mos['Scenarios'][iScn]['Mean']['C_M_IBS']['Ensemble Mean'][iT,0,0]+mos['Scenarios'][iScn]['Mean']['C_M_IBB']['Ensemble Mean'][iT,0,0])
+    d2['Model M Mechanical']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_M_Mechanical']['Ensemble Mean'][iT,0,0])
+
+    # Plot
+    cl=np.array([[0.85,0.85,0.95],[0.2,0.3,0.2],[0.4,0.5,0.4],[0.6,0.7,0.6],[0.8,0.9,0.8]])
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,7.5)); barw=0.3;
+    ax.bar(np.arange(u2.size)-barw/2-0.01,d2['Ctot Mort']['mu'],barw,facecolor=cl[0,:],label='Ground plots')
+    for i in range(u2.size):
+        ax.errorbar(i-barw/2-0.01,d2['Ctot Mort']['mu'][i],yerr=d2['Ctot Mort']['se'][i],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+
+    ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model M Reg']['mu'],barw,facecolor=cl[1,:],label='Predictions FCS (regular mortality)')
+    #ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model M Dist']['mu'],barw,bottom=d2['Model M Reg']['mu'],facecolor=cl[2,:],label='Predictions FCS (disturbance mortality)')
+    ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model M Harvest']['mu'],barw,bottom=d2['Model M Reg']['mu'],facecolor=cl[2,:],label='Predictions FCS (harvest)')
+    ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model M Wildfire']['mu'],barw,bottom=d2['Model M Reg']['mu']+d2['Model M Harvest']['mu'],facecolor=cl[2,:],label='Predictions FCS (wildfire)')
+    ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model M Insects']['mu'],barw,bottom=d2['Model M Reg']['mu']+d2['Model M Harvest']['mu']+d2['Model M Wildfire']['mu'],facecolor=cl[3,:],label='Predictions FCS (insects)')
+    ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model M Mechanical']['mu'],barw,bottom=d2['Model M Reg']['mu']+d2['Model M Harvest']['mu']+d2['Model M Wildfire']['mu']+d2['Model M Insects']['mu'],facecolor=cl[4,:],label='Predictions FCS (mechanical)')
+    ax.plot(np.arange(u2.size)+barw/2+0.01,d2['Model M Reg']['mu']+d2['Model M Dist']['mu'],'ko',mfc='w',mec='k',mew=0.5,ms=3,label='Predictions FCS (total)')
+    for i in range(u2.size):
+        ax.errorbar(i+barw/2+0.01,d2['Model M Reg']['mu'][i]+d2['Model M Dist']['mu'][i],yerr=d2['Model M Reg']['se'][i]+d2['Model M Dist']['se'][i],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+
+    ax.plot([-1,20],[0,0],'-k',color=gp['cla'],lw=0.5)
+    ax.set(position=[0.08,0.075,0.9,0.91],yticks=np.arange(-5,5,0.5),xticks=np.arange(u2.size),xticklabels=lab2,
+           ylabel='Mortality loss (MgC ha$^{-1}$ yr$^{-1}$)',
+           xlim=[-0.5,u2.size-0.5],ylim=[0,4])
+    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_Mortality_ByBGC_Barchart','png',900)
+
+    #--------------------------------------------------------------------------
+    # Plot net growth
+    #--------------------------------------------------------------------------
+
+    lab2=lab.copy()
+    d2=copy.deepcopy(d)
+    u2=u.copy()
+
+    # Put in order
+    ord=np.argsort(d2['Ctot Net']['mu'])
+    lab2=np.flip(lab2[ord])
+    for v in d2:
+        for k in d2[v].keys():
+            d2[v][k]=np.flip(d2[v][k][ord])
+
+    # Area weighting
+    for v in d2:
+        d2[v]['mu']=np.append(d2[v]['mu'],np.sum(d2[v]['mu']*Area)/np.sum(Area))
+        d2[v]['se']=np.append(d2[v]['se'],np.sum(d2[v]['se']*Area)/np.sum(Area))
+    lab2=np.append(lab2,'Area\nweighted')
+    u2=np.append(u2,0.0)
+
+    d2['Model G Net']['mu'][-1]=np.nanmean(mos['Scenarios'][iScn]['Mean']['C_G_Net_Tot']['Ensemble Mean'][iT,0,0]-mos['Scenarios'][iScn]['Mean']['C_M_Dist']['Ensemble Mean'][iT,0,0])
+
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,7.5)); barw=0.3; cl=np.array([[0.85,0.85,0.95],[0.75,0.85,0.75],[1,0.5,0],[0.45,0.75,1],[0.6,1,0]])
+    ax.bar(np.arange(u2.size)-barw/2-0.01,d2['Ctot Net']['mu'],barw,facecolor=cl[0,:],label='Ground plots')
+    for i in range(u2.size):
+        ax.errorbar(i-barw/2-0.01,d2['Ctot Net']['mu'][i],yerr=d2['Ctot Net']['se'][i],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+
+    ax.bar(np.arange(u2.size)+barw/2+0.01,d2['Model G Net']['mu'],barw,facecolor=cl[1,:],label='Predictions FCS')
+    for i in range(u2.size):
+        ax.errorbar(i+barw/2+0.01,d2['Model G Net']['mu'][i],yerr=d2['Model G Net']['se'][i],color=gp['cla'],fmt='none',capsize=2,lw=0.5)
+
+    ax.plot([-1,20],[0,0],'-k',color=gp['cla'],lw=0.5)
+    ax.set(position=[0.08,0.075,0.9,0.91],yticks=np.arange(-5,5,0.2),xticks=np.arange(u2.size),xticklabels=lab2,
+           ylabel='Net growth (MgC ha$^{-1}$ yr$^{-1}$)',
+           xlim=[-0.5,u2.size-0.5],ylim=[-2,2])
+    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_NetGrowth_ByBGC_Barchart','png',900)
+
+    return
+
+#%% QA - biomass by Climate Class
+
+def QA_Biomass_ByClimateClass(meta,mu_mod):
+
+    # Ground plot data
+    metaGP={}
+    metaGP['Paths']={}
+    metaGP['Paths']['DB']=r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2'
+    metaGP=utl_gp.ImportParameters(metaGP)
+    d=gu.ipickle(metaGP['Paths']['DB'] + '\\Processed\\L2\\L2_BC.pkl')
+    gplt=d['sobs']
+    del d
+
+    gplt['pt_ind']=np.zeros(gplt['ID Plot'].size)
+    ind=np.where( (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['CMI']) | (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['NFI']) & (gplt['Lat']>0) & (gplt['Lon']!=0) )[0]
+    gplt['pt_ind'][ind]=1
+
+    vL=['Age t0','Cbk L t0','Cbr L t0','Cf L t0','Csw L t0','Cr L t0','Cag L t0','Ctot L t0']
+    u=np.unique(gplt['ClimateClass'][gplt['ClimateClass']>0])
+    lab=np.array(['' for _ in range(u.size)],dtype=object)
+    d={}
+    for v in vL:
+        d[v]={}
+        d[v]['N']=np.zeros(u.size)
+        d[v]['mu']=np.zeros(u.size)
+        d[v]['sd']=np.zeros(u.size)
+        d[v]['se']=np.zeros(u.size)
+
+    for i in range(u.size):
+        lab[i]=utl_gp.lut_id2cd(metaGP,'ClimateClassCondensed',u[i])
+        for v in vL:
+            ind=np.where( (gplt['ClimateClass']==u[i]) &
+                         (gplt['pt_ind']==1) &
+                         (gplt['Cbk L t0']>=0) & (gplt['Cbk L t0']<2000) &
+                         (gplt['Cbr L t0']>=0) & (gplt['Cbr L t0']<2000) &
+                         (gplt['Cf L t0']>=0) & (gplt['Cf L t0']<2000) &
+                         (gplt['Cr L t0']>=0) & (gplt['Cr L t0']<2000) &
+                         (gplt['Csw L t0']>=0) & (gplt['Csw L t0']<2000) &
+                         (gplt['Ctot L t0']>=0) & (gplt['Ctot L t0']<10000))[0]
+            d[v]['N'][i]=ind.size
+            d[v]['mu'][i]=np.nanmean(gplt[v][ind])
+            d[v]['sd'][i]=np.nanstd(gplt[v][ind])
+            #d[v]['se'][i]=np.nanstd(gplt[v][ind])/np.sqrt(ind[0].size)
+
+    # Modelled estimates
+
+    ba=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\ba.pkl')
+    d['Model Biomass C']={'mu':np.zeros(u.size),'SS':np.zeros(u.size)}
+    for i in range(u.size):
+        ind_mod=np.where( (ba['ClimateClass']==u[i]) )[0]
+        d['Model Biomass C']['SS'][i]=ind_mod.size
+        d['Model Biomass C']['mu'][i]=np.nanmean(mu_mod['C_Biomass_Tot'][ind_mod])
+
+    # Plot bar chart
+    cl=np.array([[0.45,0.65,0.25],[0.75,0.95,0.45]])
+    barw=0.38
+
+    plt.close('all')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
+    ax.bar(np.arange(u.size)-barw/2,d['Ctot L t0']['mu'],barw,facecolor=cl[0,:],label='Ground plots')
+    ax.bar(np.arange(u.size)+barw/2,d['Model Biomass C']['mu'],barw,facecolor=cl[1,:],label='Predicted 2010-2020 (FCS)')
+    for i in range(u.size):
+        ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
+    ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Biomass (MgC ha$^{-1}$)',xlim=[-0.5,u.size-0.5],ylim=[0,200])
+    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_Biomass_ByClimateClass_BarChart','png',900)
+
+    # Scatterplot
+    x=d['Ctot L t0']['mu']
+    y=d['Model Biomass C']['mu']
+    ikp=np.where( (np.isnan(x+y)==False) & (d['Ctot L t0']['N']>=30) )[0]
+    rs,txt=gu.GetRegStats(x[ikp],y[ikp])
+
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,11))
+    ax.plot([0,500],[0,500],'-k',lw=2,color=[0.75,0.75,0.75])
+    ax.plot(x[ikp],y[ikp],'ko',mfc=[0.29,0.49,0.78],mec=[0.29,0.49,0.78],lw=0.5,ms=5)
+    ax.plot(rs['xhat'],rs['yhat'],'k-',lw=1,label='Best fit')
+    ax.text(155,30,txt,fontsize=10,color='k',ha='right')
+    ax.text(150,150,'1:1',fontsize=8,ha='center')
+    ax.set(position=[0.1,0.1,0.86,0.86],xlabel='Observed biomass (MgC ha$^{-1}$)',ylabel='Predicted biomass (MgC ha$^{-1}$)',xlim=[0,200],ylim=[0,200])
+    #plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_Biomass_ByClimateClass_Scatterplot','png',900)
+
+    return
+
+#%% Average biomass dynamics
+
+def QA_AverageBiomassDynamics(meta,mos,iScn,iPS,iSS,iT):
+
+    #gp=gu.SetGraphics('Manuscript')
+
+    # Import ground plot data
+    metaGP={}
+    metaGP['Paths']={}
+    metaGP['Paths']['DB']=r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2'
+    metaGP=utl_gp.ImportParameters(metaGP)
+    d=gu.ipickle(metaGP['Paths']['DB'] + '\\Processed\\L2\\L2_BC.pkl')
+    gplt=d['sobs']
+    del d
+
+    # Filter
+    gplt['flag_pt']=np.zeros(gplt['ID Plot'].size)
+    ind=np.where( (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['CMI']) | (gplt['Plot Type']==metaGP['LUT']['Plot Type BC']['NFI']) & (gplt['Lat']>0) & (gplt['Lon']!=0) )[0]
+    gplt['flag_pt'][ind]=1
+
+    ikp=np.where( (gplt['flag_pt']==1) & (gplt['Year t1']>0) & (gplt['Lat']>0) & (gplt['Lon']!=0) )[0]
+
+    #A=57000000
+    vL=['Year t0','Year t1','Ctot G Surv','Ctot G Recr','Ctot Mort','Ctot Mort Harv','Ctot Net']
+    sts={}
+    for v in vL:
+        sts['mu ' + v]=np.nanmean(gplt[v][ikp])#/1e6*3.667
+        sts['se ' + v]=np.nanstd(gplt[v][ikp])/np.sqrt(ikp.size)#/1e6*3.667
+
+    print( str(np.nanpercentile(gplt['Year t0'],25)) + ' ' + str(np.nanpercentile(gplt['Year t1'],75)) )
+    print(sts['mu Ctot Net'])
+    print(sts['mu Ctot Mort Harv'])
+
+    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    iT=np.where( (tv>=1850) & (tv<=2150) )[0]
+    d={}
+    d['Gs']=np.mean(mos['Scenarios'][iScn]['Mean']['C_G_Gross_Tot']['Ensemble Mean'][iT,iPS,iSS])
+    d['M']=np.mean(mos['Scenarios'][iScn]['Mean']['C_M_Dist']['Ensemble Mean'][iT,iPS,iSS]+mos['Scenarios'][iScn]['Mean']['C_M_Reg_Tot']['Ensemble Mean'][iT,iPS,iSS])
+    #d['M']=np.mean(mos['Scenarios'][iScn]['Mean']['C_M_Reg_Tot']['Ensemble Mean'][iT,iPS,iSS])
+    d['Gn']=np.mean(mos['Scenarios'][iScn]['Mean']['C_G_Net_Tot']['Ensemble Mean'][iT,iPS,iSS]-mos['Scenarios'][iScn]['Mean']['C_M_Dist']['Ensemble Mean'][iT,iPS,iSS])
+
+    cl=np.array([[0.24,0.49,0.77],[0.6,1,0]])
+    cle=[0.05,0.2,0.45]
+    barw=0.25
+    lab=['Gross\ngrowth','Natural\nmortality','Harvest\nmortality','Net\ngrowth']
+
+    plt.close('all')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(14.5,8))
+    ax.plot([0,6],[0,0],'-k',color=gp['cla'],lw=0.5)
+    ax.bar(1-barw/2,sts['mu Ctot G Surv']+sts['mu Ctot G Recr'],barw,facecolor=cl[0,:],label='Growth survivors')
+    ax.bar(2-barw/2,-sts['mu Ctot Mort']+sts['mu Ctot Mort Harv'],barw,facecolor=cl[0,:],label='Mortality')
+    ax.bar(3-barw/2,-sts['mu Ctot Mort Harv'],barw,facecolor=cl[0,:],label='Mortality')
+    ax.bar(4-barw/2,sts['mu Ctot Net'],barw,facecolor=cl[0,:],label='Mortality')
+    ax.errorbar(1-barw/2,sts['mu Ctot G Surv']+sts['mu Ctot G Recr'],yerr=sts['se Ctot G Surv']+sts['se Ctot G Recr'],color=cle,fmt='none',capsize=2,lw=0.5)
+    ax.errorbar(2-barw/2,-sts['mu Ctot Mort']+sts['mu Ctot Mort Harv'],yerr=sts['se Ctot Mort'],color=cle,fmt='none',capsize=2,lw=0.5)
+    ax.errorbar(3-barw/2,-sts['mu Ctot Mort Harv'],yerr=sts['se Ctot Mort Harv'],color=cle,fmt='none',capsize=2,lw=0.5)
+    ax.errorbar(4-barw/2,sts['mu Ctot Net'],yerr=sts['se Ctot Net'],color=cle,fmt='none',capsize=2,lw=0.5)
+
+    ax.bar(1+barw,d['Gs'],barw,facecolor=cl[1,:],label='Growth survivors')
+    ax.bar(2+barw,-d['M'],barw,facecolor=cl[1,:],label='Mortality')
+    #ax.bar(3+barw,-d['Gn'],barw,facecolor=cl[1,:],label='Mortality')
+    ax.bar(4+barw,d['Gn'],barw,facecolor=cl[1,:],label='Mortality')
+
+    ax.set(position=[0.14,0.12,0.84,0.86],xticks=np.arange(1,5),xticklabels=lab,ylabel='Carbon balance of trees (MtCO$_{2}$e yr$^{-1}$)',xlim=[0.5,4.5],ylim=[-3,3])
+    #plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\QA_BiomassDynamicsMean','png',900)
+
+    return
 
 #%% Comparison of anthropogenic component with CFS
 
@@ -1340,8 +1798,8 @@ def SummarizeExistingInitiatives(meta):
     plt.plot(d['Year'],np.zeros(d['Year'].size),'k-',lw=0.5)
     plt.plot(d['Year'],d['BC Total Emissions FLFL+HWP All Gases (NIR2022)'],'-ko',lw=1,color=[0.7,0.7,0.7],mec=[0.7,0.7,0.7],mfc=[0.7,0.7,0.7],label='Total emissions NIR 22')
     #plt.plot(d['Year'],d['Forest Management (PIR)'],'cs')
-    plt.plot(d['Year'],d['PTT BAU Scenario (CFS)'],'-rs',label='PTT BAU (CFS)',lw=1)
-    plt.plot(d['Year'],d['PTT RL Scenario (CFS)'],'-b^',label='PTT RL (CFS)',lw=1)
+    plt.plot(d['Year'],d['BC PTT BAU Scenario (CFS)'],'-rs',label='PTT BAU (CFS)',lw=1)
+    plt.plot(d['Year'],d['BC PTT Reference Level Scenario (CFS)'],'-b^',label='PTT RL (CFS)',lw=1)
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
     ax.legend(loc='upper right',frameon=False,facecolor='w',edgecolor='w')
     ax.set(position=[0.1,0.1,0.82,0.82],xlim=[d['Year'][0],d['Year'][-1]],ylabel='Flux (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years')
@@ -1351,7 +1809,7 @@ def SummarizeExistingInitiatives(meta):
 
 #%% Look at historical wildfire from aspatial model
 
-def LookAtWildfireRecord(meta,iScn):
+def Plot_WildfireRecord(meta,iScn):
 
     hw={}
     hw['tv']=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
@@ -1369,6 +1827,13 @@ def LookAtWildfireRecord(meta,iScn):
             hw['Po'][idx[0],idx[1]]=hw['Po'][idx[0],idx[1]]+wf_sim['Occurrence']
 
     hw['Po']=hw['Po']/meta['Project']['N Ensemble']
+
+    plt.close('all')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,7.5));
+    ax.plot(hw['tv'],100*np.mean(hw['Po'],axis=1))
+    ax.set(position=[0.07,0.1,0.92,0.82],ylabel='Prob wildfire (% yr$^-$$^1$)',xlabel='Time, years',xlim=[hw['tv'][0],hw['tv'][-1]])
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    gu.PrintFig(meta['Paths']['Figures'] + '\\Probability of Wildfire_' + str(iScn+1),'png',900)
 
     return hw
 
@@ -1407,3 +1872,74 @@ def Plot_AgeClassDist(meta,iScn,iPS,iSS):
     gu.PrintFig(meta['Paths']['Figures'] + '\\Age Class Distribution','png',900)
 
     return
+
+#%% Plot map of simulations over specified time period
+
+def PlotMap(meta,geos,mu_mod,v):
+
+    # Load basemap
+    gdf_bm=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
+
+    # Mask simulations
+
+    #Mask=np.zeros(zTSA['Data'].shape,dtype='int16')
+    #Mask[iIreg]=1
+    #iMask=np.where(Mask==0)
+
+    # Mask political boundary
+    zBTM=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm.tif')
+    zBTM['Data']=zBTM['Data'][0::geos['rgsf'],0::geos['rgsf']]
+
+    MaskPB=np.zeros(zBTM['Data'].shape)
+    ind=np.where((zBTM['Data']!=9) & (zBTM['Data']!=15) & (zBTM['Data']!=0) )
+    MaskPB[ind]=1
+    iMaskPB=np.where(MaskPB==0)
+
+    # Grid
+    bw=2; bin=np.arange(-10,20,bw)
+
+    z0=np.zeros(geos['Grid']['Data'].shape,dtype='int16')
+    z0[geos['iMask']]=mu_mod[v]
+
+    z1=(bin.size)*np.ones(z0.shape)
+    for i in range(bin.size):
+        ind=np.where(np.abs(z0-bin[i])<=bw/2)
+        z1[ind]=i
+    z1[np.where(geos['Grid']['Data']==0)]=i+1
+    z1[iMaskPB]=i+2
+    L=i+2
+
+    lab=bin.astype(str)
+
+    # Colormap
+    #cm=plt.cm.get_cmap('viridis',i)
+    #cm=plt.cm.get_cmap('plasma',i)
+
+    cm=plt.cm.get_cmap('RdYlGn_r',i)
+    cm.colors=cm(np.arange(0,cm.N))
+
+    cm=np.vstack( (cm.colors,(0,0,0,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    N_color=bin.size+3
+    N_hidden=3
+
+    # Plot
+    plt.close('all')
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(14,14*geos['Grid']['yxrat']))
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=geos['Grid']['Extent'],cmap=cm)
+    gdf_bm.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+    ax[0].set(position=[0,0,1,1],xlim=geos['Grid']['xlim'],ylim=geos['Grid']['ylim'],aspect='auto',visible='off')
+    ax[0].grid(False)
+    ax[0].axis('off')
+    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color-N_hidden,1))
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=6,length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(0,N_color):
+        ax[1].plot([0,100],[i,i],'w-',linewidth=0.75)
+    ax[1].set(position=[0.73,0.48,0.03,0.4]);
+
+    gu.PrintFig(meta['Paths']['Figures'] + '\\Map_' + v,'png',900)
+
+    return fig,ax

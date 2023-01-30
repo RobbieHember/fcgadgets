@@ -845,7 +845,7 @@ def PlotNEP(meta,mos,tv,iT):
         iB=mos['Delta'][k]['iB']
         iP=mos['Delta'][k]['iP']
 
-        fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(18,6.5)); Alpha=0.09
+        fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(18,8)); Alpha=0.09
 
         for j in range(0,2):
             ax[j].yaxis.set_ticks_position('both');
@@ -935,7 +935,7 @@ def PlotNEP(meta,mos,tv,iT):
         ax[1].set(ylabel='Cumulative $\Delta$ (tCO$_2$e ha$^-$$^1$)',xlabel='Time, years',ylim=[ymin,ymax],xlim=[tv[iT[0]],tv[iT[-1]]]);
         gu.axletters(ax,plt,0.03,0.89)
         if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\GHG_Balance_' + k,'png',900)
+            gu.PrintFig(meta['Paths']['Figures'] + '\\NEE_Balance_' + k,'png',900)
         fig.suptitle(k)
 
     return

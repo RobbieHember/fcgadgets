@@ -1,26 +1,19 @@
 
 #%% Import modules
 
-import os
 import numpy as np
 import gc
-from osgeo import gdal
 import matplotlib.pyplot as plt
 import matplotlib.colors
-from matplotlib.cbook import get_sample_data
 from matplotlib.colors import LightSource
 import geopandas as gpd
 import pandas as pd
 import copy
-import fiona
 import time
-import gc as garc
-from shapely.geometry import Polygon,Point,LineString,box
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
 import fcgadgets.cbrunner.cbrun_utilities as cbu
 import fcgadgets.bc1ha.bc1ha_utilities as bc1hau
-import fcgadgets.macgyver.utilities_query_gdb as qv
 
 #%% Path management
 
@@ -70,7 +63,7 @@ if flg_roi=='ByTSA':
     # Pick the TSAs to include
 
     # Search: gdf['tsa']['key']
-    #roi['TSA List']=['Soo TSA']
+    roi['TSA List']=['Prince George TSA']
     #roi['TSA List']=['Kamloops TSA','100 Mile House TSA','Williams Lake TSA']
     #roi['TSA List']=['Revelstoke TSA']
     #roi['TSA List']=['Kootenay Lake TSA']
@@ -79,7 +72,7 @@ if flg_roi=='ByTSA':
     #roi['TSA List']=list(gdf['tsa']['key']['Name'])
 
     # Western spruce budworm study (do not change!)
-    roi['TSA List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
+    #roi['TSA List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
 
 elif flg_roi=='ByLatLon':
 
@@ -135,8 +128,8 @@ print((t1-t0)/60)
 #%% Import rasters over ROI
 
 #vList=['lc2','btm','elev','becz']
-vList=['lc2','btm','elev','idw_mask']
-#vList=['lc2','btm','elev','wsb_mask','wsb_treat','becz','age1','cut_yr','d2road','d2fac']
+vList=['sphlive','lc2','btm','elev','idw_mask','protected']
+#vList=['lc2','btm','elev','wsb_mask','wsb_treat','becz','age1','cut_yr','d2road','d2fac','idw_mask','protected','si']
 #vList=['temp_norm','ws_norm','lc2','btm','elev','bgcz','cut_yr']
 #vList=['lc2','btm','elev','soc','age1','si','temp_norm','ws_norm','cut_yr']
 #vList=['lc2','btm','elev','bgcz','cut_yr','bsr','wf','age1','sphlive','sphdead']
@@ -146,7 +139,7 @@ roi=bc1hau.Import_Raster_Over_ROI(meta_bc1ha,roi,vList)
 
 #%% Import required vector geodatabases
 
-vList=['op','cc','fcres','ogsr']
+vList=['fcres','ogsr'] # 'op','cc',
 roi=bc1hau.Import_GDB_Over_ROI(meta_bc1ha,roi,vList)
 
 #%% Plot ROI mask
@@ -283,48 +276,6 @@ gdf['cities'].plot(ax=ax[0],marker='s',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0
 for x,y,label in zip(gdf['cities'].geometry.x,gdf['cities'].geometry.y,gdf['cities'].Name):
     ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0.75,0.3,0])
 
-
-#%% Plot SI
-
-def Plot_SI(meta_bc1ha,roi):
-
-    z=roi['grd']['si']['Data']
-    if roi['Type']=='ByTSA':
-        z[roi['grd']['Data']==0]=0
-
-    # Plot
-    plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta_bc1ha['Graphics']['figwidth'],(1-meta_bc1ha['Graphics']['sidespace'])*meta_bc1ha['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(roi['grd']['si']['Data'],extent=roi['grd']['si']['Extent'],cmap='magma',clim=[5,22])
-
-    #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
-    ax[0].set(position=meta_bc1ha['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='',aspect='auto')
-    ax[0].grid(False)
-
-    # Add relief shading
-    z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['Cellsize'],roi['grd']['Cellsize']
-    ls=LightSource(azdeg=90,altdeg=45)
-    ve=0.1
-    hs=ls.hillshade(z,vert_exag=ve,dx=dx,dy=dy)
-    ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
-
-    cb=plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color+1.5,1))
-    #cb.ax.set(yticklabels=lab)
-    #cb.ax.tick_params(labelsize=6,length=0)
-    #for i in range(0,N_color):
-    #    ax[1].plot([0,100],[i/(N_color-N_hidden),i/(N_color-N_hidden)],'k-',linewidth=0.5)
-    ax[1].set(position=meta_bc1ha['Graphics']['ax2 pos long']);
-
-    return fig,ax
-
-plt.close('all')
-fig,ax=Plot_SI(meta_bc1ha,roi)
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=1.25,label='Road',alpha=1)
-roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1)
-roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=45)
-roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,1,0],linewidth=1,label='Opening',alpha=1)
-roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,1,1],linewidth=1,label='Opening',alpha=1)
-
 #%% Plot BTM
 
 def Plot_ROI_BTM(roi):
@@ -398,7 +349,7 @@ plt.close('all')
 fig,ax=Plot_ROI_BTM(roi)
 roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2.25,label='Road',alpha=1,zorder=1)
 roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=1.5,label='Road',alpha=1,zorder=1)
-roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=75,zorder=2)
+#roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=75,zorder=2)
 roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,1,0],linewidth=0.5,label='Opening',alpha=1)
 #op['gdf'].plot(ax=ax[0],facecolor='None',ls='-',edgecolor=[0.8,0.8,1],linewidth=2,label='Wildfire',alpha=1)
 #fcinv['gdf'].plot(ax=ax[0],facecolor='None',ls='-',edgecolor=[0.4,0.4,1],linewidth=1,label='Wildfire',alpha=1)
@@ -414,23 +365,23 @@ roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,1,0],linew
 def Plot_BGCZone(roi):
 
     # Grid
-    bin=np.unique(roi['grd']['bgcz']['Data'])
+    bin=np.unique(roi['grd']['becz']['Data'])
 
     N_bin=bin.size
     N_hidden=1
     N_color=N_bin+N_hidden
 
-    z1=np.ones(grd['bgcz']['Data'].shape)
+    z1=np.ones(roi['grd']['becz']['Data'].shape)
     for i in range(bin.size):
-        z1[(grd['bgcz']['Data']==bin[i])]=i
+        z1[(roi['grd']['becz']['Data']==bin[i])]=i
 
-    z1[(roi['Mask']['Data']!=1)]=N_bin
+    z1[(roi['grd']['Data']!=1)]=N_bin
 
     # Labels
     lab=[]
     for i in range(N_bin):
         try:
-            lab.append(grd['bgcz']['key'].ZONE[grd['bgcz']['key'].VALUE==bin[i]].values[0])
+            lab.append(roi['grd']['becz']['key'].ZONE[roi['grd']['becz']['key'].VALUE==bin[i]].values[0])
         except:
             lab.append('')
 
@@ -443,7 +394,7 @@ def Plot_BGCZone(roi):
     # Plot
     plt.close('all')
     fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta_bc1ha['Graphics']['figwidth'],(1-meta_bc1ha['Graphics']['sidespace'])*meta_bc1ha['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,N_color),extent=grd['bgcz']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1[0::1,0::1],clim=(0,N_color),extent=roi['grd']['becz']['Extent'],cmap=cm)
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
     try:
         roi['gdf_roads'].plot(ax=ax[0],facecolor='none',edgecolor=[1,1,0],label='Roads',linewidth=0.75,alpha=1,zorder=1)
@@ -468,6 +419,46 @@ plt.close('all')
 fig,ax=Plot_BGCZone(roi)
 #wf['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0,0],linewidth=1,label='Wildfire',alpha=1)
 #atup['gdf overlay'].plot(ax=ax[0],facecolor=[1,1,1],edgecolor=[0.5,0,1],linewidth=1.25,label='Planting',alpha=0.25)
+
+#%% Plot SI
+
+def Plot_SI(meta_bc1ha,roi):
+
+    z=roi['grd']['si']['Data']
+    if roi['Type']=='ByTSA':
+        z[roi['grd']['Data']==0]=0
+
+    # Plot
+    plt.close('all')
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta_bc1ha['Graphics']['figwidth'],(1-meta_bc1ha['Graphics']['sidespace'])*meta_bc1ha['Graphics']['figwidth']*roi['grd']['yxrat']))
+    im=ax[0].matshow(roi['grd']['si']['Data'],extent=roi['grd']['si']['Extent'],cmap='magma',clim=[5,22])
+
+    #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
+    ax[0].set(position=meta_bc1ha['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='',aspect='auto')
+    ax[0].grid(False)
+
+    # Add relief shading
+    z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['Cellsize'],roi['grd']['Cellsize']
+    ls=LightSource(azdeg=90,altdeg=45)
+    ve=0.1
+    hs=ls.hillshade(z,vert_exag=ve,dx=dx,dy=dy)
+    ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
+
+    cb=plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color+1.5,1))
+    #cb.ax.set(yticklabels=lab)
+    #cb.ax.tick_params(labelsize=6,length=0)
+    #for i in range(0,N_color):
+    #    ax[1].plot([0,100],[i/(N_color-N_hidden),i/(N_color-N_hidden)],'k-',linewidth=0.5)
+    ax[1].set(position=meta_bc1ha['Graphics']['ax2 pos long']);
+
+    return fig,ax
+
+plt.close('all')
+fig,ax=Plot_SI(meta_bc1ha,roi)
+roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=1.25,label='Road',alpha=1)
+roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1)
+#roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,1,0],linewidth=1,label='Opening',alpha=1)
+#roi['gdf']['op']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,1,1],linewidth=1,label='Opening',alpha=1)
 
 #%% PLOT age from VRI
 
@@ -564,25 +555,25 @@ fig,ax=Plot_SOC_WithinROI(roi)
 
 #%% Plot Live SPH from VRI
 
-def Plot_sph_WithinROI(meta_bc1ha,grd):
+def Plot_SPH_Live(meta_bc1ha,roi):
 
     # Grid
-    bw=500; bin=np.arange(0,2500,bw);
-    z1=(bin.size)*np.ones( grd['sphlive']['Data'].shape)
+    bw=400; bin=np.arange(0,2400,bw);
+    z1=(bin.size)*np.ones( roi['grd']['sphlive']['Data'].shape)
     for i in range(bin.size):
-        ind=np.where(np.abs( grd['sphlive']['Data']-bin[i])<=bw/2)
+        ind=np.where(np.abs( roi['grd']['sphlive']['Data']-bin[i])<=bw/2)
         z1[ind]=i
-    ind=np.where(grd['sphlive']['Data']>bin[i])
+    ind=np.where(roi['grd']['sphlive']['Data']>bin[i])
     z1[ind]=i
-    z1[(roi['Mask']['Data']==1) & ( grd['sphlive']['Data']==0)]=i+1
-    z1[(roi['Mask']['Data']!=1)]=i+2
+    z1[(roi['grd']['Data']==1) & ( roi['grd']['sphlive']['Data']==0)]=i+1
+    z1[(roi['grd']['Data']!=1)]=i+2
     L=i+2
 
     lab=bin.astype(str)
 
     # Colormap
-    cm=plt.cm.get_cmap('viridis',i)
-    #cm=plt.cm.get_cmap('plasma',i)
+    #cm=plt.cm.get_cmap('viridis',i)
+    cm=plt.cm.get_cmap('plasma',i)
     cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
@@ -592,27 +583,34 @@ def Plot_sph_WithinROI(meta_bc1ha,grd):
     # Plot
     plt.close('all')
     fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta_bc1ha['Graphics']['figwidth'],(1-meta_bc1ha['Graphics']['sidespace'])*meta_bc1ha['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=grd['sphlive']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
     ax[0].set(position=meta_bc1ha['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],aspect='auto')
     ax[0].grid(False)
 
-    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color+1.5,1))
+    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color-N_hidden,1))
     cb.ax.set(yticklabels=lab)
     cb.ax.tick_params(labelsize=6,length=0)
     for i in range(0,N_color):
         ax[1].plot([0,100],[i/(N_color-N_hidden),i/(N_color-N_hidden)],'k-',linewidth=0.5)
     ax[1].set(position=meta_bc1ha['Graphics']['ax2 pos long']);
-    pos2=copy.copy(meta_bc1ha['Graphics']['pos2'])
-    pos2[1]=0.6
-    pos2[3]=0.24
-    ax[1].set(position=pos2)
+
+    # cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color+1.5,1))
+    # cb.ax.set(yticklabels=lab)
+    # cb.ax.tick_params(labelsize=6,length=0)
+    # for i in range(0,N_color):
+    #     ax[1].plot([0,100],[i/(N_color-N_hidden),i/(N_color-N_hidden)],'k-',linewidth=0.5)
+    # ax[1].set(position=meta_bc1ha['Graphics']['ax2 pos long']);
+    # pos2=copy.copy(meta_bc1ha['Graphics']['pos2'])
+    # pos2[1]=0.6
+    # pos2[3]=0.24
+    # ax[1].set(position=pos2)
 
     return fig,ax
 
 plt.close('all')
-fig,ax=Plot_sph_WithinROI(meta_bc1ha,grd)
-wfp.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1,label='Wildfire',alpha=1)
+fig,ax=Plot_SPH_Live(meta_bc1ha,roi)
+#wfp.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1,label='Wildfire',alpha=1)
 #atup['gdf overlay'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1.25,label='Planting',alpha=1)
 #gu.PrintFig(meta_bc1ha['Paths']['Figures'] + '\\sphlive','png',300)
 

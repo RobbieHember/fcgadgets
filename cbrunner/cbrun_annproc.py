@@ -32,6 +32,27 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     for iS in range(meta['Project']['Batch Size'][iBat]):
         NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:].copy()
 
+    # Growth enhancement
+    if 'Growth Enhancement Status' in meta['Scenario'][iScn]:
+        if meta['Scenario'][iScn]['Growth Enhancement Status']=='On':
+
+            # if 'Growth Enhancement' not in meta['Project']:
+            #     #tv=np.arange(1800,2151,1)
+            #     tv=meta['Year'].copy()
+            #     fG_PreI=0.5
+            #     fG_PosI=1.0
+            #     fG=fG_PreI*np.ones(tv.size)
+            #     it1=np.where(tv==1860)[0]
+            #     it2=np.where(tv==2010)[0]
+            #     ind=np.arange(it1,it2+1,dtype='int16')
+
+            #     fG[ind]=np.linspace(fG_PreI,fG_PosI,ind.size)
+            #     fG[it2[0]:]=fG_PosI
+            #     #plt.plot(tv,fG,'b-')
+            #     meta['Project']['Growth Enhancement']=fG
+
+            NetGrowth=np.tile(meta['Project']['Growth Enhancement'][iT,:],(NetGrowth.shape[1],1)).T*NetGrowth
+
     # Net growth of total stemwood
     Gnet_Stem=NetGrowth[:,iEP['StemMerch']]+NetGrowth[:,iEP['StemNonMerch']]
 
@@ -1125,7 +1146,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
     # Predict future nutrient application (on the fly)
     if meta['Scenario'][iScn]['Nutrient Application Status']=='On':
         if vi['tv'][iT]>=meta['Project']['Year Project']:
-            vi=napp.ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat)
+            vi=napp.ScheduleNutrientApplication(meta,vi,vo,iT,iScn,iEns,iBat)
 
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta['Project']['Batch Size'][iBat])
@@ -1243,6 +1264,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         # Calculate mortality
         #----------------------------------------------------------------------
         #t0=time.time()
+
         vo['C_M_Dist'][iT,:]=vo['C_M_Dist'][iT,:]+Affected_All
 
         # Mortality by category (lumping stands together)
@@ -1250,11 +1272,14 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         for iType in range(len(uType)):
             if uType[iType]==0:
                 continue
-            indType=np.where(ID_Type==uType[iType])[0]
-            String_Type=cbu.lut_n2s(meta['LUT']['Dist'],uType[iType])[0]
-            vo['C_M_ByAgent'][String_Type][iT,0]=vo['C_M_ByAgent'][String_Type][iT,0]+np.sum(Affected_All[indType])
+            ind=np.where(ID_Type==uType[iType])[0]
+            cd=cbu.lut_n2s(meta['LUT']['Dist'],uType[iType])[0]
+            #vo['C_M_ByAgent'][cd][iT,0]=vo['C_M_ByAgent'][cd][iT,0]+np.sum(Affected_All[ind])
+            vo['C_M_ByAgent'][cd][iT,ind]=vo['C_M_ByAgent'][cd][iT,ind]+Affected_All[ind]/meta['Core']['Scale Factor C_M_ByAgent']
+
         #t1=time.time()
         #meta['Project']['Run Time Summary']['Test4']=meta['Project']['Run Time Summary']['Test4']+t1-t0
+
         #----------------------------------------------------------------------
         # Remove affected amount from each pool
         #----------------------------------------------------------------------

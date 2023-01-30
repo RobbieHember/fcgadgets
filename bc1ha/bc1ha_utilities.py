@@ -77,7 +77,8 @@ def DefineROI(roi,gdf):
     roi['gdf']['tsa']=gpd.sjoin(roi['gdf']['tsa'],roi['gdf']['bound'],how='left')
     roi['gdf']['tsa']=gpd.overlay(roi['gdf']['tsa'],roi['gdf']['bound'],how='intersection')
 
-    roi['gdf']['tsa within']=gdf['tsa']['gdf'].iloc[np.isin(gdf['tsa']['gdf'].Name,roi['TSA List'])]
+    if roi['Type']=='ByTSA':
+        roi['gdf']['tsa within']=gdf['tsa']['gdf'].iloc[np.isin(gdf['tsa']['gdf'].Name,roi['TSA List'])]
 
     roi['gdf']['lakes']=gpd.overlay(gdf['bc_land']['gdf'][(gdf['bc_land']['gdf']['TAG']=='lake')],roi['gdf']['bound'],how='intersection')
 
@@ -278,6 +279,9 @@ def Import_Raster_Over_ROI(meta_bc1ha,roi,vList):
 
     for nam in vList:
 
+        if nam in roi['grd'].keys():
+            continue
+
         if nam=='lc2':
             #land cover scheme level 2 (Treed=4)
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\lc2.tif')
@@ -397,6 +401,11 @@ def Import_Raster_Over_ROI(meta_bc1ha,roi,vList):
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Disturbances\\IDW_Mask.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+        elif nam=='protected':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\LandUseLandCover\\PROTECTED_LANDS_DESIGNATION.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+
     return roi
 
 #%% PLOT ROI mask
