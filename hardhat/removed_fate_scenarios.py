@@ -253,37 +253,4 @@ for reg in regL:
 gu.opickle(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Variables_RemovedFate.pkl',d)
 
 
-#%% Plot
 
-flg=0
-if flg==1:
-    reg='Interior'
-    #reg='GFS22'
-    sc='S2'
-
-    plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(16,10)); ms=3; lw=1.25
-    ax[0,0].plot(tv,d['BaseCase'][reg]['RemovedMerchToSawMill'],'b-',label='BaseCase',lw=lw)
-    ax[0,0].plot(tv,d[sc][reg]['RemovedMerchToSawMill'],'g--',label='Scenario 2',lw=lw)
-    ax[0,0].set(yticks=np.arange(0,1.2,0.2),ylabel='Merch to sawmill (%)',xticks=np.arange(1500,2200,25),xlabel='Time, years',ylim=[0,1],xlim=[1900,2100])
-    ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=1.5)
-    ax[0,0].legend(loc='lower left',facecolor=[1,1,1],frameon=False)
-
-    ax[0,1].plot(tv,d['BaseCase'][reg]['RemovedMerchToPulpMill'],'b-',label='BaseCase',lw=lw)
-    ax[0,1].plot(tv,d[sc][reg]['RemovedMerchToPulpMill'],'g--',label='Scenario 2',lw=lw)
-    ax[0,1].set(yticks=np.arange(0,1.2,0.2),ylabel='Merch to pulp mill (%)',xticks=np.arange(1500,2200,25),xlabel='Time, years',ylim=[0,1],xlim=[1900,2100])
-    ax[0,1].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=1.5)
-
-    ax[1,0].plot(tv,d['BaseCase'][reg]['RemovedMerchToPelletMill'],'b-',label='BaseCase',lw=lw)
-    ax[1,0].plot(tv,d[sc][reg]['RemovedMerchToPelletMill'],'g--',label='Scenario 2',lw=lw)
-    ax[1,0].set(yticks=np.arange(0,1.2,0.2),ylabel='Merch to pellet mill (%)',xticks=np.arange(1500,2200,25),xlabel='Time, years',ylim=[0,1],xlim=[1900,2100])
-    ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=1.5)
-
-    ax[1,1].plot(tv,d['BaseCase'][reg]['RemovedMerchToPlywoodMill']+d['BaseCase'][reg]['RemovedMerchToOSBMill'],'b-',label='BaseCase',lw=lw)
-    ax[1,1].plot(tv,d[sc][reg]['RemovedMerchToPlywoodMill']+d[sc][reg]['RemovedMerchToOSBMill'],'g--',label='Scenario 2',lw=lw)
-    ax[1,1].set(yticks=np.arange(0,1.2,0.2),ylabel='Merch to plywood mill (%)',xticks=np.arange(1500,2200,25),xlabel='Time, years',ylim=[0,1],xlim=[1900,2100])
-    ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=1.5)
-
-    gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') #
-
-    fig.tight_layout()
-    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Removed Fate Scenarios\Removed Fate Scenarios ' + reg + 'Scenario ' + str(sc),'png',900)

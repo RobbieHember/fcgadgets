@@ -28,6 +28,8 @@ iMask=np.where(zRef['Data']>0)
 # Initialize warm-season means
 zWs=zRef.copy()
 zWs['Data']=np.zeros(zRef['Data'].shape)
+zETa=zRef.copy()
+zETa['Data']=np.zeros(zRef['Data'].shape)
 zETp=zRef.copy()
 zETp['Data']=np.zeros(zRef['Data'].shape)
 
@@ -91,20 +93,33 @@ for iBin in range(N_bin-1):
 
     # Populate
     zWs['Data'][ iMask[0][indBin],iMask[1][indBin] ]=np.mean(vo['Ws'][5:9,:],axis=0)
+    zETa['Data'][ iMask[0][indBin],iMask[1][indBin] ]=np.mean(vo['ETa'][5:9,:],axis=0)
     zETp['Data'][ iMask[0][indBin],iMask[1][indBin] ]=np.mean(vo['ETp'][5:9,:],axis=0)
 
     garc.collect()
 
-# Save
+#%% Save
+
 zWs['Data']=zWs['Data'].astype('int16')
+
+zCWD=zWs.copy()
+zCWD['Data']=zETp['Data']-zETa['Data']
+zCWD['Data']=zCWD['Data']/np.mean(con['DIM'][5:9])*100
+zCWD['Data']=zCWD['Data'].astype('int16')
+
 zETp['Data']=zETp['Data']/np.mean(con['DIM'][5:9])*100
 zETp['Data']=zETp['Data'].astype('int16')
-gis.SaveGeoTiff(zWs,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_ws_gs.tif')
-gis.SaveGeoTiff(zETp,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_etp_gs.tif')
+
+gis.SaveGeoTiff(zWs,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_ws_gs_norm_1971to2000.tif')
+gis.SaveGeoTiff(zCWD,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_cwd_gs_norm_1971to2000.tif')
+gis.SaveGeoTiff(zETp,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_etp_gs_norm_1971to2000.tif')
 
 #%%
 
-z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_tmean_gs_norm_1971to2000_si_hist_v1.tif')
+#z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_wbm_ws_gs.tif')
+#plt.matshow(z['Data'])
+
+#z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_tmean_gs_norm_1971to2000_si_hist_v1.tif')
 
 
 

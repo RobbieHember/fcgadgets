@@ -26,6 +26,7 @@ def ImportSRSs():
     # Example:
     #    srs=gis.ImportSRSs()
     #    x,y=srs['Proj']['BC1ha'](ll[:,1],ll[:,0])
+    #    lon,lat=srs['Proj']['Geographic'](x,y)
 
     srs={}
     srs['String']={}
@@ -44,6 +45,12 @@ def ImportSRSs():
     srs['String']['BC1ha']='+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
     srs['Proj']['BC1ha']=pyproj.Proj(srs['String']['BC1ha'])
     return srs
+
+#%%
+
+def ReprojectCoordinates(proj_in,proj_out,x_in,y_in):
+    x_out,y_out=pyproj.transform(proj_in,proj_out,x_in,y_in)
+    return x_out,y_out
 
 #%% BUNCH VARIABLES FROM DICTIONARY
 
@@ -251,6 +258,10 @@ def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
     # Open reference grid
     z_ref=OpenGeoTiff(fref)
 
+    # Adopt the data type of the input
+    #z_ref['Data']=z_ref['Data'].astype(z_in0['Data'].dtype)
+    z_ref['Data']=z_ref['Data'].astype('float32')
+
     #fout_tmp=fout + 'a.tif'
 
     # Reproject
@@ -419,7 +430,7 @@ def DigitizeBinaryMask(zIn):
 
     return gdf
 
-# OLD:
+#%% OLD digitize:
 
 def Digitize(BinaryMask,xv,yv):
 
@@ -445,29 +456,6 @@ def Digitize(BinaryMask,xv,yv):
         except:
             break
     return xy
-
-#%% Revise raster extent
-# Such a pain to figure out how to compress output, use ClipToRaster_ByFile instead
-
-# def ReviseRasterExtent(fin_ToAdjust,fin_Ref,fout):
-
-#     # open reference file and get resolution
-#     ds=gdal.Open(fin_Ref,0)
-#     gt=ds.GetGeoTransform()
-#     data=ds.ReadAsArray()
-#     rows,cols=data.shape
-#     x_res=gt[1]
-#     y_res=-gt[5]  # make sure this value is positive
-#     extent=GetExtentFromGDAL(gt,cols,rows)
-
-#     # call gdal Warp
-#     kwargs={"format":"GTiff","xRes":x_res,"yRes":y_res,"outputBounds":extent,"outputType":gdal.GDT_Int16}
-
-#     ds=gdal.Warp(fout,fin_ToAdjust,**kwargs)
-
-#     #ds=gdal.Warp(fout,fin_ToAdjust,creationOptions=["COMPRESS=LZW"],options=gdal.WarpOptions(options=['outputBounds'],outputBounds=extent),**kwargs)
-
-#     return
 
 #%% Clip geodataframe to user-specified x and y limits
 
@@ -546,3 +534,46 @@ def ImportCities(pthin,output_type):
         out=gpd.GeoDataFrame({'geometry':points,'Name':Cities['Name'],'Territory':Cities['Territory'],'Lat':Cities['Lat'],'Lon':Cities['Lon']})
 
     return out
+
+#%% Shift input matrix by dx,dy
+
+def imshift(In,dx,dy):
+
+    m,n=In.shape
+    Out=-999*np.ones(In.shape)
+    if (dx<0) & (dy<0):
+        Out[0:m-np.abs(dy),0:n-np.abs(dx)]=In[np.abs(dy):m,np.abs(dx):n]
+    elif (dx<0) & (dy>0):
+      Out[dy:m,0:n-abs(dx)]=In[0:m-dy,np.abs(dx):n]
+    elif (dx>0) & (dy>0):
+      Out[dy:m,dx:n]=In[0:m-dy,0:n-dx]
+    elif (dx>0) & (dy<0):
+      Out[0:m-np.abs(dy),dx:n]=In[np.abs(dy):m,0:n-dx]
+    elif (dx==0) & (dy<0):
+      Out[0:m-np.abs(dy),0:n]=In[np.abs(dy):m,0:n]
+    elif (dx==0) & (dy>0):
+      Out[dy:m,0:n]=In[0:m-dy,0:n]
+    elif (dx==0) & (dy==0):
+      Out=In
+    elif dx<0 & dy==0:
+      Out[0:m,0:n-np.abs(dx)]=In[0:m,abs(dx):n]
+    elif (dx>0) & (dy==0):
+      Out[0:m,dx:n]=In[0:m,0:n-dx]
+
+    return Out
+
+#%% Buffer raster mask
+
+def BufferRasterMask(Mask,bw):
+    id0=1
+    id1=2
+    MaskB=Mask.copy()
+    bin_x=np.arange(-bw,bw+bw,bw)
+    bin_y=np.arange(-bw,bw+bw,bw)
+    for i in range(bin_y.size):
+        for j in range(bin_x.size):
+            MaskS=imshift(Mask,bin_x[j],bin_y[i])
+            ind=np.where( (Mask!=id0) & (MaskS==id0) )
+            MaskB[ind]=id1
+
+    return MaskB

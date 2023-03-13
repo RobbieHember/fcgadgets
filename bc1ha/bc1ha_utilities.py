@@ -16,6 +16,85 @@ import fcgadgets.macgyver.utilities_gis as gis
 import fcgadgets.macgyver.utilities_query_gdb as qgdb
 import fcgadgets.cbrunner.cbrun_utilities as cbu
 
+#%% Look up tables
+
+def Import_BC1ha_LUTs():
+
+    lut={}
+
+    # Land cover - level 2
+    nam='lc2'
+    lut[nam]={}
+    lut[nam]['Water']=1
+    lut[nam]['Land']=2
+    lut[nam]['Non-treed']=3
+    lut[nam]['Treed']=4
+
+    # Land cover - level 4
+    d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc4.xlsx')
+    nam='lc4'
+    lut[nam]={}
+    for i in range(d['Value'].size):
+        lut[nam][ d['Name'][i] ]=d['Value'][i]
+
+    # Land cover - level 5
+    d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc5.xlsx')
+    nam='lc5'
+    lut[nam]={}
+    for i in range(d['Value'].size):
+        lut[nam][ d['Name'][i] ]=d['Value'][i]
+
+    # TSA
+    d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\lut_tsa.xlsx')
+    nam='tsa'
+    lut[nam]={}
+    for i in range(d['Name'].size):
+        lut[nam][ d['Name'][i] ]=d['VALUE'][i]
+
+    # BGC Zone
+    d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz_lut.xlsx')
+    nam='bgcz'
+    lut[nam]={}
+    for i in range(d['VALUE'].size):
+        lut[nam][ d['ZONE'][i] ]=d['VALUE'][i]
+
+    # BGC Zone / NDT Zone Combo
+    d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lut_bgcz_ndt_combo.xlsx')
+    nam='bgc-ndt'
+    lut[nam]={}
+    for i in range(d['ID'].size):
+        lut[nam][ d['BGC-NDT'][i] ]=d['ID'][i]
+
+    # Land Cover Class 1
+    nam='lcc1'
+    lut[nam]={'Forest Land':1,'Shrubland':2,'Herbs':3,'Bryoids':4,'Other':5}
+
+    # Tree Density Class
+    nam='tdc'
+    lut[nam]={'Sparse':1,'Open':2,'Dense':3}
+
+    # Forest Cover Stocking Type
+    d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\Results\stocktype.tif.vat.xlsx')
+    #d=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_ForestCover_StockingType.xlsx')
+    nam='fcst'
+    lut[nam]={}
+    for i in range(d['VALUE'].size):
+        lut[nam][ d['STOCKING_T'][i] ]=d['VALUE'][i]
+
+    return lut
+
+#%% Convert LUT number to string
+
+def lut_n2s(dc,numb):
+    if numb!=-999:
+        vals=np.fromiter(dc.values(),dtype=float)
+        keys=np.fromiter(dc.keys(),dtype='<U70')
+        ind=np.where(vals==numb)[0]
+        s=keys[ind]
+    else:
+        s=np.array(['Unidentified'],ndmin=1)
+    return s
+
 #%% Region of interest
 
 def DefineROI(roi,gdf):
@@ -80,9 +159,13 @@ def DefineROI(roi,gdf):
     if roi['Type']=='ByTSA':
         roi['gdf']['tsa within']=gdf['tsa']['gdf'].iloc[np.isin(gdf['tsa']['gdf'].Name,roi['TSA List'])]
 
-    roi['gdf']['lakes']=gpd.overlay(gdf['bc_land']['gdf'][(gdf['bc_land']['gdf']['TAG']=='lake')],roi['gdf']['bound'],how='intersection')
+    #roi['gdf']['lakes']=gpd.overlay(gdf['bc_land']['gdf'][(gdf['bc_land']['gdf']['TAG']=='lake')],roi['gdf']['bound'],how='intersection')
 
-    roi['gdf']['rivers']=gpd.overlay(gdf['bc_land']['gdf'][(gdf['bc_land']['gdf']['TAG']=='river')],roi['gdf']['bound'],how='intersection')
+    roi['gdf']['lakes']=gdf['lakes']['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
+    roi['gdf']['lakes']=roi['gdf']['lakes'].reset_index(drop=True)
+
+    roi['gdf']['rivers']=gdf['rivers']['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
+    roi['gdf']['rivers']=roi['gdf']['rivers'].reset_index(drop=True)
 
     roi['gdf']['tpf']=gdf['tpf']['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
     roi['gdf']['tpf']=roi['gdf']['tpf'].reset_index(drop=True)
@@ -90,15 +173,41 @@ def DefineROI(roi,gdf):
     roi['gdf']['fnc']=gdf['fnc']['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
     roi['gdf']['fnc']=roi['gdf']['fnc'].reset_index(drop=True)
 
+    if roi['Type']=='ByTSA':
+        roi['gdf']['lakes']=gpd.overlay(roi['gdf']['lakes'],roi['gdf']['tsa within'],how='intersection')
+        roi['gdf']['rivers']=gpd.overlay(roi['gdf']['rivers'],roi['gdf']['tsa within'],how='intersection')
+        roi['gdf']['tpf']=gpd.overlay(roi['gdf']['tpf'],roi['gdf']['tsa within'],how='intersection')
+        roi['gdf']['fnc']=gpd.overlay(roi['gdf']['fnc'],roi['gdf']['tsa within'],how='intersection')
+
     try:
         roi['gdf']['road']=gdf['road']['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
         roi['gdf']['road']=roi['gdf']['road'].reset_index(drop=True)
+        if roi['Type']=='ByTSA':
+            roi['gdf']['road']=gpd.overlay(roi['gdf']['road'],roi['gdf']['tsa within'],how='intersection')
     except:
         pass
 
     return roi
 
 #%% Import basemaps
+
+def Import_GDBs_ProvinceWide_Simple():
+
+    path_inf=r'C:\Users\rhember\Documents\Data\ForestInventory\Infrastructure.gdb'
+    path_basemaps=r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb'
+
+    flg=0
+    if flg==1:
+        fiona.listlayers(path_inf)
+        fiona.listlayers(path_basemaps)
+
+    gdf={}
+
+    # Politial boundary
+    gdf['bc_bound']={}
+    gdf['bc_bound']['gdf']=gpd.read_file(path_basemaps,layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
+
+    return gdf
 
 def Import_GDBs_ProvinceWide():
 
@@ -115,6 +224,12 @@ def Import_GDBs_ProvinceWide():
     # Politial boundary
     gdf['bc_bound']={}
     gdf['bc_bound']['gdf']=gpd.read_file(path_basemaps,layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
+
+    gdf['rivers']={}
+    gdf['rivers']['gdf']=gpd.read_file(path_basemaps,layer='NRC_RIVERS_1M_SP')
+
+    gdf['lakes']={}
+    gdf['lakes']['gdf']=gpd.read_file(path_basemaps,layer='FWA_LAKES_POLY')
 
     # Not using
     gdf['bc_land']={}
@@ -268,6 +383,9 @@ def Import_GDB_Over_ROI(meta_bc1ha,roi,vList):
             roi['gdf'][nam]['Year End']=2025
             roi['gdf'][nam]['gdf']=qgdb.Query_Openings(roi['gdf'][nam],roi)
 
+        if roi['Type']=='ByTSA':
+            roi['gdf'][nam]['gdf']=gpd.overlay(roi['gdf'][nam]['gdf'],roi['gdf']['tsa within'],how='intersection')
+
     return roi
 
 #%% Import variables for ROI
@@ -288,7 +406,16 @@ def Import_Raster_Over_ROI(meta_bc1ha,roi,vList):
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
             gc.collect()
-
+        elif nam=='denseclass':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\LandUseLandCover\ForestDensityClass.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+            gc.collect()
+        elif nam=='rears':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\LandUseLandCover\REARs.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+            gc.collect()
         elif nam=='btm':
             # Import Base Thematic Map
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\LandUseLandCover\\landuse.btm.tif')
@@ -298,87 +425,80 @@ def Import_Raster_Over_ROI(meta_bc1ha,roi,vList):
             cl=np.column_stack( (lut['C1'].values,lut['C2'].values,lut['C3'].values) )
             roi['grd'][nam]['Compressed']={}
             roi['grd'][nam]['Compressed']['Data'],roi['grd'][nam]['Compressed']['lab'],roi['grd'][nam]['Compressed']['cl1']=gis.CompressCats(roi['grd'][nam]['Data'],lut['Raster Value'].values,lut['PLU Label'].values,cl)
-
         elif nam=='becz':
             # BGC classification
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\becz.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
             roi['grd'][nam]['key']=pd.read_excel(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\becz_lut.xlsx')
-
         elif nam=='age1':
             # Age 1
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\proj_age_1.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
-
         elif nam=='si':
             # Site index
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\si.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
-
         elif nam=='sphlive':
             # SPH
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\sphlive.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
-
         elif nam=='sphdead':
             # SPH
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\VRI\\sphdead.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
-
         elif nam=='cut_yr':
-
             roi['grd'][nam]=roi['grd'].copy()
             roi['grd'][nam]['Data']=0*roi['grd'][nam]['Data']
             for i in range(1,5):
                 tmp=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Disturbances\\VEG_CONSOLIDATED_CUT_BLOCKS_SP_year' + str(i) + 'a.tif')
                 tmp['Data']=np.squeeze(tmp['Data'])
-                tmp=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+                tmp=gis.ClipToRaster(tmp,roi['grd'])
                 roi['grd'][nam]['Data']=np.maximum(roi['grd'][nam]['Data'],tmp['Data'])
                 del tmp
                 gc.collect()
-
         elif nam=='bsr':
-
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Disturbances\\VEG_BURN_SEVERITY_SP_2017.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
             roi['grd'][nam]['key']=gu.ReadExcel(meta_bc1ha['Paths']['BC1ha'] + '\\Disturbances\\VEG_BURN_SEVERITY_SP.xlsx')
-
+        elif nam=='gfcly':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Disturbances\\GlobalForestChange_LossYear_2021_KnownEventsRemoved.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
         elif nam=='wf':
-
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Disturbances\\PROT_HISTORICAL_FIRE_POLYS_SP_2017.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
-
         elif nam=='elev':
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Terrain\\elevation.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
-
         elif nam=='soc':
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Soil\\soc_tot_forest_Shawetal2018.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
-
-        elif nam=='temp_norm':
+        elif nam=='gsoc':
+            roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\Soil\\gsoc2010_bc1ha.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+        elif nam=='ta_ann_n':
             tsa=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
             tsa['Data']=np.squeeze(tsa['Data'])
-            z_tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmin_ann_norm_1971to2000_si_hist_v1.tif')
+            z_tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
             roi['grd'][nam]=tsa.copy()
             roi['grd'][nam]['Data']=np.squeeze(z_tmp['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
             roi['grd'][nam]['Data']=roi['grd'][nam]['Data'].astype('float')/10
             gc.collect()
-
-        elif nam=='ws_norm':
+        elif nam=='ws_gs_n':
             tsa=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
             tsa['Data']=np.squeeze(tsa['Data'])
-            z_tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+            z_tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_ws_gs_norm_1971to2000.tif')
             roi['grd'][nam]=tsa.copy()
             roi['grd'][nam]['Data']=z_tmp['Data']
             del z_tmp
@@ -405,6 +525,11 @@ def Import_Raster_Over_ROI(meta_bc1ha,roi,vList):
             roi['grd'][nam]=gis.OpenGeoTiff(meta_bc1ha['Paths']['BC1ha'] + '\\LandUseLandCover\\PROTECTED_LANDS_DESIGNATION.tif')
             roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
             roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+        elif nam=='globbio':
+            roi['grd'][nam]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\Biomass\GlobBiomass\N80W140_agb pc8.tif')
+            roi['grd'][nam]['Data']=np.squeeze(roi['grd'][nam]['Data'])
+            roi['grd'][nam]=gis.ClipToRaster(roi['grd'][nam],roi['grd'])
+            roi['grd'][nam]['Data']=0.5*roi['grd'][nam]['Data']
 
     return roi
 

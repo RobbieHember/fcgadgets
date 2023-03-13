@@ -42,11 +42,13 @@ from fcgadgets.taz import aspatial_stat_models as asm
 #%% Look at contents of geodatabase
 
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20210401\LandUse.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\Results.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210401\ForestCover.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20210401\VRI.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20210401\Disturbances.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Infrastructure.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\ForestTenure\ForestTenure.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422\LandUse.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422\Results.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422\ForestCover.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404\VRI.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422\Disturbances.gdb')
 
 #%% Define inventory layers and varialbes
 # The "Field List" variable contains touples containing the variable name and
@@ -1408,7 +1410,7 @@ def PrepDMEC(idx,meta,atu,pl,op,fcinv,vri,cut,fire,burnsev,pest,fcres):
                 dmec0['Month']=np.append(dmec0['Month'],fire['Month'][indS[i]])
                 dmec0['Day']=np.append(dmec0['Day'],fire['Day'][indS[i]])
                 dmec0['ID_Type']=np.append(dmec0['ID_Type'],meta['LUT']['Dist']['Wildfire'])
-                dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],25)
+                dmec0['MortalityFactor']=np.append(dmec0['MortalityFactor'],60)
                 dmec0['GrowthFactor']=np.append(dmec0['GrowthFactor'],-999)
                 dmec0['SILV_FUND_SOURCE_CODE']=np.append(dmec0['SILV_FUND_SOURCE_CODE'],0)
                 dmec0['OPENING_ID']=np.append(dmec0['OPENING_ID'],-999)
@@ -2165,85 +2167,44 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,dmec,ba):
         # Index to events prior to first fertilization with 100% mortality
         ind=np.where( (dmec[iStand]['Year']<dmec[iStand]['Year'][iFert]) & (dmec[iStand]['MortalityFactor']==100) & np.isin(dmec[iStand]['ID_Type'],ListOfTestedDist) )[0]
 
-        if (ind.size==0):
+        if ind.size>0:
+            continue
 
-            # Gapfill with VRI
-            Year=ba['Year'][iStand]-ba['PROJ_AGE_1'][iStand]
+        print('Adding a harvest before nutrient application')
 
-            if Year<=0:
-                # Assume mean of 36 + random variation
-                r=37+np.random.randint(-6,high=6)
-                Year=dmec[iStand]['Year'][iFert]-r
+        # Assume mean of 38 + random variation (planting is 2 years after harvest)
+        r=38+np.random.randint(-6,high=6)
+        Year=dmec[iStand]['Year'][iFert]-r
 
-            # Add harvest
-            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
-            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
-            if 'FCI Funded' in dmec[iStand]:
-                dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
-            for v in meta['Core']['StringsToFill']:
-                dmec[iStand][v]=np.append(dmec[iStand][v],-999)
+        # Add harvest
+        dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
+        dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
+        dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
+        dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
+        if 'FCI Funded' in dmec[iStand]:
+            dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
+        for v in meta['Core']['StringsToFill']:
+            dmec[iStand][v]=np.append(dmec[iStand][v],-999)
 
-            # Add slashpile burn
-            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+1)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
-            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
-            if 'FCI Funded' in dmec[iStand]:
-                dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
-            for v in meta['Core']['StringsToFill']:
-                dmec[iStand][v]=np.append(dmec[iStand][v],-999)
+        # Add slashpile burn
+        dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+1)
+        dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
+        dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
+        dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
+        if 'FCI Funded' in dmec[iStand]:
+            dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
+        for v in meta['Core']['StringsToFill']:
+            dmec[iStand][v]=np.append(dmec[iStand][v],-999)
 
-            # Add planting
-            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+2)
-            dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Planting'])
-            dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
-            dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
-            if 'FCI Funded' in dmec[iStand]:
-                dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
-            for v in meta['Core']['StringsToFill']:
-                dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-
-        else:
-
-            # Difference
-            d=iFert-ind[-1]
-
-            if d>80:
-                print('Working!')
-                Year=dmec[iStand]['Year'][iFert]-38
-
-                # Add harvest
-                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year)
-                dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Harvest'])
-                dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
-                if 'FCI Funded' in dmec[iStand]:
-                    dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
-                for v in meta['Core']['StringsToFill']:
-                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-
-                # Add slashpile burn
-                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+1)
-                dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Slashpile Burn'])
-                dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],100)
-                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
-                if 'FCI Funded' in dmec[iStand]:
-                    dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
-                for v in meta['Core']['StringsToFill']:
-                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-
-                # Add planting
-                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+2)
-                dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Planting'])
-                dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
-                dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
-                if 'FCI Funded' in dmec[iStand]:
-                    dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
-                for v in meta['Core']['StringsToFill']:
-                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-
+        # Add planting
+        dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year+2)
+        dmec[iStand]['ID_Type']=np.append(dmec[iStand]['ID_Type'],meta['LUT']['Dist']['Planting'])
+        dmec[iStand]['MortalityFactor']=np.append(dmec[iStand]['MortalityFactor'],0)
+        dmec[iStand]['GrowthFactor']=np.append(dmec[iStand]['GrowthFactor'],-999)
+        if 'FCI Funded' in dmec[iStand]:
+            dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
+        for v in meta['Core']['StringsToFill']:
+            dmec[iStand][v]=np.append(dmec[iStand][v],-999)
 
     return dmec
 
@@ -2867,7 +2828,7 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
 
     pthin=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\HarvestProbability.tif'
     z=gis.OpenGeoTiff(pthin)
-    z['Data']=z['Data'].astype('float64')/100
+    z['Data']=z['Data'].astype('float')/1000
 
     if 'xlim' in geos:
 
@@ -2918,14 +2879,29 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
     ba['P Harvest Weight'][iStand0]=ba['P Harvest Weight'][iStand0]/P_Harvest_Max
 
     #--------------------------------------------------------------------------
+    # Harvest area restriction layer
+    #--------------------------------------------------------------------------
+
+    z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\REARs.tif')
+    ind=gis.GetGridIndexToPoints(z,geos['Sparse']['X'],geos['Sparse']['Y'])
+    ba['THLB Layer']=z['Data'][ind]
+
+    #--------------------------------------------------------------------------
+    # Tree Density Class
+    #--------------------------------------------------------------------------
+
+    z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\TreeDensityClass.tif')
+    ind=gis.GetGridIndexToPoints(z,geos['Sparse']['X'],geos['Sparse']['Y'])
+    ba['TreeDensityClass']=z['Data'][ind]
+
+    #--------------------------------------------------------------------------
     # Thornthwaite's climate classification
     #--------------------------------------------------------------------------
 
-    zCC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ThornthwaiteClimateClassCondensed_norm_1971to2000.tif')
-
-    ind=gis.GetGridIndexToPoints(zCC,geos['Sparse']['X'],geos['Sparse']['Y'])
-    cc=zCC['Data'][ind]
-    ba['ClimateClass']=cc
+    #zCC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ThornthwaiteClimateClassCondensed_norm_1971to2000.tif')
+    #ind=gis.GetGridIndexToPoints(zCC,geos['Sparse']['X'],geos['Sparse']['Y'])
+    #cc=zCC['Data'][ind]
+    #ba['ClimateClass']=cc
 
     return ba,ba_Source
 
@@ -3294,22 +3270,23 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
         # Initially assume everything is in the THLB
         thlb[iScn]['Actual']=np.ones((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int8')
         thlb[iScn]['Baseline']=thlb[iScn]['Actual'].copy()
-        thlb[iScn]['Actual WithDef']=thlb[iScn]['Actual'].copy()
-        thlb[iScn]['Baseline WithDef']=thlb[iScn]['Actual'].copy()
+
+        thlb[iScn]['Scn1 Actual']=thlb[iScn]['Actual'].copy()
+        thlb[iScn]['Scn1 Baseline']=thlb[iScn]['Actual'].copy()
 
         # Index to stands that are uneconomic
         iUneconomic=np.where(ba['SI']<=5)[0]
         if iUneconomic.size>0:
             # Remove uneconomic stands from THLB
             thlb[iScn]['Actual'][:,iUneconomic]=0
-            thlb[iScn]['Actual WithDef'][:,iUneconomic]=0
             thlb[iScn]['Baseline'][:,iUneconomic]=0
-            thlb[iScn]['Baseline WithDef'][:,iUneconomic]=0
+            thlb[iScn]['Scn1 Actual'][:,iUneconomic]=0
+            thlb[iScn]['Scn1 Baseline'][:,iUneconomic]=0
 
         # Idenify stands that have been harvested
         has_been_harvested=np.zeros(meta['Project']['N Stand'])
         for iStand in range(len(dmec)):
-            ind=np.where(dmec[iScn][iStand]['ID_Type']==meta['LUT']['Dist']['Harvest'])[0]
+            ind=np.where( (dmec[iScn][iStand]['ID_Type']==meta['LUT']['Dist']['Harvest']) | (dmec[iScn][iStand]['ID_Type']==meta['LUT']['Dist']['Harvest Salvage']) )[0]
             if ind.size>0:
                 has_been_harvested[iStand]=1
 
@@ -3332,75 +3309,22 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
         # Random prediction of whether it will evade harvesting
         iRem=np.where(np.random.random(iNoHarv.size)<p_evade)[0]
         thlb[iScn]['Actual'][:,iNoHarv[iRem]]=0
-        thlb[iScn]['Actual WithDef'][:,iNoHarv[iRem]]=0
         thlb[iScn]['Baseline'][:,iNoHarv[iRem]]=0
-        thlb[iScn]['Baseline WithDef'][:,iNoHarv[iRem]]=0
+
+        thlb[iScn]['Scn1 Actual'][:,iNoHarv[iRem]]=0
+        thlb[iScn]['Scn1 Baseline'][:,iNoHarv[iRem]]=0
 
         # np.sum(thlb['Actual'][0,:])/meta['Project']['N Stand']
 
         #------------------------------------------------------------------------------
-        # Define the year of transition from THLB to non-THLB for specific LU types
-        #------------------------------------------------------------------------------
-
-        # Look at abundance of each LUL type
-        d=meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].copy()
-        for k in meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].keys():
-            ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][k]) )[0]
-            d[k]=ind.size
-        #ds={k: v for k,v in sorted(d.items(), key=lambda item: item[1])}
-
-        # List of legal land use plan types that transition to conservation (this needs to be vetted by experts)
-        ListCon=['Visually Sensitive Areas','Connectivity Corridors','Scenic Areas','Caribou Winter Habitat Zones',
-          'Tourism Areas','Visual Quality','High Value Grizzly Bear Habitat','No Timber Harvesting Areas','Landscape Corridors',
-          'Critical Deer Winter Range','Sensitive Watershed','Water Management Units','High Value Wetlands for Moose','Telkwa Caribou Recovery Area',
-          'Caribou Migration Corridor','High Biodiversity Emphasis Areas','Scenic Corridors']
-
-        # Calculate area that will transition to non-THLB
-        A=0
-
-        # Add regional land use plans
-        for i in range(len(ListCon)):
-            ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][ListCon[i]]) )[0]
-            A=A+ind.size
-
-        # Add parks
-        A=A+park['IdxToSXY'].size
-
-        # Add legal OGMAs
-        A=A+ogmal['IdxToSXY'].size
-
-        # Add OG deferral
-        A=A+ogsr['IdxToSXY'].size
-
-        #print(A)
-        #print('Scenario ' + str(iScn+1) + ':' + str(np.round(A/meta['Project']['N Stand']*100,decimals=1)) + '% of stands transitioned to non-THLB.')
-
-        # Look at reserves
-        # N={}
-        # for k in meta['LUT']['FC_R']['SILV_RESERVE_CODE'].keys():
-        #     ind=np.where(fcres['SILV_RESERVE_CODE']==meta['LUT']['FC_R']['SILV_RESERVE_CODE'][k])[0]
-        #     N[k]=ind.size
-
-        #------------------------------------------------------------------------------
-        # Actual
+        # Actual (New based on REAR layer)
         #------------------------------------------------------------------------------
 
         # Initialize year of transition
         thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand'])
 
-        # Define year of transition from legal land use plan objectives
-        for i in range(len(ListCon)):
-            ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][ListCon[i]]) )[0]
-            thlb_YearTransitionOut[lul['IdxToSXY'][ind]]=2010
-
-        # Define year of transition from parks
-        thlb_YearTransitionOut[park['IdxToSXY']]=1995
-
-        # Define year of transition from legal old-growth OGMAs
-        thlb_YearTransitionOut[ogmal['IdxToSXY']]=2010
-
-        # Define year of transition from OG deferrals
-        #thlb_YearTransitionOut[ogsr['IdxToSXY']]=2022
+        ind=np.where(ba['THLB Layer']==1)[0]
+        thlb_YearTransitionOut[ind]=1990
 
         # Conservation from land surface classification
         name=meta['Scenario'][iScn]['Land Surface Scenario']
@@ -3417,22 +3341,22 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
             if thlb_YearTransitionOut[j]>0:
                 it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
                 thlb[iScn]['Actual'][it,j]=0
-                thlb[iScn]['Actual WithDef'][it,j]=0
+                thlb[iScn]['Scn1 Actual'][it,j]=0
 
         #------------------------------------------------------------------------------
-        # Actual (with deferrals)
+        # Scn1 Actual (with deferrals + random areas to achieve 30 by 30)
         #------------------------------------------------------------------------------
 
         thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand'])
 
-        # Define year of transition from OG deferrals
-        thlb_YearTransitionOut[ogsr['IdxToSXY']]=2022
+        ind=np.where(ba['THLB Layer']==2)[0]
+        thlb_YearTransitionOut[ind]=2023
 
         # Apply transition to actual THLB
         for j in range(thlb_YearTransitionOut.size):
             if thlb_YearTransitionOut[j]>0:
                 it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
-                thlb[iScn]['Actual WithDef'][it,j]=0
+                thlb[iScn]['Scn1 Actual'][it,j]=0
 
         #------------------------------------------------------------------------------
         # Baselines
@@ -3447,15 +3371,133 @@ def DefineTHLB(meta,ba,dmec,fcres,lul,ogmal,park,ogsr,lsc):
             iS=np.where( (thlb[iScn]['Baseline'][iT,:]==1) & (thlb[iScn]['Actual'][iT,:]==1) )[1]
             thlb[iScn]['Baseline'][iT,iS]=0
 
-            iS=np.where( (thlb[iScn]['Baseline WithDef'][iT,:]==1) & (thlb[iScn]['Actual WithDef'][iT,:]==1) )[1]
-            thlb[iScn]['Baseline WithDef'][iT,iS]=0
+            iS=np.where( (thlb[iScn]['Scn1 Baseline'][iT,:]==1) & (thlb[iScn]['Scn1 Actual'][iT,:]==1) )[1]
+            thlb[iScn]['Scn1 Baseline'][iT,iS]=0
 
-        flg=0
-        if flg==1:
-            iScn=0
-            plt.figure(2)
-            plt.plot(np.sum(thlb[iScn]['Actual'],axis=1)/meta['Project']['N Stand'])
-            plt.plot(np.sum(thlb[iScn]['Baseline'],axis=1)/meta['Project']['N Stand'],'--')
+        # OLD:
+        # #------------------------------------------------------------------------------
+        # # Define the year of transition from THLB to non-THLB for specific LU types
+        # #------------------------------------------------------------------------------
+
+        # flg=0
+        # if flg==1:
+        #     # Look at abundance of each LUL type
+        #     d=meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].copy()
+        #     for k in meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'].keys():
+        #         ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][k]) )[0]
+        #         d[k]=ind.size
+        #     #ds={k: v for k,v in sorted(d.items(), key=lambda item: item[1])}
+
+        #     # List of legal land use plan types that transition to conservation (this needs to be vetted by experts)
+        #     ListCon=['Visually Sensitive Areas','Connectivity Corridors','Scenic Areas','Caribou Winter Habitat Zones',
+        #       'Tourism Areas','Visual Quality','High Value Grizzly Bear Habitat','No Timber Harvesting Areas','Landscape Corridors',
+        #       'Critical Deer Winter Range','Sensitive Watershed','Water Management Units','High Value Wetlands for Moose','Telkwa Caribou Recovery Area',
+        #       'Caribou Migration Corridor','High Biodiversity Emphasis Areas','Scenic Corridors']
+
+        #     # Calculate area that will transition to non-THLB
+        #     A=0
+
+        #     # Add regional land use plans
+        #     for i in range(len(ListCon)):
+        #         ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][ListCon[i]]) )[0]
+        #         A=A+ind.size
+
+        #     # Add parks
+        #     A=A+park['IdxToSXY'].size
+
+        #     # Add legal OGMAs
+        #     A=A+ogmal['IdxToSXY'].size
+
+        #     # Add OG deferral
+        #     A=A+ogsr['IdxToSXY'].size
+
+        #     #print(A)
+        #     #print('Scenario ' + str(iScn+1) + ':' + str(np.round(A/meta['Project']['N Stand']*100,decimals=1)) + '% of stands transitioned to non-THLB.')
+
+        #     # Look at reserves
+        #     # N={}
+        #     # for k in meta['LUT']['FC_R']['SILV_RESERVE_CODE'].keys():
+        #     #     ind=np.where(fcres['SILV_RESERVE_CODE']==meta['LUT']['FC_R']['SILV_RESERVE_CODE'][k])[0]
+        #     #     N[k]=ind.size
+
+        # #------------------------------------------------------------------------------
+        # # Actual
+        # # *** OLD ***
+        # #------------------------------------------------------------------------------
+
+        # # Initialize year of transition
+        # thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand'])
+
+        # # Define year of transition from legal land use plan objectives
+        # for i in range(len(ListCon)):
+        #     ind=np.where( (lul['LEGAL_FEAT_OBJECTIVE']==meta['LUT']['LU L']['LEGAL_FEAT_OBJECTIVE'][ListCon[i]]) )[0]
+        #     thlb_YearTransitionOut[lul['IdxToSXY'][ind]]=2010
+
+        # # Define year of transition from parks
+        # thlb_YearTransitionOut[park['IdxToSXY']]=1995
+
+        # # Define year of transition from legal old-growth OGMAs
+        # thlb_YearTransitionOut[ogmal['IdxToSXY']]=2010
+
+        # # Define year of transition from OG deferrals
+        # #thlb_YearTransitionOut[ogsr['IdxToSXY']]=2022
+
+        # # Conservation from land surface classification
+        # name=meta['Scenario'][iScn]['Land Surface Scenario']
+        # if name!='None':
+        #     idx=LSC_Scenario_Crosswalk(lsc,name)
+        #     Use=np.reshape(lsc['Scenarios'][idx]['Use'].copy(),(lsc['tv'].size,meta['Project']['N Stand']))
+        #     ind=np.where( Use==meta['LUT']['LSC']['Use']['Conservation Consistent'] )
+        #     if ind[0].size>0:
+        #         for i in range(ind[0].size):
+        #             thlb_YearTransitionOut[ind[1][i]]=lsc['tv'][ind[0][i]]
+
+        # # Apply transition to actual THLB
+        # for j in range(thlb_YearTransitionOut.size):
+        #     if thlb_YearTransitionOut[j]>0:
+        #         it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
+        #         thlb[iScn]['Actual'][it,j]=0
+        #         thlb[iScn]['Actual WithDef'][it,j]=0
+
+        # #------------------------------------------------------------------------------
+        # # Actual (with deferrals)
+        # # *** OLD ***
+        # #------------------------------------------------------------------------------
+
+        # thlb_YearTransitionOut=np.zeros(meta['Project']['N Stand'])
+
+        # # Define year of transition from OG deferrals
+        # thlb_YearTransitionOut[ogsr['IdxToSXY']]=2022
+
+        # # Apply transition to actual THLB
+        # for j in range(thlb_YearTransitionOut.size):
+        #     if thlb_YearTransitionOut[j]>0:
+        #         it=np.where( (meta['Year']>=thlb_YearTransitionOut[j]) )[0]
+        #         thlb[iScn]['Actual WithDef'][it,j]=0
+
+        # #------------------------------------------------------------------------------
+        # # Baselines
+        # # *** OLD ***
+        # #------------------------------------------------------------------------------
+
+        # # Adjust the baseline so that simulated harvesting between 1995 and 2022 only
+        # # occurs in areas where the THLB was affected by value diversification
+        # for year in range(1990,2023,1):
+
+        #     iT=np.where(meta['Year']==year)[0]
+
+        #     iS=np.where( (thlb[iScn]['Baseline'][iT,:]==1) & (thlb[iScn]['Actual'][iT,:]==1) )[1]
+        #     thlb[iScn]['Baseline'][iT,iS]=0
+
+        #     iS=np.where( (thlb[iScn]['Baseline WithDef'][iT,:]==1) & (thlb[iScn]['Actual WithDef'][iT,:]==1) )[1]
+        #     thlb[iScn]['Baseline WithDef'][iT,iS]=0
+
+        # flg=0
+        # if flg==1:
+        #     iScn=0
+        #     plt.figure(2)
+        #     plt.plot(np.sum(thlb[iScn]['Actual'],axis=1)/meta['Project']['N Stand'])
+        #     plt.plot(np.sum(thlb[iScn]['Baseline'],axis=1)/meta['Project']['N Stand'],'--')
 
     return thlb
 
@@ -6335,6 +6377,15 @@ def ProcessProjectInputs2(meta,ba,dmec):
         SPH_Init_Nat[ind0]=pByBGC['Natural Initial Tree Density'][ind1[0]]
         RegenDelay_Nat[ind0]=pByBGC['Natural Regeneration Delay'][ind1[0]]
 
+    # OAF1
+    oaf1=0.9*np.ones(meta['Project']['N Stand'])
+    ind=np.where(ba['TreeDensityClass']==1)[0]
+    oaf1[ind]=0.60
+    ind=np.where(ba['TreeDensityClass']==2)[0]
+    oaf1[ind]=0.75
+    ind=np.where(ba['TreeDensityClass']==3)[0]
+    oaf1[ind]=0.9
+
     # Initialize list
     gc=[None]*meta['Project']['N Scenario']
 
@@ -6376,7 +6427,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
             gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
             gc[iScn][iStand]['init_density'][cnt_gc]=SPH_Init_Nat[iStand]
             gc[iScn][iStand]['regen_delay'][cnt_gc]=RegenDelay_Nat[iStand]
-            gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+            gc[iScn][iStand]['oaf1'][cnt_gc]=oaf1[iStand]
             gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
             gc[iScn][iStand]['bec_zone'][cnt_gc]=14#vri['BEC_ZONE_CODE'][iStand]
             gc[iScn][iStand]['FIZ'][cnt_gc]=1#ba['FIZ'][iStand]
@@ -6485,7 +6536,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                             gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
                             gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
 
-                        gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=oaf1[iStand]
                         gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
                         gc[iScn][iStand]['bec_zone'][cnt_gc]=14 #vri['BEC_ZONE_CODE'][iStand]
                         gc[iScn][iStand]['FIZ'][cnt_gc]=1 #ba['FIZ'][iStand]
@@ -6549,7 +6600,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                             gc[iScn][iStand]['s5'][cnt_gc]=ba['Spc_CD5'][iStand]
                             gc[iScn][iStand]['p5'][cnt_gc]=ba['Spc_Pct5'][iStand]
 
-                        gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=oaf1[iStand]
                         gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
                         gc[iScn][iStand]['bec_zone'][cnt_gc]=14 #vri['BEC_ZONE_CODE'][iStand]
                         gc[iScn][iStand]['FIZ'][cnt_gc]=1 #ba['FIZ'][iStand]
@@ -6676,7 +6727,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                         gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
                         gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
                         gc[iScn][iStand]['regen_delay'][cnt_gc]=0
-                        gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=oaf1[iStand]
                         gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
                         gc[iScn][iStand]['bec_zone'][cnt_gc]=ba['BEC_ZONE_CODE'][iStand]
                         gc[iScn][iStand]['FIZ'][cnt_gc]=ba['FIZ'][iStand]
@@ -6737,7 +6788,7 @@ def ProcessProjectInputs2(meta,ba,dmec):
                 gc[iScn][iStand]['i1'][cnt_gc]=ba['SI'][iStand]
                 gc[iScn][iStand]['init_density'][cnt_gc]=int(1500)
                 gc[iScn][iStand]['regen_delay'][cnt_gc]=0
-                gc[iScn][iStand]['oaf1'][cnt_gc]=0.85
+                gc[iScn][iStand]['oaf1'][cnt_gc]=oaf1[iStand]
                 gc[iScn][iStand]['oaf2'][cnt_gc]=0.95
                 gc[iScn][iStand]['bec_zone'][cnt_gc]=ba['BEC_ZONE_CODE'][iStand]
                 gc[iScn][iStand]['FIZ'][cnt_gc]=ba['FIZ'][iStand]

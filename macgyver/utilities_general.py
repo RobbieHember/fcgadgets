@@ -25,6 +25,7 @@ import csv
 
 def GetRegStats(x,y):
 
+    x0=x.copy()
     x=sm.tools.tools.add_constant(x)
     md=sm.OLS(y,x).fit()
     xhat=np.linspace(np.min(x[:,1]),np.max(x[:,1]),10)
@@ -39,6 +40,8 @@ def GetRegStats(x,y):
     rs['P']=md.f_pvalue
     rs['xhat']=xhat
     rs['yhat']=yhat
+    rs['Mean Dif']=(np.mean(y)-np.mean(x0))
+    rs['Dif (%)']=(np.mean(y)-np.mean(x0))/np.mean(x0)*100
 
     if rs['B'][0]<0:
         fl=' - '
@@ -236,7 +239,7 @@ def cm2inch(*tupl):
     else:
         return tuple(i/inch for i in tupl)
 
-#%% COUNT BY CATEGORIES
+#%% Count By Category
 
 def CountByCategories(z,*args):
 
@@ -564,6 +567,7 @@ def BinnedCount(bins,bw,x):
 #     return params
 
 #%% Set graphics
+
 def SetGraphics(type):
 
     gp={}
@@ -666,6 +670,9 @@ def SetGraphics(type):
 
     elif type=='Manuscript':
 
+        gp['printfigs']='On'
+        gp['fig w mult']=1.0
+        gp['fig h mult']=1.0
         gp['fs1']=7
         gp['fs2']=6
         gp['fs3']=5
@@ -677,10 +684,12 @@ def SetGraphics(type):
         gp['cl4']=[0.85,0,0]
         gp['lw1']=0.5;
         gp['lw2']=1.0;
+        gp['lw3']=1.5;
         gp['ms']=4
         gp['Alpha1']=0.225;
         gp['Alpha2']=0.45;
         gp['tickl']=1.5;
+        gp['dpi']=900;
 
         params={'font.sans-serif':'Arial',
                 'font.size':gp['fs1'],
@@ -707,6 +716,59 @@ def SetGraphics(type):
                 'ytick.direction':'in',
                 'legend.fontsize':gp['fs1'],
                 'savefig.dpi':900,
+                'savefig.transparent':False,
+                'savefig.format':'png',
+                'savefig.pad_inches':0.1,
+                'savefig.bbox':'tight'}
+
+    elif type=='Web':
+
+        gp['printfigs']='Off'
+        gp['fig w mult']=1.5
+        gp['fig h mult']=1.5
+        gp['fs1']=9
+        gp['fs2']=8
+        gp['fs3']=8
+        gp['cla']=[0,0,0]
+        gp['clt']=[0,0,0]
+        gp['cl1']=[0.27,0.49,0.79];
+        gp['cl2']=[0.6,0.9,0];
+        gp['cl3']=[0.7,0.4,0.95];
+        gp['cl4']=[0.85,0,0]
+        gp['lw1']=0.5;
+        gp['lw2']=1.0;
+        gp['lw3']=1.5;
+        gp['ms']=4
+        gp['Alpha1']=0.225;
+        gp['Alpha2']=0.45;
+        gp['tickl']=1.5;
+        gp['dpi']=100;
+
+        params={'font.sans-serif':'Arial',
+                'font.size':gp['fs1'],
+                'figure.titlesize':gp['fs2'],
+                'figure.constrained_layout.use':True,
+                'axes.edgecolor':gp['cla'],
+                'axes.labelsize':gp['fs1'],
+                'axes.labelcolor':gp['cla'],
+                'axes.titlesize':gp['fs2'],
+                'axes.titlepad':2,
+                'axes.linewidth':gp['lw1'],
+                'lines.linewidth':gp['lw2'],
+                'lines.markersize':gp['ms'],
+                'text.color':gp['cla'],
+                'xtick.color':gp['cla'],
+                'xtick.labelsize':gp['fs1'],
+                'xtick.major.width':gp['lw1'],
+                'xtick.major.size':3,
+                'xtick.direction':'in',
+                'ytick.color':gp['cla'],
+                'ytick.labelsize':gp['fs1'],
+                'ytick.major.width':0.5,
+                'ytick.major.size':3,
+                'ytick.direction':'in',
+                'legend.fontsize':gp['fs1'],
+                'savefig.dpi':100,
                 'savefig.transparent':False,
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,

@@ -356,8 +356,10 @@ def InitializeStands(meta,iScn,iEns,iBat):
     vo['C_M_Reg']=np.zeros((m,n,o))
     vo['C_M_Dist']=np.zeros((m,n))
     vo['C_M_ByAgent']={}
+    vo['C_M_Pct_ByAgent']={}
     for k in meta['LUT']['Dist']:
-        vo['C_M_ByAgent'][k]=np.zeros((m,n),dtype='int16')
+        vo['C_M_ByAgent'][k]=np.zeros((m,n))
+        vo['C_M_Pct_ByAgent'][k]=np.zeros((m,n))
     vo['C_LF']=np.zeros((m,n,o))
     vo['C_RH']=np.zeros((m,n,o))
 
@@ -925,7 +927,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
         vo_full={}
         for k in vo.keys():
 
-            if (k=='C_M_ByAgent'):
+            if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
                 continue
 
             if vo[k].size==0:
@@ -965,7 +967,11 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
 
     # Mortality summaries
     for k in vo['C_M_ByAgent']:
-        vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k][it,:]
+        vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k][it,:]/meta['Core']['Scale Factor C_M_ByAgent']
+        vo['C_M_Pct_ByAgent'][k]=vo['C_M_Pct_ByAgent'][k][it,:]/meta['Core']['Scale Factor C_M_ByAgent']
+
+        vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype('int16')
+        vo['C_M_Pct_ByAgent'][k]=vo['C_M_Pct_ByAgent'][k].astype('int16')
 
     #--------------------------------------------------------------------------
     # Emissions from wildfire
@@ -1091,7 +1097,7 @@ def ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP):
     for k in vo.keys():
 
         # Skip mortality summary by agent
-        if (k=='C_M_ByAgent'):
+        if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
             continue
 
         if vo[k].size==0:

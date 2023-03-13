@@ -294,14 +294,14 @@ def UpdateStatus(vi,vo,iT,meta,comp):
 
 #%% Simulate probability of harvesting on the fly
 
-def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
+def ScheduleNutrientApplication(meta,vi,vo,iT,iScn,iEns,iBat):
 
     # Create a random number
     rn=np.random.random(meta['Project']['Batch Size'][iBat])
 
     # Regional probabilities
-    Po_Sat_Coast=2.0*meta['Scenario'][iScn]['Nutrient Application Prob']
-    Po_Sat_Interior=0.5*meta['Scenario'][iScn]['Nutrient Application Prob']
+    Po_Sat_Coast=0.00775
+    Po_Sat_Interior=0.00375
 
     flg=0
     if flg==1:
@@ -317,20 +317,17 @@ def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
         plt.plot(vi['tv'],Po_Interior,'r-',lw=1.5 )
 
     # Contstant
-    #Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.0*np.maximum(1,vi['tv']-2021) )
-    #Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0*np.maximum(1,vi['tv']-2045) )
+    Po_Coast=Po_Sat_Coast*np.ones(vi['tv'].size)
+    Po_Interior=Po_Sat_Interior*np.ones(vi['tv'].size)
 
     # Time-dependent models to compensate for aging forests (paper)
-    #Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.002*np.maximum(1,vi['tv']-2021) )
-    #Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0012*np.maximum(1,vi['tv']-2045) )
-
-    Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.0008*np.maximum(1,vi['tv']-2021) )
-    Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0005*np.maximum(1,vi['tv']-2045) )
+    #Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.0005*np.maximum(1,vi['tv']-2021) )
+    #Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0005*np.maximum(1,vi['tv']-2021) )
 
     # Find eligible coastal stands to fertilize
     indS_Coast=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
             (vo['A'][iT,:]>=9) & \
-            (vo['A'][iT,:]<=61) & \
+            (vo['A'][iT,:]<=71) & \
             (rn<Po_Coast[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
             (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
@@ -338,7 +335,7 @@ def ScheduleApplication(meta,vi,vo,iT,iScn,iEns,iBat):
 
     indS_Interior=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
             (vo['A'][iT,:]>=9) & \
-            (vo['A'][iT,:]<=81) & \
+            (vo['A'][iT,:]<=71) & \
             (rn<Po_Interior[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
             (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \

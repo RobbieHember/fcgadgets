@@ -1321,7 +1321,7 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     for k in v0.keys():
 
         # Skip mortality summary by agent
-        if (k=='C_M_ByAgent'):
+        if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
             continue
 
         v0[k]=v0[k].astype(float)
@@ -1421,10 +1421,7 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     # Reverse sign of building material production (saved as positive)
     vL=['ODT Concrete','ODT Steel','ODT Aluminum','ODT Plastic','ODT Textile','ODT Coal','ODT Oil','ODT Gas']
     for v in vL:
-        try:
-            v0[v]=-1*v0[v]
-        except:
-            pass
+        v0[v]=-1*v0[v]
 
     v0['E_CO2e_SUB_Coal']=v0['E_CO2e_SUB_CoalForBioenergy']+v0['E_CO2e_SUB_CoalForWood']
     v0['E_CO2e_SUB_Oil']=v0['E_CO2e_SUB_OilForBioenergy']+v0['E_CO2e_SUB_OilForWood']
@@ -1585,7 +1582,7 @@ def LoadScenarioResults(meta):
                             # Only needed once
                             continue
 
-                        elif (key1=='C_M_ByAgent'):
+                        elif (key1=='C_M_ByAgent') | (key1=='C_M_Pct_ByAgent'):
                             # Nested dictionary
                             for key2 in data_batch[key1].keys():
                                 data_all[key1][key2]=np.append(data_all[key1][key2],data_batch[key1][key2],axis=1)
@@ -1606,7 +1603,7 @@ def LoadScenarioResults(meta):
 
                 for key1 in data_batch.keys():
 
-                    if (key1=='C_M_ByAgent'):
+                    if (key1=='C_M_ByAgent') | (key1=='C_M_Pct_ByAgent'):
 
                         # Nested dictionary
                         for key2 in data_batch[key1].keys():
@@ -1686,6 +1683,7 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
     # All non-economic values
     d1=LoadSingleOutputFile(meta,0,0,0)
     del d1['C_M_ByAgent']
+    del d1['C_M_Pct_ByAgent']
     del d1['Year']
 
     if 'VariablesToKeep' not in kwargs.keys():
@@ -1755,8 +1753,7 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
                 d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
 
                 for k in v2include:
-
-                    if d1[k].ndim>2:
+                    if (d1[k].ndim>2):
                         # Skip C pools with more than 2 dims
                         continue
                     Data0[k][:,indBat[iKeepStands]]=d1[k][:,iKeepStands].copy()
@@ -2010,9 +2007,9 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
     # Loop through scenarios
     for iScn in range(meta['Project']['N Scenario']):
 
-        #--------------------------------------------------------------------------
+        #----------------------------------------------------------------------
         # Initialize data structures
-        #--------------------------------------------------------------------------
+        #----------------------------------------------------------------------
 
         uPS_size=meta['Project']['Strata']['Project']['Unique ID'].size
         uSS_size=meta['Project']['Strata']['Spatial']['Unique ID'].size
@@ -2030,9 +2027,9 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
         # Loop through ensembles
         for iEns in range(meta['Project']['N Ensemble']):
 
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
             # Initialize temporary data structure for full simulation
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
 
             AreaSXY={}
             for k in meta['LUT']['Dist'].keys():
@@ -2042,9 +2039,9 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
             for k in meta['LUT']['Dist'].keys():
                 AreaSXY_Full[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
 
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
             # Import batches
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
 
             for iBat in range(meta['Project']['N Batch']):
 
@@ -2091,9 +2088,9 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
             del ec
             garc.collect()
 
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
             # Summarize by project type, region, and time
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
 
             for iPS in range(uPS_size):
 
@@ -2141,9 +2138,9 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
                 Area2[oper][k]['Ensemble P975']=np.percentile(Area1[oper][k],97.5,axis=1)
                 Area2[oper][k]['Ensemble P995']=np.percentile(Area1[oper][k],99.5,axis=1)
 
-        #--------------------------------------------------------------------------
+        #----------------------------------------------------------------------
         # Save
-        #--------------------------------------------------------------------------
+        #----------------------------------------------------------------------
 
         gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl',Area2)
 
@@ -2156,8 +2153,6 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
     return
 
 #%% Calculate mortality by agent (from points)
-
-# Notes:
 
 def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
 
@@ -2175,9 +2170,6 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
         scnL=kwargs['Scenarios']
     else:
         scnL=list(np.arange(0,meta['Project']['N Scenario'],1).astype(int))
-
-    #if 'VariablesToKeep' in kwargs.keys():
-        # See below
 
     # Time series of saved results
     tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
@@ -2240,9 +2232,9 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
             del d1
             garc.collect()
 
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
             # Summarize by project type, region, and time
-            #--------------------------------------------------------------------------
+            #------------------------------------------------------------------
 
             for iPS in range(uPS_size):
 
@@ -2271,9 +2263,9 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
                         Data1['Mean'][k][:,iEns,iPS,iSS]=np.mean(Data0[k][:,ind1],axis=1)
                         #Data1['Sum'][k][:,iEns,iPS,iSS]=np.sum(Data0[k][:,ind1],axis=1)
 
-        #--------------------------------------------------------------------------
+        #----------------------------------------------------------------------
         # Save
-        #--------------------------------------------------------------------------
+        #----------------------------------------------------------------------
 
         gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_MortByAgent_Scn' + str(iScn+1) + '.pkl',Data1)
 
@@ -3604,10 +3596,100 @@ def GetTASSCurves(meta,iScn,iGC,fny,fnc,fnm):
 
     return
 
+#%%
+
+def Import_BatchTIPSY_Output(meta,iScn,iGC):
+
+    # Import unique growth curves
+    ugc=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\ugc.pkl')
+
+    # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
+    # conversion factor.
+    dm2c=0.5
+
+    # Growth curve parameters and TIPSY outputs
+    #dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+
+    # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
+    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+
+    del txtDat
+
+    # Define age vector (must be consistent with how TIPSY was set up)
+    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+
+    # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
+    N_Age=Age.size
+    N_GC=int(dfDat.shape[0]/N_Age)
+
+    # Define the fraction of merchantable stemwood
+    fMerch=np.nan_to_num(np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')/np.reshape(dfDat['VolTot0'].values,(N_Age,N_GC),order='F'))
+    fNonMerch=1-fMerch
+
+    # Merchantable stemwood volume
+    V_Merch=np.reshape(dfDat['VolMerch125'].values,(N_Age,N_GC),order='F')
+    G_VStemMerch=np.append(np.zeros((1,N_GC)),np.diff(V_Merch,axis=0),axis=0)
+
+    # Extract age responses for each biomass pool
+    C_Stem=dm2c*np.reshape(dfDat['ODT_Stem'].values,(N_Age,N_GC),order='F')
+    C_StemMerch=fMerch*C_Stem
+    C_StemNonMerch=fNonMerch*C_Stem
+    C_Foliage=dm2c*np.reshape(dfDat['ODT_Foliage'].values,(N_Age,N_GC),order='F')
+    C_Branch=dm2c*np.reshape(dfDat['ODT_Branch'].values,(N_Age,N_GC),order='F')
+    C_Bark=dm2c*np.reshape(dfDat['ODT_Bark'].values,(N_Age,N_GC),order='F')
+
+    # Calculate growth
+    z=np.zeros((1,N_GC))
+    G_StemMerch=np.append(z,np.diff(C_StemMerch,axis=0),axis=0)
+    G_StemNonMerch=np.append(z,np.diff(C_StemNonMerch,axis=0),axis=0)
+    G_Stem=G_StemMerch+G_StemNonMerch
+    G_Foliage=np.append(z,np.diff(C_Foliage,axis=0),axis=0)
+    G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
+    G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
+
+    # Fix growth of year zero
+    G_Stem[0,:]=G_Stem[1,:]
+    G_StemMerch[0,:]=G_StemMerch[1,:]
+    G_StemNonMerch[0,:]=G_StemNonMerch[1,:]
+    G_Foliage[0,:]=G_Foliage[1,:]
+    G_Branch[0,:]=G_Branch[1,:]
+    G_Bark[0,:]=G_Bark[1,:]
+
+    #del C_Stem,C_StemMerch,C_StemNonMerch,C_Foliage,C_Branch,C_Bark,fMerch,fNonMerch
+
+    # Index to the full set of growth curves for scenario iScn and growth curve iGC
+    ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC Unique'][iGC]) )[0]
+
+    # Extract the unique growth curve ID for scenario iScn and growth curve iGC
+    ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
+
+    # Extract the inverse index for scenario iScn and growth curve iGC
+    Inverse_ugc_ScnAndGc=ugc['Inverse'][ind_ugc_ScnAndGc]
+
+    # Intersect
+    ind=np.arange(0,meta['Project']['N Stand'],1,dtype=int)
+    c,inda,indb=np.intersect1d(ID_ugc_ScnAndGc,ind,return_indices=True)
+
+    Inverse_ugc_ScnAndGcAndBat=Inverse_ugc_ScnAndGc[inda]
+
+    # Initialize array of growth data
+    d={}
+    d['Csw']=np.zeros((N_Age,ind.size))
+    d['Gsw_Net']=np.zeros((N_Age,ind.size))
+    for i in range(inda.size):
+        iStand=indb[i]
+        iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
+        d['Csw'][:,iStand]=C_Stem[:,iGC_Unique].T
+        d['Gsw_Net'][:,iStand]=G_Stem[:,iGC_Unique].T
+
+    return d
+
 #%% POST-PROCESS TIPSY GROWTH CURVES
 # Nested list, gc[Scenario][Stand][Growth Curve]
+# *** This is problematic - I think it only works when total GCs = unique GCs ***
 
-def Import_BatchTIPSY_Output(meta):
+def Import_BatchTIPSY_Output_OLD(meta):
 
     # Growth curve parameters and TIPSY outputs
     dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)

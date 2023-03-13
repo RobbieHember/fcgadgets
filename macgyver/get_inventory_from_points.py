@@ -20,19 +20,16 @@ import fcgadgets.macgyver.utilities_inventory as invu
 
 #%% Project name
 
-#name='BCFCS_EvalAtPlots'
+name='BCFCS_EvalAtPlots' # geos['rgsf']=1
 #name='BCFCS_MPB_Calib_10k'
 #name='BCFCS_Actual_4k'
 #name='BCFCS_Actual_20k'
 #name='BCFCS_Bioenergy_20k'
 #name='BCFCS_BAU_20k'
 #name='BCFCS_HAR_20k'
-#name='BCFCS_NA_20k'
-#name='SummaryBC4k_HAR'
-#name='SummaryBC4k_BAU'
 #name='BCFCS_Defol_2k'
 #name='LICS Hanceville'
-name='BCFCS_NA_1k_Sparse'
+#name='BCFCS_NM_1k_Sparse'
 #name='BCFCS_NOSE_Sparse'
 #name='SummaryBC_OHS'
 #name='ComparisonWithPlotsSoil'
@@ -74,9 +71,9 @@ zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 geos={}
 
 # Define regular grid sampling frequency
-#geos['rgsf']=1 # 100 m
+geos['rgsf']=1 # 100 m
 #geos['rgsf']=5 # 500 m
-geos['rgsf']=10 # 1 km
+#geos['rgsf']=10 # 1 km
 #geos['rgsf']=20 # 2 km
 #geos['rgsf']=40 # 4 km
 #geos['rgsf']=50 # 5 km
@@ -131,7 +128,7 @@ elif (name=='BCFCS_NOSE_Sparse'):
 
     geos['iMask']=np.where( (geos['Grid']['Data']==1) )
 
-elif (name=='BCFCS_NA_1k_Sparse'):
+elif (name=='BCFCS_NM_1k_Sparse'):
 
     # Includes subsampling
     x=geos['Grid']['X'].flatten()

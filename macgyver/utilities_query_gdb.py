@@ -66,18 +66,25 @@ def Query_Openings(meta,roi):
                     if np.isin(feat['properties']['SILV_BASE_CODE'],meta['SBC'])==False:
                         continue
                     # Planting (isolate real planting)
-                    if meta['SBC']=='PL':
-                        if (feat['properties']['SILV_TECHNIQUE_CODE']=='SE') | (feat['properties']['SILV_TECHNIQUE_CODE']=='CG') | (feat['properties']['SILV_METHOD_CODE']=='LAYOT'):
-                            continue
+                    #if meta['SBC']=='PL':
+                    #    if (feat['properties']['SILV_TECHNIQUE_CODE']=='SE') | (feat['properties']['SILV_TECHNIQUE_CODE']=='CG') | (feat['properties']['SILV_METHOD_CODE']=='LAYOT'):
+                    #        continue
 
                 if meta['FSC'].size!=0:
                     if np.isin(feat['properties']['SILV_FUND_SOURCE_CODE'],meta['FSC'])==False:
                         continue
 
                 if meta['Layer']=='RSLT_ACTIVITY_TREATMENT_SVW':
+
                     if (feat['properties']['RESULTS_IND']!='Y') | (feat['properties']['ATU_COMPLETION_DATE']==None):
                         continue
+
                     feat['properties']['Year']=int(feat['properties']['ATU_COMPLETION_DATE'][0:4])
+
+                    # Planting (isolate real planting)
+                    if meta['SBC']=='PL':
+                        if (feat['properties']['SILV_TECHNIQUE_CODE']=='SE') | (feat['properties']['SILV_TECHNIQUE_CODE']=='CG') | (feat['properties']['SILV_METHOD_CODE']=='LAYOT'):
+                            continue
 
                 if cnt==0:
 
@@ -139,10 +146,30 @@ def Query_Openings(meta,roi):
                     if np.isin(feat['properties']['SILV_FUND_SOURCE_CODE'],meta['FSC'])==False:
                         continue
 
+                if 'Denudation' in meta.keys():
+                    if (np.isin(feat['properties']['DENUDATION_1_DISTURBANCE_CODE'],meta['Denudation'])==False) & (np.isin(feat['properties']['DENUDATION_2_DISTURBANCE_CODE'],meta['Denudation'])==False):
+                        continue
+                    if np.isin(feat['properties']['DENUDATION_1_DISTURBANCE_CODE'],meta['Denudation'])==True:
+                        if feat['properties']['DENUDATION_1_COMPLETION_DATE']!=None:
+                            feat['properties']['Year']=int(feat['properties']['DENUDATION_1_COMPLETION_DATE'][0:4])
+                            #feat['properties']['Month']=int(feat['properties']['DENUDATION_1_COMPLETION_DATE'][5:7])
+                    if np.isin(feat['properties']['DENUDATION_2_DISTURBANCE_CODE'],meta['Denudation'])==True:
+                        if feat['properties']['DENUDATION_2_COMPLETION_DATE']!=None:
+                            feat['properties']['Year']=int(feat['properties']['DENUDATION_2_COMPLETION_DATE'][0:4])
+                            #feat['properties']['Month']=int(feat['properties']['DENUDATION_2_COMPLETION_DATE'][5:7])
+
+                if 'STOCKING_TYPE_CODE' in meta.keys():
+                    if np.isin(feat['properties']['STOCKING_TYPE_CODE'],meta['STOCKING_TYPE_CODE'])==False:
+                        continue
+
                 if meta['Layer']=='RSLT_ACTIVITY_TREATMENT_SVW':
                     if (feat['properties']['RESULTS_IND']!='Y') | (feat['properties']['ATU_COMPLETION_DATE']==None):
                         continue
                     feat['properties']['Year']=int(feat['properties']['ATU_COMPLETION_DATE'][0:4])
+
+                if 'Drop Props' in meta.keys():
+                    a={'OPENING_ID':feat['properties']['OPENING_ID'],'GEOMETRY_Area':feat['properties']['GEOMETRY_Area']}
+                    feat['properties']=a
 
                 List[cnt]=feat
                 cnt=cnt+1

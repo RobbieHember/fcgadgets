@@ -1157,6 +1157,9 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
     # Check to see how many events occur in this time step (don't do more than necessary)
     NumEventsInTimeStep=np.sum(np.sum(vi['EC']['ID_Type'][iT,:,:]>0,axis=0)>0)
 
+    # Keep track of total tree biomass at the start of each annual time step
+    C_Biomass_t0=np.sum(vo['C_Eco_Pools'][iT,:,iEP['BiomassTotal']],axis=0)
+
     # Loop through events in year
     for iE in range(NumEventsInTimeStep): # meta['Core']['Max Events Per Year']
 
@@ -1242,7 +1245,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
         # Partition bark into merch and non-merch components
         Affected_BarkMerch=0.85*Affected_Bark
-        Affected_BarkNonMerch=(1-0.85)*Affected_Bark
+        Affected_BarkNonMerch=(1.00-0.85)*Affected_Bark
 
         # Sum up total affected non-merchantable biomass
         Affected_TotNonMerch=Affected_StemNonMerch+Affected_Branch+Affected_BarkNonMerch
@@ -1265,6 +1268,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         #----------------------------------------------------------------------
         #t0=time.time()
 
+        # Total mortality
         vo['C_M_Dist'][iT,:]=vo['C_M_Dist'][iT,:]+Affected_All
 
         # Mortality by category (lumping stands together)
@@ -1273,9 +1277,8 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
             if uType[iType]==0:
                 continue
             ind=np.where(ID_Type==uType[iType])[0]
-            cd=cbu.lut_n2s(meta['LUT']['Dist'],uType[iType])[0]
-            #vo['C_M_ByAgent'][cd][iT,0]=vo['C_M_ByAgent'][cd][iT,0]+np.sum(Affected_All[ind])
-            vo['C_M_ByAgent'][cd][iT,ind]=vo['C_M_ByAgent'][cd][iT,ind]+Affected_All[ind]/meta['Core']['Scale Factor C_M_ByAgent']
+            Type=cbu.lut_n2s(meta['LUT']['Dist'],uType[iType])[0]
+            vo['C_M_ByAgent'][Type][iT,ind]=vo['C_M_ByAgent'][Type][iT,ind]+Affected_All[ind]
 
         #t1=time.time()
         #meta['Project']['Run Time Summary']['Test4']=meta['Project']['Run Time Summary']['Test4']+t1-t0
@@ -1620,6 +1623,14 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
         #t1=time.time()
         #meta['Project']['Run Time Summary']['Test6']=meta['Project']['Run Time Summary']['Test6']+t1-t0
+
+    #--------------------------------------------------------------------------
+    # Relative gravimetric mortality (%)
+    #--------------------------------------------------------------------------
+
+    for k in meta['LUT']['Dist'].keys():
+        vo['C_M_Pct_ByAgent'][k][iT,:]=vo['C_M_ByAgent'][k][iT,:]/C_Biomass_t0*100
+
     #--------------------------------------------------------------------------
     # Aerial nutrient application events
     #--------------------------------------------------------------------------

@@ -12,11 +12,7 @@ from fcgadgets.macgyver import utilities_general as gu
 
 #%% Graphics parameters
 
-fs=7
-params={'font.sans-serif':'Arial','font.size':fs,'axes.edgecolor':'black','axes.labelsize':fs,'axes.labelcolor':'black','axes.titlesize':fs,'axes.linewidth':0.5,'lines.linewidth':0.5,
-        'text.color':'black','xtick.color':'black','xtick.labelsize':fs,'xtick.major.width':0.5,'xtick.major.size':3,'xtick.direction':'in','ytick.color':'black','ytick.labelsize':fs,
-        'ytick.major.width':0.5,'ytick.major.size':3,'ytick.direction':'in','legend.fontsize':fs,'savefig.dpi':300,'savefig.transparent':True}
-plt.rcParams.update(params)
+gp=gu.SetGraphics('Manuscript')
 
 #%% Import BaseCase HWP parameters
 
@@ -551,45 +547,3 @@ for reg in regL:
 
 gu.opickle(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Variables_HWP_EndUse.pkl',d)
 
-
-#%% Plot
-
-reg='GFS22'
-
-yBD=np.zeros(tv.size)
-for ip in BuildingL:
-    yBD=yBD+d['BaseCase'][reg][nm + ip]
-yBS1=np.zeros(tv.size)
-for ip in BuildingL:
-    yBS1=yBS1+d['S1'][reg][nm + ip]
-yBS2=np.zeros(tv.size)
-for ip in BuildingL:
-    yBS2=yBS2+d['S2'][reg][nm + ip]
-
-yNBD=np.zeros(tv.size)
-for ip in NonBuildingL:
-    yNBD=yNBD+d['BaseCase'][reg][nm + ip]
-yNBS1=np.zeros(tv.size)
-for ip in NonBuildingL:
-    yNBS1=yNBS1+d['S1'][reg][nm + ip]
-yNBS2=np.zeros(tv.size)
-for ip in NonBuildingL:
-    yNBS2=yNBS2+d['S2'][reg][nm + ip]
-
-plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(16,6.5)); ms=3; lw=1.25
-ax[0].plot(tv,yBD,'b-',label='BaseCase',lw=lw)
-ax[0].plot(tv,yBS1,'g--',label='Scenario 1',lw=lw)
-ax[0].plot(tv,yBS2,'r-.',label='Scenario 2',lw=lw)
-ax[0].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Building material fraction',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=1.5)
-ax[0].legend(loc='lower left',facecolor=[1,1,1],frameon=False)
-ax[1].plot(tv,yNBD,'b-',label='BaseCase',lw=lw)
-ax[1].plot(tv,yNBS1,'g--',label='Scenario 1',lw=lw)
-ax[1].plot(tv,yNBS2,'r-.',label='Scenario 2',lw=lw)
-ax[1].set(ylim=[0,1],yticks=np.arange(0,1.2,0.2),ylabel='Non-building material fraction',xlim=[1900,2100],xticks=np.arange(1500,2200,25),xlabel='Time, years')
-ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=1.5)
-
-gu.axletters(ax,plt,0.028,0.9,LetterStyle='Caps',FontWeight='Bold') #
-
-fig.tight_layout()
-gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\End Use Scenarios\End Use Scenarios ' + reg,'png',900)
