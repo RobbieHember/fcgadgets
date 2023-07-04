@@ -19,14 +19,14 @@ gp=gu.SetGraphics('Manuscript')
 dDef0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_RemovedFate.xlsx')
 
 # Variables to keep
-vrL=['RemovedMerchToChipperMill','RemovedMerchToPulpMill','RemovedMerchToPelletMill','RemovedMerchToSawMill',
+vrL=['RemovedMerchToChipperMill','RemovedMerchToPulpMill','RemovedMerchToPelletMill','RemovedMerchToLumberMill',
     'RemovedMerchToPlywoodMill','RemovedMerchToOSBMill','RemovedMerchToMDFMill','RemovedMerchToPolePostMill',
     'RemovedMerchToShakeShingleMill','RemovedMerchToLogExport','RemovedMerchToIPP','RemovedMerchToFirewood',
-    'RemovedNonMerchToChipperMill','RemovedNonMerchToPulpMill','RemovedNonMerchToPelletMill','RemovedNonMerchToSawMill','RemovedNonMerchToPlywoodMill',
+    'RemovedNonMerchToChipperMill','RemovedNonMerchToPulpMill','RemovedNonMerchToPelletMill','RemovedNonMerchToLumberMill','RemovedNonMerchToPlywoodMill',
     'RemovedNonMerchToOSBMill','RemovedNonMerchToMDFMill','RemovedNonMerchToPolePostMill','RemovedNonMerchToShakeShingleMill',
     'RemovedNonMerchToLogExport','RemovedNonMerchToIPP','RemovedNonMerchToFirewood',
     'RemovedSnagStemToChipperMill','RemovedSnagStemToPulpMill',
-    'RemovedSnagStemToPelletMill','RemovedSnagStemToSawMill','RemovedSnagStemToPlywoodMill','RemovedSnagStemToOSBMill',
+    'RemovedSnagStemToPelletMill','RemovedSnagStemToLumberMill','RemovedSnagStemToPlywoodMill','RemovedSnagStemToOSBMill',
     'RemovedSnagStemToMDFMill','RemovedSnagStemToPolePostMill','RemovedSnagStemToShakeShingleMill','RemovedSnagStemToLogExport',
     'RemovedSnagStemToIPP','RemovedSnagStemToFirewood']
 
@@ -60,7 +60,7 @@ for scn in scnL:
 
 #%% Scenario 1
 
-# Shift away from pulp+pellets to sawmills
+# Shift away from pulp+pellets to LumberMills
 # *** Probably not realistic! ***
 
 sc='S1'
@@ -105,14 +105,14 @@ for reg in regL:
     d[sc][reg][nam][iT]=y1_Pellet
     yD_Pellet=d['BaseCase'][reg][nam]-d[sc][reg][nam]
 
-    # Fractions of fibre sent to sawmill, plywood, OSB
-    fSawMill=0.6
+    # Fractions of fibre sent to LumberMill, plywood, OSB
+    fLumberMill=0.6
     fPlywoodMill=0.2
     fOSBMill=0.2
 
-    # Add to Sawmill input
-    nam='RemovedMerchToSawMill'
-    d[sc][reg][nam]=d[sc][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
+    # Add to LumberMill input
+    nam='RemovedMerchToLumberMill'
+    d[sc][reg][nam]=d[sc][reg][nam]+fLumberMill*(yD_Pulp+yD_Pellet)
 
     # Add to Plywood input
     nam='RemovedMerchToPlywoodMill'
@@ -152,14 +152,14 @@ for reg in regL:
     d[sc][reg][nam][iT]=y1_Pellet
     yD_Pellet=d['BaseCase'][reg][nam]-d[sc][reg][nam]
 
-    # Fractions of fibre sent to sawmill, plywood, OSB
-    fSawMill=0.6
+    # Fractions of fibre sent to LumberMill, plywood, OSB
+    fLumberMill=0.6
     fPlywoodMill=0.2
     fOSBMill=0.2
 
-    # Add to Sawmill input
-    nam='RemovedSnagStemToSawMill'
-    d[sc][reg][nam]=d[sc][reg][nam]+fSawMill*(yD_Pulp+yD_Pellet)
+    # Add to LumberMill input
+    nam='RemovedSnagStemToLumberMill'
+    d[sc][reg][nam]=d[sc][reg][nam]+fLumberMill*(yD_Pulp+yD_Pellet)
 
     # Add to Plywood input
     nam='RemovedSnagStemToPlywoodMill'

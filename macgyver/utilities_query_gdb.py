@@ -44,66 +44,72 @@ def Query_Openings(meta,roi):
         cnt=0
         with fiona.open(meta['Path'],layer=meta['Layer']) as source:
             for feat in source:
+                #geom=dict(feat['geometry'].items())
+                prop=dict(feat['properties'].items())
 
                 #--------------------------------------------------------------
                 # Filters
                 #--------------------------------------------------------------
 
-                #if feat['geometry']==None:
+                #if prop==None:
                 #    continue
 
                 if meta['Select Openings'].size>0:
-                    if np.isin(feat['properties']['OPENING_ID'],meta['Select Openings'])==False:
+                    if np.isin(prop['OPENING_ID'],meta['Select Openings'])==False:
                         continue
 
                 if type(meta['ROI'])==dict:
                     # Using ROI
-                    s=shape(feat['geometry'])
+                    s=shape(prop)
                     if (s.overlaps(roi_poly)==False) & (s.within(roi_poly)==False):
                         continue
 
                 if meta['SBC'].size!=0:
-                    if np.isin(feat['properties']['SILV_BASE_CODE'],meta['SBC'])==False:
+                    if np.isin(prop['SILV_BASE_CODE'],meta['SBC'])==False:
                         continue
                     # Planting (isolate real planting)
                     #if meta['SBC']=='PL':
-                    #    if (feat['properties']['SILV_TECHNIQUE_CODE']=='SE') | (feat['properties']['SILV_TECHNIQUE_CODE']=='CG') | (feat['properties']['SILV_METHOD_CODE']=='LAYOT'):
+                    #    if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
                     #        continue
 
+                if meta['STC'].size!=0:
+                    if np.isin(prop['SILV_TECHNIQUE_CODE'],meta['STC'])==False:
+                        continue
+
                 if meta['FSC'].size!=0:
-                    if np.isin(feat['properties']['SILV_FUND_SOURCE_CODE'],meta['FSC'])==False:
+                    if np.isin(prop['SILV_FUND_SOURCE_CODE'],meta['FSC'])==False:
                         continue
 
                 if meta['Layer']=='RSLT_ACTIVITY_TREATMENT_SVW':
 
-                    if (feat['properties']['RESULTS_IND']!='Y') | (feat['properties']['ATU_COMPLETION_DATE']==None):
+                    if (prop['RESULTS_IND']!='Y') | (prop['ATU_COMPLETION_DATE']==None):
                         continue
 
-                    feat['properties']['Year']=int(feat['properties']['ATU_COMPLETION_DATE'][0:4])
+                    prop['Year']=int(prop['ATU_COMPLETION_DATE'][0:4])
 
                     # Planting (isolate real planting)
                     if meta['SBC']=='PL':
-                        if (feat['properties']['SILV_TECHNIQUE_CODE']=='SE') | (feat['properties']['SILV_TECHNIQUE_CODE']=='CG') | (feat['properties']['SILV_METHOD_CODE']=='LAYOT'):
+                        if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
                             continue
 
                 if cnt==0:
 
                     # Initialize
-                    for k in feat['properties'].keys():
+                    for k in prop.keys():
                         try:
                             d[k]=np.zeros(n)
-                            d[k][cnt]=feat['properties'][k]
+                            d[k][cnt]=prop[k]
                         except:
                             d[k]=np.array(['' for _ in range(n)],dtype=object)
-                            d[k][cnt]=feat['properties'][k]
+                            d[k][cnt]=prop[k]
                 else:
 
-                    for k in feat['properties'].keys():
+                    for k in prop.keys():
                         try:
-                            d[k][cnt]=feat['properties'][k]
+                            d[k][cnt]=prop[k]
                         except:
                             d[k]=np.array(['' for _ in range(n)],dtype=object)
-                            d[k][cnt]=feat['properties'][k]
+                            d[k][cnt]=prop[k]
                 cnt=cnt+1
 
         # Truncate
@@ -121,55 +127,74 @@ def Query_Openings(meta,roi):
         with fiona.open(meta['Path'],layer=meta['Layer']) as source:
             for feat in source:
 
-                if feat['geometry']==None:
+                prop=dict(feat['properties'].items())
+
+                if prop==None:
                     continue
 
-                if meta['Select Openings'].size>0:
-                    if np.isin(feat['properties']['OPENING_ID'],meta['Select Openings'])==False:
+                try:
+                    geom=dict(feat['geometry'].items())
+                except:
+                    continue
+
+                if meta['Layer']=='RSLT_ACTIVITY_TREATMENT_SVW':
+                    if prop['SILV_BASE_CODE']=='SU':
                         continue
 
                 if type(roi)==dict:
                     # Using ROI
-                    s=shape(feat['geometry'])
+                    s=shape(geom)
                     if (s.overlaps(roi_poly)==False) & (s.within(roi_poly)==False):
                         continue
 
+                if meta['Select Openings'].size>0:
+                    if np.isin(prop['OPENING_ID'],meta['Select Openings'])==False:
+                        continue
+
                 if meta['SBC'].size!=0:
-                    if np.isin(feat['properties']['SILV_BASE_CODE'],meta['SBC'])==False:
+                    if np.isin(prop['SILV_BASE_CODE'],meta['SBC'])==False:
                         continue
                     # Planting (isolate real planting)
                     if meta['SBC']=='PL':
-                        if (feat['properties']['SILV_TECHNIQUE_CODE']=='SE') | (feat['properties']['SILV_TECHNIQUE_CODE']=='CG') | (feat['properties']['SILV_METHOD_CODE']=='LAYOT'):
+                        if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
                             continue
 
+                if meta['STC'].size!=0:
+                    if np.isin(prop['SILV_TECHNIQUE_CODE'],meta['STC'])==False:
+                        continue
+
                 if meta['FSC'].size!=0:
-                    if np.isin(feat['properties']['SILV_FUND_SOURCE_CODE'],meta['FSC'])==False:
+                    if np.isin(prop['SILV_FUND_SOURCE_CODE'],meta['FSC'])==False:
+                        continue
+
+                if meta['SOC1'].size!=0:
+                    if np.isin(prop['SILV_OBJECTIVE_CODE_1'],meta['SOC1'])==False:
                         continue
 
                 if 'Denudation' in meta.keys():
-                    if (np.isin(feat['properties']['DENUDATION_1_DISTURBANCE_CODE'],meta['Denudation'])==False) & (np.isin(feat['properties']['DENUDATION_2_DISTURBANCE_CODE'],meta['Denudation'])==False):
+                    if (np.isin(prop['DENUDATION_1_DISTURBANCE_CODE'],meta['Denudation'])==False) & (np.isin(prop['DENUDATION_2_DISTURBANCE_CODE'],meta['Denudation'])==False):
                         continue
-                    if np.isin(feat['properties']['DENUDATION_1_DISTURBANCE_CODE'],meta['Denudation'])==True:
-                        if feat['properties']['DENUDATION_1_COMPLETION_DATE']!=None:
-                            feat['properties']['Year']=int(feat['properties']['DENUDATION_1_COMPLETION_DATE'][0:4])
-                            #feat['properties']['Month']=int(feat['properties']['DENUDATION_1_COMPLETION_DATE'][5:7])
-                    if np.isin(feat['properties']['DENUDATION_2_DISTURBANCE_CODE'],meta['Denudation'])==True:
-                        if feat['properties']['DENUDATION_2_COMPLETION_DATE']!=None:
-                            feat['properties']['Year']=int(feat['properties']['DENUDATION_2_COMPLETION_DATE'][0:4])
-                            #feat['properties']['Month']=int(feat['properties']['DENUDATION_2_COMPLETION_DATE'][5:7])
+                    if np.isin(prop['DENUDATION_1_DISTURBANCE_CODE'],meta['Denudation'])==True:
+                        if prop['DENUDATION_1_COMPLETION_DATE']!=None:
+                            prop['Year']=int(prop['DENUDATION_1_COMPLETION_DATE'][0:4])
+                            #prop['Month']=int(prop['DENUDATION_1_COMPLETION_DATE'][5:7])
+                    if np.isin(prop['DENUDATION_2_DISTURBANCE_CODE'],meta['Denudation'])==True:
+                        if prop['DENUDATION_2_COMPLETION_DATE']!=None:
+                            prop['Year']=int(prop['DENUDATION_2_COMPLETION_DATE'][0:4])
+                            #prop['Month']=int(prop['DENUDATION_2_COMPLETION_DATE'][5:7])
 
                 if 'STOCKING_TYPE_CODE' in meta.keys():
-                    if np.isin(feat['properties']['STOCKING_TYPE_CODE'],meta['STOCKING_TYPE_CODE'])==False:
+                    if np.isin(prop['STOCKING_TYPE_CODE'],meta['STOCKING_TYPE_CODE'])==False:
                         continue
 
                 if meta['Layer']=='RSLT_ACTIVITY_TREATMENT_SVW':
-                    if (feat['properties']['RESULTS_IND']!='Y') | (feat['properties']['ATU_COMPLETION_DATE']==None):
+                    if (prop['RESULTS_IND']!='Y') | (prop['ATU_COMPLETION_DATE']==None):
                         continue
-                    feat['properties']['Year']=int(feat['properties']['ATU_COMPLETION_DATE'][0:4])
+                    prop['Year']=int(prop['ATU_COMPLETION_DATE'][0:4])
 
                 if 'Drop Props' in meta.keys():
-                    a={'OPENING_ID':feat['properties']['OPENING_ID'],'GEOMETRY_Area':feat['properties']['GEOMETRY_Area']}
-                    feat['properties']=a
+                    a={'OPENING_ID':prop['OPENING_ID'],'GEOMETRY_Area':prop['GEOMETRY_Area']}
+                    prop=a
 
                 List[cnt]=feat
                 cnt=cnt+1
@@ -187,12 +212,15 @@ def Query_Openings(meta,roi):
 def Query_Wildfire(meta,roi):
 
     List=[]
-    with fiona.open(meta['Path'],layer=meta['Layer']) as source:
+    with fiona.open(meta['Path'],'r',layer=meta['Layer']) as source:
         for feat in source:
-            if feat['geometry']==None:
+            geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            if geom==None:
                 continue
-            if (feat['properties']['FIRE_YEAR']>=meta['Year Start']) & (feat['properties']['FIRE_YEAR']<=meta['Year End']):
+            if (prop['FIRE_YEAR']>=meta['Year Start']) & (prop['FIRE_YEAR']<=meta['Year End']):
                 List.append(feat)
+
     gdf=gpd.GeoDataFrame.from_features(List,crs=meta['crs'])
 
     if type(roi)==dict:
@@ -210,10 +238,12 @@ def Query_VRI(meta,roi):
     cnt=0
     with fiona.open(meta['Path'],layer=meta['Layer']) as source:
         for feat in source:
-            if feat['geometry']==None:
+            #geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            if prop==None:
                 continue
 
-            shp=shape(feat['geometry'])
+            shp=shape(prop)
             bnd=shp.bounds # (W, S, E, N)
 
             # Check for overlap
@@ -242,9 +272,11 @@ def Query_ConsolidatedCutblocks(meta,roi):
     List=[]
     with fiona.open(meta['Path'],layer=meta['Layer']) as source:
         for feat in source:
-            if feat['geometry']==None:
+            #geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            if prop==None:
                 continue
-            if (feat['properties']['HARVEST_YEAR']>=meta['Year Start']) & (feat['properties']['HARVEST_YEAR']<=meta['Year End']):
+            if (prop['HARVEST_YEAR']>=meta['Year Start']) & (prop['HARVEST_YEAR']<=meta['Year End']):
                 List.append(feat)
     gdf=gpd.GeoDataFrame.from_features(List,crs=meta['crs'])
     if type(roi)==dict:
@@ -257,7 +289,7 @@ def Check():
     #path=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20210930'
     with fiona.open(path,layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
         for feat in source:
-            if feat['properties']['FIA_PROJECT_ID']=='FCI0000427':
+            if prop['FIA_PROJECT_ID']=='FCI0000427':
                 print('found')
                 break
 
@@ -270,7 +302,9 @@ def GetPestSev():
     d={}
     with fiona.open(fin,layer='PEST_INFESTATION_POLY') as source:
         for feat in source:
-            a=feat['properties']['PEST_SEVERITY_CODE']
+            #geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            a=prop['PEST_SEVERITY_CODE']
             if a not in d:
                 d[a]=1
     return d
@@ -296,27 +330,28 @@ def GetAnnualPestArea(Year0,Year1,sp_cd):
 
     with fiona.open(fin,layer='PEST_INFESTATION_POLY') as source:
         for feat in source:
-
-            if feat['geometry']==None:
+            #geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            if prop==None:
                 continue
 
-            if (feat['properties']['CAPTURE_YEAR']<Year0) | (feat['properties']['CAPTURE_YEAR']>Year1):
+            if (prop['CAPTURE_YEAR']<Year0) | (prop['CAPTURE_YEAR']>Year1):
                 continue
 
-            if feat['properties']['PEST_SPECIES_CODE'] not in sp_cd:
+            if prop['PEST_SPECIES_CODE'] not in sp_cd:
                 continue
 
-            nam=feat['properties']['PEST_SPECIES_CODE']
+            nam=prop['PEST_SPECIES_CODE']
 
-            iSev=np.where(SevCD==feat['properties']['PEST_SEVERITY_CODE'])[0]
+            iSev=np.where(SevCD==prop['PEST_SEVERITY_CODE'])[0]
             if iSev.size==0:
-                print(feat['properties']['PEST_SEVERITY_CODE'])
+                print(prop['PEST_SEVERITY_CODE'])
 
             sev=SevCD[iSev][0]
 
-            iT=np.where(tv==feat['properties']['CAPTURE_YEAR'])[0]
+            iT=np.where(tv==prop['CAPTURE_YEAR'])[0]
 
-            d[nam][sev][iT]=d[nam][sev][iT]+feat['properties']['AREA_HA']
+            d[nam][sev][iT]=d[nam][sev][iT]+prop['AREA_HA']
 
     return tv,d
 
@@ -329,9 +364,9 @@ def GetAnnualPestArea(Year0,Year1,sp_cd):
 #    List=[]
 #    with fiona.open(fin,layer='VEG_CONSOLIDATED_CUT_BLOCKS_SP') as source:
 #        for feat in source:
-#            if feat['geometry']==None:
+#            if prop==None:
 #                continue
-#            if np.isin(feat['properties']['OPENING_ID'],np.array(ids))==True:
+#            if np.isin(prop['OPENING_ID'],np.array(ids))==True:
 #                List.append(feat)
 #                if len(ids)==1:
 #                    break
@@ -342,9 +377,9 @@ def GetAnnualPestArea(Year0,Year1,sp_cd):
 #    List=[]
 #    with fiona.open(fin,layer='RSLT_FOREST_COVER_INV_SVW') as source:
 #        for feat in source:
-#            if feat['geometry']==None:
+#            if prop==None:
 #                continue
-#            if np.isin(feat['properties']['OPENING_ID'],np.array(ids))==True:
+#            if np.isin(prop['OPENING_ID'],np.array(ids))==True:
 #                List.append(feat)
 #    gdf_fcinv=gpd.GeoDataFrame.from_features(List,crs=crs)
 #
@@ -353,9 +388,9 @@ def GetAnnualPestArea(Year0,Year1,sp_cd):
 ##    List=[]
 ##    with fiona.open(fin,layer='RSLT_FOREST_COVER_SILV_SVW') as source:
 ##        for feat in source:
-##            if feat['geometry']==None:
+##            if prop==None:
 ##                continue
-##            if np.isin(feat['properties']['OPENING_ID'],np.array(ids))==True:
+##            if np.isin(prop['OPENING_ID'],np.array(ids))==True:
 ##                List.append(feat)
 ##    gdf_fcsilv=gpd.GeoDataFrame.from_features(List,crs=crs)
 #
@@ -364,9 +399,9 @@ def GetAnnualPestArea(Year0,Year1,sp_cd):
 #    List=[]
 #    with fiona.open(fin,layer='RSLT_OPENING_SVW') as source:
 #        for feat in source:
-#            if feat['geometry']==None:
+#            if prop==None:
 #                continue
-#            if np.isin(feat['properties']['OPENING_ID'],np.array(ids))==True:
+#            if np.isin(prop['OPENING_ID'],np.array(ids))==True:
 #                List.append(feat)
 #    gdf_op=gpd.GeoDataFrame.from_features(List,crs=crs)
 #
@@ -379,16 +414,18 @@ def GetSurveySpatial(Year1,Year2):
     cnt=0
     with fiona.open(fin,layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
         for feat in source:
-            if feat['geometry']==None:
+            #geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            if prop==None:
                 continue
-            if feat['properties']['SILV_BASE_CODE']!='SU':
+            if prop['SILV_BASE_CODE']!='SU':
                 continue
-            if feat['properties']['ATU_COMPLETION_DATE']==None:
+            if prop['ATU_COMPLETION_DATE']==None:
                 continue
-            Year=int(feat['properties']['ATU_COMPLETION_DATE'][0:4])
+            Year=int(prop['ATU_COMPLETION_DATE'][0:4])
             if (Year<Year1) | (Year>Year2):
                 continue
-            if feat['properties']['GEOMETRY_Area']/10000>2000:
+            if prop['GEOMETRY_Area']/10000>2000:
                 continue
 
             List[cnt]=feat
@@ -411,16 +448,18 @@ def GetSurveySpatial(gdf_bm):
     cnt=0
     with fiona.open(fin,layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
         for feat in source:
-            if feat['geometry']==None:
+            #geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            if prop==None:
                 continue
-            if feat['properties']['SILV_BASE_CODE']!='SU':
+            if prop['SILV_BASE_CODE']!='SU':
                 continue
-            if feat['properties']['ATU_COMPLETION_DATE']==None:
+            if prop['ATU_COMPLETION_DATE']==None:
                 continue
-            Year=int(feat['properties']['ATU_COMPLETION_DATE'][0:4])
+            Year=int(prop['ATU_COMPLETION_DATE'][0:4])
             if Year<2018:
                 continue
-            if feat['properties']['GEOMETRY_Area']/10000>2000:
+            if prop['GEOMETRY_Area']/10000>2000:
                 continue
 
             List[cnt]=feat
@@ -449,11 +488,13 @@ def GetShrubs():
     cnt=0
     with fiona.open(fin,layer='VEG_COMP_LYR_R1_POLY') as source:
         for feat in source:
-            if feat['geometry']==None:
+            #geom=dict(feat['geometry'].items())
+            prop=dict(feat['properties'].items())
+            if prop==None:
                 continue
             #break
-            d['LC4'][cnt]=feat['properties']['BCLCS_LEVEL_4']
-            d['Area'][cnt]=feat['properties']['GEOMETRY_Area']
+            d['LC4'][cnt]=prop['BCLCS_LEVEL_4']
+            d['Area'][cnt]=prop['GEOMETRY_Area']
             cnt=cnt+1
     for k in d.keys():
         d[k]=d[k][0:cnt]
@@ -465,8 +506,4 @@ def GetShrubs():
     np.sum(d['Area'][ikp])/10000/1e6
 
     return
-
-
-
-
 

@@ -621,7 +621,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
 
         for iU in range(u.size):
 
-            bgc_cd=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])
+            bgc_cd=cbu.lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],u[iU])
 
             ind=np.where(vi['Inv']['ID_BECZ'].flatten()==u[iU])[0]
 
@@ -800,12 +800,12 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
 
     if 'Salvage Mill Transfers' in meta['Scenario'][iScn]:
         if meta['Scenario'][iScn]['Salvage Mill Transfers']=='On':
-            y=meta['Param']['BEV']['HWP']['RemovedMerchToSawMill'].copy()
-            meta['Param']['BEV']['HWP']['RemovedMerchToSawMill']=0.0*y
+            y=meta['Param']['BEV']['HWP']['RemovedMerchToLumberMill'].copy()
+            meta['Param']['BEV']['HWP']['RemovedMerchToLumberMill']=0.0*y
             meta['Param']['BEV']['HWP']['RemovedMerchToPulpMill']=meta['Param']['BEV']['HWP']['RemovedMerchToPulpMill']+1.0*y
 
-            y=meta['Param']['BEV']['HWP']['RemovedSnagStemToSawMill'].copy()
-            meta['Param']['BEV']['HWP']['RemovedSnagStemToSawMill']=0.0*y
+            y=meta['Param']['BEV']['HWP']['RemovedSnagStemToLumberMill'].copy()
+            meta['Param']['BEV']['HWP']['RemovedSnagStemToLumberMill']=0.0*y
             meta['Param']['BEV']['HWP']['RemovedSnagStemToPulpMill']=meta['Param']['BEV']['HWP']['RemovedSnagStemToPulpMill']+1.0*y
 
     #--------------------------------------------------------------------------
@@ -889,7 +889,7 @@ def PrepareParametersForBatch(meta,vi,iEns,iBat,iScn):
             u=np.unique(bgcz)
             for iU in range(u.size):
                 indS=np.where(bgcz==u[iU])[0]
-                indP=np.where(meta['Param']['BE']['ClimateByBGC']['Name']==cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],u[iU])[0])[0]
+                indP=np.where(meta['Param']['BE']['ClimateByBGC']['Name']==cbu.lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],u[iU])[0])[0]
 
                 fG_PreI=meta['Param']['BE']['ClimateByBGC']['Growth Enhancement Factor'][indP[0]]
                 fG_PosI=1.0

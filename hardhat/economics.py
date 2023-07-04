@@ -32,10 +32,10 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     t_disc=np.tile(t_disc,(v1['A'].shape[1],1)).T
 
     # Import prices
-    dPrice=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_Product_Prices_BC.xlsx','Summary')
+    dPrice=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_Product_Prices_BC.xlsx','Summary')
 
     # Import costs
-    dCost=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_Costs_BC.xlsx','Summary')
+    dCost=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_Costs_BC.xlsx','Summary')
 
     # Initialize dictionary of economic variables
     d={}
@@ -328,7 +328,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
                 #d['Harvest Vol Merch'][it1,iStand]=Removed_V
 
-                if (inv['ID_BECZ'][0,iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CWH']) | (inv['ID_BECZ'][0,iStand]==meta['LUT']['VRI']['BEC_ZONE_CODE']['CDF']):
+                if (inv['ID_BECZ'][0,iStand]==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE']['CWH']) | (inv['ID_BECZ'][0,iStand]==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE']['CDF']):
 
                     d['Cost Harvest Overhead'][it1,iStand]=dCost['Cost Harvest Overhead Coast (CDN$/ha)'][it0]
 

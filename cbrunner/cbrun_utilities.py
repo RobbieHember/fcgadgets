@@ -2,13 +2,16 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import geopandas as gpd
 import os
 import glob
 import openpyxl
 import copy
 import gc as garc
 import time
+from shapely.geometry import Point
 from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import utilities_gis as gis
 from fcgadgets.macgyver import utilities_inventory as invu
 from fcgadgets.hardhat import economics as econo
 from fcgadgets.taz import aspatial_stat_models as asm
@@ -199,7 +202,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     #ivl_spin=meta['Project']['Spinup Disturbance Return Inverval']
 
                     # New BGC zone-specific
-                    #cd=lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,iS])[0]
+                    #cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,iS])[0]
                     cd=meta['Scenario'][iScn]['BGC Zone Code']
                     ind=np.where(meta['Param']['BE']['SpinupRI']['Name']==cd)[0]
                     ivl_spin=meta['Param']['BE']['SpinupRI']['Value'][ind]
@@ -238,7 +241,7 @@ def BuildEventChronologyFromSpreadsheet(meta):
                     indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
                     if indSc.size!=0:
                         if flg_i==0:
-                            dfParDistBySC=pd.read_excel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
+                            dfParDistBySC=pd.read_excel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
                             flg_i=1
                         indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
                         ID_TypeN=meta['LUT']['Dist']['IDW']
@@ -362,6 +365,1118 @@ def FixFileNum(ind):
     elif len(indStrFixed)==3:
         indStrFixed='0' + indStrFixed
     return indStrFixed
+
+#%% Configure project r
+
+def ImportProjectConfig_r(meta,**kwargs):
+
+    #--------------------------------------------------------------------------
+    # Initialize nested dictionaries
+    #--------------------------------------------------------------------------
+
+    if 'Project' not in meta:
+        meta['Project']={}
+
+    if 'Core' not in meta:
+        meta['Core']={}
+
+    #--------------------------------------------------------------------------
+    # Import project parameters from spreadsheet
+    #--------------------------------------------------------------------------
+
+    df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Project')
+    for i in range(len(df)):
+        Name=df['Name'].iloc[i]
+        Value=df['Value'].iloc[i]
+        if Name[-1]==':':
+            # Exclude headers
+            continue
+        meta['Project'][Name]=Value
+
+    #--------------------------------------------------------------------------
+    # Import look-up tables
+    #--------------------------------------------------------------------------
+
+    meta=Load_LUTs_Modelling(meta)
+
+    #--------------------------------------------------------------------------
+    # Define pool names
+    #--------------------------------------------------------------------------
+
+    # Pool names (ecosystem)
+    # *** If you change this, you need to change the same list in "Update Parameters" ***
+    meta['Core']['Name Pools Eco']=['StemMerch','StemNonMerch','Foliage','Branch','Bark','RootCoarse','RootFine', \
+        'PiledStemMerch','PiledStemNonMerch','PiledBranch','PiledBark','PiledSnagStem','PiledSnagBranch', \
+        'LitterVF','LitterF','LitterM','LitterS','SnagStem','SnagBranch','SoilVF','SoilF','SoilS']
+
+    # Used in fert work: ,'LitterDecomp'
+
+    # Number of ecosystem pools
+    meta['Core']['N Pools Eco']=len(meta['Core']['Name Pools Eco'])
+
+    # Pool names (products)
+    meta['Core']['Name Pools Pro']=['SFH','MFH','Comm','Furn','Ship','Repairs', \
+        'Other','Paper','EffluentPulp','PowerFacilityDom','PowerFacilityExport','PowerGrid', \
+        'PelletExport','PelletDomGrid','PelletDomRNG','LogExport','FirewoodDom','FirewoodExport','DumpWood', \
+        'DumpPaper','LandfillWoodDegradable','LandfillWoodNonDegradable', \
+        'LandfillPaperDegradable','LandfillPaperNonDegradable','E_CO2','E_CH4']
+
+    # Number of product pools
+    meta['Core']['N Pools Pro']=len(meta['Core']['Name Pools Pro'])
+
+    # List of output variables
+    meta['Core']['Output Variable List']=[
+        'A',
+        'V_MerchLive',
+        'V_MerchDead',
+        'V_MerchTotal',
+        'V_ToMillMerchLive',
+        'V_ToMillMerchDead',
+        'V_ToMillMerchTotal',
+        'C_Forest_Tot',
+        'C_Biomass_Tot',
+        'C_Stemwood_Tot',
+        'C_Foliage_Tot',
+        'C_Branch_Tot',
+        'C_Bark_Tot',
+        'C_Root_Tot',
+        'C_DeadWood_Tot',
+        'C_DumpLandfill_Tot',
+        'C_Piled_Tot',
+        'C_G_Gross_Tot',
+        'C_G_Net_Tot',
+        'C_HWP_Tot',
+        'C_InUse_Tot',
+        'C_Buildings_Tot',
+        'C_NonBuildings_Tot',
+        'C_LF_Tot',
+        'C_Litter_Tot',
+        'C_M_Reg_Tot',
+        'C_NPP_Tot',
+        'C_RH_Tot',
+        'C_Soil_Tot',
+        'C_Soil_OHorizon',
+        'C_Coal',
+        'C_Oil',
+        'C_Gas',
+        'C_Limestone',
+        'C_ToFirewoodDom',
+        'C_ToFirewoodExport',
+        'C_ToLogExport',
+        'C_ToLumber',
+        'C_ToMDF',
+        'C_ToMill',
+        'C_ToMillMerch',
+        'C_ToMillNonMerch',
+        'C_ToMillSnagStem',
+        'C_ToOSB',
+        'C_ToPaper',
+        'C_ToPelletExport',
+        'C_ToPelletDomGrid',
+        'C_ToPelletDomRNG',
+        'C_ToPlywood',
+        'C_ToPowerFacilityDom',
+        'C_ToPowerFacilityExport',
+        'C_ToPowerGrid',
+        'C_ToSlashpileBurnTot',
+        'C_ToSlashpileBurnNonMerch',
+        'E_CO2e_LULUCF_NEE',
+        'E_CO2e_LULUCF_Denit',
+        'E_CO2e_LULUCF_Other',
+        'E_CO2e_LULUCF_OpenBurning',
+        'E_CO2e_LULUCF_Wildfire',
+        'E_CO2e_LULUCF_Fire',
+        'E_CO2e_LULUCF_HWP',
+        'E_CO2e_ESC_Bioenergy',
+        'E_CO2e_ESC_BioenergyPowerFacilityDom',
+        'E_CO2e_ESC_BioenergyPowerFacilityExport',
+        'E_CO2e_ESC_BioenergyPowerGrid',
+        'E_CO2e_ESC_BioenergyPelletExport',
+        'E_CO2e_ESC_BioenergyPelletDomGrid',
+        'E_CO2e_ESC_BioenergyPelletDomRNG',
+        'E_CO2e_ESC_BioenergyFirewoodDom',
+        'E_CO2e_ESC_BioenergyFirewoodExport',
+        'E_CO2e_ESC_OperFor',
+        'E_CO2e_ET_OperFor',
+        'E_CO2e_IPPU_OperFor',
+        'E_CO2e_SUB_E',
+        'E_CO2e_SUB_M',
+        'E_CO2e_SUB_Tot',
+        'E_CO2e_SUB_Coal',
+        'E_CO2e_SUB_Oil',
+        'E_CO2e_SUB_Gas',
+        'E_CO2e_SUB_ESC',
+        'E_CO2e_SUB_ET',
+        'E_CO2e_SUB_IPPU',
+        'E_CO2e_SUB_Calcination',
+        'E_CO2e_SUB_Sawnwood',
+        'E_CO2e_SUB_Panel',
+        'E_CO2e_SUB_PowerFacilityDom',
+        'E_CO2e_SUB_PowerFacilityExport',
+        'E_CO2e_SUB_PowerGrid',
+        'E_CO2e_SUB_PelletExport',
+        'E_CO2e_SUB_PelletDomGrid',
+        'E_CO2e_SUB_PelletDomRNG',
+        'E_CO2e_SUB_FirewoodDom',
+        'E_CO2e_SUB_FirewoodExport',
+        'E_CO2e_AGHGB_WOSub',
+        'E_CO2e_AGHGB_WOSub_cumu',
+        'E_CO2e_AGHGB_WSub',
+        'E_CO2e_AGHGB_WSub_cumu',
+        'ODT Sawnwood',
+        'ODT Panel',
+        'ODT Lumber',
+        'ODT LogExport',
+        'ODT Plywood',
+        'ODT OSB',
+        'ODT MDF',
+        'ODT Paper',
+        'ODT PelletExport',
+        'ODT PelletDomGrid',
+        'ODT PelletDomRNG',
+        'ODT PowerFacilityDom',
+        'ODT PowerGrid',
+        'ODT FirewoodTot',
+        'ODT FirewoodDom',
+        'ODT Concrete',
+        'ODT Steel',
+        'ODT Aluminum',
+        'ODT Plastic',
+        'ODT Textile',
+        'ODT Coal',
+        'ODT Oil',
+        'ODT Gas',
+        'GJ PowerFacilityDom',
+        'GJ PowerGrid',
+        'GJ PelletExport',
+        'GJ PelletDomGrid',
+        'GJ PelletDomRNG',
+        'GJ FirewoodDom',
+        'Atm_CO2_In',
+        'Atm_CH4_In',
+        'Atm_N2O_In',
+        'Atm_CO2_Out',
+        'Atm_CH4_Out',
+        'Atm_N2O_Out',
+        'Cost Roads',
+        'Cost Knockdown',
+        'Cost Ripping',
+        'Cost Nutrient Management',
+        'Cost PAS Deactivation',
+        'Cost Harvest Felling and Piling',
+        'Cost Harvest Hauling',
+        'Cost Harvest Overhead',
+        'Cost Harvest Residuals',
+        'Cost Milling',
+        'Cost Slashpile Burn',
+        'Cost Planting',
+        'Cost Survey',
+        'Cost Silviculture Total',
+        'Cost Total',
+        'Cost Total Disc',
+        'Cost Total Disc_cumu',
+        'Revenue FirewoodDom',
+        'Revenue LogExport',
+        'Revenue Lumber',
+        'Revenue MDF',
+        'Revenue OSB',
+        'Revenue Paper',
+        'Revenue PelletExport',
+        'Revenue PelletDom',
+        'Revenue Plywood',
+        'Revenue PowerFacilityDom',
+        'Revenue PowerGrid',
+        'Revenue Gross',
+        'Revenue Gross Disc',
+        'Revenue Gross Disc_cumu',
+        'Revenue Net',
+        'Revenue Net Disc',
+        'Revenue Net Disc_cumu',
+        'LogSizeEnhancement']
+
+    #--------------------------------------------------------------------------
+    # Define indices to each pool
+    #--------------------------------------------------------------------------
+
+    # Indices to ecosystem pools pools
+    meta['Core']['iEP']={}; cnt=0
+    for nam in meta['Core']['Name Pools Eco']:
+        meta['Core']['iEP'][nam]=cnt
+        cnt=cnt+1
+    iEP=meta['Core']['iEP']
+    meta['Core']['iEP']['BiomassTotal']=np.array([iEP['StemMerch'],iEP['StemNonMerch'],iEP['Foliage'],iEP['Branch'],iEP['Bark'],iEP['RootCoarse'],iEP['RootFine']])
+    meta['Core']['iEP']['BiomassAboveground']=np.array([iEP['StemMerch'],iEP['StemNonMerch'],iEP['Foliage'],iEP['Branch'],iEP['Bark']])
+    meta['Core']['iEP']['BiomassBelowground']=np.array([iEP['RootCoarse'],iEP['RootFine']])
+    meta['Core']['iEP']['DeadWood']=np.array([iEP['PiledStemMerch'],iEP['PiledStemNonMerch'],iEP['PiledBranch'],iEP['PiledBark'],iEP['SnagStem'],iEP['SnagBranch']])
+    meta['Core']['iEP']['Litter']=np.array([iEP['LitterVF'],iEP['LitterF'],iEP['LitterM'],iEP['LitterS']])
+    meta['Core']['iEP']['Piled']=np.array([iEP['PiledStemMerch'],iEP['PiledStemNonMerch'],iEP['PiledBranch'],iEP['PiledBark'],iEP['PiledSnagStem'],iEP['PiledSnagBranch']])
+    meta['Core']['iEP']['Soil']=np.array([iEP['SoilVF'],iEP['SoilF'],iEP['SoilS']])
+
+    # Indices to produce pools pools
+    meta['Core']['iPP']={}; cnt=0
+    for nam in meta['Core']['Name Pools Pro']:
+        meta['Core']['iPP'][nam]=cnt
+        cnt=cnt+1
+    iPP=meta['Core']['iPP']
+    meta['Core']['iPP']['InUse']=np.array([ iPP['SFH'],iPP['MFH'],iPP['Comm'],iPP['Furn'],iPP['Ship'],iPP['Repairs'],iPP['Other'],iPP['Paper'] ])
+    meta['Core']['iPP']['Buildings']=np.array([ iPP['SFH'],iPP['MFH'],iPP['Comm'] ])
+    meta['Core']['iPP']['DumpLandfill']=np.array([ iPP['DumpWood'],iPP['DumpPaper'],iPP['LandfillWoodDegradable'],iPP['LandfillWoodNonDegradable'],iPP['LandfillPaperDegradable'],iPP['LandfillPaperNonDegradable'] ])
+
+    #--------------------------------------------------------------------------
+    # Maximum number of events per year
+    # 8 appears to be sufficient but this may need to be changed for some
+    # special projects
+    #--------------------------------------------------------------------------
+
+    meta['Core']['Max Events Per Year']=8
+
+    #--------------------------------------------------------------------------
+    # Define time
+    #--------------------------------------------------------------------------
+
+    # Calendar year
+    meta['Year']=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
+
+    meta['Project']['N Time']=meta['Year'].size
+
+    #--------------------------------------------------------------------------
+    # Define spatial domain for scripted projects
+    #--------------------------------------------------------------------------
+
+    if meta['Project']['Scenario Source']=='Script':
+
+        # Import land cover class
+        zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1.tif')
+        #zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BCLCS_LEVEL_2.tif')
+
+        gdf_bcb=gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\LandUse\\tsa.geojson')
+
+        # Import mask (0=excluded, 1=included)
+        if meta['Project']['ROI Source']=='Province':
+
+            # Land mask for BC
+            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+        elif meta['Project']['ROI Source']=='Regional District':
+
+            # Mask from regional district
+            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\TA_REGIONAL_DISTRICTS_SVW\\REGIONAL_DISTRICT_NAME.tif')
+            ind=np.where( (zMask['Data']!=meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta['Project']['ROI Elements']]) )
+            zMask['Data'][ind]=0
+            ind=np.where( (zMask['Data']==meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta['Project']['ROI Elements']]) )
+            zMask['Data'][ind]=1
+
+        else:
+            pass
+
+        # Initialize geosptial info
+        if 'Geos' not in meta.keys():
+            meta['Geos']={}
+
+        meta['Geos']['RGSF']=meta['Project']['Regular grid sampling frequency (ha)']
+
+        # Extract subgrid
+        meta['Geos']['Grid']=zMask.copy()
+        meta['Geos']['Grid']['Data']=np.zeros((zMask['Data'].shape),dtype='int8')
+        meta['Geos']['Grid']=gis.UpdateGridCellsize(meta['Geos']['Grid'],meta['Geos']['RGSF'])
+
+        # Resample required grids
+        zLC_r=gis.UpdateGridCellsize(zLC,meta['Geos']['RGSF'])
+        zMask_r=gis.UpdateGridCellsize(zMask,meta['Geos']['RGSF'])
+
+        # Define additional sampling criteria
+
+        iMask_Full=np.where( (zMask['Data']==1) & (zLC['Data']>0) & (zLC['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
+        meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLC_r['Data']>0) & (zLC_r['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
+        #iMask_Full=np.where( (zMask['Data']==1) & (zLC2['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_2']['T']) )
+        #meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLC2_r['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_2']['T']) )
+
+        # Area expansion factor
+        meta['Geos']['AEF']=iMask_Full[0].size/meta['Geos']['iMask'][0].size
+        #meta['Geos']['AEF']=bc_grid_size/(meta['Geos']['Grid']['m']*meta['Geos']['Grid']['n'])
+
+        # Revise mask
+        meta['Geos']['Grid']['Data'][meta['Geos']['iMask']]=1
+
+        # Generate sparse grid
+        meta['Geos']['Sparse']={}
+        meta['Geos']['Sparse']['X']=meta['Geos']['Grid']['X'][meta['Geos']['iMask']]
+        meta['Geos']['Sparse']['Y']=meta['Geos']['Grid']['Y'][meta['Geos']['iMask']]
+        meta['Geos']['Sparse']['ID_Admin']=zMask_r['Data'][meta['Geos']['iMask']]
+
+        # Save to pickle file
+        # Flatten coordinate matrices first to save space
+        meta['Geos']['Grid']['X']=meta['Geos']['Grid']['X'][0,:]
+        meta['Geos']['Grid']['Y']=meta['Geos']['Grid']['Y'][:,0]
+        gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\geos.pkl',meta['Geos'])
+
+        print('Number of stands = ' + str(meta['Geos']['Sparse']['X'].size))
+
+        # Save mask as geotiff
+        #gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\geos_grid.tiff')
+        #plt.matshow(meta['Geos']['Mask'])
+
+        # Save sparse points to geojson
+        flg=1
+        if flg==1:
+            points=[]
+            for k in range(meta['Geos']['Sparse']['X'].size):
+                points.append(Point(meta['Geos']['Sparse']['X'][k],meta['Geos']['Sparse']['Y'][k]))
+            gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_Admin':meta['Geos']['Sparse']['ID_Admin']})
+            gdf_sxy.crs=meta['Geos']['crs']
+            gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\geos.geojson',driver='GeoJSON')
+
+        # Plot
+
+        flg=1
+        if flg==1:
+            #gdf_sxy=gpd.read_file(meta['Paths']['Project'] + '\\Geospatial\\meta['Geos'].geojson')
+
+            plt.close('all')
+            fig,ax=plt.subplots(figsize=gu.cm2inch(14,14)); ms=2
+            #mngr=plt.get_current_fig_manager()
+            #mngr.window.setGeometry(700,20,620,600)
+            gdf_bcb.plot(ax=ax,facecolor=[0.8,0.8,0.8],edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+            #meta['Geos']['Boundary'].plot(ax=ax,facecolor='none',edgecolor=[0,0,1],label='Political Boundary',linewidth=0.75,alpha=1)
+
+            #tsa_boundaries.plot(ax=ax,facecolor='none',edgecolor=[0,0,0],linewidth=0.25)
+            gdf_sxy.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1)
+            ax.grid(color='k',linestyle='-',linewidth=0.25)
+            ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
+            #gu.PrintFig(meta['Paths']['Figures'] + '\\Map_GroundPlots','png',900)
+            #plt.savefig(PathProject + '\\SparseGrid_Map.png',format='png',dpi=900)
+            #plt.close('all')
+            #garc.collect()
+
+    #--------------------------------------------------------------------------
+    # Dimensions of simulation
+    #--------------------------------------------------------------------------
+
+    # Number of stands
+    if meta['Project']['Scenario Source']=='Spreadsheet':
+
+        if 'Number of stands' in meta['Project']:
+            # Override!
+            meta['Project']['N Stand']=meta['Project']['Number of stands']
+        else:
+            meta['Project']['N Stand']=1
+
+    elif meta['Project']['Scenario Source']=='Portfolio':
+
+        meta['Project']['N Stand']=meta['Project']['N Stand per Activity Type']*meta['Project']['AIL']['N AT']*meta['Project']['AIL']['N Years']
+
+    elif meta['Project']['Scenario Source']=='Script':
+
+        try:
+            meta['Project']['N Stand']=meta['Geos']['Sparse']['X'].size
+        except:
+            # Tiled project
+            meta['Project']['N Stand']=meta['Project']['iKeep'].size
+            #meta['Project']['N Stand']=kwargs['geos']['m']*kwargs['geos']['n']
+
+    # Number of batches
+    meta['Project']['N Batch']=np.ceil(meta['Project']['N Stand']/meta['Project']['Batch Interval']).astype(int)
+
+    # Initialize list that can keep track of batch sizes
+    meta['Project']['Batch Size']=[None]*meta['Project']['N Batch']
+    for iBat in range(meta['Project']['N Batch']):
+        meta['Project']['Batch Size'][iBat]=IndexToBatch(meta,iBat).size
+
+    #--------------------------------------------------------------------------
+    # Import model parameters
+    #--------------------------------------------------------------------------
+
+    meta=ImportParameters(meta)
+
+    #--------------------------------------------------------------------------
+    # Define scenario parameters
+    #--------------------------------------------------------------------------
+
+    if meta['Project']['Scenario Source']!='Portfolio':
+
+        df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios',usecols='A:OM')
+
+        df=df.iloc[:,df.iloc[0,:].isnull().values==False]
+
+        meta['Scenario']=list()
+        for i in range(1,df.shape[1]):
+            pScn0={}
+            for j in range(df.shape[0]):
+                if df.iloc[j,0][-1]==':':
+                    # Exclude headers
+                    continue
+                pScn0.update({df.iloc[j,0]:df.iat[j,i]})
+            meta['Scenario'].append(pScn0)
+
+        # Number of scenarios
+        meta['Project']['N Scenario']=np.sum([i['Scenario Status']=='On' for i in meta['Scenario']])
+
+    #--------------------------------------------------------------------------
+    # Number of Land Surface Scenarios
+    #--------------------------------------------------------------------------
+
+    meta['Project']['LSC']={}
+    if meta['Project']['Scenario Source']!='Portfolio':
+        meta['Project']['LSC']['Scenario Names Unique']=np.unique(np.array([meta['Scenario'][i]['Land Surface Scenario'] for i in range(len(meta['Scenario']))],dtype=object))
+        meta['Project']['LSC']['N Scenario']=meta['Project']['LSC']['Scenario Names Unique'].size
+    else:
+        meta['Project']['LSC']['Scenario Names Unique']=0
+        meta['Project']['LSC']['N Scenario']=0
+
+    #--------------------------------------------------------------------------
+    # Initialize project folders if they do not exist
+    #--------------------------------------------------------------------------
+
+    meta['Paths']['Input Scenario']=[]
+    meta['Paths']['Output Scenario']=[]
+    for iScn in range(0,meta['Project']['N Scenario']):
+        meta['Paths']['Input Scenario'].append(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn))
+        if os.path.exists(meta['Paths']['Input Scenario'][iScn])==False:
+            os.mkdir(meta['Paths']['Input Scenario'][iScn])
+        meta['Paths']['Output Scenario'].append(meta['Paths']['Project'] + '\\Outputs\\Scenario' + FixFileNum(iScn))
+        if os.path.exists(meta['Paths']['Output Scenario'][iScn])==False:
+            os.mkdir(meta['Paths']['Output Scenario'][iScn])
+
+    #--------------------------------------------------------------------------
+    # Scale factors
+    #--------------------------------------------------------------------------
+
+    # *** Scale factor for saving results (this needs to be 100, 10 does not
+    # capture carbon fluxes and it will affect GHG benefit estimates) ***
+    # One variable ('CO2e_E_Products') requires the big one
+    meta['Core']['Scale Factor Export Small']=0.001
+    meta['Core']['Scale Factor Export Big']=0.001
+    meta['Core']['Scale Factor C_M_ByAgent']=0.1
+
+    #--------------------------------------------------------------------------
+    # Define strings that frequently need to be populated with zeros
+    #--------------------------------------------------------------------------
+
+    meta['Core']['StringsToFill']=['Month','Day','SILV_FUND_SOURCE_CODE','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
+               'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
+               'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
+               'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5']
+
+    #--------------------------------------------------------------------------
+    # Growth curve information
+    #--------------------------------------------------------------------------
+
+    meta['GC']={}
+    meta['GC']['N Growth Curves']=5
+    meta['GC']['ID GC Unique']=np.array([1,2,3,4,5])
+    meta['GC']['BatchTIPSY Maximum Age']=200
+    meta['GC']['BatchTIPSY Column Names']=['Age','VolTot0','VolMerch125',
+        'VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots',
+        'ODT_Stem','MortalityVolumeTotal']
+
+    # Scale factor for growth curves
+    # Note: Do not change this to 0.1 - aerial fertilization response will not work properly at 0.1
+    meta['GC']['Scale Factor']=0.001
+
+    meta['GC']['GC_Variable_List']=['ID_Stand','ID_Scn','ID_GC','regeneration_method','s1','p1','i1','s2', \
+        'p2','s3','p3','s4','p4','s5','p5','gain1','selage1','gain2','selage2', \
+        'gain3','selage3','gain4','selage4','gain5','selage5', \
+        'init_density','regen_delay','oaf1','oaf2','bec_zone','FIZ', \
+        'fert_age1','fert_age2','fert_age3','fert_age4','fert_age5']
+
+    #--------------------------------------------------------------------------
+    # Growth factor information
+    # *** Not currently used ***
+    #--------------------------------------------------------------------------
+
+    #    # Default status of growth factors
+    #    meta['Scenario Switch']['Net Growth Factor Status']=[None]*meta['Project']['N Scenario']
+    #    meta['Scenario Switch']['Mortality Factor Status']=[None]*meta['Project']['N Scenario']
+    #    for iScn in range(0,meta['Project']['N Scenario']):
+    #        meta['Scenario Switch']['Net Growth Factor Status'][iScn]='Off'
+    #        meta['Scenario Switch']['Mortality Factor Status'][iScn]='Off'
+    #        #meta['Scenario Switch'][iScn]['Status Net Growth Factor']='Off'
+    #        #meta['Scenario'][iScn]['Status Mortality Factor']='Off'
+
+    #--------------------------------------------------------------------------
+    # Harvested wood product information
+    # Year to start calling annual HWP methods - running it before 1800 is a
+    # waste of time.
+    #--------------------------------------------------------------------------
+
+    meta['Core']['HWP Year Start']=1850
+
+    #--------------------------------------------------------------------------
+    # Nutrient management information (for compatibility with "silviculture" module)
+    #--------------------------------------------------------------------------
+
+    # Initialize dictionary
+    meta['Nutrient Management']={}
+
+    # Initialize index to stands affected by nutrient application
+    # This needs to be populated with an empty array for when Sawtooth is used.
+    meta['Nutrient Management']['iApplication']=np.array([])
+
+    # BGC zone exclusions (for on-the-fly application scheduler)
+    meta['Nutrient Management']['BGC Zone Exclusion CD']=['PP','MH','BAFA','BG','CMA','IMA']
+    meta['Nutrient Management']['BGC Zone Exclusion ID']=np.zeros(len(meta['Nutrient Management']['BGC Zone Exclusion CD']))
+    for iZ in range(len(meta['Nutrient Management']['BGC Zone Exclusion CD'])):
+        meta['Nutrient Management']['BGC Zone Exclusion ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['BGC Zone Exclusion CD'][iZ] ]
+
+    # Coastal zones used to make prob of occurrence region-specific
+    meta['Nutrient Management']['Coastal Zones CD']=['CWH','CDF']
+    meta['Nutrient Management']['Coastal Zones ID']=np.zeros(len(meta['Nutrient Management']['Coastal Zones CD']))
+    for iZ in range(len(meta['Nutrient Management']['Coastal Zones CD'])):
+        meta['Nutrient Management']['Coastal Zones ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['Coastal Zones CD'][iZ] ]
+
+    #--------------------------------------------------------------------------
+    # Simulate random numbers that can be used for simulating harvest on the fly
+    # The annual numbers will be the same among scenarios, but vary by ensemble
+    #--------------------------------------------------------------------------
+
+    # *** If you assign completely random numbers, random variation will occur among
+    # scenarios, which can add considerable noise and demands many ensembles.
+    # Conversely if you assign these pre-set sequeences, the random component will
+    # vary among ensembles, but not among scenarios.
+    meta['Project']['On the Fly']={}
+    meta['Project']['On the Fly']['Random Numbers']={}
+    meta['Project']['On the Fly']['Random Numbers']['Scale Factor']=0.0001
+
+    # Only create these files if they will be used
+
+    # Not needed for portfolio projects
+
+    if meta['Project']['Scenario Source']!='Portfolio':
+
+        flg_h=0
+        for iScn in range(meta['Project']['N Scenario']):
+            if (meta['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta['Scenario'][iScn]['Harvest Status Future']=='On'):
+                flg_h=1
+                break
+
+        flg_b=0
+        for iScn in range(meta['Project']['N Scenario']):
+            if (meta['Scenario'][iScn]['Breakup Status']=='On'):
+                flg_b=1
+                break
+
+        # Create random numbers and save them
+        if meta['Project']['Frozen Ensembles Status']=='Off':
+            for iEns in range(meta['Project']['N Ensemble']):
+                for iBat in range(meta['Project']['N Batch']):
+
+                    if flg_h==1:
+                        rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
+                        rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
+                        rn=rn.astype('int16')
+                        gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+
+                    if flg_b==1:
+                        rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
+                        rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
+                        rn=rn.astype('int16')
+                        gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+
+    #meta['Project']['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
+    #meta['Project']['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
+
+    #--------------------------------------------------------------------------
+    # Parameter uncertainty by ensemble
+    #--------------------------------------------------------------------------
+
+    # Initialize list
+    meta['Param']['By Ensemble']=[None]*meta['Project']['N Ensemble']
+
+    for iEns in range(meta['Project']['N Ensemble']):
+
+        # Initialize dictionary
+        meta['Param']['By Ensemble'][iEns]={}
+
+        #----------------------------------------------------------------------
+        # Biomass turnover
+        #----------------------------------------------------------------------
+
+        if meta['Project']['Uncertainty Status Biomass Turnover']=='On':
+
+            meta['Param']['By Ensemble'][iEns]['Biomass Turnover']={}
+
+            for k in meta['Param']['BE']['Biomass Turnover'].keys():
+
+                mu=meta['Param']['BE']['Biomass Turnover'][k]
+                sig=meta['Param']['Sigma']['Biomass Turnover'][k]
+                bl=meta['Param']['BL']['Biomass Turnover'][k]
+                bu=meta['Param']['BU']['Biomass Turnover'][k]
+
+                r=np.random.normal(loc=mu,scale=mu*sig)
+
+                if (bl!=-9999) & (bu!=-9999):
+                    r=gu.Clamp(r,bl,bu)
+                elif (bl!=-9999) & (bu==-9999):
+                    r=np.maximum(bl,r)
+                elif (bl==-9999) & (bu!=-9999):
+                    r=np.minimum(bu,r)
+                else:
+                    r=r
+
+                meta['Param']['By Ensemble'][iEns]['Biomass Turnover'][k]=r
+
+        #----------------------------------------------------------------------
+        # Decomposition
+        #----------------------------------------------------------------------
+
+        if meta['Project']['Uncertainty Status Decomposition']=='On':
+
+            meta['Param']['By Ensemble'][iEns]['Decomp']={}
+
+            for k in meta['Param']['BE']['Decomp'].keys():
+
+                mu=meta['Param']['BE']['Decomp'][k]
+                sig=meta['Param']['Sigma']['Decomp'][k]
+                bl=meta['Param']['BL']['Decomp'][k]
+                bu=meta['Param']['BU']['Decomp'][k]
+
+                r=np.random.normal(loc=mu,scale=mu*sig)
+
+                if (bl!=-9999) & (bu!=-9999):
+                    r=gu.Clamp(r,bl,bu)
+                elif (bl!=-9999) & (bu==-9999):
+                    r=np.maximum(bl,r)
+                elif (bl==-9999) & (bu!=-9999):
+                    r=np.minimum(bu,r)
+                else:
+                    r=r
+
+                meta['Param']['By Ensemble'][iEns]['Decomp'][k]=r
+
+        #----------------------------------------------------------------------
+        # Harvesting
+        #----------------------------------------------------------------------
+
+        if meta['Project']['Uncertainty Status Harvest Utilization']=='On':
+
+            meta['Param']['By Ensemble'][iEns]['Dist']={}
+
+            EventList=['Harvest','Harvest Salvage']
+
+            for Event in EventList:
+
+                ID_Type=meta['LUT']['Dist'][Event]
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]={}
+
+                #--------------------------------------------------------------
+                # Biomass merch
+                #--------------------------------------------------------------
+
+                # Removed fraction
+                mu=meta['Param']['BE']['Dist'][ID_Type]['BiomassMerch_Removed']
+                sig=np.array([0.1])
+                bl=np.array([0.0])
+                bu=np.array([1.0])
+                r_Removed=np.random.normal(loc=mu,scale=mu*sig)
+                r_Removed=gu.Clamp(r_Removed,bl,bu)
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Removed']=r_Removed
+
+                # Total fraction that is piled and dispersed
+                r_PiledAndDispersed=1.0-r_Removed
+
+                # Specific piled fraction
+                mu=np.array([0.60]) # Specific fraction that is piled
+                sig=np.array([0.1])
+                bl=np.array([0.0])
+                bu=np.array([1.0])
+                rSpecific_Piled=np.random.normal(loc=mu,scale=mu*sig)
+                rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
+
+                # Piled fraction
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
+
+                # Specific dispersed fraction
+                rSpecific_Dispersed=1.0-rSpecific_Piled
+
+                # Dispersed fraction
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+
+                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_LeftOnSite'])
+
+                #--------------------------------------------------------------
+                # Biomass non-merch
+                #--------------------------------------------------------------
+
+                # Removed fraction
+                mu=meta['Param']['BE']['Dist'][ID_Type]['BiomassNonMerch_Removed']
+                sig=np.array([0.1])
+                bl=np.array([0.0])
+                bu=np.array([1.0])
+                r_Removed=np.random.normal(loc=mu,scale=mu*sig)
+                r_Removed=gu.Clamp(r_Removed,bl,bu)
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Removed']=r_Removed
+
+                # Total fraction that is piled and dispersed
+                r_PiledAndDispersed=1.0-r_Removed
+
+                # Specific piled fraction
+                mu=np.array([0.60]) # Specific fraction that is piled
+                sig=np.array([0.1])
+                bl=np.array([0.0])
+                bu=np.array([1.0])
+                rSpecific_Piled=np.random.normal(loc=mu,scale=mu*sig)
+                rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
+
+                # Piled fraction
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
+
+                # Specific dispersed fraction
+                rSpecific_Dispersed=1.0-rSpecific_Piled
+
+                # Dispersed fraction
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+
+                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_LeftOnSite'])
+
+                #--------------------------------------------------------------
+                # Snags
+                #--------------------------------------------------------------
+
+                # Removed fraction
+                mu=meta['Param']['BE']['Dist'][ID_Type]['Snags_Removed']
+                sig=np.array([0.1])
+                bl=np.array([0.0])
+                bu=np.array([1.0])
+                r_Removed=np.random.normal(loc=mu,scale=mu*sig)
+                r_Removed=gu.Clamp(r_Removed,bl,bu)
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Removed']=r_Removed
+
+                # Total fraction that is piled and dispersed
+                r_PiledAndDispersed=1.0-r_Removed
+
+                # Specific piled fraction
+                mu=np.array([0.60]) # Specific fraction that is piled
+                sig=np.array([0.1])
+                bl=np.array([0.0])
+                bu=np.array([1.0])
+                rSpecific_Piled=np.random.normal(loc=mu,scale=mu*sig)
+                rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
+
+                # Piled fraction
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Piled']=r_PiledAndDispersed*rSpecific_Piled
+
+                # Specific dispersed fraction
+                rSpecific_Dispersed=1.0-rSpecific_Piled
+
+                # Dispersed fraction
+                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+
+                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_LeftOnSite'])
+
+        #----------------------------------------------------------------------
+        # Substitution effects
+        #----------------------------------------------------------------------
+
+        if meta['Project']['Uncertainty Status Substitution']=='On':
+
+            meta['Param']['By Ensemble'][iEns]['Substitution']={}
+
+            #vL=['LumberDisplacementFactor','PanelDisplacementFactor']
+            vL=['SawnwoodFracDisplacingConcrete','SawnwoodFracDisplacingSteel','SawnwoodFracDisplacingAluminum',
+                'SawnwoodFracDisplacingPlastic','SawnwoodFracDisplacingTextile','PanelFracDisplacingConcrete','PanelFracDisplacingSteel',
+                'PanelFracDisplacingAluminum','PanelFracDisplacingPlastic','PanelFracDisplacingTextile','ResidualsFracDisplacingConcrete',
+                'ResidualsFracDisplacingSteel','ResidualsFracDisplacingAluminum','ResidualsFracDisplacingPlastic','ResidualsFracDisplacingTextile',
+                'DisplacementRatio_ConcreteForSawnwood','DisplacementRatio_ConcreteForPanel','DisplacementRatio_ConcreteForResiduals',
+                'DisplacementRatio_SteelForSawnwood','DisplacementRatio_SteelForPanel','DisplacementRatio_SteelForResiduals',
+                'DisplacementRatio_AluminumForSawnwood','DisplacementRatio_AluminumForPanel','DisplacementRatio_AluminumForResiduals',
+                'DisplacementRatio_PlasticForSawnwood','DisplacementRatio_PlasticForPanel','DisplacementRatio_PlasticForResiduals',
+                'DisplacementRatio_TextileForSawnwood','DisplacementRatio_TextileForPanel','DisplacementRatio_TextileForResiduals']
+            for k in vL:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=np.maximum(0,r)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+
+            lv0=np.array(['PowerFacilityDomFracDisplacingRenewables','PowerFacilityDomFracDisplacingCoal','PowerFacilityDomFracDisplacingDiesel','PowerFacilityDomFracDisplacingNaturalGas','PowerFacilityDomFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+            lv0=np.array(['PowerFacilityExportFracDisplacingRenewables','PowerFacilityExportFracDisplacingCoal','PowerFacilityExportFracDisplacingDiesel','PowerFacilityExportFracDisplacingNaturalGas','PowerFacilityExportFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+            lv0=np.array(['PelletExportFracDisplacingRenewables','PelletExportFracDisplacingCoal','PelletExportFracDisplacingDiesel','PelletExportFracDisplacingNaturalGas','PelletExportFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+            lv0=np.array(['PelletDomGridFracDisplacingRenewables','PelletDomGridFracDisplacingCoal','PelletDomGridFracDisplacingDiesel','PelletDomGridFracDisplacingNaturalGas','PelletDomGridFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+            lv0=np.array(['PelletDomRNGFracDisplacingRenewables','PelletDomRNGFracDisplacingCoal','PelletDomRNGFracDisplacingDiesel','PelletDomRNGFracDisplacingNaturalGas','PelletDomRNGFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+            lv0=np.array(['FirewoodDomFracDisplacingRenewables','FirewoodDomFracDisplacingCoal','FirewoodDomFracDisplacingDiesel','FirewoodDomFracDisplacingNaturalGas','FirewoodDomFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+            lv0=np.array(['FirewoodExportFracDisplacingRenewables','FirewoodExportFracDisplacingCoal','FirewoodExportFracDisplacingDiesel','FirewoodExportFracDisplacingNaturalGas','FirewoodExportFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+            lv0=np.array(['PowerGridFracDisplacingRenewables','PowerGridFracDisplacingCoal','PowerGridFracDisplacingDiesel','PowerGridFracDisplacingNaturalGas','PowerGridFracDisplacingOil'])
+            lv=lv0[np.argsort(np.random.random(len(lv0)))]
+            r_remain=1.0
+            for k in lv:
+                mu=meta['Param']['BE']['Substitution'][k]
+                sig=meta['Param']['Sigma']['Substitution'][k]
+                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
+                r=gu.Clamp(r,0.0,r_remain)
+                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
+                r_remain=r_remain-r
+
+        #----------------------------------------------------------------------
+        # Nutrient mmanagement
+        #----------------------------------------------------------------------
+
+        if meta['Project']['Uncertainty Status Nutrient Application']=='On':
+
+            meta['Param']['By Ensemble'][iEns]['Nutrient Management']={}
+
+            for k in meta['Param']['BE']['Nutrient Management'].keys():
+                mu=meta['Param']['BE']['Nutrient Management'][k]
+                sig=meta['Param']['Sigma']['Nutrient Management'][k]
+                r=np.random.normal(loc=mu,scale=mu*sig)
+                r=np.maximum(0,r)
+                meta['Param']['By Ensemble'][iEns]['Nutrient Management'][k]=r
+
+        #----------------------------------------------------------------------
+        # Mortality distribution
+        #----------------------------------------------------------------------
+
+        #meta['Project']['Mortality Distribution']={}
+        #meta['Project']['Mortality Distribution']['Frequency (%)']=np.arange(0,101,1)
+        #meta['Project']['Mortality Distribution']['Severity (%)']=np.arange(0,101,1)
+        #meta['Project']['Mortality Distribution']['Variable List']=['Regular','Harvest','Wildfire','Beetles','Mechanical']
+        #meta['Project']['Mortality Distribution']['Data']={}
+        #for v in meta['Project']['Mortality Distribution']['Variable List']:
+        #    meta['Project']['Mortality Distribution']['Data'][v]=np.zeros((meta['Project']['Mortality Distribution']['Frequency (%)'].size,meta['Project']['Mortality Distribution']['Severity (%)'].size),dtype='int8')
+
+    #--------------------------------------------------------------------------
+    # Scenario info for portfolio projects
+    #--------------------------------------------------------------------------
+
+    if meta['Project']['Scenario Source']=='Portfolio':
+
+        # Index to rows with implementation
+        indAT=np.where(np.sum(meta['Project']['AIL']['Area'],axis=0)>0)[0]
+
+        meta['Project']['Portfolio']['ID Portfolio']=np.zeros(meta['Project']['N Stand'],dtype=int)
+        meta['Project']['Portfolio']['ID AT']=np.zeros(meta['Project']['N Stand'],dtype=int)
+        meta['Project']['Portfolio']['ID AT Unique']=np.zeros(meta['Project']['N Stand'],dtype=int)
+        meta['Project']['Portfolio']['Area']=np.zeros(meta['Project']['N Stand'])
+        meta['Project']['Portfolio']['Year']=np.zeros(meta['Project']['N Stand'])
+        meta['Project']['Portfolio']['Region Code']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
+        meta['Project']['Portfolio']['Felled Fate Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
+        meta['Project']['Portfolio']['Removed Fate Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
+        meta['Project']['Portfolio']['HWP End Use Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
+        cnt=0
+        for iA in range(meta['Project']['AIL']['N AT']):
+            for iY in range(meta['Project']['AIL']['N Years']):
+                for iS in range(meta['Project']['N Stand per Activity Type']):
+
+                    ID_Portfolio=meta['Project']['AIL']['ID Portfolio'][indAT[iA]]
+
+                    meta['Project']['Portfolio']['ID Portfolio'][cnt]=ID_Portfolio
+                    meta['Project']['Portfolio']['ID AT'][cnt]=meta['Project']['AIL']['ID AT'][indAT[iA]]
+                    meta['Project']['Portfolio']['ID AT Unique'][cnt]=meta['Project']['AIL']['ID AT Unique'][indAT[iA]]
+                    meta['Project']['Portfolio']['Area'][cnt]=meta['Project']['AIL']['Area'][iY,indAT[iA]]
+                    meta['Project']['Portfolio']['Year'][cnt]=meta['Project']['AIL']['Year'][iY]
+
+                    # Region from Activities table
+                    ind=np.where(meta['Project']['Activities']['Activity ID']==meta['Project']['Portfolio']['ID AT'][cnt])
+                    meta['Project']['Portfolio']['Region Code'][cnt]=meta['Project']['Activities']['Region Code'][ind][0]
+
+                    # Scenarios from Portfolio table
+                    iPortfolio=np.where(meta['Project']['Portfolio']['Raw']['ID_Portfolio']==ID_Portfolio)[0]
+                    meta['Project']['Portfolio']['Felled Fate Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['Felled Fate Scenario'][iPortfolio][0]
+                    meta['Project']['Portfolio']['Removed Fate Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['Removed Fate Scenario'][iPortfolio][0]
+                    meta['Project']['Portfolio']['HWP End Use Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['HWP End Use Scenario'][iPortfolio][0]
+                    cnt=cnt+1
+
+        # Scenario information
+        # Will this tool ever be used with on-the-fly disturbances? Current set
+        # to "off".
+        meta['Scenario']=[None]*meta['Project']['N Scenario']
+        for iScn in range(meta['Project']['N Scenario']):
+
+            meta['Scenario'][iScn]={}
+
+            # *** This is super awkward - simulations can't change between activities or scenarios!!!
+            # Do we need that type of functionality for the PT? ***
+            meta['Scenario'][iScn]['Wildfire Scenario ID']=meta['Project']['Activities']['Wildfire Scenario ID'][0]
+            meta['Scenario'][iScn]['Wildfire Status Pre-modern']=meta['Project']['Activities']['Wildfire Status Pre-modern'][0]
+            meta['Scenario'][iScn]['Wildfire Status Modern']=meta['Project']['Activities']['Wildfire Status Modern'][0]
+            meta['Scenario'][iScn]['Wildfire Status Future']=meta['Project']['Activities']['Wildfire Status Future'][0]
+
+            meta['Scenario'][iScn]['Harvest Status Historical']='Off'
+            meta['Scenario'][iScn]['Harvest Status Future']='Off'
+            meta['Scenario'][iScn]['Breakup Status']='Off'
+            meta['Scenario'][iScn]['Nutrient Application Status']='Off'
+
+    #--------------------------------------------------------------------------
+    # Project type and region
+    #--------------------------------------------------------------------------
+
+    if meta['Project']['Scenario Source']=='Spreadsheet':
+
+        # Define region from input of BGC zone (*** updated to start including ***)
+        # for iScn in range(meta['Project']['N Scenario']):
+        #     if np.isin(meta['Scenario'][iScn]['BGC Zone Code'],['CWH','CDF','MH'])==True:
+        #         meta['Scenario'][iScn]['Region Code']='Coast'
+        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Coast']
+        #     else:
+        #         meta['Scenario'][iScn]['Region Code']='Interior'
+        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Interior']
+
+        # Define strata
+        meta['Project']['Strata']={}
+        meta['Project']['Strata']['Project']={}
+        meta['Project']['Strata']['Project']['Unique CD']=np.array(['All'],dtype=object)
+        meta['Project']['Strata']['Project']['Unique ID']=np.ones(1)
+        meta['Project']['Strata']['Project']['ID']=np.ones(meta['Project']['N Stand'],dtype=int)
+        meta['Project']['Strata']['Spatial']={}
+        meta['Project']['Strata']['Spatial']['Unique CD']=np.array(['All'],dtype=object)
+        meta['Project']['Strata']['Spatial']['Unique ID']=np.ones(1)
+        meta['Project']['Strata']['Spatial']['ID']=np.ones(meta['Project']['N Stand'],dtype=int)
+
+        # OLD
+        #meta['Project']['Project Stratum ID']=1.0*np.ones(meta['Project']['N Stand'])
+        #meta['Project']['Spatial Stratum ID']=1.0*np.ones(meta['Project']['N Stand'])
+
+    #--------------------------------------------------------------------------
+    # Grassland module
+    #--------------------------------------------------------------------------
+
+    for iScn in range(meta['Project']['N Scenario']):
+        if 'Grassland Module Status' not in meta['Scenario'][iScn]:
+            # Default is off
+            meta['Scenario'][iScn]['Grass Module Status']='Off'
+            meta['Scenario'][iScn]['Grass Module Year Start']=meta['Project']['Year Project']+1
+
+    #--------------------------------------------------------------------------
+    # Initialize run time tracking
+    #--------------------------------------------------------------------------
+
+    meta['Project']['Run Time Summary']={}
+
+    return meta
+
+#%% Load look-up-tables
+
+def Load_LUTs_Modelling(meta):
+
+    # Initialize LUTs dictionary
+    if 'LUT' not in meta:
+        meta['LUT']={}
+
+    # Import distubance type
+    p=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\' + 'Parameters_Disturbances.xlsx')
+    meta['LUT']['Dist']={}
+    for i in range(p['Name'].size):
+        meta['LUT']['Dist'][p['Name'][i]]=p['ID'][i]
+
+    # Region
+    meta['LUT']['Region']={'Coast':1,'Interior':2,'GFS22':3}
+
+    # # Added this to accommodate jupyter notebook demos - will need updating periodically
+    # if 'Results' not in meta['Paths']:
+    #     meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
+    # if 'VRI' not in meta['Paths']:
+    #     meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
+    # if 'Disturbances' not in meta['Paths']:
+    #     meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422'
+    # if 'LandUse' not in meta['Paths']:
+    #     meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422'
+
+    # meta['LUT']['ATU']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_ACTIVITY_TREATMENT_SVW.pkl')
+    # meta['LUT']['OP']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_OPENING_SVW.pkl')
+    # meta['LUT']['PL']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_PLANTING_SVW.pkl')
+    # meta['LUT']['FC_I']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_INV_SVW.pkl')
+    # meta['LUT']['FC_S']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_SILV_SVW.pkl')
+    # meta['LUT']['VEG_COMP_LYR_R1_POLY']=gu.ipickle(meta['Paths']['VRI'] + '\\LUTs_VEG_COMP_LYR_R1_POLY.pkl')
+    # meta['LUT']['BS']=gu.ipickle(meta['Paths']['Disturbances'] + '\\LUTs_VEG_BURN_SEVERITY_SP.pkl')
+    # meta['LUT']['Pest']=gu.ipickle(meta['Paths']['Disturbances'] + '\\LUTs_PEST_INFESTATION_POLY.pkl')
+    # meta['LUT']['FC_R']=gu.ipickle(meta['Paths']['Results'] + '\\LUTs_RSLT_FOREST_COVER_RESERVE_SVW.pkl')
+    # #meta['LUT']['LU NL']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_PLAN_NON_LEGAL_POLY_SVW.pkl')
+    # meta['LUT']['LU L']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_PLAN_LEGAL_POLY_SVW.pkl')
+    # meta['LUT']['PARK']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_TA_PARK_ECORES_PA_SVW.pkl')
+    # meta['LUT']['OGMA']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_RMP_OGMA_LEGAL_ALL_SVW.pkl')
+    # meta['LUT']['OGSR']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_OGSR_TAP_PRIORITY_DEF_AREA_SP.pkl')
+    # meta['LUT']['UWR']=gu.ipickle(meta['Paths']['LandUse'] + '\\LUTs_WCP_UNGULATE_WINTER_RANGE_SP.pkl')
+
+    meta['LUT']['TIPSY']={}
+    meta['LUT']['TIPSY']['FIZ']={'C':np.array(1,dtype=int),'I':np.array(2,dtype=int)}
+    meta['LUT']['TIPSY']['regeneration_method']={'C':np.array(1,dtype=int),'N':np.array(2,dtype=int),'P':np.array(3,dtype=int)}
+
+    # Land surface classification
+    meta['LUT']['LSC']={}
+    meta['LUT']['LSC']['Cover']={}
+    data=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_LSC_Cover.xlsx')
+    for i in range(data['ID'].size):
+        meta['LUT']['LSC']['Cover'][data['Name'][i]]=data['ID'][i]
+    meta['LUT']['LSC']['Use']={}
+    data=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_LSC_Use.xlsx')
+    for i in range(data['ID'].size):
+        meta['LUT']['LSC']['Use'][data['Name'][i]]=data['ID'][i]
+
+    # Species (for Sawtooth)
+    #meta['LUT']['SRS']={}
+    #for i in range(len(par['SRS']['SRS_CD'])):
+    #    meta['LUT']['SRS'][par['SRS']['SRS_CD'][i]]=par['SRS']['SRS_ID'][i]
+
+    return meta
 
 #%% Configure project
 
@@ -740,10 +1855,11 @@ def ImportProjectConfig(meta,**kwargs):
     # Define strings that frequently need to be populated with zeros
     #--------------------------------------------------------------------------
 
-    meta['Core']['StringsToFill']=['Month','Day','SILV_FUND_SOURCE_CODE','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
+    meta['Core']['StringsToFill']=['Month','Day','SILV_FUND_SOURCE_CODE', \
                'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
                'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
-               'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5']
+               'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5','PL_SPECIES_CD6','PL_SPECIES_PCT6','PL_SPECIES_GW6']
+        #,'FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER'
 
     #--------------------------------------------------------------------------
     # Growth curve information
@@ -804,13 +1920,13 @@ def ImportProjectConfig(meta,**kwargs):
     meta['Nutrient Management']['BGC Zone Exclusion CD']=['PP','MH','BAFA','BG','CMA','IMA']
     meta['Nutrient Management']['BGC Zone Exclusion ID']=np.zeros(len(meta['Nutrient Management']['BGC Zone Exclusion CD']))
     for iZ in range(len(meta['Nutrient Management']['BGC Zone Exclusion CD'])):
-        meta['Nutrient Management']['BGC Zone Exclusion ID'][iZ]=meta['LUT']['VRI']['BEC_ZONE_CODE'][ meta['Nutrient Management']['BGC Zone Exclusion CD'][iZ] ]
+        meta['Nutrient Management']['BGC Zone Exclusion ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['BGC Zone Exclusion CD'][iZ] ]
 
     # Coastal zones used to make prob of occurrence region-specific
     meta['Nutrient Management']['Coastal Zones CD']=['CWH','CDF']
     meta['Nutrient Management']['Coastal Zones ID']=np.zeros(len(meta['Nutrient Management']['Coastal Zones CD']))
     for iZ in range(len(meta['Nutrient Management']['Coastal Zones CD'])):
-        meta['Nutrient Management']['Coastal Zones ID'][iZ]=meta['LUT']['VRI']['BEC_ZONE_CODE'][ meta['Nutrient Management']['Coastal Zones CD'][iZ] ]
+        meta['Nutrient Management']['Coastal Zones ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['Coastal Zones CD'][iZ] ]
 
     #--------------------------------------------------------------------------
     # Simulate random numbers that can be used for simulating harvest on the fly
@@ -2409,11 +3525,11 @@ def Calc_MOS_MapMean(meta,iScn,tp,**kwargs):
 #%% Import scenario data from points
 # *** You can't use the nanmean and nanpercentile - way too slow ***
 
-def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta):
+def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam,mos):
 
-    Data=[None]*meta['Project']['N Scenario']
+    Data=[None]*meta[pNam]['Project']['N Scenario']
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         Data[iScn]={}
 
@@ -2425,12 +3541,12 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta):
             # GHG
             #------------------------------------------------------------------
 
-            d=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl')
+            d=gu.ipickle(meta[pNam]['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl')
             for k in d[oper].keys():
                 Data[iScn][oper][k]={}
                 Data[iScn][oper][k]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
                 Data[iScn][oper][k]['Ensemble SD']=np.std(d[oper][k],axis=1)
-                Data[iScn][oper][k]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                Data[iScn][oper][k]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 Data[iScn][oper][k]['Ensemble P005']=np.percentile(d[oper][k],0.5,axis=1)
                 Data[iScn][oper][k]['Ensemble P025']=np.percentile(d[oper][k],2.5,axis=1)
                 Data[iScn][oper][k]['Ensemble P250']=np.percentile(d[oper][k],25,axis=1)
@@ -2442,12 +3558,12 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta):
             # Economics
             #------------------------------------------------------------------
 
-            d=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(iScn+1) + '.pkl')
+            d=gu.ipickle(meta[pNam]['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(iScn+1) + '.pkl')
             for k in d[oper].keys():
                 Data[iScn][oper][k]={}
                 Data[iScn][oper][k]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
                 Data[iScn][oper][k]['Ensemble SD']=np.std(d[oper][k],axis=1)
-                Data[iScn][oper][k]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                Data[iScn][oper][k]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 Data[iScn][oper][k]['Ensemble P005']=np.percentile(d[oper][k],0.5,axis=1)
                 Data[iScn][oper][k]['Ensemble P025']=np.percentile(d[oper][k],2.5,axis=1)
                 Data[iScn][oper][k]['Ensemble P250']=np.percentile(d[oper][k],25,axis=1)
@@ -2460,12 +3576,12 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta):
             #------------------------------------------------------------------
 
             if oper=='Mean':
-                d=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_MortbyAgent_Scn' + str(iScn+1) + '.pkl')
+                d=gu.ipickle(meta[pNam]['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_MortbyAgent_Scn' + str(iScn+1) + '.pkl')
                 for k in d[oper].keys():
                     Data[iScn][oper]['C_M_' + k]={}
                     Data[iScn][oper]['C_M_' + k]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
                     Data[iScn][oper]['C_M_' + k]['Ensemble SD']=np.std(d[oper][k],axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                    Data[iScn][oper]['C_M_' + k]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                     Data[iScn][oper]['C_M_' + k]['Ensemble P005']=np.percentile(d[oper][k],0.5,axis=1)
                     Data[iScn][oper]['C_M_' + k]['Ensemble P025']=np.percentile(d[oper][k],2.5,axis=1)
                     Data[iScn][oper]['C_M_' + k]['Ensemble P250']=np.percentile(d[oper][k],25,axis=1)
@@ -2474,8 +3590,7 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta):
                     Data[iScn][oper]['C_M_' + k]['Ensemble P995']=np.percentile(d[oper][k],99.5,axis=1)
 
     # Save to structure
-    mos={}
-    mos['Scenarios']=Data
+    mos[pNam]['Scenarios']=Data
 
     return mos
 
@@ -3773,7 +4888,7 @@ def Import_CompiledGrowthCurves(meta,scn):
 def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
 
     # Create a function that will return the column corresponding to a variable name
-    fin=meta['Paths']['Model Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
+    fin=meta['Paths']['Model']['Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
     df_frmt=pd.read_excel(fin,sheet_name='Sheet1')
     gy_labels=df_frmt.loc[5,:].values
     def GetColumn(lab):
@@ -3815,7 +4930,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         # Species 1
         vnam='s1'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
-        cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
+        cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'],id)[0]
         sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
 
         vnam='p1'
@@ -3836,7 +4951,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s2'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
 
             vnam='p2'
@@ -3853,7 +4968,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s3'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
 
             vnam='p3'
@@ -3870,7 +4985,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s4'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
 
             vnam='p4'
@@ -3887,7 +5002,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         vnam='s5'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
         if id!=-999:
-            cd=lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],id)[0]
+            cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'],id)[0]
             sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
 
             vnam='p5'
@@ -3923,7 +5038,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         # BEC zone
         vnam='bec_zone'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
-        cd=lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],id)[0]
+        cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],id)[0]
         sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
 
         # FIZ
@@ -3954,7 +5069,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
 def Write_BatchTIPSY_Input_File(meta):
 
     # Import format info (number of designated positions per variable)
-    fin=meta['Paths']['Model Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
+    fin=meta['Paths']['Model']['Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
     df_frmt=pd.read_excel(fin,sheet_name='Sheet1')
 
     # Format array
@@ -4137,7 +5252,7 @@ def PrepareInventoryFromSpreadsheet(meta):
 
             # BEC zone
             inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype='int16')
-            inv['ID_BECZ'][0,:]=meta['LUT']['VRI']['BEC_ZONE_CODE'][meta['Scenario'][iScn]['BGC Zone Code']]
+            inv['ID_BECZ'][0,:]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][meta['Scenario'][iScn]['BGC Zone Code']]
 
             # Timber harvesting landbase (1=yes, 0=no)
             inv['THLB']=meta['Scenario'][iScn]['THLB Status']*np.ones((meta['Year'].size,N_StandsInBatch))
@@ -4237,32 +5352,32 @@ def GetMortalityFrequencyDistribution(meta):
 
 #%% Summarize affected area due to natural disturbance and management
 
-def SummarizeAreaAffected(meta,mos,tv,iScn,iPS,iSS,AEF,ivlT):
+def SummarizeAreaAffected(meta,mos,pNam,tv,iScn,iPS,iSS,ivlT):
 
     A={}
     A['Nat Dist']=[None]*7; c=-1
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Wildfire']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain pine beetle'; A['Nat Dist'][c]['Color']=[0.3,0.8,0.2]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_IBM']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_IBB']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[1,1,0]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_IBD']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_IBS']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Western spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_IDW']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wind, snow & ice'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Mechanical']['Ensemble Mean'][:,iPS,iSS]*AEF
-    #c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Rust'; A['Nat Dist'][c]['Color']=[0.75,0.5,1]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Rust Onset']['Ensemble Mean'][:,iPS,iSS]*AEF
-    #c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Beetles']['Ensemble Mean'][:,iPS,iSS]*AEF
-    #c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Dwarf Mistletoe'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Dwarf Mistletoe Onset']['Ensemble Mean'][:,iPS,iSS]*AEF
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Wildfire']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain pine beetle'; A['Nat Dist'][c]['Color']=[0.3,0.8,0.2]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBM']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBB']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[1,1,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBD']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBS']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Western spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_IDW']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wind, snow & ice'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Mechanical']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    #c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Rust'; A['Nat Dist'][c]['Color']=[0.75,0.5,1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Rust Onset']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    #c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Beetles']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    #c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Dwarf Mistletoe'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Dwarf Mistletoe Onset']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
     A['Nat Dist']=A['Nat Dist'][0:c+1]
 
     A['Management']=[None]*8; c=-1
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=(mos['Scenarios'][iScn]['Sum']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS])*AEF
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=(mos['Scenarios'][iScn]['Sum']['Area_Slashpile Burn']['Ensemble Mean'][:,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS])*AEF
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=(mos['Scenarios'][iScn]['Sum']['Area_Knockdown']['Ensemble Mean'][:,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['Area_Thinning']['Ensemble Mean'][:,iPS,iSS])*AEF
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=(mos['Scenarios'][iScn]['Sum']['Area_Disc Trenching']['Ensemble Mean'][:,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['Area_Ripping']['Ensemble Mean'][:,iPS,iSS])*AEF
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Prescribed Burn']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=(mos['Scenarios'][iScn]['Sum']['Area_Planting']['Ensemble Mean'][:,iPS,iSS]+mos['Scenarios'][iScn]['Sum']['Area_Direct Seeding']['Ensemble Mean'][:,iPS,iSS])*AEF
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Aerial Spray']['Ensemble Mean'][:,iPS,iSS]*AEF
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.75,0.55,1]; A['Management'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Fertilization Aerial']['Ensemble Mean'][:,iPS,iSS]*AEF
-    #c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos['Scenarios'][iScn]['Sum']['Area_Dwarf Mistletoe Control']['Ensemble Mean'][:,iPS,iSS]*AEF
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Slashpile Burn']['Ensemble Mean'][:,iPS,iSS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Knockdown']['Ensemble Mean'][:,iPS,iSS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Thinning']['Ensemble Mean'][:,iPS,iSS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disc Trenching']['Ensemble Mean'][:,iPS,iSS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Ripping']['Ensemble Mean'][:,iPS,iSS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Prescribed Burn']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Planting']['Ensemble Mean'][:,iPS,iSS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Direct Seeding']['Ensemble Mean'][:,iPS,iSS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Aerial Spray']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.75,0.55,1]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Fertilization Aerial']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
+    #c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Dwarf Mistletoe Control']['Ensemble Mean'][:,iPS,iSS]*meta[pNam]['Project']['AEF']
     A['Management']=A['Management'][0:c+1]
 
     # Convert to x-year intervals
@@ -4771,7 +5886,7 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
 def ImportParameters(meta):
 
     # Path to parameters
-    pthin=meta['Paths']['Model Code'] + '\\Parameters\\'
+    pthin=meta['Paths']['Model']['Code'] + '\\Parameters\\'
 
     # Initialize parameter structure
     meta['Param']={}
@@ -4871,7 +5986,7 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
 
     meta['Param']['BE']['Felled Fate']={}
-    meta['Param']['BE']['Felled Fate']=gu.ipickle(meta['Paths']['Model Code'] + '\\Parameters\\Variables_FelledFate.pkl')
+    meta['Param']['BE']['Felled Fate']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_FelledFate.pkl')
 
     #--------------------------------------------------------------------------
     # Disturbance - Wildfire aspatial (Taz-AAO) parameters
@@ -4879,7 +5994,7 @@ def ImportParameters(meta):
 
     meta['Param']['BE']['Taz']={}
 
-    wf=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_WildfireStatsMod.xlsx')
+    wf=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_WildfireStatsMod.xlsx')
 
     meta['Param']['BE']['Taz']['WF']={}
     for i in range(wf['Name'].size):
@@ -4892,7 +6007,7 @@ def ImportParameters(meta):
     # Disturbance - Mountain Pine Beetle (Taz-AAO) parameters
     #--------------------------------------------------------------------------
 
-    ibm=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_IBMStatsMod.xlsx')
+    ibm=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_IBMStatsMod.xlsx')
 
     meta['Param']['BE']['Taz']['IBM']={}
     for i in range(ibm['Name'].size):
@@ -4915,21 +6030,21 @@ def ImportParameters(meta):
     # Disturbance - harvesting - basic early historical reconstruction
     #--------------------------------------------------------------------------
 
-    fin=meta['Paths']['Taz Datasets'] + '\\Harvest Stats and Scenarios\\HarvestHistoricalProbabilitySimple.xlsx'
+    fin=meta['Paths']['Model']['Taz Datasets'] + '\\Harvest Stats and Scenarios\\HarvestHistoricalProbabilitySimple.xlsx'
     meta['Param']['BE']['Taz']['Ph_Simp']=gu.ReadExcel(fin)
 
     #--------------------------------------------------------------------------
     # Disturbance - By severity class
     #--------------------------------------------------------------------------
 
-    meta['Param']['BE']['DistBySC']=gu.ReadExcel(meta['Paths']['Model Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
+    meta['Param']['BE']['DistBySC']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
 
     #--------------------------------------------------------------------------
     # Removed fate scenarios
     # Values are location specific so no specific processing is done here (see cbrun.py)
     #--------------------------------------------------------------------------
 
-    meta['Param']['BE']['Removed Fate']=gu.ipickle(meta['Paths']['Model Code'] + '\\Parameters\\Variables_RemovedFate.pkl')
+    meta['Param']['BE']['Removed Fate']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_RemovedFate.pkl')
 
     #--------------------------------------------------------------------------
     # HWP - static parameters
@@ -4945,7 +6060,7 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
 
     meta['Param']['BE']['HWP End Use']={}
-    meta['Param']['BE']['HWP End Use']=gu.ipickle(meta['Paths']['Model Code'] + '\\Parameters\\Variables_HWP_EndUse.pkl')
+    meta['Param']['BE']['HWP End Use']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_HWP_EndUse.pkl')
 
     #--------------------------------------------------------------------------
     # Nutrient application paramaters
@@ -5074,7 +6189,7 @@ def ImportCustomHarvestAssumptions(pthin):
     d['Snags_LeftOnSite']=df.iloc[4,3]
     d['Snags_Removed']=df.iloc[5,3]
 
-    d['RemovedMerchToSawMill']=df.iloc[7,1]
+    d['RemovedMerchToLumberMill']=df.iloc[7,1]
     d['RemovedMerchToPulpMill']=df.iloc[8,1]
     d['RemovedMerchToPelletMill']=df.iloc[9,1]
     d['RemovedMerchToPlywoodMill']=df.iloc[10,1]
@@ -5084,7 +6199,7 @@ def ImportCustomHarvestAssumptions(pthin):
     d['RemovedMerchToIPP']=df.iloc[14,1]
     d['RemovedMerchToLogExport']=df.iloc[15,1]
 
-    d['RemovedNonMerchToSawMill']=df.iloc[7,2]
+    d['RemovedNonMerchToLumberMill']=df.iloc[7,2]
     d['RemovedNonMerchToPulpMill']=df.iloc[8,2]
     d['RemovedNonMerchToPelletMill']=df.iloc[9,2]
     d['RemovedNonMerchToPlywoodMill']=df.iloc[10,2]
@@ -5094,7 +6209,7 @@ def ImportCustomHarvestAssumptions(pthin):
     d['RemovedNonMerchToIPP']=df.iloc[14,2]
     d['RemovedNonMerchToLogExport']=df.iloc[15,2]
 
-    d['RemovedSnagStemToSawMill']=df.iloc[7,3]
+    d['RemovedSnagStemToLumberMill']=df.iloc[7,3]
     d['RemovedSnagStemToPulpMill']=df.iloc[8,3]
     d['RemovedSnagStemToPelletMill']=df.iloc[9,3]
     d['RemovedSnagStemToPlywoodMill']=df.iloc[10,3]

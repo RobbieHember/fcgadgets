@@ -12,6 +12,7 @@ from shapely.geometry import Polygon,Point
 import pyproj
 import rasterio
 from rasterio.features import shapes
+from rasterio.enums import Resampling
 import cv2
 from shapely.geometry import Point, Polygon
 from shapely import geometry
@@ -45,6 +46,82 @@ def ImportSRSs():
     srs['String']['BC1ha']='+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
     srs['Proj']['BC1ha']=pyproj.Proj(srs['String']['BC1ha'])
     return srs
+
+#%% Resample raster
+
+def ResampleRaster(fin,sf):
+
+    with rasterio.open(fin) as dataset:
+        data=dataset.read(out_shape=(dataset.count,int(dataset.height*sf),int(dataset.width*sf)),resampling=Resampling.bilinear)
+        #transform=dataset.transform*dataset.transform.scale((dataset.width/data.shape[-1]),(dataset.height/data.shape[-2]))
+
+    z=OpenGeoTiff(fin)
+
+    gt=list(z['gt'])
+    gt[1]=gt[1]/sf
+    gt[5]=gt[5]/sf
+    gt=tuple(gt)
+
+    if data.shape[0]==1:
+        data=np.squeeze(data)
+        m,n=data.shape
+    else:
+        n_bands,m,n=data.shape
+
+    Projection=z['Projection']
+    proj4_str=z['Proj4_String']
+
+    xmin=gt[0]
+    ymax=gt[3]
+    xmax=xmin+gt[1]*n
+    ymin=ymax+gt[5]*m
+    extent=(xmin,xmax,ymin,ymax)
+
+    try:
+        x=np.arange(gt[0],gt[0]+gt[1]*n,gt[1])
+    except:
+        x=np.arange(gt[0],gt[0]+gt[1]*n-gt[1],gt[1])
+
+    try:
+        y=np.flip(np.arange(gt[3]-m*gt[1],gt[3],gt[1]))
+    except:
+        y=np.flip(np.arange(gt[3]-m*gt[1]+gt[1],gt[3],gt[1]))
+
+    x=np.tile(x,(int(m),1))
+
+    y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
+
+    Cellsize=gt[1]
+
+    # Transform
+    Transform=from_origin(xmin,ymax,Cellsize,Cellsize)
+
+    # y-x ratio
+    yxrat=data.shape[0]/data.shape[1]
+
+    z={'gt':gt,
+       'Data':data,
+       'X':x,
+       'Y':y,
+       'm':data.shape[0],
+       'n':data.shape[1],
+       'yxrat':yxrat,
+       'xmin':xmin,
+       'xmax':xmax,
+       'ymin':ymin,
+       'ymax':ymax,
+       'xlim':[xmin,xmax],
+       'ylim':[ymin,ymax],
+       'Extent':extent,
+       'Cellsize':Cellsize,
+       'Transform':Transform,
+       'Projection':Projection,
+       'Proj4_String':proj4_str}
+
+    SaveGeoTiff(z,fin)
+
+    return
+
 
 #%%
 
@@ -224,6 +301,7 @@ def ClipToRaster(z_in0,z_ref0):
 
     z={}
     z['Data']=0*z_ref['Data']
+    z['Data']=z['Data'].astype(z_in['Data'].dtype)
     z['Data'][ind_ref]=z_in['Data'][ind_in]
 
     for k in z_ref.keys():
@@ -373,6 +451,7 @@ def GetExtentFromGDAL(gt,cols,rows):
     return ext
 
 #%% COMPRESS CATEGORIES IN RASTER DATASET
+# z1,lab1,cl1=gis.CompressCats(z0,id0,lab0,cl0)
 
 def CompressCats(z0,id0,lab0,cl0):
     uc=np.unique(z0)
@@ -471,7 +550,7 @@ def ClipGDF(gdf_in,xlim,ylim):
     return gdf
 
 #%% Adjust grid cellsize based on regular subsampling
-
+# z=gis.UpdateGridCellsize(z_in,scale_factor)
 def UpdateGridCellsize(z_in,scale_factor):
     z=z_in.copy()
     z['Data']=z['Data'][0::scale_factor,0::scale_factor]

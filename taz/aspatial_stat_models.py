@@ -21,7 +21,7 @@ def SimulateWildfireFromAAO(meta,ba):
         ba['BEC_ZONE_CODE']=ba['ID_BECZ']
 
     # Import wildfire stats (by BGC zone)
-    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
+    wfss=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
     tv_wfss=np.arange(-2000,2201,1)
 
     # Prepare mortality probability coefficients
@@ -64,7 +64,7 @@ def SimulateWildfireFromAAO(meta,ba):
 
             for iZone in range(uZone.size):
 
-                namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+                namZone=cbu.lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],uZone[iZone])[0]
                 indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
 
                 # Use the specified scenario
@@ -191,7 +191,7 @@ def SimulateWildfireFromAAO(meta,ba):
 def SimulateWildfireFromAAO_StandsActAsEnsembles(meta,inv,iScn):
 
     # Import wildfire stats (by BGC zone)
-    wfss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
+    wfss=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
     tv_wfss=np.arange(-2000,2201,1)
 
     # Prepare mortality probability coefficients
@@ -199,7 +199,7 @@ def SimulateWildfireFromAAO_StandsActAsEnsembles(meta,inv,iScn):
     beta_obs=np.cumsum([meta['Param']['BE']['Taz']['WF']['p_Unburned_obs'],meta['Param']['BE']['Taz']['WF']['p_Low_obs'],meta['Param']['BE']['Taz']['WF']['p_Medium_obs'],meta['Param']['BE']['Taz']['WF']['p_High_obs']])
 
     # Get deterministic component of Po (specific to BGC zone)
-    namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,0])[0]
+    namZone=cbu.lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,0])[0]
     P_oc_Det=wfss[namZone]['Po_Det_WF_Scn' + str(int(meta['Param']['BE']['Taz']['WF']['Scenario ID']))]
 
     # Initialize annual probability of occurrence (final with deterministic and
@@ -278,7 +278,7 @@ def SimulateIBMFromAAO(meta,ba):
         ba['BEC_ZONE_CODE']=ba['ID_BECZ']
 
     # Import IBM stats
-    ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
+    ibmss=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
 
     # Prepare mortality probability coefficients
     beta_obs=np.cumsum([meta['Param']['BE']['Taz']['IBM']['p_Trace_obs'],
@@ -308,7 +308,7 @@ def SimulateIBMFromAAO(meta,ba):
 
             indZone=np.where(ba['BEC_ZONE_CODE']==uZone[iZone])[0]
 
-            namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+            namZone=cbu.lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],uZone[iZone])[0]
 
             # Alternative model
             beta=ibmss[namZone]['Beta_Pareto_Alt'].copy()
@@ -405,7 +405,7 @@ def SimulateIBMFromAAO(meta,ba):
 #def GenerateIBMEnsembleFromAAO(meta,rn,par,id_bgcz):
 #
 #    # Import IBM stats
-#    ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
+#    ibmss=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
 #    tv_scn=np.arange(-2000,2201,1)
 #
 #    # Prepare mortality probability coefficients
@@ -430,7 +430,7 @@ def SimulateIBMFromAAO(meta,ba):
 #
 #        indZone=np.where(id_bgcz==uZone[iZone])[0]
 #
-#        namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+#        namZone=cbu.lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],uZone[iZone])[0]
 #
 #        # Alternative model
 #        b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()

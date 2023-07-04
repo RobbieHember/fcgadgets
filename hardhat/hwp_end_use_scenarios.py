@@ -19,7 +19,7 @@ gp=gu.SetGraphics('Manuscript')
 dDef0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_HWP.xlsx','Main')
 
 # Variables to keep
-vrL=['SawMillToPulpMill','SawMillToMDFMill','SawMillToPelletMill','SawMillToPowerFacility','SawMillToIPP','SawMillToLogExport','SawMillToSFH','SawMillToMFH','SawMillToCom','SawMillToFurn','SawMillToShip','SawMillToRepairs','SawMillToOther',
+vrL=['LumberMillToPulpMill','LumberMillToMDFMill','LumberMillToPelletMill','LumberMillToPowerFacility','LumberMillToIPP','LumberMillToLogExport','LumberMillToSFH','LumberMillToMFH','LumberMillToCom','LumberMillToFurn','LumberMillToShip','LumberMillToRepairs','LumberMillToOther',
   'PlywoodMillToPowerFacility','PlywoodMillToIPP','PlywoodMillToSFH','PlywoodMillToMFH','PlywoodMillToCom','PlywoodMillToFurn','PlywoodMillToShip','PlywoodMillToRepairs','PlywoodMillToOther',
   'OSBMillToPowerFacility','OSBMillToIPP','OSBMillToSFH','OSBMillToMFH','OSBMillToCom','OSBMillToFurn','OSBMillToShip','OSBMillToRepairs','OSBMillToOther',
   'MDFMillToSFH','MDFMillToMFH','MDFMillToCom','MDFMillToFurn','MDFMillToShip','MDFMillToRepairs','MDFMillToOther']
@@ -76,10 +76,10 @@ for reg in regL:
     #plt.plot(tv,DeltaBuildings,'b-')
 
     #------------------------------------------------------------------------------
-    # Sawmills
+    # LumberMills
     #------------------------------------------------------------------------------
 
-    nm='SawMillTo'
+    nm='LumberMillTo'
 
     # Pool groups
     BuildingL=['SFH','MFH','Com']
@@ -240,10 +240,10 @@ for reg in regL:
     #plt.plot(tv,DeltaBuildings,'b-')
 
     #------------------------------------------------------------------------------
-    # Sawmills
+    # LumberMills
     #------------------------------------------------------------------------------
 
-    nm='SawMillTo'
+    nm='LumberMillTo'
 
     # Pool groups
     BuildingL=['SFH','MFH','Com']
@@ -404,10 +404,10 @@ for reg in regL:
     #plt.plot(tv,DeltaBuildings,'b-')
 
     #------------------------------------------------------------------------------
-    # Sawmills
+    # LumberMills
     #------------------------------------------------------------------------------
 
-    nm='SawMillTo'
+    nm='LumberMillTo'
 
     # Pool groups
     BuildingL=['SFH','MFH','Com']

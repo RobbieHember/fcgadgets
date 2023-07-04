@@ -20,10 +20,10 @@ import fcgadgets.macgyver.utilities_inventory as invu
 
 #%% Project name
 
-name='BCFCS_EvalAtPlots' # geos['rgsf']=1
+#name='BCFCS_EvalAtPlots' # geos['rgsf']=1
 #name='BCFCS_MPB_Calib_10k'
 #name='BCFCS_Actual_4k'
-#name='BCFCS_Actual_20k'
+name='BCFCS_Actual_20k'
 #name='BCFCS_Bioenergy_20k'
 #name='BCFCS_BAU_20k'
 #name='BCFCS_HAR_20k'
@@ -34,6 +34,7 @@ name='BCFCS_EvalAtPlots' # geos['rgsf']=1
 #name='SummaryBC_OHS'
 #name='ComparisonWithPlotsSoil'
 #name='HancevilleFire'
+#name='WilliamsLake_1k'
 
 #%% Define paths
 
@@ -42,10 +43,10 @@ meta['Project']={}
 meta['Paths']={}
 meta['Paths']['Project']=r'D:\Data\FCI_Projects' + '\\' + name
 meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\' + name
-meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
-meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
-meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422'
-meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422'
+meta['Paths']['Results']=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20230430'
+meta['Paths']['VRI']=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20230401'
+meta['Paths']['Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20230501'
+meta['Paths']['LandUse']=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20230501'
 meta['Paths']['Model Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
 meta['Paths']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
 
@@ -71,14 +72,14 @@ zLC2=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\lc2.tif')
 geos={}
 
 # Define regular grid sampling frequency
-geos['rgsf']=1 # 100 m
+#geos['rgsf']=1 # 100 m
 #geos['rgsf']=5 # 500 m
 #geos['rgsf']=10 # 1 km
 #geos['rgsf']=20 # 2 km
 #geos['rgsf']=40 # 4 km
 #geos['rgsf']=50 # 5 km
 #geos['rgsf']=100 # 10 km
-#geos['rgsf']=200 # 20 km
+geos['rgsf']=200 # 20 km
 
 # Extract subgrid
 geos['Grid']=zTSA.copy()
@@ -163,11 +164,11 @@ elif (name=='BCFCS_MPB_Calib_10k'):
     geos['iMask']=np.where( (zLC2_r['Data']==4) )
     geos['AEF']=iMask_Full[0].size/geos['iMask'][0].size
 
-elif (name=='SummaryBC_Quesnel'):
+elif (name=='WilliamsLake_1k'):
 
-    # Treed, Williams Lake TSA only
-    iTSA=lut_tsa.loc[lut_tsa.Name=='Quesnel TSA','VALUE'].values
-    geos['iMask']=np.where( (zLC2_r['Data']==4) & (zTSA_r['Data']==iTSA) )
+    iMask_Full=np.where( (zLC2['Data']==4) & (zTSA['Data']==24) )
+    geos['iMask']=np.where( (zLC2_r['Data']==4) & (zTSA_r['Data']==24) )
+    geos['AEF']=iMask_Full[0].size/geos['iMask'][0].size
 
 elif (name=='LICS Hanceville'):
 
@@ -374,10 +375,15 @@ for iLyr in range(len(InvLyrInfo)):
     cc=0
     with fiona.open(path,layer=lyr_nam) as source:
         for feat in source:
+            cc=cc+1
 
             # Extract attributes and geometry
-            prp=feat['properties']
-            geom=feat['geometry']
+            prp=dict(feat['properties'].items())
+
+            try:
+                geom=dict(feat['geometry'].items())
+            except:
+                geom=None
 
             # Fill missing AT spatial with OP spatial
             if (lyr_nam=='RSLT_ACTIVITY_TREATMENT_SVW'):

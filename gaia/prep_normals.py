@@ -1,8 +1,5 @@
 '''
-
 PREPARE CLIMATE NORMALS
-
-
 '''
 
 #%% Import modules
@@ -10,19 +7,42 @@ PREPARE CLIMATE NORMALS
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+import pyproj
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 import scipy.io as spio
 from scipy.io import loadmat
+from shapely.geometry import Polygon,Point
 import gc as garc
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
 import fcgadgets.gaia.gaia_utilities as clmu
+import fcgadgets.bc1ha.bc1ha_utilities as u1ha
+
+#%% Import project config
+
+meta=u1ha.Init()
+meta=u1ha.ImportLUTs(meta)
+
+# Import land mask
+zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1_9.tif')
+
+plt.matshow(z['Data'],clim=[0,200])
+
+#%% Prep input for ClimateBC
+
+# ind=np.where( (zRef['Data']==1) )
+# srs=gis.ImportSRSs()
+# lon,lat=pyproj.transform(srs['Proj']['BC1ha'],srs['Proj']['Geographic'],zRef['X'][ind],zRef['Y'][ind])
+# zE=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\elevation.tif')
+# d={'ID1':np.arange(lon.size),'ID2':np.arange(lon.size),'Lat':lat,'Lon':lon,'Elev':zE['Data'][ind]}
+# df=pd.DataFrame.from_dict(d)
+# df.to_csv(r'C:\ClimateBC\InputFiles\bc.csv')
 
 #%% Prepare monthly water balance normals
 
-# Import land mask
-zRef=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\BC_Land_Mask.tif')
 iMask=np.where(zRef['Data']>0)
 
 # Initialize warm-season means
@@ -116,14 +136,10 @@ gis.SaveGeoTiff(zETp,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wb
 
 #%%
 
-#z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_wbm_ws_gs.tif')
-#plt.matshow(z['Data'])
+z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_ws_gs_norm_1971to2000.tif')
+plt.matshow(z['Data'])
 
-#z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_tmean_gs_norm_1971to2000_si_hist_v1.tif')
-
-
-
-
+#%%
 
 
 

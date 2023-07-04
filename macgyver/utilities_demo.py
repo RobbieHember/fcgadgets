@@ -252,9 +252,9 @@ def CompareScenarios(meta,v1,iB,iP,iT):
 
 #%%
 
-def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
+def ExportSummariesByScenario(meta,pNam,mos,t_start,t_end,**kwargs):
 
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     iT=np.where( (tv>=t_start) & (tv<=t_end) )[0]
 
@@ -274,27 +274,27 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
     else:
         sum_mult=1.0
 
-    if (meta['Project']['Scenario Source']!='Portfolio'):
+    if (meta[pNam]['Project']['Scenario Source']!='Portfolio'):
 
-        for iScn in range(meta['Project']['N Scenario']):
+        for iScn in range(meta[pNam]['Project']['N Scenario']):
 
             d={}
 
-            for k in meta['Core']['Output Variable List']:
+            for k in meta[pNam]['Core']['Output Variable List']:
                 try:
-                    d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos['Scenarios'][iScn]['Sum'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                    d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[pNam]['Scenarios'][iScn]['Sum'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
                 except:
                     pass
 
-            for k in meta['Core']['Output Variable List']:
+            for k in meta[pNam]['Core']['Output Variable List']:
                 try:
-                    d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                    d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[pNam]['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
                 except:
                     pass
 
-            for k in meta['Core']['Output Variable List']:
+            for k in meta[pNam]['Core']['Output Variable List']:
                 try:
-                    d['Per-hectare mean ' + k]=np.round(np.mean(mos['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                    d['Per-hectare mean ' + k]=np.round(np.mean(mos[pNam]['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
                 except:
                     pass
 
@@ -306,27 +306,27 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
 
     else:
 
-        for iPort in range(meta['Project']['N Portfolio']):
+        for iPort in range(meta[pNam]['Project']['N Portfolio']):
 
-            for iScn in range(meta['Project']['N Scenario']):
+            for iScn in range(meta[pNam]['Project']['N Scenario']):
 
                 d={}
 
-                for k in meta['Core']['Output Variable List']:
+                for k in meta[pNam]['Core']['Output Variable List']:
                     try:
-                        d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[iPort][iScn]['Sum'][k]['Ensemble Mean'][iT]),decimals=2)
+                        d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[pNam][iPort][iScn]['Sum'][k]['Ensemble Mean'][iT]),decimals=2)
                     except:
                         pass
 
                 for k in meta['Core']['Output Variable List']:
                     try:
-                        d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+                        d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[pNam][iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
                     except:
                         pass
 
                 for k in meta['Core']['Output Variable List']:
                     try:
-                        d['Per-hectare mean ' + k]=np.round(np.mean(mos[iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
+                        d['Per-hectare mean ' + k]=np.round(np.mean(mos[pNam][iPort][iScn]['Mean'][k]['Ensemble Mean'][iT]),decimals=2)
                     except:
                         pass
 
@@ -338,7 +338,7 @@ def ExportSummariesByScenario(meta,mos,t_start,t_end,**kwargs):
 
     df.columns=[np.arange(1,df.columns.size+1)];
 
-    fout=meta['Paths']['Project'] + '\\Outputs\\TabularSummary_' + str(t_start) + '-' + str(t_end) + '_ProjectType' + str(iSP) + '_Region' + str(iSS) + '.xlsx'
+    fout=meta[pNam]['Paths']['Project'] + '\\Outputs\\TabularSummary_' + str(t_start) + '-' + str(t_end) + '_ProjectType' + str(iSP) + '_Region' + str(iSS) + '.xlsx'
     df.to_excel(fout);
 
     return df
@@ -578,8 +578,8 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     # HWP fluxes
     vr='E_CO2e_LULUCF_HWP'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
-    txt='Product decay and\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.415,0.51,txt,ha='right',size=fs_flux)
+    txt='Product decay\nand combustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
+    ax.text(0.415,0.58,txt,ha='right',va='top',size=fs_flux)
     ax.arrow(0.42,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
 
     # Removals
@@ -594,8 +594,8 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     vr='E_CO2e_ESC_Bioenergy'
     a1=np.round(y_b[vr],decimals=decim); a2=np.round(y_p[vr],decimals=decim); a3=np.round(y_d[vr],decimals=decim)
     txt='Bioenergy\ncombustion\n' + str(a1) + ',' + str(a2) + ' (' + GetSign(a3) + str(a3) + ')'
-    ax.text(0.515,0.64,txt,ha='right',va='top',size=fs_flux)
-    ax.arrow(0.52,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
+    ax.text(0.525-0.08,0.58,txt,ha='left',va='top',size=fs_flux)
+    ax.arrow(0.52-0.08,bx_lower_h+0.01,0,bx_atmo_bottom-bx_lower_h-0.02,head_width=arrow_head_w,head_length=0.01,fc='k',ec='k',lw=arrow_lw)
 
     # ESC operational emissions
     vr='E_CO2e_ESC_OperFor'
@@ -635,10 +635,10 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
     ax.set(position=[0,0,1,1],visible='Off',xticks=[],yticks=[])
 
     try:
-        if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
+        if meta['Graphics']['Print Figures']=='On':
+            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
     except:
-        gu.PrintFig(meta['Paths']['Figures'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
 
     return
 
@@ -672,8 +672,8 @@ def PlotCashflow(meta,mos,iB,iP,t_start,t_end):
     ax[2,1].plot(tv,(mos[iP]['Cashflow']['Mean']['Revenue Net_cumu']['Ensemble Mean']-mos[iB]['Cashflow']['Mean']['Revenue Net_cumu']['Ensemble Mean'])/1000,'-g',lw=lw)
     ax[2,1].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cumulative net revenue (CDN$/000)');
 
-    if meta['Print Figures']=='On':
-        gu.PrintFig(meta['Paths']['Figures'] + '\\Cashflow_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
+    if meta['Graphics']['Print Figures']=='On':
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Cashflow_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
 
     return
 
@@ -690,7 +690,7 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
     cl=np.array([[0,0.5,1],[0,0.6,0],[0.5,0,1],[0,1,1]])
     symb=['-','--','-.',':','-']
 
-    if 'Custom Scenario List' not in kwargs.keys():
+    if 'ScenarioIndexList' not in kwargs.keys():
 
         # Generate one figure per scenario comparison
 
@@ -719,8 +719,10 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
 
             gu.axletters(ax,plt,0.035,0.9)
 
-            if meta['Print Figures']=='On':
-                gu.PrintFig(meta['Paths']['Figures'] + '\\Pools_' + k,'png',900)
+            if meta['Graphics']['Print Figures']=='On':
+                gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Pools_' + k,'png',900)
+            fig.suptitle(k,fontsize)
+            #print(k)
 
     else:
 
@@ -729,8 +731,8 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
         cnt=0
         fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
 
-        for iScn in range(len(kwargs['Custom Scenario List'])):
-            s=kwargs['Custom Scenario List'][iScn]
+        for iScn in range(len(kwargs['ScenarioIndexList'])):
+            s=kwargs['ScenarioIndexList'][iScn]
             for i in range(3):
                 for j in range(2):
                     be=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iSP,iSS]
@@ -750,8 +752,8 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
 
         gu.axletters(ax,plt,0.035,0.9)
 
-        if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\Pools_CustomScenarioList','png',900)
+        if meta['Graphics']['Print Figures']=='On':
+            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Pools_CustomScenarioList','png',900)
 
     return
 
@@ -768,7 +770,7 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
     cl=np.array([[0,0.5,1],[0,0.6,0],[0.5,0,1],[0,1,1]])
     symb=['-','--','-.',':','-']
 
-    if 'Custom Scenario List' not in kwargs.keys():
+    if 'ScenarioIndexList' not in kwargs.keys():
 
         # Generate one figure per scenario comparison
 
@@ -797,8 +799,8 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
 
             gu.axletters(ax,plt,0.035,0.9)
 
-            if meta['Print Figures']=='On':
-                gu.PrintFig(meta['Paths']['Figures'] + '\\Fluxes_' + k,'png',900)
+            if meta['Graphics']['Print Figures']=='On':
+                gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Fluxes_' + k,'png',900)
 
     else:
 
@@ -807,8 +809,8 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
         cnt=0
         fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
 
-        for iScn in range(len(kwargs['Custom Scenario List'])):
-            s=kwargs['Custom Scenario List'][iScn]
+        for iScn in range(len(kwargs['ScenarioIndexList'])):
+            s=kwargs['ScenarioIndexList'][iScn]
             for i in range(3):
                 for j in range(2):
                     be=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iSP,iSS]
@@ -828,8 +830,8 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
 
         gu.axletters(ax,plt,0.035,0.9)
 
-        if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\Fluxes_CustomScenarioList','png',900)
+        if meta['Graphics']['Print Figures']=='On':
+            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Fluxes_CustomScenarioList','png',900)
 
     return
 
@@ -934,8 +936,8 @@ def PlotNEP(meta,mos,tv,iT):
 
         ax[1].set(ylabel='Cumulative $\Delta$ (tCO$_2$e ha$^-$$^1$)',xlabel='Time, years',ylim=[ymin,ymax],xlim=[tv[iT[0]],tv[iT[-1]]]);
         gu.axletters(ax,plt,0.03,0.89)
-        if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\NEE_Balance_' + k,'png',900)
+        if meta['Graphics']['Print Figures']=='On':
+            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\NEE_Balance_' + k,'png',900)
         fig.suptitle(k)
 
     return
@@ -944,6 +946,7 @@ def PlotNEP(meta,mos,tv,iT):
 
 def PlotGHGB(meta,mos,tv,iT):
 
+    # Always zeros
     iSP=0
     iSS=0
 
@@ -990,8 +993,8 @@ def PlotGHGB(meta,mos,tv,iT):
 
         gu.axletters(ax,plt,0.03,0.89)
 
-        if meta['Print Figures']=='On':
-            gu.PrintFig(meta['Paths']['Figures'] + '\\GHG_Balance_' + k,'png',900)
+        if meta['Graphics']['Print Figures']=='On':
+            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\GHG_Balance_' + k,'png',900)
 
         fig.suptitle(k)
 
@@ -1038,14 +1041,14 @@ def PlotGHGBenefit(meta,mos,tv,iT):
 
     gu.axletters(ax,plt,0.035,0.92)
 
-    if meta['Print Figures']=='On':
-        gu.PrintFig(meta['Paths']['Figures'] + '\\GHG_Benefit','png',900)
+    if meta['Graphics']['Print Figures']=='On':
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\GHG_Benefit','png',900)
 
     return
 
-#%% Summary description
+#%% Summary bioenergy description
 
-def SummaryDescription(meta,mos,sc,th):
+def SummaryBioenergy(meta,mos,sc,th):
 
     tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
     iT=np.where( (tv>=meta['Project']['Year Project']) & (tv<=meta['Project']['Year Project']+th) )[0]
@@ -1098,5 +1101,9 @@ def SummaryDescription(meta,mos,sc,th):
     d['Displacement Factor Total (tC/tC)']=SubTot/BioenergyOpsAndHWPDecay
     d['Displacement Factor Energy (tC/tC)']=SubE/BioenergyPlusOps
     d['Displacement Factor Materials (tC/tC)']=(SubM/3.667)/Wood
+
+    # Save
+    df=pd.DataFrame.from_dict(d,orient='index')
+    df.to_excel(meta['Paths']['Project'] + '\\Outputs\\SummaryBioenergy.xlsx')
 
     return d

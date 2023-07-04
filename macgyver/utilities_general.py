@@ -21,7 +21,22 @@ import netCDF4 as nc
 import statsmodels.api as sm
 import csv
 
+#%% Indices to repeated values in array
+
+def IndicesFromUniqueArrayValues(x):
+    if type(x[0])=='str':
+        records_array=x.astype(str)
+    else:
+        records_array=x
+    idx_sort=np.argsort(records_array)
+    sorted_records_array=records_array[idx_sort]
+    vals,idx_start,count=np.unique(sorted_records_array, return_counts=True, return_index=True)
+    res=np.split(idx_sort,idx_start[1:])
+    y=dict(zip(vals,res))
+    return y
+
 #%% Regression stats
+# Eg: rs,txt=gu.GetRegStats(x,y)
 
 def GetRegStats(x,y):
 
@@ -155,7 +170,7 @@ def axletters(ax,plt,rx,ry,**kwargs):
     # Font size
     fs=plt.rcParams.get('font.size')
     if 'FontSize' in kwargs.keys():
-        fs=kwargs['FontSize']
+        fs=kwargs['FontSize'];
 
     # Font weight
     fw='normal'
@@ -164,10 +179,10 @@ def axletters(ax,plt,rx,ry,**kwargs):
             fw='bold'
 
     # Font color
-    fcl=plt.rcParams.get('axes.edgecolor')
+    fcl=plt.rcParams.get('axes.edgecolor');
     if 'FontColor' in kwargs.keys():
-        print(kwargs['FontColor'])
-        fcl=kwargs['FontColor']
+        #print(kwargs['FontColor'])
+        fcl=kwargs['FontColor'];
 
     # Additional labels
     Label=['','','','','','','','','','','','','','']
@@ -240,7 +255,7 @@ def cm2inch(*tupl):
         return tuple(i/inch for i in tupl)
 
 #%% Count By Category
-
+# u,N=gu.CountByCategories(z)
 def CountByCategories(z,*args):
 
     z=z.flatten()
@@ -378,10 +393,10 @@ def discres(x,y,bw,bin):
         N[i]=ind.size
         if ind.size==0:
             continue
-        mu[i]=np.nanmean(y[ind])
-        med[i]=np.nanmedian(y[ind])
-        sig[i]=np.nanstd(y[ind])
-        se[i]=np.nanstd(y[ind])/np.sqrt(ind.size)
+        mu[i]=np.nanmean(y[ind]);
+        med[i]=np.nanmedian(y[ind]);
+        sig[i]=np.nanstd(y[ind]);
+        se[i]=np.nanstd(y[ind])/np.sqrt(ind.size);
     return N,mu,med,sig,se
 
 #%% Binned sum
@@ -694,7 +709,7 @@ def SetGraphics(type):
         params={'font.sans-serif':'Arial',
                 'font.size':gp['fs1'],
                 'figure.titlesize':gp['fs2'],
-                'figure.constrained_layout.use':True,
+                'figure.constrained_layout.use':False,
                 'axes.edgecolor':gp['cla'],
                 'axes.labelsize':gp['fs1'],
                 'axes.labelcolor':gp['cla'],
@@ -715,20 +730,20 @@ def SetGraphics(type):
                 'ytick.major.size':3,
                 'ytick.direction':'in',
                 'legend.fontsize':gp['fs1'],
-                'savefig.dpi':900,
+                'savefig.dpi':gp['dpi'],
                 'savefig.transparent':False,
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
-                'savefig.bbox':'tight'}
+                'savefig.bbox':None}
 
     elif type=='Web':
 
-        gp['printfigs']='Off'
-        gp['fig w mult']=1.5
-        gp['fig h mult']=1.5
-        gp['fs1']=9
-        gp['fs2']=8
-        gp['fs3']=8
+        #gp['printfigs']='Off'
+        gp['fig dpi']=150 # This controls the size of graphics in web browser
+        gp['fs_s']=6
+        gp['fs_m']=7
+        gp['fs_l']=8
+        gp['fs_xl']=9
         gp['cla']=[0,0,0]
         gp['clt']=[0,0,0]
         gp['cl1']=[0.27,0.49,0.79];
@@ -742,37 +757,38 @@ def SetGraphics(type):
         gp['Alpha1']=0.225;
         gp['Alpha2']=0.45;
         gp['tickl']=1.5;
-        gp['dpi']=100;
+        gp['save fig dpi']=900;
 
-        params={'font.sans-serif':'Arial',
-                'font.size':gp['fs1'],
-                'figure.titlesize':gp['fs2'],
+        params={'figure.dpi':gp['fig dpi'],
                 'figure.constrained_layout.use':True,
+                'figure.titlesize':gp['fs_m'],
+                'font.size':gp['fs_m'],
+                'xtick.labelsize':gp['fs_m'],
+                'ytick.labelsize':gp['fs_m'],
+                'axes.labelsize':gp['fs_m'],
+                'axes.titlesize':gp['fs_l'],
+                'legend.fontsize':gp['fs_m'],
+                'font.sans-serif':'Arial',
                 'axes.edgecolor':gp['cla'],
-                'axes.labelsize':gp['fs1'],
                 'axes.labelcolor':gp['cla'],
-                'axes.titlesize':gp['fs2'],
                 'axes.titlepad':2,
                 'axes.linewidth':gp['lw1'],
                 'lines.linewidth':gp['lw2'],
+                'xtick.major.width':gp['lw1'],
                 'lines.markersize':gp['ms'],
                 'text.color':gp['cla'],
                 'xtick.color':gp['cla'],
-                'xtick.labelsize':gp['fs1'],
-                'xtick.major.width':gp['lw1'],
                 'xtick.major.size':3,
                 'xtick.direction':'in',
                 'ytick.color':gp['cla'],
-                'ytick.labelsize':gp['fs1'],
                 'ytick.major.width':0.5,
                 'ytick.major.size':3,
                 'ytick.direction':'in',
-                'legend.fontsize':gp['fs1'],
-                'savefig.dpi':100,
+                'savefig.dpi':gp['save fig dpi'],
                 'savefig.transparent':False,
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
-                'savefig.bbox':'tight'}
+                'savefig.bbox':None}
 
     plt.rcParams.update(params)
 
@@ -846,11 +862,11 @@ def GetCIsFromDifference(b_lo,b_hi,p_lo,p_hi):
 #%% Get clamp
 
 def Clamp(x,xmin,xmax):
-
+    x=np.array(x)
     if x.size==1:
         y=np.maximum(np.minimum(xmax,x),xmin)
     else:
-        y=np.max(np.min(xmax,x),xmin)
+        y=np.maximum(np.minimum(xmax,x),xmin)
 
     return y
 

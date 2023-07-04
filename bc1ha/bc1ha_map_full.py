@@ -18,39 +18,28 @@ import fcgadgets.macgyver.utilities_gis as gis
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 from fcgadgets.bc1ha import bc1ha_utilities as u1ha
 
-#%% Path management
+#%% Import project
 
-meta={}
-meta['Paths']={}
-meta['Paths']['BC1ha']=r'C:\Users\rhember\Documents\Data\BC1ha'
-meta['Paths']['Forest Inventory Disturbances']=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422\Disturbances.gdb'
-#meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation'
+# Initialize
+meta=u1ha.Init()
 
-#%% Plotting parameters
+# Build look up tables (only do this once a year, takes 8 hours)
+flg=0
+if flg==1:
+    u1ha.BuildLUTsFromSourceDBs(meta)
 
-meta['Graphics']={}
-meta['Graphics']['figwidth']=16
+# Import look up tables
+meta=u1ha.ImportLUTs(meta)
 
-#meta['Graphics']['sidespace']=0.25
-meta['Graphics']['sidespace']=0
-
-meta['Graphics']['ax1 pos']=[0,0,1-meta['Graphics']['sidespace']-0.01,1]
-meta['Graphics']['ax1 vis']='off'
-meta['Graphics']['ax1 gridvis']=False
-meta['Graphics']['ax2 pos']=[1-meta['Graphics']['sidespace']+meta['Graphics']['ax1 pos'][0]+0.01,0.6,0.03,0.35]
-meta['Graphics']['ax2 pos long']=[1-meta['Graphics']['sidespace']+meta['Graphics']['ax1 pos'][0]+0.01,0.1,0.03,0.8]
-
+# Import graphics settings
 gp=gu.SetGraphics('Manuscript')
-
-meta['LUT']=u1ha.Import_BC1ha_LUTs()
 
 #%% Import base maps
 
 gdf=u1ha.Import_GDBs_ProvinceWide()
+#gdf=u1ha.Import_GDBs_ProvinceWide_Simple()
 
-zRef=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\BC_Land_Mask.tif')
-#zBTM=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\landuse.btm.tif')
-
+zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
 #%%
 
@@ -63,137 +52,23 @@ zHCC=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\VEG_CO
 
 zH=zRef.copy(); zH['Data']=np.maximum(zHRE['Data'],zHCC['Data'])
 
-
-#%%
-
-yr=2009
-zHREy=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\Harvest_FromRESULTS_' + str(yr) + '.tif')
-zHCCy=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_' + str(yr) + '.tif')
-zHy=zRef.copy(); zHy['Data']=np.maximum(zHREy['Data'],zHCCy['Data'])
-
-z=np.zeros(zRef['Data'].shape,dtype='int8')
-ind0=np.where( (zHy['Data']>0) & (zFCR['Data']==0) ); z[ind0]=1
-
-N=np.zeros((20,2))
-for iT in range(N.shape[0]):
-    print(iT)
-    try:
-        zPLy=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Results\Planting_FromRESULTS_' + str(yr+iT) + '.tif')
-    except:
-        break
-    ind=np.where( (zHy['Data']>0) & (zFCR['Data']==0) & (zPLy['Data']>0) )
-    if ind[0].size>0:
-        N[iT,0]=ind[0].size
-    ind=np.where( (z==1) & (zHy['Data']>0) & (zFCR['Data']==0) & (zPLy['Data']>0) )
-    if ind[0].size>0:
-        z[ind]=0
-        N[iT,1]=ind[0].size
-
-
-plt.plot(np.cumsum(N[:,1]/ind0[0].size*100),'-rd')
-
-plt.close('all')
-plt.plot(np.cumsum(N[:,0]/ind0[0].size*100),'-bo')
-plt.plot(np.cumsum(N[:,1]/ind0[0].size*100),'-gs')
-
-#%%
-
-z=np.zeros(zRef['Data'].shape,dtype='int8')
-ind=np.where( (zH['Data']>0) & (zFCR['Data']==0) & (zPL['Data']>0) ); z[ind]=1
-ind=np.where( (zH['Data']>0) & (zFCR['Data']==0) & (zPL['Data']==0) ); z[ind]=2
-plt.matshow(z)
-
-
-
-#%%
-
-ind0=np.where(zRef['Data']>0); print(ind0[0].size)
-ind1=np.where( (zLCC1['Data']==1) ); print(ind1[0].size)
-ind=np.where( (zRef['Data']>0) & (zHRE['Data']>0) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zRef['Data']>0) & (zHCC['Data']>0) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zRef['Data']>0) & (zHRE['Data']>0) & (zHCC['Data']>0) ); print(ind[0].size/ind0[0].size*100)
-
-ind=np.where( (zLCC1['Data']!=1) & (zHRE['Data']>0) | (zLCC1['Data']!=1) & (zHCC['Data']>0) ); print(ind[0].size/ind1[0].size*100)
-
-#%%
-
-z=np.zeros(zRef['Data'].shape,dtype='int8')
-ind=np.where( (zH['Data']>0) & (zST['Data']==0) ); z[ind]=1
-ind=np.where( (zH['Data']>0) & (zST['Data']>0) ); z[ind]=2
-plt.matshow(z)
-
-ind0=np.where(zH['Data']>0); print(ind0[0].size)
-#ind=np.where( (zH['Data']>0) & (zFCR['Data']>0) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==0) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']>0) ); print(ind[0].size/ind0[0].size*100)
-
-#ind=np.where( (zH['Data']>0) & (zFCR['Data']==0) & (zST['Data']==0) ); print(ind[0].size/ind0[0].size*100)
-#ind=np.where( (zH['Data']>0) & (zFCR['Data']>0) & (zST['Data']==0) ); print(ind[0].size/ind0[0].size*100)
-
-#ind=np.where( (zH['Data']>0) & (zFCR['Data']==0) & (zST['Data']>0) ); print(ind[0].size/ind0[0].size*100)
-#ind=np.where( (zH['Data']>0) & (zFCR['Data']>0) & (zST['Data']>0) ); print(ind[0].size/ind0[0].size*100)
-
-
-ind=np.where( (zH['Data']>0) & (zST['Data']==meta['LUT']['fcst']['ART']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==meta['LUT']['fcst']['NAT']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==meta['LUT']['fcst']['PL']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==meta['LUT']['fcst']['UNN']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==meta['LUT']['fcst']['RD']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==meta['LUT']['fcst']['FOR']) ); print(ind[0].size/ind0[0].size*100)
-
-ind=np.where( (zH['Data']>0) & (zST['Data']==0) & (zLCC1['Data']==meta['LUT']['lcc1']['Forest Land']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==0) & (zLCC1['Data']==meta['LUT']['lcc1']['Shrubland']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==0) & (zLCC1['Data']==meta['LUT']['lcc1']['Herbs']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==0) & (zLCC1['Data']==meta['LUT']['lcc1']['Bryoids']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']==0) & (zLCC1['Data']==meta['LUT']['lcc1']['Other']) ); print(ind[0].size/ind0[0].size*100)
-
-ind=np.where( (zH['Data']>0) & (zST['Data']>0) & (zLCC1['Data']==meta['LUT']['lcc1']['Forest Land']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']>0) & (zLCC1['Data']==meta['LUT']['lcc1']['Shrubland']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']>0) & (zLCC1['Data']==meta['LUT']['lcc1']['Herbs']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']>0) & (zLCC1['Data']==meta['LUT']['lcc1']['Bryoids']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zST['Data']>0) & (zLCC1['Data']==meta['LUT']['lcc1']['Other']) ); print(ind[0].size/ind0[0].size*100)
-
-ind=np.where( (zH['Data']>0) & (zFCR['Data']>0)  & (zST['Data']==meta['LUT']['fcst']['ART']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zFCR['Data']>0)  & (zST['Data']==meta['LUT']['fcst']['NAT']) ); print(ind[0].size/ind0[0].size*100)
-ind=np.where( (zH['Data']>0) & (zFCR['Data']>0)  & (zST['Data']==meta['LUT']['fcst']['UNN']) ); print(ind[0].size/ind0[0].size*100)
-
-meta['LUT']['fcst']
-
-
-
-
-
-
-
-#%%
-
-z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\ForestInventory\LiDAR\Boundary TSA\From GQ 20230302\BoundaryTSA_PFI_LnTotalWSV.tif')
-plt.matshow(z['Data'],clim=[0,750])
-
 #%% Plot Land cover class
 
-z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\LandCoverClass1.tif')
+lab=list(meta['LUT']['lcc1'].keys())
+z1=len(lab)*np.ones(zRef['Data'].shape,dtype='int8')
+for k in meta['LUT']['lcc1'].keys():
+    ind=np.where(zLCC1['Data']==meta['LUT']['lcc1'][k])
+    if ind[0].size>0:
+        z1[ind]=meta['LUT']['lcc1'][k]
+    else:
+        z1[0,meta['LUT']['lcc1'][k]]=meta['LUT']['lcc1'][k]
+z1[zRef['Data']==0]=meta['LUT']['lcc1'][k]+1
 
-z1=5*np.ones(zRef['Data'].shape)
-z1[(z['Data']==1)]=0
-z1[(z['Data']==2)]=1
-z1[(z['Data']==3)]=2
-z1[(z['Data']==4)]=3
-z1[(z['Data']==5)]=4
-z1[(z['Data']==0) & (zRef['Data']==1)]=5
-z1[(zRef['Data']==0)]=6
-
-#for i in range(7):
-#    z1[ind[0][i],ind[1][i]]=i
-
-lab=['Forest Land','Shrubs','Herbs','Bryoids','Other','na','na']
-
-N_vis=6
+N_vis=len(lab)
 N_hidden=1
 N_tot=N_vis+N_hidden
 
-# Colormap
-cm=np.vstack( ((0.3,0.7,0,1),(1,0.75,0.75,1),(0.8,1,0.6,1),(1,0.2,0.25,1),(0.88,0.88,0.88,1),(0.93,0.93,0.93,1),(1,1,1,1)) )
+cm=np.vstack( ((0,0.45,0,1),(1,0.75,0.5,1),(0.5,1,0,1),(0.75,0.4,1,1),(0.75,0.5,0.5,1),(0.75,0.75,0.75,1),(0.95,0.95,0.95,1),(0.75,0.85,0.95,1),(1,1,1,1)) )
 cm=matplotlib.colors.ListedColormap(cm)
 
 plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
@@ -204,22 +79,36 @@ ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both')
 ax[0].grid(meta['Graphics']['ax1 gridvis'])
 ax[0].axis(meta['Graphics']['ax1 vis'])
 
-cb_ivl=(N_tot-1)/N_tot
-cbivls=np.arange( cb_ivl , N_tot , cb_ivl)
-cbivls_low=np.arange( 0 , N_tot , cb_ivl)
-
-cb=plt.colorbar(im,cax=ax[1],cmap=cm,
-                boundaries=np.arange(0,cbivls_low[N_vis],cb_ivl),
-                ticks=np.arange(cb_ivl/2,N_tot-1,cb_ivl) )
-ax[1].set(position=[0.71,0.65,0.045,0.2])
-
+zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+ax[1].set(position=[0.71,0.6,0.05,0.14])
 cb.ax.set(yticklabels=lab)
 cb.ax.tick_params(labelsize=11,length=0)
 cb.outline.set_edgecolor('w')
-for i in range(cbivls.size):
-    ax[1].plot([0,100],[cbivls[i],cbivls[i]],'w-',linewidth=2)
+for i in range(cb_bnd.size):
+    ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+ax[1].set(position=[0.01,0.01,0.0375,0.28])
 
 gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\LandCover\LandCoverClass','png',500)
+
+#%% Plot mills
+
+u=gdf['tpf']['gdf']['PRODUCT_CODE'].unique()
+gdf['tpf']['gdf'].keys()
+
+plt.close('all')
+fig,ax=plt.subplots(1,figsize=gu.cm2inch(14,14*zRef['yxrat']))
+gdf['bc_bound']['gdf'].plot(ax=ax,color=[0.85,0.85,0.85],linewidth=0.25,edgecolor=[0,0,0],facecolor='none')
+gdf['road']['gdf'].plot(ax=ax,edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+ax.set(position=[0.05,0.05,0.9,0.9],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
+ax.grid(False)
+ax.axis('off')
+
+#mtypeL=['LBR','PLP','CHP','PLT']
+mtypeL=['OSB']
+ax=u1ha.PlotMills(ax,gdf['tpf']['gdf'],mtypeL,labels='Off')
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Mills\Mills_' + mtypeL[0],'png',900)
 
 #%% Forest health outbreak maps
 
@@ -284,23 +173,6 @@ for iT in range(tv.size):
 
     gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Beetles\Maps\Map_' + pest_cd + '_Severity_' + str(tv[iT]),'png',300)
 
-#%% Plot mills
-
-u=gdf['tpf']['gdf']['PRODUCT_CODE'].unique()
-gdf['tpf']['gdf'].keys()
-
-plt.close('all')
-fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(14,14*zRef['yxrat']))
-#im=ax[0].matshow(z1,clim=(0,L+1),extent=zBTM['Extent'],cmap=cm)
-gdf['bc_bound']['gdf'].plot(ax=ax[0],color=[0.85,0.85,0.85],linewidth=0.25,edgecolor=[0,0,0],facecolor='none')
-ax[0].set(position=[0.05,0.05,0.9,0.9],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
-ax[0].grid(False)
-ax[0].axis('off')
-ax[1].set(position=[0.06,0.15,0.05,0.65]);
-
-mtypeL=['LBR','PLP','CHP','PLT']
-ax=u1ha.PlotMills(ax,gdf['tpf']['gdf'],mtypeL,labels='On')
-
 #%% Find a ROI (example Revelstoke Complex)
 
 flg=0
@@ -325,6 +197,28 @@ z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\SPL\Site_Prod_Pl.tif')
 
 plt.close('all')
 plt.matshow(z['Data'][0::2,0::2],clim=[5,24])
+
+
+#%% Plot radiation
+
+z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_rswd_gs_norm_1971to2000_si_hist_v1_c.tif')
+
+plt.close('all')
+plt.matshow(z['Data']/10,clim=[8,28])
+plt.colorbar()
+
+cm=plt.cm.get_cmap('viridis',20)
+
+plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+plt.matshow(z['Data'],extent=zRef['Extent'],cmap=cm,clim=[0,25])
+gdf['bc_bound']['gdf'].plot(edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+plt.colorbar()
+
+
+ax.set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
+#ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both')
+#ax[0].grid(meta['Graphics']['ax1 gridvis'])
+#ax[0].axis(meta['Graphics']['ax1 vis'])
 
 #%% Plot site index
 
@@ -399,6 +293,7 @@ for i in range(cbivls.size):
     ax[1].plot([0,100],[cbivls[i],cbivls[i]],'w-',linewidth=2)
 
 gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Harvest_Probability','png',300)
+
 
 #%% Plot soil organic carbon
 

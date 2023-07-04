@@ -2,6 +2,7 @@
 #%% Import python modules
 
 import numpy as np
+from fcgadgets.macgyver import utilities_general as gu
 from fcgadgets.cbrunner import cbrun_utilities as cbu
 from fcgadgets.hardhat import nutrient_application as napp
 from fcgadgets.taz import aspatial_stat_models as asm
@@ -52,6 +53,29 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
             #     meta['Project']['Growth Enhancement']=fG
 
             NetGrowth=np.tile(meta['Project']['Growth Enhancement'][iT,:],(NetGrowth.shape[1],1)).T*NetGrowth
+
+    # # *** Special EvalAtPlots With GaiaSL Modifier***
+    # t0=1950
+    # t1=2020
+    # m0=0.5
+    # m1_young=2.0
+    # m1_old=0.6
+    # Age0=75
+    # Age1=25
+    # m1=gu.Clamp(m0+(Age1-Age0)/(Age1-Age0)*(vo['A'][iT,:]-Age0),m1_old,m1_young)
+    # fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(meta['Year'][iT]-t0),m0,m1)
+    # NetGrowth=np.tile(fG,(NetGrowth.shape[1],1)).T*NetGrowth
+    # # *** Special ***
+
+    # # *** Special EvalAtPlots With Age Modifier***
+    # b=-0.1
+    # ymn=0.45
+    # ymx=1.7
+    # A_inf=50
+    # #xhat=np.arange(1,301,1)
+    # fG=ymn+(ymx-ymn)*1/(1+np.exp(-b*(vo['A'][iT,:]-A_inf)))
+    # NetGrowth=np.tile(fG,(NetGrowth.shape[1],1)).T*NetGrowth
+    # # *** Special ***
 
     # Net growth of total stemwood
     Gnet_Stem=NetGrowth[:,iEP['StemMerch']]+NetGrowth[:,iEP['StemNonMerch']]
@@ -1691,9 +1715,9 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
                  bRF['RemovedNonMerchToPelletMill']*vo['C_ToMillNonMerch'][iT,:] + \
                  bRF['RemovedSnagStemToPelletMill']*vo['C_ToMillSnagStem'][iT,:]
 
-    C_ToSawMill=bRF['RemovedMerchToSawMill']*vo['C_ToMillMerch'][iT,:] + \
-                 bRF['RemovedNonMerchToSawMill']*vo['C_ToMillNonMerch'][iT,:] + \
-                 bRF['RemovedSnagStemToSawMill']*vo['C_ToMillSnagStem'][iT,:]
+    C_ToLumberMill=bRF['RemovedMerchToLumberMill']*vo['C_ToMillMerch'][iT,:] + \
+                 bRF['RemovedNonMerchToLumberMill']*vo['C_ToMillNonMerch'][iT,:] + \
+                 bRF['RemovedSnagStemToLumberMill']*vo['C_ToMillSnagStem'][iT,:]
 
     C_ToPlywoodMill=bRF['RemovedMerchToPlywoodMill']*vo['C_ToMillMerch'][iT,:] + \
                  bRF['RemovedNonMerchToPlywoodMill']*vo['C_ToMillNonMerch'][iT,:] + \
@@ -1735,17 +1759,17 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Carbon transferred from mill to mill
     #--------------------------------------------------------------------------
 
-    C_ToPulpMill=C_ToPulpMill+C_ToSawMill*meta['Param']['BEV']['HWP']['SawMillToPulpMill']
+    C_ToPulpMill=C_ToPulpMill+C_ToLumberMill*meta['Param']['BEV']['HWP']['LumberMillToPulpMill']
 
-    C_ToMDFMill=C_ToMDFMill+C_ToSawMill*meta['Param']['BEV']['HWP']['SawMillToMDFMill']
+    C_ToMDFMill=C_ToMDFMill+C_ToLumberMill*meta['Param']['BEV']['HWP']['LumberMillToMDFMill']
 
-    C_ToPelletMill=C_ToPelletMill+C_ToSawMill*meta['Param']['BEV']['HWP']['SawMillToPelletMill']
+    C_ToPelletMill=C_ToPelletMill+C_ToLumberMill*meta['Param']['BEV']['HWP']['LumberMillToPelletMill']
 
     #--------------------------------------------------------------------------
-    # Carbon transferred from sawmill logs to log Export
+    # Carbon transferred from LumberMill logs to log Export
     #--------------------------------------------------------------------------
 
-    C_ToLogExport=C_ToLogExport+bEU['SawMillToLogExport']*C_ToSawMill
+    C_ToLogExport=C_ToLogExport+bEU['LumberMillToLogExport']*C_ToLumberMill
 
     #--------------------------------------------------------------------------
     # Carbon transferred from log Export to firewood
@@ -1777,7 +1801,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Carbon transferred to facility power
     #--------------------------------------------------------------------------
 
-    C_ToPowerFacilityDom=bEU['SawMillToPowerFacility']*C_ToSawMill + \
+    C_ToPowerFacilityDom=bEU['LumberMillToPowerFacility']*C_ToLumberMill + \
         meta['Param']['BEV']['HWP']['PulpMillToPowerFacility']*C_ToPulpMill + \
         bEU['PlywoodMillToPowerFacility']*C_ToPlywoodMill + \
         bEU['OSBMillToPowerFacility']*C_ToOSBMill
@@ -1788,7 +1812,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Carbon transferred to grid by independent power producers
     #--------------------------------------------------------------------------
 
-    C_ToPowerGrid=C_ToPowerGrid+bEU['SawMillToIPP']*C_ToSawMill + \
+    C_ToPowerGrid=C_ToPowerGrid+bEU['LumberMillToIPP']*C_ToLumberMill + \
         meta['Param']['BEV']['HWP']['PulpMillToIPP']*C_ToPulpMill + \
         bEU['PlywoodMillToIPP']*C_ToPlywoodMill + \
         bEU['OSBMillToIPP']*C_ToOSBMill
@@ -1805,29 +1829,29 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     #
     #        C_Transfer=bLogSizeEffect*C_Paper[iLSE]
     #        C_Paper[iLSE]=C_Paper[iLSE]-C_Transfer
-    #        C_SawMill[iLSE]=C_SawMill[iLSE]+C_Transfer
+    #        C_LumberMill[iLSE]=C_LumberMill[iLSE]+C_Transfer
     #
     #        C_Transfer=bLogSizeEffect*C_Pellet[iLSE]
     #        C_Pellet[iLSE]=C_Pellet[iLSE]-C_Transfer
-    #        C_SawMill[iLSE]=C_SawMill[iLSE]+C_Transfer
+    #        C_LumberMill[iLSE]=C_LumberMill[iLSE]+C_Transfer
     #
     #        C_Transfer=bLogSizeEffect*C_PowerFacilityDom[iLSE]
     #        C_PowerFacilityDom[iLSE]=C_PowerFacilityDom[iLSE]-C_Transfer
-    #        C_SawMill[iLSE]=C_SawMill[iLSE]+C_Transfer
+    #        C_LumberMill[iLSE]=C_LumberMill[iLSE]+C_Transfer
     #
     #        C_Transfer=bLogSizeEffect*C_PowerFacilityFor[iLSE]
     #        C_PowerFacilityFor[iLSE]=C_PowerFacilityFor[iLSE]-C_Transfer
-    #        C_SawMill[iLSE]=C_SawMill[iLSE]+C_Transfer
+    #        C_LumberMill[iLSE]=C_LumberMill[iLSE]+C_Transfer
     #
     #        C_Transfer=bLogSizeEffect*C_PowerGrid[iLSE]
     #        C_PowerGrid[iLSE]=C_PowerGrid[iLSE]-C_Transfer
-    #        C_SawMill[iLSE]=C_SawMill[iLSE]+C_Transfer
+    #        C_LumberMill[iLSE]=C_LumberMill[iLSE]+C_Transfer
 
     #--------------------------------------------------------------------------
     # Production of single-family homes
     #--------------------------------------------------------------------------
 
-    C_SawMillToSFH=C_ToSawMill*bEU['SawMillToSFH']
+    C_LumberMillToSFH=C_ToLumberMill*bEU['LumberMillToSFH']
     C_PlywoodMillToSFH=C_ToPlywoodMill*bEU['PlywoodMillToSFH']
     C_OSBMillToSFH=C_ToOSBMill*bEU['OSBMillToSFH']
     C_MDFMillToSFH=C_ToMDFMill*bEU['MDFMillToSFH']
@@ -1838,7 +1862,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of multi-family homes
     #--------------------------------------------------------------------------
 
-    C_SawMillToMFH=C_ToSawMill*bEU['SawMillToMFH']
+    C_LumberMillToMFH=C_ToLumberMill*bEU['LumberMillToMFH']
     C_PlywoodMillToMFH=C_ToPlywoodMill*bEU['PlywoodMillToMFH']
     C_OSBMillToMFH=C_ToOSBMill*bEU['OSBMillToMFH']
     C_MDFMillToMFH=C_ToMDFMill*bEU['MDFMillToMFH']
@@ -1849,7 +1873,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of commercial buildings
     #--------------------------------------------------------------------------
 
-    C_SawMillToCom=C_ToSawMill*bEU['SawMillToCom']
+    C_LumberMillToCom=C_ToLumberMill*bEU['LumberMillToCom']
     C_PlywoodMillToCom=C_ToPlywoodMill*bEU['PlywoodMillToCom']
     C_OSBMillToCom=C_ToOSBMill*bEU['OSBMillToCom']
     C_MDFMillToCom=C_ToMDFMill*bEU['MDFMillToCom']
@@ -1860,7 +1884,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of furniture
     #--------------------------------------------------------------------------
 
-    C_SawMillToFurn=C_ToSawMill*bEU['SawMillToFurn']
+    C_LumberMillToFurn=C_ToLumberMill*bEU['LumberMillToFurn']
     C_PlywoodMillToFurn=C_ToPlywoodMill*bEU['PlywoodMillToFurn']
     C_OSBMillToFurn=C_ToOSBMill*bEU['OSBMillToFurn']
     C_MDFMillToFurn=C_ToMDFMill*bEU['MDFMillToFurn']
@@ -1870,7 +1894,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of shipping containers
     #--------------------------------------------------------------------------
 
-    C_SawMillToShip=C_ToSawMill*bEU['SawMillToShip']
+    C_LumberMillToShip=C_ToLumberMill*bEU['LumberMillToShip']
     C_PlywoodMillToShip=C_ToPlywoodMill*bEU['PlywoodMillToShip']
     C_OSBMillToShip=C_ToOSBMill*bEU['OSBMillToShip']
     C_MDFMillToShip=C_ToMDFMill*bEU['MDFMillToShip']
@@ -1880,7 +1904,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of repairs
     #--------------------------------------------------------------------------
 
-    C_SawMillToRepairs=C_ToSawMill*bEU['SawMillToRepairs']
+    C_LumberMillToRepairs=C_ToLumberMill*bEU['LumberMillToRepairs']
     C_PlywoodMillToRepairs=C_ToPlywoodMill*bEU['PlywoodMillToRepairs']
     C_OSBMillToRepairs=C_ToOSBMill*bEU['OSBMillToRepairs']
     C_MDFMillToRepairs=C_ToMDFMill*bEU['MDFMillToRepairs']
@@ -1890,7 +1914,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Production of other
     #--------------------------------------------------------------------------
 
-    C_SawMillToOther=C_ToSawMill*bEU['SawMillToOther']
+    C_LumberMillToOther=C_ToLumberMill*bEU['LumberMillToOther']
     C_PlywoodMillToOther=C_ToPlywoodMill*bEU['PlywoodMillToOther']
     C_OSBMillToOther=C_ToOSBMill*bEU['OSBMillToOther']
     C_MDFMillToOther=C_ToMDFMill*bEU['MDFMillToOther']
@@ -1906,7 +1930,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # foreign power facility ad foreign firewood. ***
     #--------------------------------------------------------------------------
 
-    vo['C_ToLumber'][iT,:]=C_SawMillToSFH+C_SawMillToMFH+C_SawMillToCom+C_SawMillToFurn+C_SawMillToShip+C_SawMillToRepairs+C_SawMillToOther
+    vo['C_ToLumber'][iT,:]=C_LumberMillToSFH+C_LumberMillToMFH+C_LumberMillToCom+C_LumberMillToFurn+C_LumberMillToShip+C_LumberMillToRepairs+C_LumberMillToOther
 
     vo['C_ToPlywood'][iT,:]=C_PlywoodMillToSFH+C_PlywoodMillToMFH+C_PlywoodMillToCom+C_PlywoodMillToFurn+C_PlywoodMillToShip+C_PlywoodMillToRepairs+C_PlywoodMillToOther
 
@@ -1940,7 +1964,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to single-family homes
     iP=meta['Core']['iPP']['SFH']
     vo['C_Pro_Pools'][iT,:,iP]=vo['C_Pro_Pools'][iT-1,:,iP] + \
-        C_SawMillToSFH + \
+        C_LumberMillToSFH + \
         C_PlywoodMillToSFH + \
         C_OSBMillToSFH + \
         C_MDFMillToSFH + \
@@ -1949,7 +1973,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to multi-family homes
     iP=meta['Core']['iPP']['MFH']
     vo['C_Pro_Pools'][iT,:,iP]=vo['C_Pro_Pools'][iT-1,:,iP] + \
-        C_SawMillToMFH + \
+        C_LumberMillToMFH + \
         C_PlywoodMillToMFH + \
         C_OSBMillToMFH + \
         C_MDFMillToMFH + \
@@ -1958,7 +1982,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to commercial
     iP=meta['Core']['iPP']['Comm']
     vo['C_Pro_Pools'][iT,:,iP]=vo['C_Pro_Pools'][iT-1,:,iP] + \
-        C_SawMillToCom + \
+        C_LumberMillToCom + \
         C_PlywoodMillToCom + \
         C_OSBMillToCom + \
         C_MDFMillToCom + \
@@ -1967,7 +1991,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to furniture
     iP=meta['Core']['iPP']['Furn']
     vo['C_Pro_Pools'][iT,:,iP]=vo['C_Pro_Pools'][iT-1,:,iP] + \
-        C_SawMillToFurn + \
+        C_LumberMillToFurn + \
         C_PlywoodMillToFurn + \
         C_OSBMillToFurn + \
         C_MDFMillToFurn + \
@@ -1976,7 +2000,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to shipping
     iP=meta['Core']['iPP']['Ship']
     vo['C_Pro_Pools'][iT,:,iP]=vo['C_Pro_Pools'][iT-1,:,iP] + \
-        C_SawMillToShip + \
+        C_LumberMillToShip + \
         C_PlywoodMillToShip + \
         C_OSBMillToShip + \
         C_MDFMillToShip + \
@@ -1985,7 +2009,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to repairs
     iP=meta['Core']['iPP']['Repairs']
     vo['C_Pro_Pools'][iT,:,iP]=vo['C_Pro_Pools'][iT-1,:,iP] + \
-        C_SawMillToRepairs + \
+        C_LumberMillToRepairs + \
         C_PlywoodMillToRepairs + \
         C_OSBMillToRepairs + \
         C_MDFMillToRepairs + \
@@ -1994,7 +2018,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # Transfer mill fibre to other
     iP=meta['Core']['iPP']['Other']
     vo['C_Pro_Pools'][iT,:,iP]=vo['C_Pro_Pools'][iT-1,:,iP] + \
-        C_SawMillToOther + \
+        C_LumberMillToOther + \
         C_PlywoodMillToOther + \
         C_OSBMillToOther + \
         C_MDFMillToOther + \

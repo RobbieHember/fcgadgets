@@ -42,10 +42,10 @@ from fcgadgets.taz import aspatial_stat_models as asm
 #%% Look at contents of geodatabase
 
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Infrastructure.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\ForestTenure\ForestTenure.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20230501\Disturbances.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422\LandUse.gdb')
-# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422\Results.gdb')
+# fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20230430\Results.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422\ForestCover.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404\VRI.gdb')
 # fiona.listlayers(r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422\Disturbances.gdb')
@@ -57,10 +57,12 @@ from fcgadgets.taz import aspatial_stat_models as asm
 def DefineInventoryLayersAndVariables():
 
     # Define paths to geodatabase files
-    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20220422'
-    PathInDisturbancesFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20220422'
-    PathInVRIFull=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20220404'
-    PathInLUPFull=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20220422'
+    Paths={}
+
+    PathInResultsFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Results\20230430'
+    PathInDisturbancesFull=r'C:\Users\rhember\Documents\Data\ForestInventory\Disturbances\20230501'
+    PathInVRIFull=r'C:\Users\rhember\Documents\Data\ForestInventory\VRI\20230401'
+    PathInLUPFull=r'C:\Users\rhember\Documents\Data\ForestInventory\LandUse\20230501'
 
     # Initialize a list of layer information
     LayerInfo=[]
@@ -380,15 +382,15 @@ def DefineInventoryLayersAndVariables():
     for field in d['Field List']: d['LUT'][field[0]]=[]
     LayerInfo.append(d)
 
-    # Add layer and define required variables
-    d={}
-    d['Layer Name']='WCP_UNGULATE_WINTER_RANGE_SP'
-    d['Path']=PathInLUPFull
-    d['File Name']='LandUse.gdb'
-    d['Field List']=[('UWR_NUMBER',1,'int16')]
-    d['LUT']={}
-    for field in d['Field List']: d['LUT'][field[0]]=[]
-    LayerInfo.append(d)
+    # # Add layer and define required variables
+    # d={}
+    # d['Layer Name']='WCP_UNGULATE_WINTER_RANGE_SP'
+    # d['Path']=PathInLUPFull
+    # d['File Name']='LandUse.gdb'
+    # d['Field List']=[('UWR_NUMBER',1,'int16')]
+    # d['LUT']={}
+    # for field in d['Field List']: d['LUT'][field[0]]=[]
+    # LayerInfo.append(d)
 
     # Add layer and define required variables
     d={}
@@ -403,18 +405,18 @@ def DefineInventoryLayersAndVariables():
     for field in d['Field List']: d['LUT'][field[0]]=[]
     LayerInfo.append(d)
 
-    # Add layer and define required variables
-    d={}
-    d['Layer Name']='BCTS_OPERATING_AREAS_SP'
-    d['Path']=PathInLUPFull
-    d['File Name']='LandUse.gdb'
-    d['Field List']=[('OPERATING_AREA_NAME',1,'int32'), \
-         ('TIMBER_SALES_OFFICE_NAME',1,'int32'), \
-         ('BUSINESS_AREA_DIVISION_CODE',1,'int32'), \
-         ('FIELD_TEAM',1,'int32')]
-    d['LUT']={}
-    for field in d['Field List']: d['LUT'][field[0]]=[]
-    LayerInfo.append(d)
+    # # Add layer and define required variables
+    # d={}
+    # d['Layer Name']='BCTS_OPERATING_AREAS_SP'
+    # d['Path']=PathInLUPFull
+    # d['File Name']='LandUse.gdb'
+    # d['Field List']=[('OPERATING_AREA_NAME',1,'int32'), \
+    #      ('TIMBER_SALES_OFFICE_NAME',1,'int32'), \
+    #      ('BUSINESS_AREA_DIVISION_CODE',1,'int32'), \
+    #      ('FIELD_TEAM',1,'int32')]
+    # d['LUT']={}
+    # for field in d['Field List']: d['LUT'][field[0]]=[]
+    # LayerInfo.append(d)
 
     # Add layer and define required variables
     d={}
@@ -463,7 +465,7 @@ def DefineInventoryLayersAndVariables():
 def BuildForestInventoryLUTs(LayerInfo):
 
     t0=time.time()
-    for iLyr in range(len(LayerInfo)):
+    for iLyr in range(11,len(LayerInfo)):
 
         # Start counting time
         t_start=time.time()
@@ -474,6 +476,7 @@ def BuildForestInventoryLUTs(LayerInfo):
         with fiona.open(LayerInfo[iLyr]['Path'] + '\\' + LayerInfo[iLyr]['File Name'],layer=LayerInfo[iLyr]['Layer Name']) as source:
 
             for feat in source:
+                prop=dict(feat['properties'].items())
 
                 for fnam,flag,dtype in LayerInfo[iLyr]['Field List']:
 
@@ -482,11 +485,11 @@ def BuildForestInventoryLUTs(LayerInfo):
                         continue
 
                     # Only continue if the variable is populated
-                    if feat['properties'][fnam]==None:
+                    if prop[fnam]==None:
                         continue
 
                     # Add to code list
-                    LayerInfo[iLyr]['LUT'][fnam].append(feat['properties'][fnam])
+                    LayerInfo[iLyr]['LUT'][fnam].append(prop[fnam])
 
         # Check time
         t_ela=time.time()-t_start
@@ -758,7 +761,6 @@ def ExtractDateStringsFromRESULTS(lyr_nam,data):
 
     return data
 
-
 #%% Recover missing ATU layer geometries
 
 def RecoverMissingATUGeometries(meta):
@@ -766,7 +768,7 @@ def RecoverMissingATUGeometries(meta):
     #--------------------------------------------------------------------------
     # Query AT layer for features with missing spatial information
     # Only consider planting, direct seeding, site prep and pest control
-    # 2 min
+    # 16 min
     #--------------------------------------------------------------------------
 
     t0=time.time()
@@ -787,36 +789,41 @@ def RecoverMissingATUGeometries(meta):
     with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_ACTIVITY_TREATMENT_SVW') as source:
         for feat in source:
 
-            prp=feat['properties']
+            prop=dict(feat['properties'].items())
+
+            try:
+                geom=dict(feat['geometry'].items())
+            except:
+                geom=None
 
             # Opening ID
-            atu_full['OPENING_ID'][cnt]=prp['OPENING_ID']
-            atu_full['ACTIVITY_TREATMENT_UNIT_ID'][cnt]=prp['ACTIVITY_TREATMENT_UNIT_ID']
+            atu_full['OPENING_ID'][cnt]=prop['OPENING_ID']
+            atu_full['ACTIVITY_TREATMENT_UNIT_ID'][cnt]=prop['ACTIVITY_TREATMENT_UNIT_ID']
 
-            if (prp['SILV_BASE_CODE']=='PL') & (prp['SILV_TECHNIQUE_CODE']!='SE') & (prp['SILV_TECHNIQUE_CODE']!='CG') & (prp['SILV_METHOD_CODE']!='LAYOT') & (prp['RESULTS_IND']=='Y') | \
-                (prp['SILV_BASE_CODE']=='DS') & (prp['RESULTS_IND']=='Y') | \
-                (prp['SILV_BASE_CODE']=='SP') & (prp['RESULTS_IND']=='Y') | \
-                (prp['SILV_BASE_CODE']=='PC') & (prp['RESULTS_IND']=='Y') | \
-                (prp['SILV_BASE_CODE']=='FE') & (prp['SILV_TECHNIQUE_CODE']=='CA') & (prp['SILV_METHOD_CODE']=='HELI') & (prp['RESULTS_IND']=='Y') & (prp['ACTUAL_TREATMENT_AREA']!=None) & (prp['ATU_COMPLETION_DATE']!=None) & (prp['SILV_FUND_SOURCE_CODE']!=None):
+            if (prop['SILV_BASE_CODE']=='PL') & (prop['SILV_TECHNIQUE_CODE']!='SE') & (prop['SILV_TECHNIQUE_CODE']!='CG') & (prop['SILV_METHOD_CODE']!='LAYOT') & (prop['RESULTS_IND']=='Y') | \
+                (prop['SILV_BASE_CODE']=='DS') & (prop['RESULTS_IND']=='Y') | \
+                (prop['SILV_BASE_CODE']=='SP') & (prop['RESULTS_IND']=='Y') | \
+                (prop['SILV_BASE_CODE']=='PC') & (prop['RESULTS_IND']=='Y') | \
+                (prop['SILV_BASE_CODE']=='FE') & (prop['SILV_TECHNIQUE_CODE']=='CA') & (prop['SILV_METHOD_CODE']=='HELI') & (prop['RESULTS_IND']=='Y') & (prop['ACTUAL_TREATMENT_AREA']!=None) & (prop['ATU_COMPLETION_DATE']!=None) & (prop['SILV_FUND_SOURCE_CODE']!=None):
                 atu_full['Flag Included'][cnt]=1
 
             # Is spatial missing
-            if feat['geometry']==None:
+            if geom==None:
                 atu_full['SpatialMissing'][cnt]=1
 
             # SBC
-            atu_full['SBC'][cnt]=prp['SILV_BASE_CODE']
-            atu_full['STC'][cnt]=prp['SILV_TECHNIQUE_CODE']
-            atu_full['SMC'][cnt]=prp['SILV_METHOD_CODE']
+            atu_full['SBC'][cnt]=prop['SILV_BASE_CODE']
+            atu_full['STC'][cnt]=prop['SILV_TECHNIQUE_CODE']
+            atu_full['SMC'][cnt]=prop['SILV_METHOD_CODE']
 
             # Area
-            if prp['ACTUAL_TREATMENT_AREA']!=None:
-                atu_full['ACTUAL_TREATMENT_AREA'][cnt]=prp['ACTUAL_TREATMENT_AREA']
+            if prop['ACTUAL_TREATMENT_AREA']!=None:
+                atu_full['ACTUAL_TREATMENT_AREA'][cnt]=prop['ACTUAL_TREATMENT_AREA']
 
             # Add year
             Year=0
-            if prp['ATU_COMPLETION_DATE']!=None:
-                Year=int(prp['ATU_COMPLETION_DATE'][0:4])
+            if prop['ATU_COMPLETION_DATE']!=None:
+                Year=int(prop['ATU_COMPLETION_DATE'][0:4])
             atu_full['Year'][cnt]=Year
 
             # Update counter
@@ -853,7 +860,12 @@ def RecoverMissingATUGeometries(meta):
     with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_OPENING_SVW') as source:
         for feat in source:
 
-            if (feat['geometry']==None):
+            try:
+                geom=dict(feat['geometry'].items())
+            except:
+                geom=None
+
+            if (geom==None):
                 continue
 
             id=int(feat['properties']['OPENING_ID'])
@@ -864,7 +876,7 @@ def RecoverMissingATUGeometries(meta):
                 continue
 
             if id in op_mis:
-                op_mis[id].append(feat['geometry'])
+                op_mis[id].append(geom)
 
     gu.opickle(PathInResultsFull + '\\missing_geo_op_geos.pkl',op_mis)
 
@@ -872,7 +884,7 @@ def RecoverMissingATUGeometries(meta):
 
     #--------------------------------------------------------------------------
     # Forest cover by OPENING_ID (only saving geometries for artificial status)
-    # Takes 5 min
+    # Takes 3 min
     #--------------------------------------------------------------------------
 
     t0=time.time()
@@ -885,7 +897,12 @@ def RecoverMissingATUGeometries(meta):
     with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
         for feat in source:
 
-            if (feat['geometry']==None):
+            try:
+                geom=dict(feat['geometry'].items())
+            except:
+                geom=None
+
+            if (geom==None):
                 continue
 
             if (feat['properties']['STOCKING_TYPE_CODE']!='ART'):
@@ -899,16 +916,15 @@ def RecoverMissingATUGeometries(meta):
                 continue
 
             if id in fc_mis:
-                fc_mis[id].append(feat['geometry'])
+                fc_mis[id].append(geom)
 
     gu.opickle(PathInResultsFull + '\\missing_geo_fc_geos.pkl',fc_mis)
 
     print((time.time()-t0)/60)
 
-
     #--------------------------------------------------------------------------
     # Find matching FC geometries for each AT entry with missing spatial
-    # Takes 5 min
+    # Takes 7 min
     #--------------------------------------------------------------------------
 
     atu_mis=gu.ipickle(PathInResultsFull + '\\missing_geo_atu_list.pkl')
@@ -980,9 +996,7 @@ def RecoverMissingATUGeometries(meta):
 def RecoverMissingFCGeometries(meta):
 
     #--------------------------------------------------------------------------
-    # Query AT layer for features with missing spatial information
-    # Only consider planting, direct seeding, site prep and pest control
-    # 14 min
+    # 400 min
     #--------------------------------------------------------------------------
 
     t0=time.time()
@@ -997,11 +1011,16 @@ def RecoverMissingFCGeometries(meta):
     cnt=0
     with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
         for feat in source:
-            prp=feat['properties']
-            fcinv_full['OPENING_ID'][cnt]=prp['OPENING_ID']
-            fcinv_full['SILV_POLYGON_NUMBER'][cnt]=prp['SILV_POLYGON_NUMBER']
-            fcinv_full['SILV_POLYGON_NET_AREA'][cnt]=prp['SILV_POLYGON_NET_AREA']
-            if feat['geometry']==None:
+            prop=feat['properties']
+            fcinv_full['OPENING_ID'][cnt]=prop['OPENING_ID']
+            fcinv_full['SILV_POLYGON_NUMBER'][cnt]=prop['SILV_POLYGON_NUMBER']
+            fcinv_full['SILV_POLYGON_NET_AREA'][cnt]=prop['SILV_POLYGON_NET_AREA']
+            try:
+                geom=dict(feat['geometry'].items())
+            except:
+                geom=None
+
+            if geom==None:
                 fcinv_full['SpatialMissing'][cnt]=1
             cnt=cnt+1
 
@@ -1024,26 +1043,29 @@ def RecoverMissingFCGeometries(meta):
     with fiona.open(PathInVRIFull + '\\VRI.gdb',layer='VEG_COMP_LYR_R1_POLY') as source:
         for feat in source:
 
-            geom=feat['geometry']
+            try:
+                geom=dict(feat['geometry'].items())
+            except:
+                geom=None
 
             if (geom==None):
                 continue
 
-            prp=feat['properties']
+            prop=dict(feat['properties'].items())
 
-            if prp['OPENING_ID']==None:
+            if prop['OPENING_ID']==None:
                 continue
 
-            id=prp['OPENING_ID']
+            id=prop['OPENING_ID']
 
             # Index to FC entries that correspond to this feature and have missing geometries
-            iMisFC=np.where( (dMisFC['Unique Openings with Missing FC Geom']==prp['OPENING_ID']) )[0]
+            iMisFC=np.where( (dMisFC['Unique Openings with Missing FC Geom']==prop['OPENING_ID']) )[0]
 
             if iMisFC.size==0:
                 continue
 
             # Add area to geom dictionary
-            geom['Hectares']=prp['GEOMETRY_Area']/10000
+            geom['Hectares']=prop['GEOMETRY_Area']/10000
 
             if dMisFC['Geom from VRI'][iMisFC[0]]==None:
                 dMisFC['Geom from VRI'][iMisFC[0]]=[geom]
@@ -1054,35 +1076,6 @@ def RecoverMissingFCGeometries(meta):
     gu.opickle(PathInResultsFull + '\\missing_geo_fc_list.pkl',dMisFC)
 
     print((time.time()-t0)/60)
-
-    #--------------------------------------------------------------------------
-    # Add
-    #--------------------------------------------------------------------------
-
-#    with fiona.open(PathInResultsFull + '\\Results.gdb',layer='RSLT_FOREST_COVER_INV_SVW') as source:
-#        for feat in source:
-#            prp=feat['properties']
-#
-#            if feat['geometry']!=None:
-#                continue
-#
-#            iMis_fc=np.where( (dMisFC['Unique Openings with Missing FC Geom']==prp['OPENING_ID']) )[0]
-#            iMis_fc=iMis_fc[0]
-#
-#            if len(dMisFC['Geom from VRI'][iMis_fc])>1:
-#                break
-#
-#            D=np.zeros(len(dMisFC['Geom from VRI'][iMis_fc]))
-#            for iV in range(len(dMisFC['Geom from VRI'][iMis_fc])):
-#                D[iV]=np.abs(prp['SILV_POLYGON_AREA']-dMisFC['Geom from VRI'][iMis_fc][iV]['Hectares'])
-#            iMinD=np.where(D==np.min(D))[0]
-#            iMinD=iMinD[0]
-#
-#            geom=dMisFC['Geom from VRI'][iMis_fc][iMinD]
-#
-#            geom1=GetPolygonsFromFionaFeature(geom)
-#
-#            gdf=gpd.GeoDataFrame(geom1,crs=gdf_bm.crs)
 
 #%% Explore contents of fiona feature
 
@@ -1814,7 +1807,7 @@ def IsFCIFunding(meta,dmec,uPP):
 
     return dmec
 
-#%% LOAD Look-up-tables
+#%% Import Look-up-tables
 
 def Load_LUTs(meta):
 
@@ -1879,7 +1872,7 @@ def Load_LUTs(meta):
 
     return meta
 
-#%% LOAD PARAMTERS
+#%% Import paramters
 
 def Load_Params(meta):
 
@@ -2895,6 +2888,14 @@ def CreateBestAvailableInventory(meta,vri,fcinv,flag_projects,idx,geos):
     ba['TreeDensityClass']=z['Data'][ind]
 
     #--------------------------------------------------------------------------
+    # Harvest mask
+    #--------------------------------------------------------------------------
+
+    z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\VEG_CONSOLIDATED_CUT_BLOCKS_SP_All.tif')
+    ind=gis.GetGridIndexToPoints(z,geos['Sparse']['X'],geos['Sparse']['Y'])
+    ba['HarvestMask']=z['Data'][ind]
+
+    #--------------------------------------------------------------------------
     # Thornthwaite's climate classification
     #--------------------------------------------------------------------------
 
@@ -3037,215 +3038,6 @@ def PutEventsInOrder(dmec,meta):
                 dmec[iScn][iStand]=d.copy()
 
     return dmec
-
-#%% Export AT Layer data to spreadhseet
-## OLD
-#def ExportSummaryByGridCell(meta,atu_multipolygons,dAdmin,sxy,atu,fcinv,vri,pl,op,include_planting,project_name):
-#
-#    #--------------------------------------------------------------------------
-#    # ATU
-#    #--------------------------------------------------------------------------
-#
-#    d={}
-#    d['IdxToSXY']=atu['IdxToSXY'].copy()
-#    d['ID_Multipolygon']=atu['IdxToSXY'].copy()
-#    d['Year']=atu['Year'].copy()
-#    d['Month']=atu['Month'].copy()
-#    d['OPENING_ID']=atu['OPENING_ID'].copy()
-#    d['Activity_Type']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#
-#    d['AEF_ATU']=np.zeros(atu['IdxToSXY'].size)
-#    for i in range(len(atu_multipolygons)):
-#        ind1=np.where(sxy['ID_atu_multipolygons']==i)[0]
-#        nxy=ind1.size
-#        A=atu_multipolygons[i]['ACTUAL_TREATMENT_AREA']
-#        if A==None:
-#            A=0.00001
-#        for j in range(ind1.size):
-#            ind2=np.where(atu['IdxToSXY']==ind1[j])[0]
-#            d['AEF_ATU'][ind2]=np.round(A/nxy,3)
-#            d['ID_Multipolygon'][ind2]=i
-#
-#    d['FIA_PROJECT_ID']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    u=np.unique(atu['FIA_PROJECT_ID'])
-#    for i in range(u.size):
-#        ind=np.where(atu['FIA_PROJECT_ID']==u[i])[0]
-#        d['FIA_PROJECT_ID'][ind]=cbu.lut_n2s(meta['LUT']['ATU']['FIA_PROJECT_ID'],u[i])
-#
-#    d['FSC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(atu['Year'].size):
-#        d['FSC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_FUND_SOURCE_CODE'],atu['SILV_FUND_SOURCE_CODE'][i])[0]
-#    d['DistCD']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(atu['Year'].size):
-#        d['DistCD'][i]=cbu.lut_n2s(meta['LUT']['ATU']['DISTURBANCE_CODE'],atu['DISTURBANCE_CODE'][i])[0]
-#    d['SBC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(atu['Year'].size):
-#        d['SBC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_BASE_CODE'],atu['SILV_BASE_CODE'][i])[0]
-#    d['SMC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(atu['Year'].size):
-#        d['SMC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_METHOD_CODE'],atu['SILV_METHOD_CODE'][i])[0]
-#    d['STC']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(atu['Year'].size):
-#        d['STC'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_TECHNIQUE_CODE'],atu['SILV_TECHNIQUE_CODE'][i])[0]
-#    d['SilvObjectiveCode1']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(atu['Year'].size):
-#        d['SilvObjectiveCode1'][i]=cbu.lut_n2s(meta['LUT']['ATU']['SILV_OBJECTIVE_CODE_1'],atu['SILV_OBJECTIVE_CODE_1'][i])[0]
-#
-#    # Add VRI
-#    d['BGCz']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    d['BGCsz']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    d['BGCv']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(d['IdxToSXY'].size):
-#        ind=np.where(vri['IdxToSXY']==d['IdxToSXY'][i])[0]
-#        if ind.size==0:
-#            continue
-#        d['BGCz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],vri['BEC_ZONE_CODE'][ind[0]])[0]
-#        d['BGCsz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind[0]])[0]
-#        d['BGCv'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind[0]])[0]
-#
-#    # Add opening variables
-#    d['District']=np.array(['empty' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#    for i in range(d['IdxToSXY'].size):
-#        ind=np.where(op['IdxToSXY']==d['IdxToSXY'][i])[0]
-#        if ind.size==0:
-#            continue
-#        d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
-#
-#    # Add activity type
-#    if project_name=='FCI':
-#
-#        u=np.unique(d['FIA_PROJECT_ID'])
-#        for i in range(u.size):
-#            ind1=np.where(d['FIA_PROJECT_ID']==u[i])[0]
-#            if ind1.size==0:
-#                continue
-#            ind2=np.where( (dAdmin['PP Number']==u[i]) & (dAdmin['Removed']!='Removed') )[0]
-#            if ind2.size==0:
-#                continue
-#            u2=np.unique(d['IdxToSXY'][ind1])
-#            for j in range(u2.size):
-#                ind3=np.where(d['IdxToSXY']==u2[j])[0]
-#                for k in range(ind3.size):
-#                    d['Activity_Type'][ind3[k]]=dAdmin['Activity Type'][ind2[0]]
-#
-#        u=np.unique(d['OPENING_ID'])
-#        for i in range(u.size):
-#            ind1=np.where(d['OPENING_ID']==u[i])[0]
-#            if ind1.size==0:
-#                continue
-#            ind2=np.where( (dAdmin['OPENING_ID']==u[i]) & (dAdmin['Removed']!='Removed') )[0]
-#            if ind2.size==0:
-#                continue
-#            u2=np.unique(d['IdxToSXY'][ind1])
-#            for j in range(u2.size):
-#                ind3=np.where(d['IdxToSXY']==u2[j])[0]
-#                for k in range(ind3.size):
-#                    d['Activity_Type'][ind3[k]]=dAdmin['Activity Type'][ind2[0]]
-#
-#    elif project_name=='ReforestationNonOb':
-#
-#        nam=['No Planting','SL','KD','UNDER','NSR Backlog','Unclassified']
-#        for i in range(d['IdxToSXY'].size):
-#            d['Activity_Type'][i]=nam[int(meta['Project Type'][int(d['IdxToSXY'][i])])]
-#
-#    # Add Planting
-#
-#    if include_planting=='On':
-#
-#        d['Pl_SPH']=np.round(atu['ACTUAL_PLANTED_NUMBER']/atu['ACTUAL_TREATMENT_AREA'])
-#        ind=np.where( (d['SBC']!='PL') & (d['STC']!='PL') )[0]
-#        d['Pl_SPH'][ind]=0
-#
-#        # Add planting info
-#        num_of_spc=10
-#        for i in range(num_of_spc):
-#            d['Pl_Spc' + str(i+1) + '_CD']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#            d['Pl_Spc' + str(i+1) + '_Pct']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#            #d['Pl_Spc' + str(i+1) + '_NumTree']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#            d['Pl_Spc' + str(i+1) + '_SeedLot']=np.array([' ' for _ in range(atu['IdxToSXY'].size)],dtype=object)
-#
-#        for i in range(atu['IdxToSXY'].size):
-#            if (d['SBC'][i]!='PL') & (d['STC'][i]!='PL'):
-#                continue
-#            ind=np.where( (pl['IdxToSXY']==d['IdxToSXY'][i]) & (pl['OPENING_ID']==d['OPENING_ID'][i]) & (pl['Year']==d['Year'][i]) )[0]
-#            tot_pl=np.sum(pl['NUMBER_PLANTED'][ind])
-#            if ind.size>0:
-#                Ord=np.flip(np.argsort(pl['NUMBER_PLANTED'][ind]))
-#                for j in range(ind.size):
-#                    if j>num_of_spc-1:
-#                        continue
-#                    ind0=ind[Ord[j]]
-#                    d['Pl_Spc' + str(j+1) + '_CD'][i]=cbu.lut_n2s(meta['LUT']['PL']['SILV_TREE_SPECIES_CODE'],pl['SILV_TREE_SPECIES_CODE'][ind0])[0]
-#                    d['Pl_Spc' + str(j+1) + '_Pct'][i]=np.round(pl['NUMBER_PLANTED'][ind0]/tot_pl*100)
-#                    #d['Pl_Spc' + str(j+1) + '_NumTree'][i]=pl['NUMBER_PLANTED'][ind0]
-#                    d['Pl_Spc' + str(j+1) + '_SeedLot'][i]=pl['SEEDLOT_NUMBER'][ind0]
-#
-#    # Convert to dataframe
-#    df_atu=pd.DataFrame.from_dict(d)
-#
-#    #--------------------------------------------------------------------------
-#    # FC inventory
-#    #--------------------------------------------------------------------------
-#
-#    d={}
-#    d['IdxToSXY']=fcinv['IdxToSXY'].copy()
-#    d['ID_Multipolygon']=np.zeros(fcinv['IdxToSXY'].size)
-#    for i in range(len(atu_multipolygons)):
-#        ind1=np.where(sxy['ID_atu_multipolygons']==i)[0]
-#        for j in range(ind1.size):
-#            ind2=np.where(fcinv['IdxToSXY']==ind1[j])[0]
-#            d['ID_Multipolygon'][ind2]=i
-#    d['Year']=fcinv['REFERENCE_YEAR'].copy()
-#    d['Activity_Type']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
-#    d['SI']=fcinv['SITE_INDEX'].copy()
-#    d['I_SPH']=fcinv['I_TOTAL_STEMS_PER_HA'].copy()
-#    d['I_Spc1_CD']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
-#    d['I_Spc2_CD']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
-#    for i in range(fcinv['IdxToSXY'].size):
-#        d['I_Spc1_CD'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_1'][i])[0]
-#        try:
-#            d['I_Spc2_CD'][i]=cbu.lut_n2s(meta['LUT']['VRI']['SPECIES_CD_1'],fcinv['I_SPECIES_CODE_2'][i])[0]
-#        except:
-#            pass
-#
-#    # Add VRI
-#    d['BGCz']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
-#    d['BGCsz']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
-#    d['BGCv']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
-#    for i in range(d['IdxToSXY'].size):
-#        ind=np.where(vri['IdxToSXY']==d['IdxToSXY'][i])[0]
-#        if ind.size==0:
-#            continue
-#        d['BGCz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],vri['BEC_ZONE_CODE'][ind[0]])[0]
-#        d['BGCsz'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_SUBZONE'],vri['BEC_SUBZONE'][ind[0]])[0]
-#        d['BGCv'][i]=cbu.lut_n2s(meta['LUT']['VRI']['BEC_VARIANT'],vri['BEC_VARIANT'][ind[0]])[0]
-#
-#    # Add opening variables
-#    d['District']=np.array(['empty' for _ in range(fcinv['IdxToSXY'].size)],dtype=object)
-#    for i in range(d['IdxToSXY'].size):
-#        ind=np.where(op['IdxToSXY']==d['IdxToSXY'][i])[0]
-#        if ind.size==0:
-#            continue
-#        #Natural Resource District
-#        d['District'][i]=cbu.lut_n2s(meta['LUT']['OP']['DISTRICT_NAME'],op['DISTRICT_NAME'][ind[0]])[0]
-#
-#    df_fcinv=pd.DataFrame.from_dict(d)
-#
-#    #--------------------------------------------------------------------------
-#    # Merge ATU and FCI
-#    #--------------------------------------------------------------------------
-#
-#    df=df_atu.merge(df_fcinv,how='outer',on=('IdxToSXY','Year','ID_Multipolygon','Activity_Type','BGCz','BGCsz','BGCv','District'))
-#
-#    #--------------------------------------------------------------------------
-#    # Save
-#    #--------------------------------------------------------------------------
-#
-#    df=df.sort_values(by=['IdxToSXY','Year','Month'])
-#
-#    df.to_excel(meta['Paths']['Project'] + '\\Inputs\\SummaryAttributesBySXY.xlsx',index=False)
-#
-#    return
 
 #%% Timber harvesting land base
 
@@ -6377,14 +6169,29 @@ def ProcessProjectInputs2(meta,ba,dmec):
         SPH_Init_Nat[ind0]=pByBGC['Natural Initial Tree Density'][ind1[0]]
         RegenDelay_Nat[ind0]=pByBGC['Natural Regeneration Delay'][ind1[0]]
 
-    # OAF1
-    oaf1=0.9*np.ones(meta['Project']['N Stand'])
-    ind=np.where(ba['TreeDensityClass']==1)[0]
-    oaf1[ind]=0.60
-    ind=np.where(ba['TreeDensityClass']==2)[0]
-    oaf1[ind]=0.75
-    ind=np.where(ba['TreeDensityClass']==3)[0]
-    oaf1[ind]=0.9
+    # Operational Adjustment Factor 1
+
+    # Default
+    oaf1=0.85*np.ones(meta['Project']['N Stand'])
+
+    flg=0
+    if flg==1:
+        oaf1=0.9*np.ones(meta['Project']['N Stand'])
+        ind=np.where(ba['TreeDensityClass']==1)[0]
+        oaf1[ind]=0.60
+        ind=np.where(ba['TreeDensityClass']==2)[0]
+        oaf1[ind]=0.75
+        ind=np.where(ba['TreeDensityClass']==3)[0]
+        oaf1[ind]=0.9
+
+    flg=0
+    if flg==1:
+        oaf1=1.0*np.ones(meta['Project']['N Stand'])
+        ind=np.where(ba['HarvestMask']==0)[0]
+        oaf1[ind]=0.5
+        ind=np.where(ba['HarvestMask']>0)[0]
+        oaf1[ind]=1.0
+        ba['SI'][ind]=ba['SI'][ind]+2
 
     # Initialize list
     gc=[None]*meta['Project']['N Scenario']
