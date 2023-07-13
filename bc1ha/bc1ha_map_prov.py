@@ -15,8 +15,9 @@ from scipy.interpolate import griddata
 from shapely.geometry import Polygon,Point,box
 import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
-from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcgadgets.bc1ha import bc1ha_utilities as u1ha
+import fcgadgets.cbrunner.cbrun_utilities as cbu
+import fcgadgets.bc1ha.bc1ha_utilities as u1ha
+import fcexplore.psp.Processing.psp_utilities as ugp
 
 #%% Import project
 
@@ -439,3 +440,342 @@ ax[1].set(position=[0.84,0.35,0.04,0.6]);
 
 gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\N Deposition\ndep_fromAckerman_' + nam,'png',300)
 
+
+#%% Plot REARs (needs updating)
+
+z1=zHAR_Comp['Data'].copy(); fnam='Comp'
+#z1=zHAR_CP['Data'].copy(); fnam='CompAndProp'
+
+lab=['Protected forest','Unprotected forest','Non-forest land']
+
+# Number of colours and number of colours excluded from colorbar
+N_vis=3
+N_hidden=1
+N_tot=N_vis+N_hidden
+
+# Colormap
+cm=np.vstack( ((0.7,0.6,1,1),(0,0.4,0,1),(0.83,0.86,0.9,1),(1,1,1,1)) )
+cm=matplotlib.colors.ListedColormap(cm)
+
+plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+im=ax[0].matshow(z1[0::2,0::2],extent=zRef['Extent'],cmap=cm)
+gdf['bc_bound']['gdf'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'])
+ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both')
+ax[0].grid(meta['Graphics']['ax1 gridvis'])
+ax[0].axis(meta['Graphics']['ax1 vis'])
+
+zmn=np.min(z1)
+zmx=np.max(z1)
+cb_ivl=(zmx-zmn)/N_tot
+cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+
+cb_ivl=(N_tot-1)/N_tot
+cbivl_hi=np.arange( cb_ivl , N_tot , cb_ivl)
+cbivl_low=np.arange( 0 , N_tot , cb_ivl)
+
+cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+
+ax[1].set(position=[0.71,0.6,0.05,0.14])
+cb.ax.set(yticklabels=lab)
+cb.ax.tick_params(labelsize=11,length=0)
+cb.outline.set_edgecolor('w')
+for i in range(cb_bnd.size):
+    ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS_HAR_20k\Map_ProtectedForest_' + fnam,'png',300)
+
+# Plot seperated
+
+z1=zHAR_CPsep['Data'].copy();
+#np.unique(z1)
+lab=['Protected (completed)','Protected (proposed)','Unprotected forest','Non-forest land']
+
+# Number of colours and number of colours excluded from colorbar
+N_vis=4
+N_hidden=1
+N_tot=N_vis+N_hidden
+
+cm=np.vstack( ((0.7,0.6,1,1),(0.25,0.85,0.9,1),(0,0.4,0,1),(0.83,0.86,0.9,1),(1,1,1,1)) )
+cm=matplotlib.colors.ListedColormap(cm)
+
+plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+im=ax[0].matshow(z1[0::2,0::2],extent=zRef['Extent'],cmap=cm)
+gdf['bc_bound']['gdf'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'])
+ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both')
+ax[0].grid(meta['Graphics']['ax1 gridvis'])
+ax[0].axis(meta['Graphics']['ax1 vis'])
+
+zmn=np.min(z1)
+zmx=np.max(z1)
+cb_ivl=(zmx-zmn)/N_tot
+cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+
+cb_ivl=(N_tot-1)/N_tot
+cbivl_hi=np.arange( cb_ivl , N_tot , cb_ivl)
+cbivl_low=np.arange( 0 , N_tot , cb_ivl)
+
+cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+
+ax[1].set(position=[0.69,0.66,0.05,0.18])
+cb.ax.set(yticklabels=lab)
+cb.ax.tick_params(labelsize=11,length=0)
+cb.outline.set_edgecolor('w')
+for i in range(cb_bnd.size):
+    ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS_HAR_20k\Map_ProtectedForest_All','png',300)
+
+
+# Protected areas (with uneconomic/inopperable areas)
+
+zHAR_CompWithUnecon=zRef.copy()
+zHAR_CompWithUnecon['Data']=np.zeros(zRef['Data'].shape)
+ind=np.where( (zLC2['Data']==4) & (zPark['Data']>0) |
+              (zLC2['Data']==4) & (zOGMA['Data']>0) |
+              (zLC2['Data']==4) & (zFCR['Data']>0) |
+              (zLC2['Data']==4) & (zProt['Data']>0) )
+zHAR_CompWithUnecon['Data'][ind]=1
+ind=np.where( (zLC2['Data']==4) & (zHAR_CompWithUnecon['Data']==0) & (zPh['Data']<0.175) ); zHAR_CompWithUnecon['Data'][ind]=2
+ind=np.where( (zLC2['Data']==4) & (zHAR_CompWithUnecon['Data']==0) & (zPh['Data']>=0.175) ); zHAR_CompWithUnecon['Data'][ind]=3
+ind=np.where( (zLC2['Data']!=4) & (zHAR_CompWithUnecon['Data']==0) ); zHAR_CompWithUnecon['Data'][ind]=4
+ind=np.where( (zRef['Data']==0) ); zHAR_CompWithUnecon['Data'][ind]=5
+
+z1=zHAR_CompWithUnecon['Data'].copy();
+fnam='CompWithUnecon'
+
+lab=['Protected forest','Unprotected / inoperable','Unprotected / operable','Non-forest land']
+
+N_vis=4
+N_hidden=1
+N_tot=N_vis+N_hidden
+
+cm=np.vstack( ((0.7,0.6,1,1),(0,0.35,0,1),(0,0.6,0,1),(0.83,0.86,0.9,1),(1,1,1,1)) )
+cm=matplotlib.colors.ListedColormap(cm)
+
+plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+im=ax[0].matshow(z1[0::1,0::1],extent=zRef['Extent'],cmap=cm)
+gdf['bc_bound']['gdf'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'])
+ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both')
+ax[0].grid(meta['Graphics']['ax1 gridvis'])
+ax[0].axis(meta['Graphics']['ax1 vis'])
+
+zmn=np.min(z1)
+zmx=np.max(z1)
+cb_ivl=(zmx-zmn)/N_tot
+cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+
+cb_ivl=(N_tot-1)/N_tot
+cbivl_hi=np.arange( cb_ivl , N_tot , cb_ivl)
+cbivl_low=np.arange( 0 , N_tot , cb_ivl)
+
+cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+
+ax[1].set(position=[0.01,0.01,0.05,0.14])
+cb.ax.set(yticklabels=lab)
+cb.ax.tick_params(labelsize=11,length=0)
+cb.outline.set_edgecolor('w')
+for i in range(cb_bnd.size):
+    ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS_HAR_20k\Map_ProtectedForest_' + fnam,'png',300)
+
+#%% Ground plots
+
+meta=ugp.ImportParameters(meta)
+d=gu.ipickle(meta['Paths']['DB'] + '\\Processed\\L2\\L2_BC.pkl')
+sl=d['sobs'].copy()
+del d
+
+meta['LUT BC1ha']=u1ha.Import_BC1ha_LUTs()
+
+gdf_bc_boundary=gpd.read_file(r'C:\Users\rhember\Documents\Data\Basemaps\Basemaps.gdb',layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
+
+zRef=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\BC_Land_Mask.tif')
+zLCC1=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandUseLandCover\LandCoverClass1.tif')
+
+ind=np.where(zLCC1['Data']==meta['LUT BC1ha']['lcc1']['Forest'])
+zRef['Data'][ind]=2
+
+cm=np.vstack( ((1,1,1,1),(0.95,0.95,0.95,1),(0.8,0.8,0.8,1)) )
+cm=matplotlib.colors.ListedColormap(cm)
+
+#%% Plot all
+
+points=[]
+for k in range(sl['X'].size):
+    points.append(Point(sl['X'][k],sl['Y'][k]))
+
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(sl['Y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+
+plt.close('all')
+fig,ax=plt.subplots(figsize=gu.cm2inch(14,14)); ms=2
+gdf_bc_boundary.plot(ax=ax,facecolor=[0.8,0.8,0.8],edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+gdf.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1)
+#ax.grid(color='k',linestyle='-',linewidth=0.25)
+ax.set(position=[0,0,1,1],xticks=[],yticks=[])
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Ground Plots\Map_GroundPlots_All','png',900)
+
+#%% VRI
+
+ms=2
+plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+mp=ax.matshow(zRef['Data'],extent=zRef['Extent'],cmap=cm,label='Forest mask')
+gdf_bc_boundary.plot(ax=ax,facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+
+a=sl.copy()
+ind=np.where( (a['Plot Type']==meta['LUT']['Plot Type BC']['VRI']) )[0]
+for k in a.keys():
+    a[k]=a[k][ind]
+points=[]
+for k in range(a['X'].size):
+    points.append(Point(a['X'][k],a['Y'][k]))
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(a['Y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='CMI + NFI (All)')
+
+ax.set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
+ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+ax.grid(meta['Graphics']['ax1 gridvis'])
+ax.axis(meta['Graphics']['ax1 vis'])
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Ground Plots\Map_GroundPlots_VRI','png',900)
+
+#%% CMI + NFI
+
+ms=2
+plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+mp=ax.matshow(zRef['Data'],extent=zRef['Extent'],cmap=cm,label='Forest mask')
+gdf_bc_boundary.plot(ax=ax,facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+
+a=sl.copy()
+ind=np.where( (a['Plot Type']==meta['LUT']['Plot Type BC']['CMI']) | (a['Plot Type']==meta['LUT']['Plot Type BC']['NFI']) )[0]
+for k in a.keys():
+    a[k]=a[k][ind]
+points=[]
+for k in range(a['X'].size):
+    points.append(Point(a['X'][k],a['Y'][k]))
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(a['Y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='CMI + NFI (All)')
+
+a=sl.copy()
+ind=np.where( (a['Plot Type']==meta['LUT']['Plot Type BC']['CMI']) & (a['N L t1']>0) | (a['Plot Type']==meta['LUT']['Plot Type BC']['NFI']) & (a['N L t1']>0) )[0]
+for k in a.keys():
+    a[k]=a[k][ind]
+points=[]
+for k in range(a['X'].size):
+    points.append(Point(a['X'][k],a['Y'][k]))
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(a['Y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,marker='s',markersize=ms+1,facecolor=[0.25,0.5,1],edgecolor=None,linewidth=0.75,alpha=1,label='CMI + NFI (With remeasurements)')
+
+ax.set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
+ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+ax.grid(meta['Graphics']['ax1 gridvis'])
+ax.axis(meta['Graphics']['ax1 vis'])
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Ground Plots\Map_GroundPlots_CMI_plus_NFI','png',900)
+
+#%% YSM
+
+ms=2
+plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+mp=ax.matshow(zRef['Data'],extent=zRef['Extent'],cmap=cm,label='Forest mask')
+gdf_bc_boundary.plot(ax=ax,facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+
+a=sl.copy()
+ind=np.where( (a['Plot Type']==meta['LUT']['Plot Type BC']['YSM']) )[0]
+for k in a.keys():
+    a[k]=a[k][ind]
+points=[]
+for k in range(a['X'].size):
+    points.append(Point(a['X'][k],a['Y'][k]))
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(a['Y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='CMI + NFI (All)')
+
+a=sl.copy()
+ind=np.where( (a['Plot Type']==meta['LUT']['Plot Type BC']['YSM']) & (a['N L t1']>0) )[0]
+for k in a.keys():
+    a[k]=a[k][ind]
+points=[]
+for k in range(a['X'].size):
+    points.append(Point(a['X'][k],a['Y'][k]))
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(a['Y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,marker='s',markersize=ms+1,facecolor=[0.25,0.5,1],edgecolor=None,linewidth=0.75,alpha=1,label='CMI + NFI (With remeasurements)')
+
+ax.set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
+ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+ax.grid(meta['Graphics']['ax1 gridvis'])
+ax.axis(meta['Graphics']['ax1 vis'])
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Ground Plots\Map_GroundPlots_YSM','png',900)
+
+#%% Soils
+
+dSOC=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
+
+ms=2
+plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+mp=ax.matshow(zRef['Data'],extent=zRef['Extent'],cmap=cm,label='Forest mask')
+gdf_bc_boundary.plot(ax=ax,facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+
+a=sl.copy()
+ind=np.where( (a['Plot Type']==meta['LUT']['Plot Type BC']['NFI']) )[0]
+for k in a.keys():
+    a[k]=a[k][ind]
+points=[]
+for k in range(a['X'].size):
+    points.append(Point(a['X'][k],a['Y'][k]))
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(a['Y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,marker='s',markersize=ms+4,facecolor=[0.25,0.5,1],edgecolor=None,linewidth=0.75,alpha=1,label='CMI + NFI (With remeasurements)')
+
+points=[]
+for k in range(dSOC['x'].size):
+    points.append(Point(dSOC['x'][k],dSOC['y'][k]))
+
+gdf=gpd.GeoDataFrame({'geometry':points,'ID_TSA':np.ones(dSOC['y'].size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='CMI + NFI (All)')
+
+ax.set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
+ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+ax.grid(meta['Graphics']['ax1 gridvis'])
+ax.axis(meta['Graphics']['ax1 vis'])
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Soils\Map_Shawetal2018','png',900)
+
+#%% Map for sampling power
+
+ms=2
+plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*zRef['yxrat']))
+mp=ax.matshow(zRef['Data'],extent=zRef['Extent'],cmap=cm,label='Forest mask')
+gdf_bc_boundary.plot(ax=ax,facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+
+ind=np.where(zRef['Data']==2)
+A=ind[0].size/1e3
+
+ivl=10
+ind=np.where(zRef['Data'][0::ivl,0::ivl]==2)
+x=zRef['X'][0::ivl,0::ivl][ind]
+y=zRef['Y'][0::ivl,0::ivl][ind]
+rho1=x.size/A
+print(rho1)
+
+points=[]
+for k in range(x.size):
+    points.append(Point(x[k],y[k]))
+gdf=gpd.GeoDataFrame({'geometry':points,'ID':np.ones(x.size)})
+gdf.crs=gdf_bc_boundary.crs
+gdf.plot(ax=ax,markersize=ms,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='Proposed sample')
+
+ax.set(position=meta['Graphics']['ax1 pos'],xlim=zRef['xlim'],ylim=zRef['ylim'],aspect='auto')
+ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+ax.grid(meta['Graphics']['ax1 gridvis'])
+ax.axis(meta['Graphics']['ax1 vis'])
+gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Biomass\SamplingPowerMap','png',900)

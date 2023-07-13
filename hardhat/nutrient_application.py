@@ -10,11 +10,11 @@ def UpdateStatus(vi,vo,iT,meta,comp):
     bNA=meta['Param']['BEV']['Nutrient Management']
 
     # Pull out index to applications
-    iApp=meta['Nutrient Management']['iApplication']
+    iApp=meta['Modules']['Nutrient Management']['iApplication']
 
     if comp=='UpdateCounter':
 
-        meta['Nutrient Management']['ResponseCounter'][iApp]=meta['Nutrient Management']['ResponseCounter'][iApp]+1
+        meta['Modules']['Nutrient Management']['ResponseCounter'][iApp]=meta['Modules']['Nutrient Management']['ResponseCounter'][iApp]+1
 
     elif (comp=='AbovegroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
 
@@ -25,7 +25,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         # Start response counter
         #----------------------------------------------------------------------
 
-        meta['Nutrient Management']['ResponseCounter'][iApp]=meta['Nutrient Management']['ResponseCounter'][iApp]+1
+        meta['Modules']['Nutrient Management']['ResponseCounter'][iApp]=meta['Modules']['Nutrient Management']['ResponseCounter'][iApp]+1
 
         #----------------------------------------------------------------------
         # Update log-size enhancement factor
@@ -136,11 +136,11 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         # Stop stimulation counter when it passes the response duration
         #----------------------------------------------------------------------
 
-        iStop=np.where( meta['Nutrient Management']['ResponseCounter']>bNA['ResponseDuration'] )[0]
+        iStop=np.where( meta['Modules']['Nutrient Management']['ResponseCounter']>bNA['ResponseDuration'] )[0]
 
         if iStop.size>0:
 
-            meta['Nutrient Management']['ResponseCounter'][iStop]=0
+            meta['Modules']['Nutrient Management']['ResponseCounter'][iStop]=0
 
             #uGC=np.unique(meta['GC']['ID GC'][iStop])
             #for iGC in range(uGC.size):
@@ -325,31 +325,31 @@ def ScheduleNutrientApplication(meta,vi,vo,iT,iScn,iEns,iBat):
     #Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0005*np.maximum(1,vi['tv']-2021) )
 
     # Find eligible coastal stands to fertilize
-    indS_Coast=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
+    indS_Coast=np.where( (meta['Modules']['Nutrient Management']['ResponseCounter']==0) & \
             (vo['A'][iT,:]>=9) & \
             (vo['A'][iT,:]<=71) & \
             (rn<Po_Coast[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['Coastal Zones ID'])==True) )[0]
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['Coastal Zones ID'])==True) )[0]
 
-    indS_Interior=np.where( (meta['Nutrient Management']['ResponseCounter']==0) & \
+    indS_Interior=np.where( (meta['Modules']['Nutrient Management']['ResponseCounter']==0) & \
             (vo['A'][iT,:]>=9) & \
             (vo['A'][iT,:]<=71) & \
             (rn<Po_Interior[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Nutrient Management']['Coastal Zones ID'])==False) )[0]
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
+            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['Coastal Zones ID'])==False) )[0]
 
     indS=np.append(indS_Coast,indS_Interior)
 
     if indS.size>0:
         for i in range(indS.size):
-            iAvailable=np.where(vi['EC']['ID_Type'][iT,indS[i],:]==0)[0]
+            iAvailable=np.where(vi['EC']['ID Event Type'][iT,indS[i],:]==0)[0]
             if iAvailable.size>0:
                 iE=iAvailable[0]
-                vi['EC']['ID_Type'][iT,indS[i],iE]=meta['LUT']['Dist']['Fertilization Aerial']
+                vi['EC']['ID Event Type'][iT,indS[i],iE]=meta['LUT']['Event']['Fertilization Aerial']
                 vi['EC']['MortalityFactor'][iT,indS[i],iE]=np.array(0,dtype='int16')
-                #vi['EC']['ID_GrowthCurve'][iT,indS[i],iE]=np.max(vi['EC']['ID_GrowthCurve'][0:iT,indS[i],:])
+                #vi['EC']['ID Growth Curve'][iT,indS[i],iE]=np.max(vi['EC']['ID Growth Curve'][0:iT,indS[i],:])
 
     return vi

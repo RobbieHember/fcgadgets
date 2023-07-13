@@ -13,11 +13,21 @@ import copy
 import matplotlib.colors
 import matplotlib.ticker as ticker
 #from matplotlib import animation
-from fcgadgets.macgyver import utilities_gis as gis
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcexplore.psp.Processing import psp_utilities as ugp
-from fcgadgets.bc1ha import bc1ha_utilities as u1ha
+import fcgadgets.macgyver.utilities_gis as gis
+import fcgadgets.macgyver.utilities_general as gu
+import fcgadgets.bc1ha.bc1ha_utilities as u1ha
+import fcgadgets.cbrunner.cbrun_utilities as cbu
+import fcexplore.psp.Processing.psp_utilities as ugp
+
+#%% Update counters
+
+def UpdateTabCount(meta):
+    meta['Graphics']['Tab Count']=meta['Graphics']['Tab Count']+1
+    return meta
+
+def UpdateFigCount(meta):
+    meta['Graphics']['Fig Count']=meta['Graphics']['Fig Count']+1
+    return meta
 
 #%% THLB
 def Plot_THLB(meta,pNam,tv,thlb,iScn):
@@ -1911,7 +1921,7 @@ def PlotMap(meta,geos,mu_mod,v):
 
 def Plot_LandCoverClass(meta,zRef,gdf_prov):
 
-    z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandUseLandCover\LandCoverClass1.tif')
+    z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandUseLandCover\LandCoverClass1_Current.tif')
 
     z1=5*np.ones(zRef['Data'].shape)
     z1[(z['Data']==1)]=0
@@ -1958,28 +1968,6 @@ def Plot_LandCoverClass(meta,zRef,gdf_prov):
         gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Map_LandCoverClass','png',meta['Graphics']['gp']['save fig dpi'])
 
     return
-
-#%%
-
-def Import_FCS_Parameters(meta):
-
-    meta['par']={}
-
-    meta['par']['Comparison_With_NIR']=pd.read_excel(meta['Paths']['Parameters'] + '\\Comparison_With_NIR.xlsx')
-
-    meta['par']['Reporting_Version_Comparison']=pd.read_excel(meta['Paths']['Parameters'] + '\\Reporting_Version_Comparison.xlsx')
-
-    meta['par']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Parameters'] + '\\Forcing_Categories.xlsx')
-
-    meta['par']['Tier_4_Categories_Status']=pd.read_excel(meta['Paths']['Parameters'] + '\\Tier_4_Categories_Status.xlsx')
-
-    meta['par']['By BGC']=pd.read_excel(meta['Paths']['Parameters'] + '\\Parameters_ByBGC.xlsx')
-
-    meta['u1ha']=u1ha.Import_BC1ha_LUTs()
-
-    meta['Ground Plots'],data=ugp.ImportPSPs(type='Just Parameters')
-
-    return meta
 
 #%%
 
@@ -2432,3 +2420,20 @@ def Plot_EvalBiomass_CNV(meta,gplt):
 
     return
 
+#%%
+
+def Plot_AIL_NM(meta,pNam):
+    ail=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\ail.pkl')
+    cl=np.random.random((ail['FSC Unique'].size,3))
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15.5,6.5));
+    A_cumu=np.zeros(ail['Year'].size)
+    for iFSC in range(ail['FSC Unique'].size):
+        plt.bar(ail['Year'],ail['A Unique'][:,iFSC]/1000,0.8,bottom=A_cumu,facecolor=cl[iFSC,:],label=ail['FSC Unique'][iFSC])
+        A_cumu=A_cumu+ail['A Unique'][:,iFSC]/1000
+    ax.set(position=[0.06,0.12,0.92,0.86],xticks=np.arange(1950,2025+1,5),ylabel='Treatment area (hectares x 1000)',xlabel='Time, years',xlim=[ail['Year'][0]-0.75,ail['Year'][-1]+0+.75],ylim=[0,47])
+    plt.legend(frameon=False,loc='upper left',facecolor=[1,1,1],labelspacing=0.25,ncol=3)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+    if meta['Graphics']['Print Figures']=='On':
+        #gu.PrintFig(meta['Paths'][pNam]['Figures'],'png',900)
+        pass
+    return

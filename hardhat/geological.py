@@ -8,7 +8,7 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Calculate fossil fuel GHG emissions during operations
 
-def FossilFuelEmissions(meta,vi,vo):
+def FossilFuelEmissions(meta,pNam,vi,vo):
 
     # Extract parameters
     bB=meta['Param']['BEV']['Biophysical']
@@ -161,7 +161,7 @@ def FossilFuelEmissions(meta,vi,vo):
 
 #%% Calculate substitution effects
 
-def SubstitutionEffects(meta,vi,vo):
+def SubstitutionEffects(meta,pNam,vi,vo):
 
     # Extract parameters
     bB=meta['Param']['BEV']['Biophysical']

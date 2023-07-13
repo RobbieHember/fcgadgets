@@ -12,7 +12,7 @@ from scipy import stats
 
 #%% Biomass dynamics
 
-def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
+def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
     # Update stand age
     vo['A'][iT,:]=vo['A'][iT-1,:]+1
@@ -22,24 +22,24 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     #--------------------------------------------------------------------------
 
     # Index to growth curves at current age of stand
-    iAge=np.minimum(vo['A'][iT,:],meta['GC']['BatchTIPSY Maximum Age'])-1
+    iAge=np.minimum(vo['A'][iT,:],meta['Modules']['GYM']['BatchTIPSY Maximum Age'])-1
 
     # Convert to integer
     iAge=iAge.astype(int)
 
     # Extract net growth
     # Notes: I tried to make this faster using unravel but it was way slower
-    NetGrowth=np.zeros( (meta['Project']['Batch Size'][iBat],6) )
-    for iS in range(meta['Project']['Batch Size'][iBat]):
+    NetGrowth=np.zeros( (meta[pNam]['Project']['Batch Size'][iBat],6) )
+    for iS in range(meta[pNam]['Project']['Batch Size'][iBat]):
         NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:].copy()
 
     # Growth enhancement
-    if 'Growth Enhancement Status' in meta['Scenario'][iScn]:
-        if meta['Scenario'][iScn]['Growth Enhancement Status']=='On':
+    if 'Growth Enhancement Status' in meta[pNam]['Scenario'][iScn]:
+        if meta[pNam]['Scenario'][iScn]['Growth Enhancement Status']=='On':
 
-            # if 'Growth Enhancement' not in meta['Project']:
+            # if 'Growth Enhancement' not in meta[pNam]['Project']:
             #     #tv=np.arange(1800,2151,1)
-            #     tv=meta['Year'].copy()
+            #     tv=meta[pNam]['Year'].copy()
             #     fG_PreI=0.5
             #     fG_PosI=1.0
             #     fG=fG_PreI*np.ones(tv.size)
@@ -50,9 +50,9 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
             #     fG[ind]=np.linspace(fG_PreI,fG_PosI,ind.size)
             #     fG[it2[0]:]=fG_PosI
             #     #plt.plot(tv,fG,'b-')
-            #     meta['Project']['Growth Enhancement']=fG
+            #     meta[pNam]['Project']['Growth Enhancement']=fG
 
-            NetGrowth=np.tile(meta['Project']['Growth Enhancement'][iT,:],(NetGrowth.shape[1],1)).T*NetGrowth
+            NetGrowth=np.tile(meta[pNam]['Project']['Growth Enhancement'][iT,:],(NetGrowth.shape[1],1)).T*NetGrowth
 
     # # *** Special EvalAtPlots With GaiaSL Modifier***
     # t0=1950
@@ -63,7 +63,7 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     # Age0=75
     # Age1=25
     # m1=gu.Clamp(m0+(Age1-Age0)/(Age1-Age0)*(vo['A'][iT,:]-Age0),m1_old,m1_young)
-    # fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(meta['Year'][iT]-t0),m0,m1)
+    # fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(meta[pNam]['Year'][iT]-t0),m0,m1)
     # NetGrowth=np.tile(fG,(NetGrowth.shape[1],1)).T*NetGrowth
     # # *** Special ***
 
@@ -103,7 +103,7 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     vo['C_G_Net'][iT,:,iEP['RootFine']]=0.072*G_Net_Root_Total
 
     # Update live stemwood merchantable volume
-    vo['V_MerchLive'][iT,:]=vo['V_MerchLive'][iT-1,:]+NetGrowth[:,5]#.astype(float)*meta['GC']['Scale Factor']
+    vo['V_MerchLive'][iT,:]=vo['V_MerchLive'][iT-1,:]+NetGrowth[:,5]#.astype(float)*meta['Modules']['GYM']['Scale Factor']
 
     # Update dead stemwood merchantable volume
     vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT-1,:]
@@ -116,14 +116,14 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     #--------------------------------------------------------------------------
 
     # Index to stands that are stimulated by nutrient application
-    meta['Nutrient Management']['iApplication']=np.where( meta['Nutrient Management']['ResponseCounter']>0 )[0]
+    meta['Modules']['Nutrient Management']['iApplication']=np.where( meta['Modules']['Nutrient Management']['ResponseCounter']>0 )[0]
 
     # Adjust N application response counter
-    if meta['Nutrient Management']['iApplication'].size>0:
+    if meta['Modules']['Nutrient Management']['iApplication'].size>0:
         vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'UpdateCounter')
 
     # Adjust root net growth
-    if meta['Nutrient Management']['iApplication'].size>0:
+    if meta['Modules']['Nutrient Management']['iApplication'].size>0:
         vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'BelowgroundNetGrowth')
 
     #--------------------------------------------------------------------------
@@ -188,12 +188,12 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     vo['C_M_Reg'][iT,:,6]=meta['Param']['BEV']['Biomass Turnover']['StemMerch']*vo['C_Eco_Pools'][iT,:,6]
 
     # Adjust mortality to account for N application response
-    if meta['Nutrient Management']['iApplication'].size>0:
+    if meta['Modules']['Nutrient Management']['iApplication'].size>0:
         vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'Mortality')
 
     # Apply optional factor to mortality
     #if meta['Scenario Switch']['Mortality Factor Status'][iScn]=='On':
-    #    mortality_factor=meta['Scenario'][iScn]['Mortality Factor'][iT]
+    #    mortality_factor=meta[pNam]['Scenario'][iScn]['Mortality Factor'][iT]
     #    if mortality_factor!=0:
     #        # Normal operation
     #        vo['C_M_Reg'][iT,:,:]=net_growth_factor*vo['C_M_Reg'][iT,:,:]
@@ -222,13 +222,13 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
 
             # If it is the first instance of negative net growth: 91) record net growth
             # of the preceeding timestep and (2) set flag = 1.
-            iSwitchFlag=np.where(meta['FlagNegNetGrowth'][iNegNetG]==0)[0]
-            meta['FlagNegNetGrowth'][iNegNetG[iSwitchFlag]]=1
-            meta['G_Net_PriorToBreakup'][iNegNetG[iSwitchFlag],0:7]=vo['C_G_Net'][iT-1,iNegNetG[iSwitchFlag],0:7]
+            iSwitchFlag=np.where(meta[pNam]['Project']['FlagNegNetGrowth'][iNegNetG]==0)[0]
+            meta[pNam]['Project']['FlagNegNetGrowth'][iNegNetG[iSwitchFlag]]=1
+            meta[pNam]['Project']['G_Net_PriorToBreakup'][iNegNetG[iSwitchFlag],0:7]=vo['C_G_Net'][iT-1,iNegNetG[iSwitchFlag],0:7]
 
-            d=vo['C_G_Net'][iT,iNegNetG,0:7]-meta['G_Net_PriorToBreakup'][iNegNetG,:]
+            d=vo['C_G_Net'][iT,iNegNetG,0:7]-meta[pNam]['Project']['G_Net_PriorToBreakup'][iNegNetG,:]
 
-            CToTransfer=np.zeros((meta['Project']['Batch Size'][iBat],7))
+            CToTransfer=np.zeros((meta[pNam]['Project']['Batch Size'][iBat],7))
             CToTransfer[iNegNetG,:]=-1*d
 
             vo['C_G_Net'][iT,:,0:7]=vo['C_G_Net'][iT,:,0:7]+CToTransfer
@@ -268,7 +268,7 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
     vo['C_LF'][iT,:,iEP['RootFine']]=tr*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
 
     # Adjust litterfall to account for N application response
-    if meta['Nutrient Management']['iApplication'].size>0:
+    if meta['Modules']['Nutrient Management']['iApplication'].size>0:
         vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'Litterfall')
 
     #--------------------------------------------------------------------------
@@ -285,7 +285,7 @@ def Biomass_FromGYM(iScn,iBat,iT,vi,vo,meta,iEP):
 
 #%% Annual tree biomass dynamics from Sawtooth
 
-def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
+def BiomassFromSawtooth(meta,pNam,iScn,iS,vi,vo,iEP):
 
     t0=time.time()
 
@@ -300,7 +300,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
     #**************************************************************************
 
     # Define demensions
-    N_time=meta['Project']['N Time']
+    N_time=meta[pNam]['Project']['N Time']
 
     # Maximum number of trees per stand
     N_tree=meta['Param']['BE']['Sawtooth']['Core']['Max SPH'].astype(int)
@@ -354,15 +354,15 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         bA[k]=np.zeros(N_tree)
 
     bR={}
-    for k in meta['Param']['BE']['Sawtooth']['Eq R'][ meta['Scenario'][iScn]['Eq R CD'] ].keys():
+    for k in meta['Param']['BE']['Sawtooth']['Eq R'][ meta[pNam]['Scenario'][iScn]['Eq R CD'] ].keys():
         bR[k]=np.zeros(N_tree)
 
     bM={}
-    for k in meta['Param']['BE']['Sawtooth']['Eq M'][ meta['Scenario'][iScn]['Eq M CD'] ].keys():
+    for k in meta['Param']['BE']['Sawtooth']['Eq M'][ meta[pNam]['Scenario'][iScn]['Eq M CD'] ].keys():
         bM[k]=np.zeros(N_tree)
 
     bG={}
-    for k in meta['Param']['BE']['Sawtooth']['Eq G'][ meta['Scenario'][iScn]['Eq G CD'] ].keys():
+    for k in meta['Param']['BE']['Sawtooth']['Eq G'][ meta[pNam]['Scenario'][iScn]['Eq G CD'] ].keys():
         bG[k]=np.zeros(N_tree)
 
     #--------------------------------------------------------------------------
@@ -381,23 +381,23 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
                 continue
             bA[k][ind0]=meta['Param']['BE']['Sawtooth']['Allom'][k][ind1]
 
-        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq R'][ meta['Scenario'][iScn]['Eq R CD'] ]['SRS_ID']==uS[iU])[0]
+        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq R'][ meta[pNam]['Scenario'][iScn]['Eq R CD'] ]['SRS_ID']==uS[iU])[0]
         for k in bR.keys():
             if (k=='SRS_ID') | (k=='SRS_CD'):
                 continue
-            bR[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq R'][ meta['Scenario'][iScn]['Eq R CD'] ][k][ind1]
+            bR[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq R'][ meta[pNam]['Scenario'][iScn]['Eq R CD'] ][k][ind1]
 
-        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq M'][ meta['Scenario'][iScn]['Eq M CD'] ]['SRS_ID']==uS[iU])[0]
+        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq M'][ meta[pNam]['Scenario'][iScn]['Eq M CD'] ]['SRS_ID']==uS[iU])[0]
         for k in bM.keys():
             if (k=='SRS_ID') | (k=='SRS_CD'):
                 continue
-            bM[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq M'][ meta['Scenario'][iScn]['Eq M CD'] ][k][ind1]
+            bM[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq M'][ meta[pNam]['Scenario'][iScn]['Eq M CD'] ][k][ind1]
 
-        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq G'][ meta['Scenario'][iScn]['Eq G CD'] ]['SRS_ID']==uS[iU])[0]
+        ind1=np.where(meta['Param']['BE']['Sawtooth']['Eq G'][ meta[pNam]['Scenario'][iScn]['Eq G CD'] ]['SRS_ID']==uS[iU])[0]
         for k in bG.keys():
             if (k=='SRS_ID') | (k=='SRS_CD'):
                 continue
-            bG[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq G'][ meta['Scenario'][iScn]['Eq G CD'] ][k][ind1]
+            bG[k][ind0]=meta['Param']['BE']['Sawtooth']['Eq G'][ meta[pNam]['Scenario'][iScn]['Eq G CD'] ][k][ind1]
 
     #--------------------------------------------------------------------------
     # Germination
@@ -502,9 +502,9 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         # *** Not working properly - just needs maintenance ***
         #----------------------------------------------------------------------
 
-#        if (vi['tv'][iT]>meta['Project']['SpinupSpanFastTrack'][iScn]['Start']+1) & (vi['tv'][iT]<=meta['Project']['SpinupSpanFastTrack'][iScn]['End']+1):
+#        if (vi['tv'][iT]>meta[pNam]['Project']['SpinupSpanFastTrack'][iScn]['Start']+1) & (vi['tv'][iT]<=meta[pNam]['Project']['SpinupSpanFastTrack'][iScn]['End']+1):
 #
-#            iT0=iT-meta['Project']['Spinup Disturbance Return Inverval']
+#            iT0=iT-meta[pNam]['Project']['Spinup Disturbance Return Inverval']
 #
 #            tl['A'][iT,:]=tl['A'][iT0,:]
 #            tl['H'][iT,:]=tl['H'][iT0,:]
@@ -601,7 +601,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         # Only do this if there are living trees
         if iDead.size!=0:
 
-            if meta['Scenario'][iScn]['Eq R CD']=='Def1':
+            if meta[pNam]['Scenario'][iScn]['Eq R CD']=='Def1':
                 SCsw_z=(SCsw-bR['SB_mu'])/bR['SB_sig']
                 lgit=bR['Int']+bR['SB']*SCsw_z
                 Pr=(np.exp(lgit)/(1+np.exp(lgit)))
@@ -622,7 +622,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         # Growth of stemwood biomass (kg C tree-1 yr-1)
         #----------------------------------------------------------------------
 
-        if meta['Scenario'][iScn]['Eq G CD']=='Def1':
+        if meta[pNam]['Scenario'][iScn]['Eq G CD']=='Def1':
 
             # Standardization
             LnCsw_z=(np.log(Csw)-bG['LnB_mu'])/bG['LnB_sig']
@@ -661,7 +661,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         # Probability of tree mortality (regular)
         #----------------------------------------------------------------------
 
-        if meta['Scenario'][iScn]['Eq M CD']=='Def1':
+        if meta[pNam]['Scenario'][iScn]['Eq M CD']=='Def1':
 
             Csw_z=(Csw-bM['B_mu'])/bM['B_sig']
             Csw2_z=(Csw**2-bM['B2_mu'])/bM['B2_sig']
@@ -721,10 +721,10 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
         for iE in range(meta['Core']['Max Events Per Year']):
 
             # Event type IDs for the iE'th event of the year
-            ID_Type=vi['EC']['ID_Type'][iT,iS,iE].copy()
+            ID_Type=vi['EC']['ID Event Type'][iT,iS,iE].copy()
 
             # Total affected biomass carbon
-            MF=vi['EC']['MortalityFactor'][iT,iS,iE].copy()
+            MF=vi['EC']['Mortality Factor'][iT,iS,iE].copy()
 
             if MF>0:
 
@@ -732,7 +732,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
 
                 nKill=int(MF*iLive.size)
 
-                if ID_Type==meta['LUT']['Dist']['Wildfire']:
+                if ID_Type==meta['LUT']['Event']['Wildfire']:
                     # Wildfire-------------------------------------------------
 
                     iKill=np.arange(0,nKill)
@@ -740,7 +740,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
                     tl['N_M_Fir'][iT,iLive[iKill]]=1
                     vo['A'][iT,iS]=0
 
-                elif (ID_Type==meta['LUT']['Dist']['Harvest']) | (ID_Type==meta['LUT']['Dist']['Harvest Salvage']):
+                elif (ID_Type==meta['LUT']['Event']['Harvest']) | (ID_Type==meta['LUT']['Event']['Harvest Salvage']):
                     # Harvest--------------------------------------------------
 
                     iKill=np.arange(0,nKill)
@@ -748,7 +748,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
                     tl['N_M_Har'][iT,iLive[iKill]]=1
                     vo['A'][iT,iS]=0
 
-                elif (ID_Type==meta['LUT']['Dist']['Sawtooth Commercial Thinning']):
+                elif (ID_Type==meta['LUT']['Event']['Sawtooth Commercial Thinning']):
                     # Commercial thinning--------------------------------------
 
                     idx_sorted=np.flip(np.argsort(tl['Csw'][iT,iLive]))
@@ -756,14 +756,14 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
                     tl['Csw_M_Har'][iT,iLive[iKill]]=tl['Csw'][iT,iLive[iKill]].copy()
                     tl['N_M_Har'][iT,iLive[iKill]]=1
 
-                elif (ID_Type==meta['LUT']['Dist']['Beetles']) | (ID_Type==meta['LUT']['Dist']['IBM']) | (ID_Type==meta['LUT']['Dist']['Defoliators']):
+                elif (ID_Type==meta['LUT']['Event']['Beetles']) | (ID_Type==meta['LUT']['Event']['IBM']) | (ID_Type==meta['LUT']['Event']['Defoliators']):
                     # Insects--------------------------------------------------
 
                     iKill=np.arange(0,nKill)
                     tl['Csw_M_Ins'][iT,iLive[iKill]]=tl['Csw'][iT,iLive[iKill]].copy()
                     tl['N_M_Ins'][iT,iLive[iKill]]=1
 
-                elif (ID_Type==meta['LUT']['Dist']['Sawtooth IDW']):
+                elif (ID_Type==meta['LUT']['Event']['Sawtooth IDW']):
                     # Sawtooth IDW---------------------------------------------
 
                     Csw_interm=np.percentile(tl['Csw'][iT,iLive],33)
@@ -956,7 +956,7 @@ def BiomassFromSawtooth(iScn,iS,vi,vo,meta,iEP):
 
 #%% STAND DEAD ORGANIC MATTER DYNAMICS
 
-def DOM_LikeKurzetal2009(iT,iBat,vi,vo,iEP,meta):
+def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
     # Extract parameters
     bIPF=meta['Param']['BEV']['Inter Pool Fluxes']
@@ -1043,77 +1043,77 @@ def DOM_LikeKurzetal2009(iT,iBat,vi,vo,iEP,meta):
     # atmosphere-bound efflux from heterotrophic respiration as a fraction is
     # emitted to the atmosphere and the remaining fraction is reorganized
     # within the ecosystem.
-    meta['R_LitterVF']=bDec['LitterVF_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterVF']].flatten()*bDec['LitterVF_Q10']**fT
-    meta['R_LitterF']=bDec['LitterF_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterF']].flatten()*bDec['LitterF_Q10']**fT
-    meta['R_LitterM']=bDec['LitterM_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterM']].flatten()*bDec['LitterM_Q10']**fT
-    meta['R_LitterS']=bDec['LitterS_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterS']].flatten()*bDec['LitterS_Q10']**fT
-    meta['R_SnagStem']=bDec['SnagStem_R10']*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']].flatten()*bDec['SnagStem_Q10']**fT
-    meta['R_SnagBranch']=bDec['SnagBranch_R10']*vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']].flatten()*bDec['SnagBranch_Q10']**fT
-    meta['R_SoilVF']=bDec['SoilVF_R10']*vo['C_Eco_Pools'][iT,:,iEP['SoilVF']].flatten()*bDec['SoilVF_Q10']**fT
-    meta['R_SoilF']=bDec['SoilF_R10']*vo['C_Eco_Pools'][iT,:,iEP['SoilF']].flatten()*bDec['SoilF_Q10']**fT
-    meta['R_SoilS']=bDec['SoilS_R10']*vo['C_Eco_Pools'][iT,:,iEP['SoilS']].flatten()*bDec['SoilS_Q10']**fT
+    meta[pNam]['Project']['R_LitterVF']=bDec['LitterVF_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterVF']].flatten()*bDec['LitterVF_Q10']**fT
+    meta[pNam]['Project']['R_LitterF']=bDec['LitterF_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterF']].flatten()*bDec['LitterF_Q10']**fT
+    meta[pNam]['Project']['R_LitterM']=bDec['LitterM_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterM']].flatten()*bDec['LitterM_Q10']**fT
+    meta[pNam]['Project']['R_LitterS']=bDec['LitterS_R10']*vo['C_Eco_Pools'][iT,:,iEP['LitterS']].flatten()*bDec['LitterS_Q10']**fT
+    meta[pNam]['Project']['R_SnagStem']=bDec['SnagStem_R10']*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']].flatten()*bDec['SnagStem_Q10']**fT
+    meta[pNam]['Project']['R_SnagBranch']=bDec['SnagBranch_R10']*vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']].flatten()*bDec['SnagBranch_Q10']**fT
+    meta[pNam]['Project']['R_SoilVF']=bDec['SoilVF_R10']*vo['C_Eco_Pools'][iT,:,iEP['SoilVF']].flatten()*bDec['SoilVF_Q10']**fT
+    meta[pNam]['Project']['R_SoilF']=bDec['SoilF_R10']*vo['C_Eco_Pools'][iT,:,iEP['SoilF']].flatten()*bDec['SoilF_Q10']**fT
+    meta[pNam]['Project']['R_SoilS']=bDec['SoilS_R10']*vo['C_Eco_Pools'][iT,:,iEP['SoilS']].flatten()*bDec['SoilS_Q10']**fT
 
-    meta['R_PiledStemMerch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']].flatten()*bDec['Piled_Q10']**fT
-    meta['R_PiledStemNonMerch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']].flatten()*bDec['Piled_Q10']**fT
-    meta['R_PiledBranch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']].flatten()*bDec['Piled_Q10']**fT
-    meta['R_PiledBark']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledBark']].flatten()*bDec['Piled_Q10']**fT
-    meta['R_PiledSnagStem']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']].flatten()*bDec['Piled_Q10']**fT
-    meta['R_PiledSnagBranch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']].flatten()*bDec['Piled_Q10']**fT
+    meta[pNam]['Project']['R_PiledStemMerch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']].flatten()*bDec['Piled_Q10']**fT
+    meta[pNam]['Project']['R_PiledStemNonMerch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']].flatten()*bDec['Piled_Q10']**fT
+    meta[pNam]['Project']['R_PiledBranch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']].flatten()*bDec['Piled_Q10']**fT
+    meta[pNam]['Project']['R_PiledBark']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledBark']].flatten()*bDec['Piled_Q10']**fT
+    meta[pNam]['Project']['R_PiledSnagStem']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']].flatten()*bDec['Piled_Q10']**fT
+    meta[pNam]['Project']['R_PiledSnagBranch']=bDec['Piled_R10']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']].flatten()*bDec['Piled_Q10']**fT
 
     # Adjust decomposition to account for N application response
-    if meta['Nutrient Management']['iApplication'].size>0:
+    if meta['Modules']['Nutrient Management']['iApplication'].size>0:
         vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'HeterotrophicRespiration')
 
     # Remove respired carbon from source DOM pools
-    vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]-meta['R_LitterVF']
-    vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]-meta['R_LitterF']
-    vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]-meta['R_LitterM']
-    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]-meta['R_LitterS']
-    vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]-meta['R_SnagStem']
-    vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]-meta['R_SnagBranch']
-    vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]-meta['R_SoilVF']
-    vo['C_Eco_Pools'][iT,:,iEP['SoilF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilF']]-meta['R_SoilF']
-    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]-meta['R_SoilS']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]-meta[pNam]['Project']['R_LitterVF']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]-meta[pNam]['Project']['R_LitterF']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]-meta[pNam]['Project']['R_LitterM']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]-meta[pNam]['Project']['R_LitterS']
+    vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]-meta[pNam]['Project']['R_SnagStem']
+    vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]-meta[pNam]['Project']['R_SnagBranch']
+    vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]-meta[pNam]['Project']['R_SoilVF']
+    vo['C_Eco_Pools'][iT,:,iEP['SoilF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilF']]-meta[pNam]['Project']['R_SoilF']
+    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]-meta[pNam]['Project']['R_SoilS']
 
-    vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]-meta['R_PiledStemMerch']
-    vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]-meta['R_PiledStemNonMerch']
-    vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]-meta['R_PiledBranch']
-    vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]-meta['R_PiledBark']
-    vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]-meta['R_PiledSnagStem']
-    vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]-meta['R_PiledSnagBranch']
+    vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]-meta[pNam]['Project']['R_PiledStemMerch']
+    vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]-meta[pNam]['Project']['R_PiledStemNonMerch']
+    vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]-meta[pNam]['Project']['R_PiledBranch']
+    vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]-meta[pNam]['Project']['R_PiledBark']
+    vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]-meta[pNam]['Project']['R_PiledSnagStem']
+    vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]-meta[pNam]['Project']['R_PiledSnagBranch']
 
     # Re-define decayed fast litter
-    vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+bIPF['SnagBranchToLitterF']*meta['R_SnagBranch']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+bIPF['SnagBranchToLitterF']*meta[pNam]['Project']['R_SnagBranch']
 
     # Re-define decayed medium litter
-    vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+bIPF['SnagStemToLitterM']*meta['R_SnagStem']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+bIPF['SnagStemToLitterM']*meta[pNam]['Project']['R_SnagStem']
 
     # Re-define decayed slow litter
-    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]+bIPF['LitterVFToLitterS']*meta['R_LitterVF']
-    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]+bIPF['LitterFToLitterS']*meta['R_LitterF']
-    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]+bIPF['LitterMToLitterS']*meta['R_LitterM']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]+bIPF['LitterVFToLitterS']*meta[pNam]['Project']['R_LitterVF']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]+bIPF['LitterFToLitterS']*meta[pNam]['Project']['R_LitterF']
+    vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]+bIPF['LitterMToLitterS']*meta[pNam]['Project']['R_LitterM']
 
     # Re-define decayed slow soil
-    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]+bIPF['SoilVFToSoilS']*meta['R_SoilVF']
-    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]+bIPF['SoilFToSoilS']*meta['R_SoilF']
+    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]+bIPF['SoilVFToSoilS']*meta[pNam]['Project']['R_SoilVF']
+    vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]+bIPF['SoilFToSoilS']*meta[pNam]['Project']['R_SoilF']
 
     # Heterotrophic respiration
-    vo['C_RH'][iT,:,iEP['LitterVF']]=bIPF['LitterVFToCO2']*meta['R_LitterVF']
-    vo['C_RH'][iT,:,iEP['LitterF']]=bIPF['LitterFToCO2']*meta['R_LitterF']
-    vo['C_RH'][iT,:,iEP['LitterM']]=bIPF['LitterMToCO2']*meta['R_LitterM']
-    vo['C_RH'][iT,:,iEP['LitterS']]=bIPF['LitterSToCO2']*meta['R_LitterS']
-    vo['C_RH'][iT,:,iEP['SnagStem']]=bIPF['SnagStemToCO2']*meta['R_SnagStem']
-    vo['C_RH'][iT,:,iEP['SnagBranch']]=bIPF['SnagBranchToCO2']*meta['R_SnagBranch']
-    vo['C_RH'][iT,:,iEP['SoilVF']]=bIPF['SoilVFToCO2']*meta['R_SoilVF']
-    vo['C_RH'][iT,:,iEP['SoilF']]=bIPF['SoilFToCO2']*meta['R_SoilF']
-    vo['C_RH'][iT,:,iEP['SoilS']]=bIPF['SoilSToCO2']*meta['R_SoilS']
+    vo['C_RH'][iT,:,iEP['LitterVF']]=bIPF['LitterVFToCO2']*meta[pNam]['Project']['R_LitterVF']
+    vo['C_RH'][iT,:,iEP['LitterF']]=bIPF['LitterFToCO2']*meta[pNam]['Project']['R_LitterF']
+    vo['C_RH'][iT,:,iEP['LitterM']]=bIPF['LitterMToCO2']*meta[pNam]['Project']['R_LitterM']
+    vo['C_RH'][iT,:,iEP['LitterS']]=bIPF['LitterSToCO2']*meta[pNam]['Project']['R_LitterS']
+    vo['C_RH'][iT,:,iEP['SnagStem']]=bIPF['SnagStemToCO2']*meta[pNam]['Project']['R_SnagStem']
+    vo['C_RH'][iT,:,iEP['SnagBranch']]=bIPF['SnagBranchToCO2']*meta[pNam]['Project']['R_SnagBranch']
+    vo['C_RH'][iT,:,iEP['SoilVF']]=bIPF['SoilVFToCO2']*meta[pNam]['Project']['R_SoilVF']
+    vo['C_RH'][iT,:,iEP['SoilF']]=bIPF['SoilFToCO2']*meta[pNam]['Project']['R_SoilF']
+    vo['C_RH'][iT,:,iEP['SoilS']]=bIPF['SoilSToCO2']*meta[pNam]['Project']['R_SoilS']
 
-    vo['C_RH'][iT,:,iEP['PiledStemMerch']]=bIPF['PiledToCO2']*meta['R_PiledStemMerch']
-    vo['C_RH'][iT,:,iEP['PiledStemNonMerch']]=bIPF['PiledToCO2']*meta['R_PiledStemNonMerch']
-    vo['C_RH'][iT,:,iEP['PiledBranch']]=bIPF['PiledToCO2']*meta['R_PiledBranch']
-    vo['C_RH'][iT,:,iEP['PiledBark']]=bIPF['PiledToCO2']*meta['R_PiledBark']
-    vo['C_RH'][iT,:,iEP['PiledSnagStem']]=bIPF['PiledToCO2']*meta['R_PiledSnagStem']
-    vo['C_RH'][iT,:,iEP['PiledSnagBranch']]=bIPF['PiledToCO2']*meta['R_PiledSnagBranch']
+    vo['C_RH'][iT,:,iEP['PiledStemMerch']]=bIPF['PiledToCO2']*meta[pNam]['Project']['R_PiledStemMerch']
+    vo['C_RH'][iT,:,iEP['PiledStemNonMerch']]=bIPF['PiledToCO2']*meta[pNam]['Project']['R_PiledStemNonMerch']
+    vo['C_RH'][iT,:,iEP['PiledBranch']]=bIPF['PiledToCO2']*meta[pNam]['Project']['R_PiledBranch']
+    vo['C_RH'][iT,:,iEP['PiledBark']]=bIPF['PiledToCO2']*meta[pNam]['Project']['R_PiledBark']
+    vo['C_RH'][iT,:,iEP['PiledSnagStem']]=bIPF['PiledToCO2']*meta[pNam]['Project']['R_PiledSnagStem']
+    vo['C_RH'][iT,:,iEP['PiledSnagBranch']]=bIPF['PiledToCO2']*meta[pNam]['Project']['R_PiledSnagBranch']
 
     #--------------------------------------------------------------------------
     # Physical transfer
@@ -1138,48 +1138,48 @@ def DOM_LikeKurzetal2009(iT,iBat,vi,vo,iEP,meta):
     # *** Added for fertilization study ***
     #--------------------------------------------------------------------------
 
-    #vo['C_Eco_Pools'][iT,:,28]=meta['R_LitterVF']+meta['R_LitterF']+meta['R_LitterM']+meta['R_LitterS']
+    #vo['C_Eco_Pools'][iT,:,28]=meta[pNam]['Project']['R_LitterVF']+meta[pNam]['Project']['R_LitterF']+meta[pNam]['Project']['R_LitterM']+meta[pNam]['Project']['R_LitterS']
 
     return vo
 
 #%% Disturbance and management events (from TAZ)
 
-def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
+def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
     #t0=time.time()
     # Predict stand breakup (on the fly)
-    if meta['Scenario'][iScn]['Breakup Status']=='On':
-        vi=asm.PredictStandBreakup_OnTheFly(meta,vi,iT,iEns,vo['A'][iT,:])
+    if meta[pNam]['Scenario'][iScn]['Breakup Status']=='On':
+        vi=asm.PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
 
     # Predict historical harvesting (on the fly)
-    if meta['Scenario'][iScn]['Harvest Status Historical']=='On':
-        if vi['tv'][iT]<meta['Scenario'][iScn]['Harvest Year Transition']:
+    if meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On':
+        if vi['tv'][iT]<meta[pNam]['Scenario'][iScn]['Harvest Year Transition']:
             Period='Historical'
             #Volume=vo['V_MerchLive'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
             Volume=vo['V_MerchTotal'][iT,:]
-            vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period)
+            vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,Volume,Period)
 
     # Predict future harvesting (on the fly)
-    if meta['Scenario'][iScn]['Harvest Status Future']=='On':
-        if vi['tv'][iT]>=meta['Scenario'][iScn]['Harvest Year Transition']:
+    if meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On':
+        if vi['tv'][iT]>=meta[pNam]['Scenario'][iScn]['Harvest Year Transition']:
             Period='Future'
             #Volume=vo['V_MerchLive'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
             Volume=vo['V_MerchTotal'][iT,:]
-            vi=asm.PredictHarvesting_OnTheFly(meta,vi,iT,iScn,iEns,Volume,Period)
+            vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,Volume,Period)
 
     # Predict future nutrient application (on the fly)
-    if meta['Scenario'][iScn]['Nutrient Application Status']=='On':
-        if vi['tv'][iT]>=meta['Project']['Year Project']:
-            vi=napp.ScheduleNutrientApplication(meta,vi,vo,iT,iScn,iEns,iBat)
+    if meta[pNam]['Scenario'][iScn]['Nutrient Application Status']=='On':
+        if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:
+            vi=napp.ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat)
 
     # Initialize indicator of aerial nutrient application
-    flag_nutrient_application=np.zeros(meta['Project']['Batch Size'][iBat])
+    flag_nutrient_application=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
 
     #t1=time.time()
-    #meta['Project']['Run Time Summary']['Test3']=meta['Project']['Run Time Summary']['Test3']+t1-t0
+    #meta[pNam]['Project']['Run Time Summary']['Test3']=meta[pNam]['Project']['Run Time Summary']['Test3']+t1-t0
 
     # Check to see how many events occur in this time step (don't do more than necessary)
-    NumEventsInTimeStep=np.sum(np.sum(vi['EC']['ID_Type'][iT,:,:]>0,axis=0)>0)
+    NumEventsInTimeStep=np.sum(np.sum(vi['EC']['ID Event Type'][iT,:,:]>0,axis=0)>0)
 
     # Keep track of total tree biomass at the start of each annual time step
     C_Biomass_t0=np.sum(vo['C_Eco_Pools'][iT,:,iEP['BiomassTotal']],axis=0)
@@ -1188,17 +1188,17 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
     for iE in range(NumEventsInTimeStep): # meta['Core']['Max Events Per Year']
 
         # Event type IDs for the iE'th event of the year
-        ID_Type=vi['EC']['ID_Type'][iT,:,iE].copy()
+        ID_Type=vi['EC']['ID Event Type'][iT,:,iE].copy()
 
         # Total affected biomass carbon
-        MortalityFactor=vi['EC']['MortalityFactor'][iT,:,iE].copy()
+        MortalityFactor=vi['EC']['Mortality Factor'][iT,:,iE].copy()
 
         # Record stands with aerial nutrient application
         #t0=time.time()
-        iApp=np.where( (ID_Type==meta['LUT']['Dist']['Fertilization Aerial']) | (ID_Type==meta['LUT']['Dist']['Fertilization Hand']) )[0]
+        iApp=np.where( (ID_Type==meta['LUT']['Event']['Fertilization Aerial']) | (ID_Type==meta['LUT']['Event']['Fertilization Hand']) )[0]
         flag_nutrient_application[iApp]=1
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test9']=meta['Project']['Run Time Summary']['Test9']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test9']=meta[pNam]['Project']['Run Time Summary']['Test9']+t1-t0
 
         #----------------------------------------------------------------------
         # Get event-specific parameters
@@ -1206,15 +1206,15 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         #t0=time.time()
         u,idx,inver=np.unique(ID_Type,return_index=True,return_inverse=True)
         b={}
-        for k in meta['Param']['BEV']['Dist'][1].keys():
+        for k in meta['Param']['BEV']['Event'][1].keys():
             bU=np.zeros(u.size)
             for iU in range(u.size):
                 if u[iU]==0:
                     continue
-                bU[iU]=meta['Param']['BEV']['Dist'][u[iU]][k]
+                bU[iU]=meta['Param']['BEV']['Event'][u[iU]][k]
             b[k]=bU[inver]
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test1']=meta['Project']['Run Time Summary']['Test1']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test1']=meta[pNam]['Project']['Run Time Summary']['Test1']+t1-t0
 
         #----------------------------------------------------------------------
         # Adjust event-specific parameters to reflect time- and region-specific
@@ -1222,13 +1222,13 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         #----------------------------------------------------------------------
         #t0=time.time()
         # Index to harvesting
-        iHarvest=np.where( (ID_Type==meta['LUT']['Dist']['Harvest']) | (ID_Type==meta['LUT']['Dist']['Harvest Salvage']) )[0]
+        iHarvest=np.where( (ID_Type==meta['LUT']['Event']['Harvest']) | (ID_Type==meta['LUT']['Event']['Harvest Salvage']) )[0]
 
         # Adjust fate of felled material parameters
         if iHarvest.size>0:
 
             # Index to time-dependent fate of felled materials
-            iT_P=np.where(meta['Param']['BE']['Felled Fate']['Year']==meta['Year'][iT])[0]
+            iT_P=np.where(meta['Param']['BE']['Felled Fate']['Year']==meta[pNam]['Year'][iT])[0]
 
             # Simulations may exceed the timeframe of the felled fate parameters
             # If so, set to the last year
@@ -1238,7 +1238,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
             for k in meta['Param']['BEV']['Felled Fate'].keys():
                 b[k][iHarvest]=meta['Param']['BEV']['Felled Fate'][k][iT_P,iHarvest]
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test2']=meta['Project']['Run Time Summary']['Test2']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test2']=meta[pNam]['Project']['Run Time Summary']['Test2']+t1-t0
 
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
@@ -1250,7 +1250,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         FracSnagsAffected=b['Snags_Affected']*MortalityFactor
 
         # Affected biomass carbon
-        if meta['Project']['Biomass Module']=='Sawtooth':
+        if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
             Affected_StemMerch=vo['C_M_Tot'][iT,:,iEP['StemMerch']]
             Affected_StemNonMerch=vo['C_M_Tot'][iT,:,iEP['StemNonMerch']]
             Affected_Foliage=vo['C_M_Tot'][iT,:,iEP['Foliage']]
@@ -1301,17 +1301,17 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
             if uType[iType]==0:
                 continue
             ind=np.where(ID_Type==uType[iType])[0]
-            Type=cbu.lut_n2s(meta['LUT']['Dist'],uType[iType])[0]
+            Type=cbu.lut_n2s(meta['LUT']['Event'],uType[iType])[0]
             vo['C_M_ByAgent'][Type][iT,ind]=vo['C_M_ByAgent'][Type][iT,ind]+Affected_All[ind]
 
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test4']=meta['Project']['Run Time Summary']['Test4']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test4']=meta[pNam]['Project']['Run Time Summary']['Test4']+t1-t0
 
         #----------------------------------------------------------------------
         # Remove affected amount from each pool
         #----------------------------------------------------------------------
         #t0=time.time()
-        if meta['Project']['Biomass Module']!='Sawtooth':
+        if meta[pNam]['Project']['Biomass Module']!='Sawtooth':
             # Remove carbon from affected biomass pools
             vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]-Affected_StemMerch
             vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]-Affected_StemNonMerch
@@ -1368,7 +1368,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         # Conversion factor
         cf=(1/meta['Param']['BEV']['Biophysical']['Density Wood'])*(1/meta['Param']['BEV']['Biophysical']['Carbon Content Wood'])
 
-        if meta['Project']['Biomass Module']=='Sawtooth':
+        if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
             vo['V_ToMillMerchLive'][iT,:]=cf*vo['C_ToMillMerch'][iT,:]
             vo['V_ToMillMerchDead'][iT,:]=cf*vo['C_ToMillSnagStem'][iT,:]
         else:
@@ -1477,12 +1477,12 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['V_MerchDead'][iT,:]=(1/meta['Param']['BEV']['Biophysical']['Density Wood'])*(1/meta['Param']['BEV']['Biophysical']['Carbon Content Wood'])*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
         vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test8']=meta['Project']['Run Time Summary']['Test8']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test8']=meta[pNam]['Project']['Run Time Summary']['Test8']+t1-t0
         #----------------------------------------------------------------------
         # Update stand age
         #----------------------------------------------------------------------
         #t0=time.time()
-        if (meta['Project']['Biomass Module']!='Sawtooth') & (meta['Project']['Partial Mortality Affects Age']=='On'):
+        if (meta[pNam]['Project']['Biomass Module']!='Sawtooth') & (meta[pNam]['Project']['Partial Mortality Affects Age']=='On'):
 
             # List of exception event types (that will remain at the same age)
             Exceptions_to_Partial_Mortality=[  ]
@@ -1499,9 +1499,9 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         vo['A'][iT,(MortalityFactor==1)]=0
 
         # Ensure planting resets to age 0
-        vo['A'][iT,(ID_Type==meta['LUT']['Dist']['Planting']) | (ID_Type==meta['LUT']['Dist']['Direct Seeding'])]=0
+        vo['A'][iT,(ID_Type==meta['LUT']['Event']['Planting']) | (ID_Type==meta['LUT']['Event']['Direct Seeding'])]=0
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test7']=meta['Project']['Run Time Summary']['Test7']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test7']=meta[pNam]['Project']['Run Time Summary']['Test7']+t1-t0
 
         #----------------------------------------------------------------------
         # Transition to new growth curve
@@ -1514,29 +1514,29 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         #t0=time.time()
 
         # Only applies to BatchTIPSY
-        if meta['Project']['Biomass Module']=='BatchTIPSY':
+        if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
 
-            for iGC in range(meta['GC']['N Growth Curves']):
+            for iGC in range(meta['Modules']['GYM']['N Growth Curves']):
 
                 # Don't alter growth curve for fertilization - index to non-fertilization events
-                ind=np.where( (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Aerial']) | \
-                              (vi['EC']['ID_GrowthCurve'][iT,:,iE]==meta['GC']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Dist']['Fertilization Hand']) )[0]
+                ind=np.where( (vi['EC']['ID Growth Curve'][iT,:,iE]==meta['Modules']['GYM']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Event']['Fertilization Aerial']) | \
+                              (vi['EC']['ID Growth Curve'][iT,:,iE]==meta['Modules']['GYM']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Event']['Fertilization Hand']) )[0]
 
                 if ind.size>0:
                     # Notes: This crashes often when the GY model has been accidently run with the wrong project info
                     # - because the project path in BatchTipsy is wrong.
-                    vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['GC']['ID GC Unique'][iGC] ][:,ind,:].astype(float)*meta['GC']['Scale Factor']
-                    vi['GC']['ID_GCA'][ind]=int(meta['GC']['ID GC Unique'][iGC])
+                    vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['Modules']['GYM']['ID GC Unique'][iGC] ][:,ind,:].astype(float)*meta['Modules']['GYM']['Scale Factor']
+                    vi['GC']['ID_GCA'][ind]=int(meta['Modules']['GYM']['ID GC Unique'][iGC])
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test5']=meta['Project']['Run Time Summary']['Test5']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test5']=meta[pNam]['Project']['Run Time Summary']['Test5']+t1-t0
 
         #----------------------------------------------------------------------
         # Impose regen failure
         #----------------------------------------------------------------------
 
         # Only applies to BatchTIPSY
-        if meta['Project']['Biomass Module']=='BatchTIPSY':
-            iFailure=np.where(ID_Type==meta['LUT']['Dist']['Regen Failure'])[0]
+        if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
+            iFailure=np.where(ID_Type==meta['LUT']['Event']['Regen Failure'])[0]
             if iFailure.size>0:
                 vi['GC']['Active'][:,iFailure,:]=0
                 vi['GC'][1][:,iFailure,:]=0
@@ -1559,7 +1559,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
         # *** This is not up to date - will crash if attempted - needs update. ***
         flg=0
 
-        if (flg==1) & (meta['Project']['Biomass Module']!='Sawtooth'):
+        if (flg==1) & (meta[pNam]['Project']['Biomass Module']!='Sawtooth'):
 
             # Half life
             hl=meta['Param']['BEV']['bDist_GrowthRecovery_HL']
@@ -1570,7 +1570,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
             if (hl>0) & (flg_gc_change==0):
 
                 # Extract net growth for active growth curve
-                NetGrowth=vi['GCA'][:,iS,:].copy().astype(float)*meta['GC']['Scale Factor']
+                NetGrowth=vi['GCA'][:,iS,:].copy().astype(float)*meta['Modules']['GYM']['Scale Factor']
 
                 # Growth pre-event
                 G_pre=NetGrowth.copy()
@@ -1582,7 +1582,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
                 dG=G_pre-G_post
 
                 # Age vector
-                A=np.arange(1,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+                A=np.arange(1,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
                 # Time since disturbance
                 TSD=np.tile(A-vo['A'][iT,iS],(G_pre.shape[1],1)).T
@@ -1598,7 +1598,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
                 NetGrowthNew=G_post+G_Recovery
 
                 # Add back to dictionary
-                NetGrowthNew=NetGrowthNew*meta['GC']['Scale Factor']
+                NetGrowthNew=NetGrowthNew*meta['Modules']['GYM']['Scale Factor']
                 NetGrowthNew=NetGrowthNew.astype(np.int16)
 
                 vi['GCA'][:,iS,:]=NetGrowthNew
@@ -1611,15 +1611,15 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
         #t0=time.time()
         flg=1
-        if (flg==1) & (meta['Project']['Biomass Module']!='Sawtooth'):
+        if (flg==1) & (meta[pNam]['Project']['Biomass Module']!='Sawtooth'):
 
-            GrowthFactor=vi['EC']['GrowthFactor'][iT,:,iE].copy()
+            GrowthFactor=vi['EC']['Growth Factor'][iT,:,iE].copy()
 
             indAdj=np.where( (GrowthFactor!=-999) & (GrowthFactor!=0) )[0]
 
             if (indAdj.size>0):
 
-                Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+                Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
                 # Convert growth factor to respoonse ratio
                 GrowthResponseRatio=GrowthFactor.astype(float)/100+1.0
@@ -1628,7 +1628,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
                 for iAdj in range(indAdj.size):
 
-                    if ID_Type[iAdj]==meta['LUT']['Dist']['IDW']:
+                    if ID_Type[iAdj]==meta['LUT']['Event']['IDW']:
 
                         # Only a temporary change in growth (see severity class table)
                         # *** I have not checked to see if this is working properly ***
@@ -1646,13 +1646,13 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
                 vi['GC']['Active']=NetGrowth
 
         #t1=time.time()
-        #meta['Project']['Run Time Summary']['Test6']=meta['Project']['Run Time Summary']['Test6']+t1-t0
+        #meta[pNam]['Project']['Run Time Summary']['Test6']=meta[pNam]['Project']['Run Time Summary']['Test6']+t1-t0
 
     #--------------------------------------------------------------------------
     # Relative gravimetric mortality (%)
     #--------------------------------------------------------------------------
 
-    for k in meta['LUT']['Dist'].keys():
+    for k in meta['LUT']['Event'].keys():
         vo['C_M_Pct_ByAgent'][k][iT,:]=vo['C_M_ByAgent'][k][iT,:]/C_Biomass_t0*100
 
     #--------------------------------------------------------------------------
@@ -1660,9 +1660,9 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
     #--------------------------------------------------------------------------
 
     # Generate index to stands that were fertilized
-    meta['Nutrient Management']['iApplication']=np.where(flag_nutrient_application==1)[0]
+    meta['Modules']['Nutrient Management']['iApplication']=np.where(flag_nutrient_application==1)[0]
 
-    if meta['Nutrient Management']['iApplication'].size>0:
+    if meta['Modules']['Nutrient Management']['iApplication'].size>0:
 
         # Adjust net growth of aboveground biomass
         vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'AbovegroundNetGrowth')
@@ -1674,7 +1674,7 @@ def Events_FromTaz(iT,iScn,iEns,iBat,vi,vo,meta,iEP):
 
 #%% Harvested wood products sector
 
-def HWP_Update21(iT,iBat,vi,vo,meta):
+def HWP_Update21(meta,pNam,iT,iBat,vi,vo):
 
     #--------------------------------------------------------------------------
     # Index to time-dependent parameters
@@ -1683,7 +1683,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
     # This will be the same between end use and removed fate because the time vectors
     # are the same.
     # *** Don't change one time vector without changing the other. ***
-    iT_P=np.where(meta['Param']['BE']['HWP End Use']['Year']==meta['Year'][iT])[0]
+    iT_P=np.where(meta['Param']['BE']['HWP End Use']['Year']==meta[pNam]['Year'][iT])[0]
 
     # Removed fate
     bRF={}
@@ -2525,7 +2525,7 @@ def HWP_Update21(iT,iBat,vi,vo,meta):
 
 #%% Grassland module
 
-def Biomass_FromGrasses(iScn,iBat,iT,vi,vo,meta,iEP):
+def Biomass_FromGrasses(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
     # Aboveground biomass (foliage)
     vo['C_G_Gross'][iT,:,iEP['Foliage']]=vo['C_G_Gross'][iT,:,iEP['Foliage']]+1.5

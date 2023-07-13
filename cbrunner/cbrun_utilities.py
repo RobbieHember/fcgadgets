@@ -30,9 +30,9 @@ def lut_n2s(dc,numb):
 
 #%% Index to batch
 
-def IndexToBatch(meta,iBat):
-    iStart=meta['Project']['Batch Interval']*iBat
-    iStop=np.minimum(meta['Project']['N Stand'],iStart+meta['Project']['Batch Interval'])
+def IndexToBatch(m,iBat):
+    iStart=m['Project']['Batch Interval']*iBat
+    iStop=np.minimum(m['Project']['N Stand'],iStart+m['Project']['Batch Interval'])
     indBat=np.arange(iStart,iStop,1)
     return indBat
 
@@ -130,98 +130,98 @@ class BunchDictionary(dict):
 
 #%% Build event chronology from spreadsheet
 
-def BuildEventChronologyFromSpreadsheet(meta):
+def BuildEventChronologyFromSpreadsheet(meta,pNam):
 
     # Import inventory to get BGC zone
     iScn=0
     iBat=0
-    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+    inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
     # Simulate wildfires
-    if (meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Future']=='On'):
+    if (meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On'):
         asm.SimulateWildfireFromAAO(meta,inv)
 
     # Simulate MPB
-    if (meta['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta['Scenario'][iScn]['MPB Status Modern']=='On') | (meta['Scenario'][iScn]['MPB Status Future']=='On'):
+    if (meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On'):
         asm.SimulateIBMFromAAO(meta,inv)
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             # Import wildfire simulations from Taz
-            if (meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta['Scenario'][iScn]['Wildfire Status Future']=='On'):
+            if (meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On'):
 
-                wf_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+                wf_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
                 if 'idx' in wf_sim:
                     idx=wf_sim['idx']
                     tmp=wf_sim.copy()
                     for v in ['Occurrence','Mortality']:
-                        wf_sim[v]=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int16')
+                        wf_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
                         wf_sim[v][idx[0],idx[1]]=tmp[v]
                     del tmp
 
             # Import IBM
-            if (meta['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta['Scenario'][iScn]['MPB Status Modern']=='On') | (meta['Scenario'][iScn]['MPB Status Future']=='On'):
+            if (meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On'):
 
-                ibm_sim=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+                ibm_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
                 if 'idx' in ibm_sim:
                     idx=ibm_sim['idx']
                     tmp=ibm_sim.copy()
                     for v in ['Occurrence','Mortality']:
-                        ibm_sim[v]=np.zeros((meta['Project']['N Time'],meta['Project']['N Stand']),dtype='int16')
+                        ibm_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
                         ibm_sim[v][idx[0],idx[1]]=tmp[v]
                     del tmp
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
                 # Index to batch
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
                 # Always just one stand
                 iS=0
 
-                tv=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
+                tv=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
 
                 # Initialize dictionary
                 ec={}
-                ec['ID_Type']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-                ec['MortalityFactor']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-                ec['GrowthFactor']=-999*np.ones((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-                ec['ID_GrowthCurve']=np.zeros((meta['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['ID Event Type']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['Mortality Factor']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['Growth Factor']=-999*np.ones((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['ID Growth Curve']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
 
                 #----------------------------------------------------------
                 # Add spinup events
                 #----------------------------------------------------------
 
-                if 'Spinup Disturbance Return Inverval' in meta['Scenario'][iScn]:
+                if 'Spinup Disturbance Return Inverval' in meta[pNam]['Scenario'][iScn]:
                     # The project-level default has been overridden by scenario-specific values
-                    ivl_spin=meta['Scenario'][iScn]['Spinup Disturbance Return Inverval']
+                    ivl_spin=meta[pNam]['Scenario'][iScn]['Spinup Disturbance Return Inverval']
                 else:
                     # Default project level
-                    #ivl_spin=meta['Project']['Spinup Disturbance Return Inverval']
+                    #ivl_spin=meta[pNam]['Project']['Spinup Disturbance Return Inverval']
 
                     # New BGC zone-specific
-                    #cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],inv['ID_BECZ'][0,iS])[0]
-                    cd=meta['Scenario'][iScn]['BGC Zone Code']
+                    #cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],inv['ID_BGCZ'][0,iS])[0]
+                    cd=meta[pNam]['Scenario'][iScn]['BGC Zone Code']
                     ind=np.where(meta['Param']['BE']['SpinupRI']['Name']==cd)[0]
                     ivl_spin=meta['Param']['BE']['SpinupRI']['Value'][ind]
 
-                YearRef=meta['Scenario'][iScn]['Year1_DisFromInv']
-                AgeRef=meta['Scenario'][iScn]['Age1_DisFromInv']
+                YearRef=meta[pNam]['Scenario'][iScn]['Year1_DisFromInv']
+                AgeRef=meta[pNam]['Scenario'][iScn]['Age1_DisFromInv']
                 if AgeRef>=0:
                     Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)
                 else:
-                    Year1=meta['Project']['Year Start']+ivl_spin
-                    Year2=meta['Project']['Spinup Year End']
-                    Year=np.arange(Year1,Year2+1,meta['Project']['Spinup Disturbance Return Inverval'])
+                    Year1=meta[pNam]['Project']['Year Start']+ivl_spin
+                    Year2=meta[pNam]['Project']['Spinup Year End']
+                    Year=np.arange(Year1,Year2+1,meta[pNam]['Project']['Spinup Disturbance Return Inverval'])
 
                 for iYr in range(Year.size):
                     iT=np.where(tv==Year[iYr])[0]
-                    ec['ID_Type'][iT,:,0]=meta['LUT']['Dist'][meta['Project']['Spinup Disturbance Type']]
-                    ec['MortalityFactor'][iT,:,0]=100
-                    ec['GrowthFactor'][iT,:,0]=-999
-                    ec['ID_GrowthCurve'][iT,:,0]=meta['Project']['Spinup Growth Curve ID']
+                    ec['ID Event Type'][iT,:,0]=meta['LUT']['Event'][meta[pNam]['Project']['Spinup Disturbance Type']]
+                    ec['Mortality Factor'][iT,:,0]=100
+                    ec['Growth Factor'][iT,:,0]=-999
+                    ec['ID Growth Curve'][iT,:,0]=meta[pNam]['Project']['Spinup Growth Curve ID']
 
                 #----------------------------------------------------------
                 # Add events from inventory
@@ -229,66 +229,66 @@ def BuildEventChronologyFromSpreadsheet(meta):
 
                 for iYr in range(1,10):
 
-                    if ('Year' + str(iYr) + '_DisFromInv') not in meta['Scenario'][iScn]:
+                    if ('Year' + str(iYr) + '_DisFromInv') not in meta[pNam]['Scenario'][iScn]:
                         continue
 
-                    if np.isnan(meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
+                    if np.isnan(meta[pNam]['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
                         continue
 
                     # If IDW, convert IDW class to growth and mortality factor
                     sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
                     flg_i=0
-                    indSc=np.where(sc==meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
+                    indSc=np.where(sc==meta[pNam]['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
                     if indSc.size!=0:
                         if flg_i==0:
                             dfParDistBySC=pd.read_excel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
                             flg_i=1
                         indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
-                        ID_TypeN=meta['LUT']['Dist']['IDW']
-                        MF=dfParDistBySC.loc[indPar,'MortalityFactor']
-                        GF=dfParDistBySC.loc[indPar,'GrowthFactor']
+                        ID_TypeN=meta['LUT']['Event']['IDW']
+                        MF=dfParDistBySC.loc[indPar,'Mortality Factor']
+                        GF=dfParDistBySC.loc[indPar,'Growth Factor']
                     else:
-                        ID_TypeS=meta['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
+                        ID_TypeS=meta[pNam]['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
                         try:
-                            ID_TypeN=meta['LUT']['Dist'][ID_TypeS]
+                            ID_TypeN=meta['LUT']['Event'][ID_TypeS]
                         except:
                             print(iScn)
                             print(iYr)
                             print(ID_TypeS)
-                        MF=meta['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
+                        MF=meta[pNam]['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
                         GF=0
 
-                    Year=meta['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
+                    Year=meta[pNam]['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
                     iT=np.where(tv==Year)[0]
 
                     if iT.size==0:
                         print('Warning: An event was scheduled outside the timeframe of the simulation.')
 
-                    iE=np.where(ec['ID_Type'][iT,:,:]==0)[1]
+                    iE=np.where(ec['ID Event Type'][iT,:,:]==0)[1]
 
-                    ec['ID_Type'][iT,:,iE[0]]=ID_TypeN
-                    ec['MortalityFactor'][iT,:,iE[0]]=MF
-                    ec['GrowthFactor'][iT,:,iE[0]]=GF
-                    ec['ID_GrowthCurve'][iT,:,iE[0]]=meta['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
+                    ec['ID Event Type'][iT,:,iE[0]]=ID_TypeN
+                    ec['Mortality Factor'][iT,:,iE[0]]=MF
+                    ec['Growth Factor'][iT,:,iE[0]]=GF
+                    ec['ID Growth Curve'][iT,:,iE[0]]=meta[pNam]['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
 
                 #----------------------------------------------------------
                 # Add simulated wildfire from Taz
                 #----------------------------------------------------------
 
                 ind=np.array([],dtype=int)
-                if meta['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':
-                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']<1920) )[0]
+                if meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':
+                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
                     ind=np.append(ind,ind0)
-                if meta['Scenario'][iScn]['Wildfire Status Modern']=='On':
-                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=1920) & (meta['Year']<meta['Project']['Year Project']) )[0]
+                if meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On':
+                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
                     ind=np.append(ind,ind0)
-                if meta['Scenario'][iScn]['Wildfire Status Future']=='On':
-                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta['Year']>=meta['Project']['Year Project']) )[0]
+                if meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On':
+                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
                     ind=np.append(ind,ind0)
 
                 if ind.size>0:
 
-                    ID_Type=meta['LUT']['Dist']['Wildfire']*np.ones(ind.size)
+                    ID_Type=meta['LUT']['Event']['Wildfire']*np.ones(ind.size)
                     Year=tv[ind]
                     MortF=wf_sim['Mortality'][ind,iS]
                     GrowthF=-999*np.ones(ind.size)
@@ -296,29 +296,29 @@ def BuildEventChronologyFromSpreadsheet(meta):
 
                     for iYr in range(Year.size):
                         iT=np.where(tv==Year[iYr])[0]
-                        ec['ID_Type'][iT,:,0]=ID_Type[iYr]
-                        ec['MortalityFactor'][iT,:,0]=MortF[iYr]
-                        ec['GrowthFactor'][iT,:,0]=GrowthF[iYr]
-                        ec['ID_GrowthCurve'][iT,:,0]=ID_GrowthCurve[iYr]
+                        ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
+                        ec['Mortality Factor'][iT,:,0]=MortF[iYr]
+                        ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
+                        ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
 
                     #----------------------------------------------------------
                     # Add simulated MPB from Taz
                     #----------------------------------------------------------
 
                     ind=np.array([],dtype=int)
-                    if meta['Scenario'][iScn]['MPB Status Pre-modern']=='On':
-                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta['Year']<1920) )[0]
+                    if meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On':
+                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
                         ind=np.append(ind,ind0)
-                    if meta['Scenario'][iScn]['MPB Status Modern']=='On':
-                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta['Year']>=1920) & (meta['Year']<meta['Project']['Year Project']) )[0]
+                    if meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On':
+                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
                         ind=np.append(ind,ind0)
-                    if meta['Scenario'][iScn]['MPB Status Future']=='On':
-                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta['Year']>=meta['Project']['Year Project']) )[0]
+                    if meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On':
+                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
                         ind=np.append(ind,ind0)
 
                     if ind.size>0:
 
-                        ID_Type=meta['LUT']['Dist']['IBM']*np.ones(ind.size)
+                        ID_Type=meta['LUT']['Event']['IBM']*np.ones(ind.size)
                         Year=tv[ind]
                         MortF=ibm_sim['Mortality'][ind,iS]
                         GrowthF=-999*np.ones(ind.size)
@@ -326,29 +326,29 @@ def BuildEventChronologyFromSpreadsheet(meta):
 
                         for iYr in range(Year.size):
                             iT=np.where(tv==Year[iYr])[0]
-                            ec['ID_Type'][iT,:,0]=ID_Type[iYr]
-                            ec['MortalityFactor'][iT,:,0]=MortF[iYr]
-                            ec['GrowthFactor'][iT,:,0]=GrowthF[iYr]
-                            ec['ID_GrowthCurve'][iT,:,0]=ID_GrowthCurve[iYr]
+                            ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
+                            ec['Mortality Factor'][iT,:,0]=MortF[iYr]
+                            ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
+                            ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
 
                 #--------------------------------------------------------------
                 # Save to file
                 #--------------------------------------------------------------
 
-                gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',ec)
+                gu.opickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',ec)
 
     return
 
 #%% Decompress event chronology
 
-def EventChronologyDecompress(meta,ec,iScn,iEns,iBat):
+def EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat):
 
     # Uncompress event chronology if it has been compressed
     if 'idx' in ec:
         idx=ec['idx']
         tmp=ec.copy()
-        for v in ['ID_Type','MortalityFactor','GrowthFactor','ID_GrowthCurve']:
-            ec[v]=np.zeros((meta['Project']['N Time'],meta['Project']['Batch Size'][iBat],meta['Core']['Max Events Per Year']),dtype='int16')
+        for v in ['ID Event Type','Mortality Factor','Growth Factor','ID Growth Curve']:
+            ec[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat],meta['Core']['Max Events Per Year']),dtype='int16')
             ec[v][idx[0],idx[1],idx[2]]=tmp[v]
         del tmp
 
@@ -366,32 +366,42 @@ def FixFileNum(ind):
         indStrFixed='0' + indStrFixed
     return indStrFixed
 
-#%% Configure project r
+#%% Configure project
 
-def ImportProjectConfig_r(meta,**kwargs):
+def ImportProjectConfig(meta,pNam,**kwargs):
 
     #--------------------------------------------------------------------------
     # Initialize nested dictionaries
     #--------------------------------------------------------------------------
 
-    if 'Project' not in meta:
-        meta['Project']={}
-
     if 'Core' not in meta:
         meta['Core']={}
+    if 'Param' not in meta:
+        meta['Param']={}
+    if 'Modules' not in meta:
+        meta['Modules']={}
+
+    if pNam not in meta:
+        meta[pNam]={}
+
+    if 'Project' not in meta[pNam]:
+        meta[pNam]['Project']={}
+
+    if 'Scenario' not in meta[pNam]:
+        meta[pNam]['Scenario']={}
 
     #--------------------------------------------------------------------------
     # Import project parameters from spreadsheet
     #--------------------------------------------------------------------------
 
-    df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Project')
+    df=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Project')
     for i in range(len(df)):
         Name=df['Name'].iloc[i]
         Value=df['Value'].iloc[i]
         if Name[-1]==':':
             # Exclude headers
             continue
-        meta['Project'][Name]=Value
+        meta[pNam]['Project'][Name]=Value
 
     #--------------------------------------------------------------------------
     # Import look-up tables
@@ -635,36 +645,38 @@ def ImportProjectConfig_r(meta,**kwargs):
     #--------------------------------------------------------------------------
 
     # Calendar year
-    meta['Year']=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
+    meta[pNam]['Year']=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
 
-    meta['Project']['N Time']=meta['Year'].size
+    meta[pNam]['Project']['N Time']=meta[pNam]['Year'].size
 
     #--------------------------------------------------------------------------
     # Define spatial domain for scripted projects
     #--------------------------------------------------------------------------
 
-    if meta['Project']['Scenario Source']=='Script':
+    if meta[pNam]['Project']['Scenario Source']=='Script':
 
         # Import land cover class
         zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1.tif')
-        #zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BCLCS_LEVEL_2.tif')
 
-        gdf_bcb=gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\LandUse\\tsa.geojson')
+        #gdf_tsa=gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\LandUse\\tsa.geojson')
+        gdf_bcb=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
 
         # Import mask (0=excluded, 1=included)
-        if meta['Project']['ROI Source']=='Province':
-
+        if meta[pNam]['Project']['ROI Source']=='Province':
             # Land mask for BC
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
-        elif meta['Project']['ROI Source']=='Regional District':
-
+        elif meta[pNam]['Project']['ROI Source']=='Regional District':
             # Mask from regional district
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\TA_REGIONAL_DISTRICTS_SVW\\REGIONAL_DISTRICT_NAME.tif')
-            ind=np.where( (zMask['Data']!=meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta['Project']['ROI Elements']]) )
+            ind=np.where( (zMask['Data']!=meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta[pNam]['Project']['ROI Elements']]) )
             zMask['Data'][ind]=0
-            ind=np.where( (zMask['Data']==meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta['Project']['ROI Elements']]) )
+            ind=np.where( (zMask['Data']==meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta[pNam]['Project']['ROI Elements']]) )
             zMask['Data'][ind]=1
+
+        elif meta[pNam]['Project']['ROI Source']=='BCFCS_NM':
+            # Nutrient management
+            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_MaskAll.tif')
 
         else:
             pass
@@ -673,7 +685,7 @@ def ImportProjectConfig_r(meta,**kwargs):
         if 'Geos' not in meta.keys():
             meta['Geos']={}
 
-        meta['Geos']['RGSF']=meta['Project']['Regular grid sampling frequency (ha)']
+        meta['Geos']['RGSF']=meta[pNam]['Project']['Regular grid sampling frequency (ha)']
 
         # Extract subgrid
         meta['Geos']['Grid']=zMask.copy()
@@ -708,12 +720,12 @@ def ImportProjectConfig_r(meta,**kwargs):
         # Flatten coordinate matrices first to save space
         meta['Geos']['Grid']['X']=meta['Geos']['Grid']['X'][0,:]
         meta['Geos']['Grid']['Y']=meta['Geos']['Grid']['Y'][:,0]
-        gu.opickle(meta['Paths']['Project'] + '\\Geospatial\\geos.pkl',meta['Geos'])
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\geos.pkl',meta['Geos'])
 
         print('Number of stands = ' + str(meta['Geos']['Sparse']['X'].size))
 
         # Save mask as geotiff
-        #gis.SaveGeoTiff(z,meta['Paths']['Project'] + '\\Geospatial\\geos_grid.tiff')
+        #gis.SaveGeoTiff(z,meta['Paths'][pNam]['Data'] + '\\geos_grid.tiff')
         #plt.matshow(meta['Geos']['Mask'])
 
         # Save sparse points to geojson
@@ -724,13 +736,13 @@ def ImportProjectConfig_r(meta,**kwargs):
                 points.append(Point(meta['Geos']['Sparse']['X'][k],meta['Geos']['Sparse']['Y'][k]))
             gdf_sxy=gpd.GeoDataFrame({'geometry':points,'ID_Admin':meta['Geos']['Sparse']['ID_Admin']})
             gdf_sxy.crs=meta['Geos']['crs']
-            gdf_sxy.to_file(meta['Paths']['Project'] + '\\Geospatial\\geos.geojson',driver='GeoJSON')
+            gdf_sxy.to_file(meta['Paths'][pNam]['Data'] + '\\geos.geojson',driver='GeoJSON')
 
         # Plot
 
         flg=1
         if flg==1:
-            #gdf_sxy=gpd.read_file(meta['Paths']['Project'] + '\\Geospatial\\meta['Geos'].geojson')
+            #gdf_sxy=gpd.read_file(meta['Paths'][pNam]['Data'] + '\\meta['Geos'].geojson')
 
             plt.close('all')
             fig,ax=plt.subplots(figsize=gu.cm2inch(14,14)); ms=2
@@ -753,52 +765,52 @@ def ImportProjectConfig_r(meta,**kwargs):
     #--------------------------------------------------------------------------
 
     # Number of stands
-    if meta['Project']['Scenario Source']=='Spreadsheet':
+    if meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
 
-        if 'Number of stands' in meta['Project']:
+        if 'Number of stands' in meta[pNam]['Project']:
             # Override!
-            meta['Project']['N Stand']=meta['Project']['Number of stands']
+            meta[pNam]['Project']['N Stand']=meta[pNam]['Project']['Number of stands']
         else:
-            meta['Project']['N Stand']=1
+            meta[pNam]['Project']['N Stand']=1
 
-    elif meta['Project']['Scenario Source']=='Portfolio':
+    elif meta[pNam]['Project']['Scenario Source']=='Portfolio':
 
-        meta['Project']['N Stand']=meta['Project']['N Stand per Activity Type']*meta['Project']['AIL']['N AT']*meta['Project']['AIL']['N Years']
+        meta[pNam]['Project']['N Stand']=meta[pNam]['Project']['N Stand per Activity Type']*meta[pNam]['Project']['AIL']['N AT']*meta[pNam]['Project']['AIL']['N Years']
 
-    elif meta['Project']['Scenario Source']=='Script':
+    elif meta[pNam]['Project']['Scenario Source']=='Script':
 
         try:
-            meta['Project']['N Stand']=meta['Geos']['Sparse']['X'].size
+            meta[pNam]['Project']['N Stand']=meta['Geos']['Sparse']['X'].size
         except:
             # Tiled project
-            meta['Project']['N Stand']=meta['Project']['iKeep'].size
-            #meta['Project']['N Stand']=kwargs['geos']['m']*kwargs['geos']['n']
+            meta[pNam]['Project']['N Stand']=meta[pNam]['Project']['iKeep'].size
+            #meta[pNam]['Project']['N Stand']=kwargs['geos']['m']*kwargs['geos']['n']
 
     # Number of batches
-    meta['Project']['N Batch']=np.ceil(meta['Project']['N Stand']/meta['Project']['Batch Interval']).astype(int)
+    meta[pNam]['Project']['N Batch']=np.ceil(meta[pNam]['Project']['N Stand']/meta[pNam]['Project']['Batch Interval']).astype(int)
 
     # Initialize list that can keep track of batch sizes
-    meta['Project']['Batch Size']=[None]*meta['Project']['N Batch']
-    for iBat in range(meta['Project']['N Batch']):
-        meta['Project']['Batch Size'][iBat]=IndexToBatch(meta,iBat).size
+    meta[pNam]['Project']['Batch Size']=[None]*meta[pNam]['Project']['N Batch']
+    for iBat in range(meta[pNam]['Project']['N Batch']):
+        meta[pNam]['Project']['Batch Size'][iBat]=IndexToBatch(meta[pNam],iBat).size
 
     #--------------------------------------------------------------------------
     # Import model parameters
     #--------------------------------------------------------------------------
 
-    meta=ImportParameters(meta)
+    meta=ImportParameters(meta,pNam)
 
     #--------------------------------------------------------------------------
     # Define scenario parameters
     #--------------------------------------------------------------------------
 
-    if meta['Project']['Scenario Source']!='Portfolio':
+    if meta[pNam]['Project']['Scenario Source']!='Portfolio':
 
-        df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios',usecols='A:OM')
+        df=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios',usecols='A:OM')
 
         df=df.iloc[:,df.iloc[0,:].isnull().values==False]
 
-        meta['Scenario']=list()
+        meta[pNam]['Scenario']=list()
         for i in range(1,df.shape[1]):
             pScn0={}
             for j in range(df.shape[0]):
@@ -806,36 +818,36 @@ def ImportProjectConfig_r(meta,**kwargs):
                     # Exclude headers
                     continue
                 pScn0.update({df.iloc[j,0]:df.iat[j,i]})
-            meta['Scenario'].append(pScn0)
+            meta[pNam]['Scenario'].append(pScn0)
 
         # Number of scenarios
-        meta['Project']['N Scenario']=np.sum([i['Scenario Status']=='On' for i in meta['Scenario']])
+        meta[pNam]['Project']['N Scenario']=np.sum([i['Scenario Status']=='On' for i in meta[pNam]['Scenario']])
 
     #--------------------------------------------------------------------------
     # Number of Land Surface Scenarios
     #--------------------------------------------------------------------------
 
-    meta['Project']['LSC']={}
-    if meta['Project']['Scenario Source']!='Portfolio':
-        meta['Project']['LSC']['Scenario Names Unique']=np.unique(np.array([meta['Scenario'][i]['Land Surface Scenario'] for i in range(len(meta['Scenario']))],dtype=object))
-        meta['Project']['LSC']['N Scenario']=meta['Project']['LSC']['Scenario Names Unique'].size
+    meta[pNam]['Project']['LSC']={}
+    if meta[pNam]['Project']['Scenario Source']!='Portfolio':
+        meta[pNam]['Project']['LSC']['Scenario Names Unique']=np.unique(np.array([meta[pNam]['Scenario'][i]['Land Surface Scenario'] for i in range(len(meta[pNam]['Scenario']))],dtype=object))
+        meta[pNam]['Project']['LSC']['N Scenario']=meta[pNam]['Project']['LSC']['Scenario Names Unique'].size
     else:
-        meta['Project']['LSC']['Scenario Names Unique']=0
-        meta['Project']['LSC']['N Scenario']=0
+        meta[pNam]['Project']['LSC']['Scenario Names Unique']=0
+        meta[pNam]['Project']['LSC']['N Scenario']=0
 
     #--------------------------------------------------------------------------
     # Initialize project folders if they do not exist
     #--------------------------------------------------------------------------
 
-    meta['Paths']['Input Scenario']=[]
-    meta['Paths']['Output Scenario']=[]
-    for iScn in range(0,meta['Project']['N Scenario']):
-        meta['Paths']['Input Scenario'].append(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn))
-        if os.path.exists(meta['Paths']['Input Scenario'][iScn])==False:
-            os.mkdir(meta['Paths']['Input Scenario'][iScn])
-        meta['Paths']['Output Scenario'].append(meta['Paths']['Project'] + '\\Outputs\\Scenario' + FixFileNum(iScn))
-        if os.path.exists(meta['Paths']['Output Scenario'][iScn])==False:
-            os.mkdir(meta['Paths']['Output Scenario'][iScn])
+    meta['Paths'][pNam]['Input Scenario']=[]
+    meta['Paths'][pNam]['Output Scenario']=[]
+    for iScn in range(0,meta[pNam]['Project']['N Scenario']):
+        meta['Paths'][pNam]['Input Scenario'].append(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn))
+        if os.path.exists(meta['Paths'][pNam]['Input Scenario'][iScn])==False:
+            os.mkdir(meta['Paths'][pNam]['Input Scenario'][iScn])
+        meta['Paths'][pNam]['Output Scenario'].append(meta['Paths'][pNam]['Data'] + '\\Outputs\\Scenario' + FixFileNum(iScn))
+        if os.path.exists(meta['Paths'][pNam]['Output Scenario'][iScn])==False:
+            os.mkdir(meta['Paths'][pNam]['Output Scenario'][iScn])
 
     #--------------------------------------------------------------------------
     # Scale factors
@@ -861,23 +873,27 @@ def ImportProjectConfig_r(meta,**kwargs):
     # Growth curve information
     #--------------------------------------------------------------------------
 
-    meta['GC']={}
-    meta['GC']['N Growth Curves']=5
-    meta['GC']['ID GC Unique']=np.array([1,2,3,4,5])
-    meta['GC']['BatchTIPSY Maximum Age']=200
-    meta['GC']['BatchTIPSY Column Names']=['Age','VolTot0','VolMerch125',
+    meta['Modules']['GYM']={}
+    meta['Modules']['GYM']['N Growth Curves']=5
+    meta['Modules']['GYM']['ID GC Unique']=np.array([1,2,3,4,5])
+    meta['Modules']['GYM']['BatchTIPSY Maximum Age']=200
+    meta['Modules']['GYM']['BatchTIPSY Column Names']=['Age','VolTot0','VolMerch125',
         'VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots',
         'ODT_Stem','MortalityVolumeTotal']
 
     # Scale factor for growth curves
     # Note: Do not change this to 0.1 - aerial fertilization response will not work properly at 0.1
-    meta['GC']['Scale Factor']=0.001
+    meta['Modules']['GYM']['Scale Factor']=0.001
 
-    meta['GC']['GC_Variable_List']=['ID_Stand','ID_Scn','ID_GC','regeneration_method','s1','p1','i1','s2', \
+    meta['Modules']['GYM']['GC_Variable_List']=['ID_Stand','ID_Scn','ID_GC','regeneration_method','s1','p1','i1','s2', \
         'p2','s3','p3','s4','p4','s5','p5','gain1','selage1','gain2','selage2', \
         'gain3','selage3','gain4','selage4','gain5','selage5', \
         'init_density','regen_delay','oaf1','oaf2','bec_zone','FIZ', \
         'fert_age1','fert_age2','fert_age3','fert_age4','fert_age5']
+
+    # Operational adjustment factors (see TIPSY documentation)
+    meta['Modules']['GYM']['OAF1 Default']=np.round(0.85,decimals=2)
+    meta['Modules']['GYM']['OAF2 Default']=np.round(0.95,decimals=2)
 
     #--------------------------------------------------------------------------
     # Growth factor information
@@ -885,13 +901,13 @@ def ImportProjectConfig_r(meta,**kwargs):
     #--------------------------------------------------------------------------
 
     #    # Default status of growth factors
-    #    meta['Scenario Switch']['Net Growth Factor Status']=[None]*meta['Project']['N Scenario']
-    #    meta['Scenario Switch']['Mortality Factor Status']=[None]*meta['Project']['N Scenario']
-    #    for iScn in range(0,meta['Project']['N Scenario']):
+    #    meta['Scenario Switch']['Net Growth Factor Status']=[None]*meta[pNam]['Project']['N Scenario']
+    #    meta['Scenario Switch']['Mortality Factor Status']=[None]*meta[pNam]['Project']['N Scenario']
+    #    for iScn in range(0,meta[pNam]['Project']['N Scenario']):
     #        meta['Scenario Switch']['Net Growth Factor Status'][iScn]='Off'
     #        meta['Scenario Switch']['Mortality Factor Status'][iScn]='Off'
     #        #meta['Scenario Switch'][iScn]['Status Net Growth Factor']='Off'
-    #        #meta['Scenario'][iScn]['Status Mortality Factor']='Off'
+    #        #meta[pNam]['Scenario'][iScn]['Status Mortality Factor']='Off'
 
     #--------------------------------------------------------------------------
     # Harvested wood product information
@@ -906,23 +922,23 @@ def ImportProjectConfig_r(meta,**kwargs):
     #--------------------------------------------------------------------------
 
     # Initialize dictionary
-    meta['Nutrient Management']={}
+    meta['Modules']['Nutrient Management']={}
 
     # Initialize index to stands affected by nutrient application
     # This needs to be populated with an empty array for when Sawtooth is used.
-    meta['Nutrient Management']['iApplication']=np.array([])
+    meta['Modules']['Nutrient Management']['iApplication']=np.array([])
 
     # BGC zone exclusions (for on-the-fly application scheduler)
-    meta['Nutrient Management']['BGC Zone Exclusion CD']=['PP','MH','BAFA','BG','CMA','IMA']
-    meta['Nutrient Management']['BGC Zone Exclusion ID']=np.zeros(len(meta['Nutrient Management']['BGC Zone Exclusion CD']))
-    for iZ in range(len(meta['Nutrient Management']['BGC Zone Exclusion CD'])):
-        meta['Nutrient Management']['BGC Zone Exclusion ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['BGC Zone Exclusion CD'][iZ] ]
+    meta['Modules']['Nutrient Management']['BGC Zone Exclusion CD']=['PP','MH','BAFA','BG','CMA','IMA']
+    meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID']=np.zeros(len(meta['Modules']['Nutrient Management']['BGC Zone Exclusion CD']))
+    for iZ in range(len(meta['Modules']['Nutrient Management']['BGC Zone Exclusion CD'])):
+        meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Modules']['Nutrient Management']['BGC Zone Exclusion CD'][iZ] ]
 
     # Coastal zones used to make prob of occurrence region-specific
-    meta['Nutrient Management']['Coastal Zones CD']=['CWH','CDF']
-    meta['Nutrient Management']['Coastal Zones ID']=np.zeros(len(meta['Nutrient Management']['Coastal Zones CD']))
-    for iZ in range(len(meta['Nutrient Management']['Coastal Zones CD'])):
-        meta['Nutrient Management']['Coastal Zones ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['Coastal Zones CD'][iZ] ]
+    meta['Modules']['Nutrient Management']['Coastal Zones CD']=['CWH','CDF']
+    meta['Modules']['Nutrient Management']['Coastal Zones ID']=np.zeros(len(meta['Modules']['Nutrient Management']['Coastal Zones CD']))
+    for iZ in range(len(meta['Modules']['Nutrient Management']['Coastal Zones CD'])):
+        meta['Modules']['Nutrient Management']['Coastal Zones ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Modules']['Nutrient Management']['Coastal Zones CD'][iZ] ]
 
     #--------------------------------------------------------------------------
     # Simulate random numbers that can be used for simulating harvest on the fly
@@ -933,56 +949,56 @@ def ImportProjectConfig_r(meta,**kwargs):
     # scenarios, which can add considerable noise and demands many ensembles.
     # Conversely if you assign these pre-set sequeences, the random component will
     # vary among ensembles, but not among scenarios.
-    meta['Project']['On the Fly']={}
-    meta['Project']['On the Fly']['Random Numbers']={}
-    meta['Project']['On the Fly']['Random Numbers']['Scale Factor']=0.0001
+    meta[pNam]['Project']['On the Fly']={}
+    meta[pNam]['Project']['On the Fly']['Random Numbers']={}
+    meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']=0.0001
 
     # Only create these files if they will be used
 
     # Not needed for portfolio projects
 
-    if meta['Project']['Scenario Source']!='Portfolio':
+    if meta[pNam]['Project']['Scenario Source']!='Portfolio':
 
         flg_h=0
-        for iScn in range(meta['Project']['N Scenario']):
-            if (meta['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta['Scenario'][iScn]['Harvest Status Future']=='On'):
+        for iScn in range(meta[pNam]['Project']['N Scenario']):
+            if (meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On'):
                 flg_h=1
                 break
 
         flg_b=0
-        for iScn in range(meta['Project']['N Scenario']):
-            if (meta['Scenario'][iScn]['Breakup Status']=='On'):
+        for iScn in range(meta[pNam]['Project']['N Scenario']):
+            if (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
                 flg_b=1
                 break
 
         # Create random numbers and save them
-        if meta['Project']['Frozen Ensembles Status']=='Off':
-            for iEns in range(meta['Project']['N Ensemble']):
-                for iBat in range(meta['Project']['N Batch']):
+        if meta[pNam]['Project']['Frozen Ensembles Status']=='Off':
+            for iEns in range(meta[pNam]['Project']['N Ensemble']):
+                for iBat in range(meta[pNam]['Project']['N Batch']):
 
                     if flg_h==1:
-                        rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
-                        rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
+                        rn=np.random.random( (meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat]) )
+                        rn=rn/meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
                         rn=rn.astype('int16')
-                        gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+                        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
 
                     if flg_b==1:
-                        rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
-                        rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
+                        rn=np.random.random( (meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat]) )
+                        rn=rn/meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
                         rn=rn.astype('int16')
-                        gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+                        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
 
-    #meta['Project']['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
-    #meta['Project']['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
+    #meta[pNam]['Project']['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Ensemble']))
+    #meta[pNam]['Project']['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Ensemble']))
 
     #--------------------------------------------------------------------------
     # Parameter uncertainty by ensemble
     #--------------------------------------------------------------------------
 
     # Initialize list
-    meta['Param']['By Ensemble']=[None]*meta['Project']['N Ensemble']
+    meta['Param']['By Ensemble']=[None]*meta[pNam]['Project']['N Ensemble']
 
-    for iEns in range(meta['Project']['N Ensemble']):
+    for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
         # Initialize dictionary
         meta['Param']['By Ensemble'][iEns]={}
@@ -991,7 +1007,7 @@ def ImportProjectConfig_r(meta,**kwargs):
         # Biomass turnover
         #----------------------------------------------------------------------
 
-        if meta['Project']['Uncertainty Status Biomass Turnover']=='On':
+        if meta[pNam]['Project']['Uncertainty Status Biomass Turnover']=='On':
 
             meta['Param']['By Ensemble'][iEns]['Biomass Turnover']={}
 
@@ -1019,7 +1035,7 @@ def ImportProjectConfig_r(meta,**kwargs):
         # Decomposition
         #----------------------------------------------------------------------
 
-        if meta['Project']['Uncertainty Status Decomposition']=='On':
+        if meta[pNam]['Project']['Uncertainty Status Decomposition']=='On':
 
             meta['Param']['By Ensemble'][iEns]['Decomp']={}
 
@@ -1047,29 +1063,29 @@ def ImportProjectConfig_r(meta,**kwargs):
         # Harvesting
         #----------------------------------------------------------------------
 
-        if meta['Project']['Uncertainty Status Harvest Utilization']=='On':
+        if meta[pNam]['Project']['Uncertainty Status Harvest Utilization']=='On':
 
-            meta['Param']['By Ensemble'][iEns]['Dist']={}
+            meta['Param']['By Ensemble'][iEns]['Event']={}
 
             EventList=['Harvest','Harvest Salvage']
 
             for Event in EventList:
 
-                ID_Type=meta['LUT']['Dist'][Event]
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]={}
+                ID_Type=meta['LUT']['Event'][Event]
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]={}
 
                 #--------------------------------------------------------------
                 # Biomass merch
                 #--------------------------------------------------------------
 
                 # Removed fraction
-                mu=meta['Param']['BE']['Dist'][ID_Type]['BiomassMerch_Removed']
+                mu=meta['Param']['BE']['Event'][ID_Type]['BiomassMerch_Removed']
                 sig=np.array([0.1])
                 bl=np.array([0.0])
                 bu=np.array([1.0])
                 r_Removed=np.random.normal(loc=mu,scale=mu*sig)
                 r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Removed']=r_Removed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Removed']=r_Removed
 
                 # Total fraction that is piled and dispersed
                 r_PiledAndDispersed=1.0-r_Removed
@@ -1083,28 +1099,28 @@ def ImportProjectConfig_r(meta,**kwargs):
                 rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
 
                 # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
 
                 # Specific dispersed fraction
                 rSpecific_Dispersed=1.0-rSpecific_Piled
 
                 # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
 
-                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_LeftOnSite'])
+                #print(meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_LeftOnSite'])
 
                 #--------------------------------------------------------------
                 # Biomass non-merch
                 #--------------------------------------------------------------
 
                 # Removed fraction
-                mu=meta['Param']['BE']['Dist'][ID_Type]['BiomassNonMerch_Removed']
+                mu=meta['Param']['BE']['Event'][ID_Type]['BiomassNonMerch_Removed']
                 sig=np.array([0.1])
                 bl=np.array([0.0])
                 bu=np.array([1.0])
                 r_Removed=np.random.normal(loc=mu,scale=mu*sig)
                 r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Removed']=r_Removed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Removed']=r_Removed
 
                 # Total fraction that is piled and dispersed
                 r_PiledAndDispersed=1.0-r_Removed
@@ -1118,28 +1134,28 @@ def ImportProjectConfig_r(meta,**kwargs):
                 rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
 
                 # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
 
                 # Specific dispersed fraction
                 rSpecific_Dispersed=1.0-rSpecific_Piled
 
                 # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
 
-                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_LeftOnSite'])
+                #print(meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_LeftOnSite'])
 
                 #--------------------------------------------------------------
                 # Snags
                 #--------------------------------------------------------------
 
                 # Removed fraction
-                mu=meta['Param']['BE']['Dist'][ID_Type]['Snags_Removed']
+                mu=meta['Param']['BE']['Event'][ID_Type]['Snags_Removed']
                 sig=np.array([0.1])
                 bl=np.array([0.0])
                 bu=np.array([1.0])
                 r_Removed=np.random.normal(loc=mu,scale=mu*sig)
                 r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Removed']=r_Removed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Removed']=r_Removed
 
                 # Total fraction that is piled and dispersed
                 r_PiledAndDispersed=1.0-r_Removed
@@ -1153,21 +1169,21 @@ def ImportProjectConfig_r(meta,**kwargs):
                 rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
 
                 # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Piled']=r_PiledAndDispersed*rSpecific_Piled
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Piled']=r_PiledAndDispersed*rSpecific_Piled
 
                 # Specific dispersed fraction
                 rSpecific_Dispersed=1.0-rSpecific_Piled
 
                 # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
 
-                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_LeftOnSite'])
+                #print(meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Removed']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Piled']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_LeftOnSite'])
 
         #----------------------------------------------------------------------
         # Substitution effects
         #----------------------------------------------------------------------
 
-        if meta['Project']['Uncertainty Status Substitution']=='On':
+        if meta[pNam]['Project']['Uncertainty Status Substitution']=='On':
 
             meta['Param']['By Ensemble'][iEns]['Substitution']={}
 
@@ -1280,7 +1296,7 @@ def ImportProjectConfig_r(meta,**kwargs):
         # Nutrient mmanagement
         #----------------------------------------------------------------------
 
-        if meta['Project']['Uncertainty Status Nutrient Application']=='On':
+        if meta[pNam]['Project']['Uncertainty Status Nutrient Application']=='On':
 
             meta['Param']['By Ensemble'][iEns]['Nutrient Management']={}
 
@@ -1295,121 +1311,121 @@ def ImportProjectConfig_r(meta,**kwargs):
         # Mortality distribution
         #----------------------------------------------------------------------
 
-        #meta['Project']['Mortality Distribution']={}
-        #meta['Project']['Mortality Distribution']['Frequency (%)']=np.arange(0,101,1)
-        #meta['Project']['Mortality Distribution']['Severity (%)']=np.arange(0,101,1)
-        #meta['Project']['Mortality Distribution']['Variable List']=['Regular','Harvest','Wildfire','Beetles','Mechanical']
-        #meta['Project']['Mortality Distribution']['Data']={}
-        #for v in meta['Project']['Mortality Distribution']['Variable List']:
-        #    meta['Project']['Mortality Distribution']['Data'][v]=np.zeros((meta['Project']['Mortality Distribution']['Frequency (%)'].size,meta['Project']['Mortality Distribution']['Severity (%)'].size),dtype='int8')
+        #meta[pNam]['Project']['Mortality Distribution']={}
+        #meta[pNam]['Project']['Mortality Distribution']['Frequency (%)']=np.arange(0,101,1)
+        #meta[pNam]['Project']['Mortality Distribution']['Severity (%)']=np.arange(0,101,1)
+        #meta[pNam]['Project']['Mortality Distribution']['Variable List']=['Regular','Harvest','Wildfire','Beetles','Mechanical']
+        #meta[pNam]['Project']['Mortality Distribution']['Data']={}
+        #for v in meta[pNam]['Project']['Mortality Distribution']['Variable List']:
+        #    meta[pNam]['Project']['Mortality Distribution']['Data'][v]=np.zeros((meta[pNam]['Project']['Mortality Distribution']['Frequency (%)'].size,meta[pNam]['Project']['Mortality Distribution']['Severity (%)'].size),dtype='int8')
 
     #--------------------------------------------------------------------------
     # Scenario info for portfolio projects
     #--------------------------------------------------------------------------
 
-    if meta['Project']['Scenario Source']=='Portfolio':
+    if meta[pNam]['Project']['Scenario Source']=='Portfolio':
 
         # Index to rows with implementation
-        indAT=np.where(np.sum(meta['Project']['AIL']['Area'],axis=0)>0)[0]
+        indAT=np.where(np.sum(meta[pNam]['Project']['AIL']['Area'],axis=0)>0)[0]
 
-        meta['Project']['Portfolio']['ID Portfolio']=np.zeros(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Portfolio']['ID AT']=np.zeros(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Portfolio']['ID AT Unique']=np.zeros(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Portfolio']['Area']=np.zeros(meta['Project']['N Stand'])
-        meta['Project']['Portfolio']['Year']=np.zeros(meta['Project']['N Stand'])
-        meta['Project']['Portfolio']['Region Code']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
-        meta['Project']['Portfolio']['Felled Fate Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
-        meta['Project']['Portfolio']['Removed Fate Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
-        meta['Project']['Portfolio']['HWP End Use Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
+        meta[pNam]['Project']['Portfolio']['ID Portfolio']=np.zeros(meta[pNam]['Project']['N Stand'],dtype=int)
+        meta[pNam]['Project']['Portfolio']['ID AT']=np.zeros(meta[pNam]['Project']['N Stand'],dtype=int)
+        meta[pNam]['Project']['Portfolio']['ID AT Unique']=np.zeros(meta[pNam]['Project']['N Stand'],dtype=int)
+        meta[pNam]['Project']['Portfolio']['Area']=np.zeros(meta[pNam]['Project']['N Stand'])
+        meta[pNam]['Project']['Portfolio']['Year']=np.zeros(meta[pNam]['Project']['N Stand'])
+        meta[pNam]['Project']['Portfolio']['Region Code']=np.array(['' for _ in range(meta[pNam]['Project']['N Stand'])],dtype=object)
+        meta[pNam]['Project']['Portfolio']['Felled Fate Scenario']=np.array(['' for _ in range(meta[pNam]['Project']['N Stand'])],dtype=object)
+        meta[pNam]['Project']['Portfolio']['Removed Fate Scenario']=np.array(['' for _ in range(meta[pNam]['Project']['N Stand'])],dtype=object)
+        meta[pNam]['Project']['Portfolio']['HWP End Use Scenario']=np.array(['' for _ in range(meta[pNam]['Project']['N Stand'])],dtype=object)
         cnt=0
-        for iA in range(meta['Project']['AIL']['N AT']):
-            for iY in range(meta['Project']['AIL']['N Years']):
-                for iS in range(meta['Project']['N Stand per Activity Type']):
+        for iA in range(meta[pNam]['Project']['AIL']['N AT']):
+            for iY in range(meta[pNam]['Project']['AIL']['N Years']):
+                for iS in range(meta[pNam]['Project']['N Stand per Activity Type']):
 
-                    ID_Portfolio=meta['Project']['AIL']['ID Portfolio'][indAT[iA]]
+                    ID_Portfolio=meta[pNam]['Project']['AIL']['ID Portfolio'][indAT[iA]]
 
-                    meta['Project']['Portfolio']['ID Portfolio'][cnt]=ID_Portfolio
-                    meta['Project']['Portfolio']['ID AT'][cnt]=meta['Project']['AIL']['ID AT'][indAT[iA]]
-                    meta['Project']['Portfolio']['ID AT Unique'][cnt]=meta['Project']['AIL']['ID AT Unique'][indAT[iA]]
-                    meta['Project']['Portfolio']['Area'][cnt]=meta['Project']['AIL']['Area'][iY,indAT[iA]]
-                    meta['Project']['Portfolio']['Year'][cnt]=meta['Project']['AIL']['Year'][iY]
+                    meta[pNam]['Project']['Portfolio']['ID Portfolio'][cnt]=ID_Portfolio
+                    meta[pNam]['Project']['Portfolio']['ID AT'][cnt]=meta[pNam]['Project']['AIL']['ID AT'][indAT[iA]]
+                    meta[pNam]['Project']['Portfolio']['ID AT Unique'][cnt]=meta[pNam]['Project']['AIL']['ID AT Unique'][indAT[iA]]
+                    meta[pNam]['Project']['Portfolio']['Area'][cnt]=meta[pNam]['Project']['AIL']['Area'][iY,indAT[iA]]
+                    meta[pNam]['Project']['Portfolio']['Year'][cnt]=meta[pNam]['Project']['AIL']['Year'][iY]
 
                     # Region from Activities table
-                    ind=np.where(meta['Project']['Activities']['Activity ID']==meta['Project']['Portfolio']['ID AT'][cnt])
-                    meta['Project']['Portfolio']['Region Code'][cnt]=meta['Project']['Activities']['Region Code'][ind][0]
+                    ind=np.where(meta[pNam]['Project']['Activities']['Activity ID']==meta[pNam]['Project']['Portfolio']['ID AT'][cnt])
+                    meta[pNam]['Project']['Portfolio']['Region Code'][cnt]=meta[pNam]['Project']['Activities']['Region Code'][ind][0]
 
                     # Scenarios from Portfolio table
-                    iPortfolio=np.where(meta['Project']['Portfolio']['Raw']['ID_Portfolio']==ID_Portfolio)[0]
-                    meta['Project']['Portfolio']['Felled Fate Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['Felled Fate Scenario'][iPortfolio][0]
-                    meta['Project']['Portfolio']['Removed Fate Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['Removed Fate Scenario'][iPortfolio][0]
-                    meta['Project']['Portfolio']['HWP End Use Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['HWP End Use Scenario'][iPortfolio][0]
+                    iPortfolio=np.where(meta[pNam]['Project']['Portfolio']['Raw']['ID_Portfolio']==ID_Portfolio)[0]
+                    meta[pNam]['Project']['Portfolio']['Felled Fate Scenario'][cnt]=meta[pNam]['Project']['Portfolio']['Raw']['Felled Fate Scenario'][iPortfolio][0]
+                    meta[pNam]['Project']['Portfolio']['Removed Fate Scenario'][cnt]=meta[pNam]['Project']['Portfolio']['Raw']['Removed Fate Scenario'][iPortfolio][0]
+                    meta[pNam]['Project']['Portfolio']['HWP End Use Scenario'][cnt]=meta[pNam]['Project']['Portfolio']['Raw']['HWP End Use Scenario'][iPortfolio][0]
                     cnt=cnt+1
 
         # Scenario information
         # Will this tool ever be used with on-the-fly disturbances? Current set
         # to "off".
-        meta['Scenario']=[None]*meta['Project']['N Scenario']
-        for iScn in range(meta['Project']['N Scenario']):
+        meta[pNam]['Scenario']=[None]*meta[pNam]['Project']['N Scenario']
+        for iScn in range(meta[pNam]['Project']['N Scenario']):
 
-            meta['Scenario'][iScn]={}
+            meta[pNam]['Scenario'][iScn]={}
 
             # *** This is super awkward - simulations can't change between activities or scenarios!!!
             # Do we need that type of functionality for the PT? ***
-            meta['Scenario'][iScn]['Wildfire Scenario ID']=meta['Project']['Activities']['Wildfire Scenario ID'][0]
-            meta['Scenario'][iScn]['Wildfire Status Pre-modern']=meta['Project']['Activities']['Wildfire Status Pre-modern'][0]
-            meta['Scenario'][iScn]['Wildfire Status Modern']=meta['Project']['Activities']['Wildfire Status Modern'][0]
-            meta['Scenario'][iScn]['Wildfire Status Future']=meta['Project']['Activities']['Wildfire Status Future'][0]
+            meta[pNam]['Scenario'][iScn]['Wildfire Scenario ID']=meta[pNam]['Project']['Activities']['Wildfire Scenario ID'][0]
+            meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=meta[pNam]['Project']['Activities']['Wildfire Status Pre-modern'][0]
+            meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=meta[pNam]['Project']['Activities']['Wildfire Status Modern'][0]
+            meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=meta[pNam]['Project']['Activities']['Wildfire Status Future'][0]
 
-            meta['Scenario'][iScn]['Harvest Status Historical']='Off'
-            meta['Scenario'][iScn]['Harvest Status Future']='Off'
-            meta['Scenario'][iScn]['Breakup Status']='Off'
-            meta['Scenario'][iScn]['Nutrient Application Status']='Off'
+            meta[pNam]['Scenario'][iScn]['Harvest Status Historical']='Off'
+            meta[pNam]['Scenario'][iScn]['Harvest Status Future']='Off'
+            meta[pNam]['Scenario'][iScn]['Breakup Status']='Off'
+            meta[pNam]['Scenario'][iScn]['Nutrient Application Status']='Off'
 
     #--------------------------------------------------------------------------
     # Project type and region
     #--------------------------------------------------------------------------
 
-    if meta['Project']['Scenario Source']=='Spreadsheet':
+    if meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
 
         # Define region from input of BGC zone (*** updated to start including ***)
-        # for iScn in range(meta['Project']['N Scenario']):
-        #     if np.isin(meta['Scenario'][iScn]['BGC Zone Code'],['CWH','CDF','MH'])==True:
-        #         meta['Scenario'][iScn]['Region Code']='Coast'
-        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Coast']
+        # for iScn in range(meta[pNam]['Project']['N Scenario']):
+        #     if np.isin(meta[pNam]['Scenario'][iScn]['BGC Zone Code'],['CWH','CDF','MH'])==True:
+        #         meta[pNam]['Scenario'][iScn]['Region Code']='Coast'
+        #         meta[pNam]['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Coast']
         #     else:
-        #         meta['Scenario'][iScn]['Region Code']='Interior'
-        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Interior']
+        #         meta[pNam]['Scenario'][iScn]['Region Code']='Interior'
+        #         meta[pNam]['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Interior']
 
         # Define strata
-        meta['Project']['Strata']={}
-        meta['Project']['Strata']['Project']={}
-        meta['Project']['Strata']['Project']['Unique CD']=np.array(['All'],dtype=object)
-        meta['Project']['Strata']['Project']['Unique ID']=np.ones(1)
-        meta['Project']['Strata']['Project']['ID']=np.ones(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Strata']['Spatial']={}
-        meta['Project']['Strata']['Spatial']['Unique CD']=np.array(['All'],dtype=object)
-        meta['Project']['Strata']['Spatial']['Unique ID']=np.ones(1)
-        meta['Project']['Strata']['Spatial']['ID']=np.ones(meta['Project']['N Stand'],dtype=int)
+        meta[pNam]['Project']['Strata']={}
+        meta[pNam]['Project']['Strata']['Project']={}
+        meta[pNam]['Project']['Strata']['Project']['Unique CD']=np.array(['All'],dtype=object)
+        meta[pNam]['Project']['Strata']['Project']['Unique ID']=np.ones(1)
+        meta[pNam]['Project']['Strata']['Project']['ID']=np.ones(meta[pNam]['Project']['N Stand'],dtype=int)
+        meta[pNam]['Project']['Strata']['Spatial']={}
+        meta[pNam]['Project']['Strata']['Spatial']['Unique CD']=np.array(['All'],dtype=object)
+        meta[pNam]['Project']['Strata']['Spatial']['Unique ID']=np.ones(1)
+        meta[pNam]['Project']['Strata']['Spatial']['ID']=np.ones(meta[pNam]['Project']['N Stand'],dtype=int)
 
         # OLD
-        #meta['Project']['Project Stratum ID']=1.0*np.ones(meta['Project']['N Stand'])
-        #meta['Project']['Spatial Stratum ID']=1.0*np.ones(meta['Project']['N Stand'])
+        #meta[pNam]['Project']['Project Stratum ID']=1.0*np.ones(meta[pNam]['Project']['N Stand'])
+        #meta[pNam]['Project']['Spatial Stratum ID']=1.0*np.ones(meta[pNam]['Project']['N Stand'])
 
     #--------------------------------------------------------------------------
     # Grassland module
     #--------------------------------------------------------------------------
 
-    for iScn in range(meta['Project']['N Scenario']):
-        if 'Grassland Module Status' not in meta['Scenario'][iScn]:
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
+        if 'Grassland Module Status' not in meta[pNam]['Scenario'][iScn]:
             # Default is off
-            meta['Scenario'][iScn]['Grass Module Status']='Off'
-            meta['Scenario'][iScn]['Grass Module Year Start']=meta['Project']['Year Project']+1
+            meta[pNam]['Scenario'][iScn]['Grass Module Status']='Off'
+            meta[pNam]['Scenario'][iScn]['Grass Module Year Start']=meta[pNam]['Project']['Year Project']+1
 
     #--------------------------------------------------------------------------
     # Initialize run time tracking
     #--------------------------------------------------------------------------
 
-    meta['Project']['Run Time Summary']={}
+    meta[pNam]['Project']['Run Time Summary']={}
 
     return meta
 
@@ -1423,9 +1439,9 @@ def Load_LUTs_Modelling(meta):
 
     # Import distubance type
     p=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\' + 'Parameters_Disturbances.xlsx')
-    meta['LUT']['Dist']={}
+    meta['LUT']['Event']={}
     for i in range(p['Name'].size):
-        meta['LUT']['Dist'][p['Name'][i]]=p['ID'][i]
+        meta['LUT']['Event'][p['Name'][i]]=p['ID'][i]
 
     # Region
     meta['LUT']['Region']={'Coast':1,'Interior':2,'GFS22':3}
@@ -1478,950 +1494,11 @@ def Load_LUTs_Modelling(meta):
 
     return meta
 
-#%% Configure project
-
-def ImportProjectConfig(meta,**kwargs):
-
-    #--------------------------------------------------------------------------
-    # Initialize nested dictionaries
-    #--------------------------------------------------------------------------
-
-    if 'Project' not in meta:
-        meta['Project']={}
-
-    if 'Core' not in meta:
-        meta['Core']={}
-
-    #--------------------------------------------------------------------------
-    # Import project parameters from spreadsheet
-    #--------------------------------------------------------------------------
-
-    df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Project')
-    for i in range(len(df)):
-        Name=df['Name'].iloc[i]
-        Value=df['Value'].iloc[i]
-        if Name[-1]==':':
-            # Exclude headers
-            continue
-        meta['Project'][Name]=Value
-
-    #--------------------------------------------------------------------------
-    # Import look-up tables
-    #--------------------------------------------------------------------------
-
-    meta=invu.Load_LUTs(meta)
-
-    #--------------------------------------------------------------------------
-    # Define pool names
-    #--------------------------------------------------------------------------
-
-    # Pool names (ecosystem)
-    # *** If you change this, you need to change the same list in "Update Parameters" ***
-    meta['Core']['Name Pools Eco']=['StemMerch','StemNonMerch','Foliage','Branch','Bark','RootCoarse','RootFine', \
-        'PiledStemMerch','PiledStemNonMerch','PiledBranch','PiledBark','PiledSnagStem','PiledSnagBranch', \
-        'LitterVF','LitterF','LitterM','LitterS','SnagStem','SnagBranch','SoilVF','SoilF','SoilS']
-
-    # Used in fert work: ,'LitterDecomp'
-
-    # Number of ecosystem pools
-    meta['Core']['N Pools Eco']=len(meta['Core']['Name Pools Eco'])
-
-    # Pool names (products)
-    meta['Core']['Name Pools Pro']=['SFH','MFH','Comm','Furn','Ship','Repairs', \
-        'Other','Paper','EffluentPulp','PowerFacilityDom','PowerFacilityExport','PowerGrid', \
-        'PelletExport','PelletDomGrid','PelletDomRNG','LogExport','FirewoodDom','FirewoodExport','DumpWood', \
-        'DumpPaper','LandfillWoodDegradable','LandfillWoodNonDegradable', \
-        'LandfillPaperDegradable','LandfillPaperNonDegradable','E_CO2','E_CH4']
-
-    # Number of product pools
-    meta['Core']['N Pools Pro']=len(meta['Core']['Name Pools Pro'])
-
-    # List of output variables
-    meta['Core']['Output Variable List']=[
-        'A',
-        'V_MerchLive',
-        'V_MerchDead',
-        'V_MerchTotal',
-        'V_ToMillMerchLive',
-        'V_ToMillMerchDead',
-        'V_ToMillMerchTotal',
-        'C_Forest_Tot',
-        'C_Biomass_Tot',
-        'C_Stemwood_Tot',
-        'C_Foliage_Tot',
-        'C_Branch_Tot',
-        'C_Bark_Tot',
-        'C_Root_Tot',
-        'C_DeadWood_Tot',
-        'C_DumpLandfill_Tot',
-        'C_Piled_Tot',
-        'C_G_Gross_Tot',
-        'C_G_Net_Tot',
-        'C_HWP_Tot',
-        'C_InUse_Tot',
-        'C_Buildings_Tot',
-        'C_NonBuildings_Tot',
-        'C_LF_Tot',
-        'C_Litter_Tot',
-        'C_M_Reg_Tot',
-        'C_NPP_Tot',
-        'C_RH_Tot',
-        'C_Soil_Tot',
-        'C_Soil_OHorizon',
-        'C_Coal',
-        'C_Oil',
-        'C_Gas',
-        'C_Limestone',
-        'C_ToFirewoodDom',
-        'C_ToFirewoodExport',
-        'C_ToLogExport',
-        'C_ToLumber',
-        'C_ToMDF',
-        'C_ToMill',
-        'C_ToMillMerch',
-        'C_ToMillNonMerch',
-        'C_ToMillSnagStem',
-        'C_ToOSB',
-        'C_ToPaper',
-        'C_ToPelletExport',
-        'C_ToPelletDomGrid',
-        'C_ToPelletDomRNG',
-        'C_ToPlywood',
-        'C_ToPowerFacilityDom',
-        'C_ToPowerFacilityExport',
-        'C_ToPowerGrid',
-        'C_ToSlashpileBurnTot',
-        'C_ToSlashpileBurnNonMerch',
-        'E_CO2e_LULUCF_NEE',
-        'E_CO2e_LULUCF_Denit',
-        'E_CO2e_LULUCF_Other',
-        'E_CO2e_LULUCF_OpenBurning',
-        'E_CO2e_LULUCF_Wildfire',
-        'E_CO2e_LULUCF_Fire',
-        'E_CO2e_LULUCF_HWP',
-        'E_CO2e_ESC_Bioenergy',
-        'E_CO2e_ESC_BioenergyPowerFacilityDom',
-        'E_CO2e_ESC_BioenergyPowerFacilityExport',
-        'E_CO2e_ESC_BioenergyPowerGrid',
-        'E_CO2e_ESC_BioenergyPelletExport',
-        'E_CO2e_ESC_BioenergyPelletDomGrid',
-        'E_CO2e_ESC_BioenergyPelletDomRNG',
-        'E_CO2e_ESC_BioenergyFirewoodDom',
-        'E_CO2e_ESC_BioenergyFirewoodExport',
-        'E_CO2e_ESC_OperFor',
-        'E_CO2e_ET_OperFor',
-        'E_CO2e_IPPU_OperFor',
-        'E_CO2e_SUB_E',
-        'E_CO2e_SUB_M',
-        'E_CO2e_SUB_Tot',
-        'E_CO2e_SUB_Coal',
-        'E_CO2e_SUB_Oil',
-        'E_CO2e_SUB_Gas',
-        'E_CO2e_SUB_ESC',
-        'E_CO2e_SUB_ET',
-        'E_CO2e_SUB_IPPU',
-        'E_CO2e_SUB_Calcination',
-        'E_CO2e_SUB_Sawnwood',
-        'E_CO2e_SUB_Panel',
-        'E_CO2e_SUB_PowerFacilityDom',
-        'E_CO2e_SUB_PowerFacilityExport',
-        'E_CO2e_SUB_PowerGrid',
-        'E_CO2e_SUB_PelletExport',
-        'E_CO2e_SUB_PelletDomGrid',
-        'E_CO2e_SUB_PelletDomRNG',
-        'E_CO2e_SUB_FirewoodDom',
-        'E_CO2e_SUB_FirewoodExport',
-        'E_CO2e_AGHGB_WOSub',
-        'E_CO2e_AGHGB_WOSub_cumu',
-        'E_CO2e_AGHGB_WSub',
-        'E_CO2e_AGHGB_WSub_cumu',
-        'ODT Sawnwood',
-        'ODT Panel',
-        'ODT Lumber',
-        'ODT LogExport',
-        'ODT Plywood',
-        'ODT OSB',
-        'ODT MDF',
-        'ODT Paper',
-        'ODT PelletExport',
-        'ODT PelletDomGrid',
-        'ODT PelletDomRNG',
-        'ODT PowerFacilityDom',
-        'ODT PowerGrid',
-        'ODT FirewoodTot',
-        'ODT FirewoodDom',
-        'ODT Concrete',
-        'ODT Steel',
-        'ODT Aluminum',
-        'ODT Plastic',
-        'ODT Textile',
-        'ODT Coal',
-        'ODT Oil',
-        'ODT Gas',
-        'GJ PowerFacilityDom',
-        'GJ PowerGrid',
-        'GJ PelletExport',
-        'GJ PelletDomGrid',
-        'GJ PelletDomRNG',
-        'GJ FirewoodDom',
-        'Atm_CO2_In',
-        'Atm_CH4_In',
-        'Atm_N2O_In',
-        'Atm_CO2_Out',
-        'Atm_CH4_Out',
-        'Atm_N2O_Out',
-        'Cost Roads',
-        'Cost Knockdown',
-        'Cost Ripping',
-        'Cost Nutrient Management',
-        'Cost PAS Deactivation',
-        'Cost Harvest Felling and Piling',
-        'Cost Harvest Hauling',
-        'Cost Harvest Overhead',
-        'Cost Harvest Residuals',
-        'Cost Milling',
-        'Cost Slashpile Burn',
-        'Cost Planting',
-        'Cost Survey',
-        'Cost Silviculture Total',
-        'Cost Total',
-        'Cost Total Disc',
-        'Cost Total Disc_cumu',
-        'Revenue FirewoodDom',
-        'Revenue LogExport',
-        'Revenue Lumber',
-        'Revenue MDF',
-        'Revenue OSB',
-        'Revenue Paper',
-        'Revenue PelletExport',
-        'Revenue PelletDom',
-        'Revenue Plywood',
-        'Revenue PowerFacilityDom',
-        'Revenue PowerGrid',
-        'Revenue Gross',
-        'Revenue Gross Disc',
-        'Revenue Gross Disc_cumu',
-        'Revenue Net',
-        'Revenue Net Disc',
-        'Revenue Net Disc_cumu',
-        'LogSizeEnhancement']
-
-    #--------------------------------------------------------------------------
-    # Define indices to each pool
-    #--------------------------------------------------------------------------
-
-    # Indices to ecosystem pools pools
-    meta['Core']['iEP']={}; cnt=0
-    for nam in meta['Core']['Name Pools Eco']:
-        meta['Core']['iEP'][nam]=cnt
-        cnt=cnt+1
-    iEP=meta['Core']['iEP']
-    meta['Core']['iEP']['BiomassTotal']=np.array([iEP['StemMerch'],iEP['StemNonMerch'],iEP['Foliage'],iEP['Branch'],iEP['Bark'],iEP['RootCoarse'],iEP['RootFine']])
-    meta['Core']['iEP']['BiomassAboveground']=np.array([iEP['StemMerch'],iEP['StemNonMerch'],iEP['Foliage'],iEP['Branch'],iEP['Bark']])
-    meta['Core']['iEP']['BiomassBelowground']=np.array([iEP['RootCoarse'],iEP['RootFine']])
-    meta['Core']['iEP']['DeadWood']=np.array([iEP['PiledStemMerch'],iEP['PiledStemNonMerch'],iEP['PiledBranch'],iEP['PiledBark'],iEP['SnagStem'],iEP['SnagBranch']])
-    meta['Core']['iEP']['Litter']=np.array([iEP['LitterVF'],iEP['LitterF'],iEP['LitterM'],iEP['LitterS']])
-    meta['Core']['iEP']['Piled']=np.array([iEP['PiledStemMerch'],iEP['PiledStemNonMerch'],iEP['PiledBranch'],iEP['PiledBark'],iEP['PiledSnagStem'],iEP['PiledSnagBranch']])
-    meta['Core']['iEP']['Soil']=np.array([iEP['SoilVF'],iEP['SoilF'],iEP['SoilS']])
-
-    # Indices to produce pools pools
-    meta['Core']['iPP']={}; cnt=0
-    for nam in meta['Core']['Name Pools Pro']:
-        meta['Core']['iPP'][nam]=cnt
-        cnt=cnt+1
-    iPP=meta['Core']['iPP']
-    meta['Core']['iPP']['InUse']=np.array([ iPP['SFH'],iPP['MFH'],iPP['Comm'],iPP['Furn'],iPP['Ship'],iPP['Repairs'],iPP['Other'],iPP['Paper'] ])
-    meta['Core']['iPP']['Buildings']=np.array([ iPP['SFH'],iPP['MFH'],iPP['Comm'] ])
-    meta['Core']['iPP']['DumpLandfill']=np.array([ iPP['DumpWood'],iPP['DumpPaper'],iPP['LandfillWoodDegradable'],iPP['LandfillWoodNonDegradable'],iPP['LandfillPaperDegradable'],iPP['LandfillPaperNonDegradable'] ])
-
-    #--------------------------------------------------------------------------
-    # Maximum number of events per year
-    # 8 appears to be sufficient but this may need to be changed for some
-    # special projects
-    #--------------------------------------------------------------------------
-
-    meta['Core']['Max Events Per Year']=8
-
-    #--------------------------------------------------------------------------
-    # Define time
-    #--------------------------------------------------------------------------
-
-    # Calendar year
-    meta['Year']=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
-
-    meta['Project']['N Time']=meta['Year'].size
-
-    #--------------------------------------------------------------------------
-    # Dimensions of simulation
-    #--------------------------------------------------------------------------
-
-    # Number of stands
-    if meta['Project']['Scenario Source']=='Spreadsheet':
-
-        if 'Number of stands' in meta['Project']:
-            # Override!
-            meta['Project']['N Stand']=meta['Project']['Number of stands']
-        else:
-            meta['Project']['N Stand']=1
-
-    elif meta['Project']['Scenario Source']=='Portfolio':
-
-        meta['Project']['N Stand']=meta['Project']['N Stand per Activity Type']*meta['Project']['AIL']['N AT']*meta['Project']['AIL']['N Years']
-
-    elif meta['Project']['Scenario Source']=='Script':
-
-        try:
-            meta['Project']['N Stand']=kwargs['geos']['Sparse']['X'].size
-        except:
-            # Tiled project
-            meta['Project']['N Stand']=meta['Project']['iKeep'].size
-            #meta['Project']['N Stand']=kwargs['geos']['m']*kwargs['geos']['n']
-
-    # Number of batches
-    meta['Project']['N Batch']=np.ceil(meta['Project']['N Stand']/meta['Project']['Batch Interval']).astype(int)
-
-    # Initialize list that can keep track of batch sizes
-    meta['Project']['Batch Size']=[None]*meta['Project']['N Batch']
-    for iBat in range(meta['Project']['N Batch']):
-        meta['Project']['Batch Size'][iBat]=IndexToBatch(meta,iBat).size
-
-    #--------------------------------------------------------------------------
-    # Import model parameters
-    #--------------------------------------------------------------------------
-
-    meta=ImportParameters(meta)
-
-    #--------------------------------------------------------------------------
-    # Define scenario parameters
-    #--------------------------------------------------------------------------
-
-    if meta['Project']['Scenario Source']!='Portfolio':
-
-        df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios',usecols='A:OM')
-
-        df=df.iloc[:,df.iloc[0,:].isnull().values==False]
-
-        meta['Scenario']=list()
-        for i in range(1,df.shape[1]):
-            pScn0={}
-            for j in range(df.shape[0]):
-                if df.iloc[j,0][-1]==':':
-                    # Exclude headers
-                    continue
-                pScn0.update({df.iloc[j,0]:df.iat[j,i]})
-            meta['Scenario'].append(pScn0)
-
-        # Number of scenarios
-        meta['Project']['N Scenario']=np.sum([i['Scenario Status']=='On' for i in meta['Scenario']])
-
-    #--------------------------------------------------------------------------
-    # Number of Land Surface Scenarios
-    #--------------------------------------------------------------------------
-
-    meta['Project']['LSC']={}
-    if meta['Project']['Scenario Source']!='Portfolio':
-        meta['Project']['LSC']['Scenario Names Unique']=np.unique(np.array([meta['Scenario'][i]['Land Surface Scenario'] for i in range(len(meta['Scenario']))],dtype=object))
-        meta['Project']['LSC']['N Scenario']=meta['Project']['LSC']['Scenario Names Unique'].size
-    else:
-        meta['Project']['LSC']['Scenario Names Unique']=0
-        meta['Project']['LSC']['N Scenario']=0
-
-    #--------------------------------------------------------------------------
-    # Initialize project folders if they do not exist
-    #--------------------------------------------------------------------------
-
-    meta['Paths']['Input Scenario']=[]
-    meta['Paths']['Output Scenario']=[]
-    for iScn in range(0,meta['Project']['N Scenario']):
-        meta['Paths']['Input Scenario'].append(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn))
-        if os.path.exists(meta['Paths']['Input Scenario'][iScn])==False:
-            os.mkdir(meta['Paths']['Input Scenario'][iScn])
-        meta['Paths']['Output Scenario'].append(meta['Paths']['Project'] + '\\Outputs\\Scenario' + FixFileNum(iScn))
-        if os.path.exists(meta['Paths']['Output Scenario'][iScn])==False:
-            os.mkdir(meta['Paths']['Output Scenario'][iScn])
-
-    #--------------------------------------------------------------------------
-    # Scale factors
-    #--------------------------------------------------------------------------
-
-    # *** Scale factor for saving results (this needs to be 100, 10 does not
-    # capture carbon fluxes and it will affect GHG benefit estimates) ***
-    # One variable ('CO2e_E_Products') requires the big one
-    meta['Core']['Scale Factor Export Small']=0.001
-    meta['Core']['Scale Factor Export Big']=0.001
-    meta['Core']['Scale Factor C_M_ByAgent']=0.1
-
-    #--------------------------------------------------------------------------
-    # Define strings that frequently need to be populated with zeros
-    #--------------------------------------------------------------------------
-
-    meta['Core']['StringsToFill']=['Month','Day','SILV_FUND_SOURCE_CODE', \
-               'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
-               'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
-               'PL_SPECIES_CD5','PL_SPECIES_PCT5','PL_SPECIES_GW5','PL_SPECIES_CD6','PL_SPECIES_PCT6','PL_SPECIES_GW6']
-        #,'FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER'
-
-    #--------------------------------------------------------------------------
-    # Growth curve information
-    #--------------------------------------------------------------------------
-
-    meta['GC']={}
-    meta['GC']['N Growth Curves']=5
-    meta['GC']['ID GC Unique']=np.array([1,2,3,4,5])
-    meta['GC']['BatchTIPSY Maximum Age']=200
-    meta['GC']['BatchTIPSY Column Names']=['Age','VolTot0','VolMerch125',
-        'VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots',
-        'ODT_Stem','MortalityVolumeTotal']
-
-    # Scale factor for growth curves
-    # Note: Do not change this to 0.1 - aerial fertilization response will not work properly at 0.1
-    meta['GC']['Scale Factor']=0.001
-
-    meta['GC']['GC_Variable_List']=['ID_Stand','ID_Scn','ID_GC','regeneration_method','s1','p1','i1','s2', \
-        'p2','s3','p3','s4','p4','s5','p5','gain1','selage1','gain2','selage2', \
-        'gain3','selage3','gain4','selage4','gain5','selage5', \
-        'init_density','regen_delay','oaf1','oaf2','bec_zone','FIZ', \
-        'fert_age1','fert_age2','fert_age3','fert_age4','fert_age5']
-
-    #--------------------------------------------------------------------------
-    # Growth factor information
-    # *** Not currently used ***
-    #--------------------------------------------------------------------------
-
-    #    # Default status of growth factors
-    #    meta['Scenario Switch']['Net Growth Factor Status']=[None]*meta['Project']['N Scenario']
-    #    meta['Scenario Switch']['Mortality Factor Status']=[None]*meta['Project']['N Scenario']
-    #    for iScn in range(0,meta['Project']['N Scenario']):
-    #        meta['Scenario Switch']['Net Growth Factor Status'][iScn]='Off'
-    #        meta['Scenario Switch']['Mortality Factor Status'][iScn]='Off'
-    #        #meta['Scenario Switch'][iScn]['Status Net Growth Factor']='Off'
-    #        #meta['Scenario'][iScn]['Status Mortality Factor']='Off'
-
-    #--------------------------------------------------------------------------
-    # Harvested wood product information
-    # Year to start calling annual HWP methods - running it before 1800 is a
-    # waste of time.
-    #--------------------------------------------------------------------------
-
-    meta['Core']['HWP Year Start']=1850
-
-    #--------------------------------------------------------------------------
-    # Nutrient management information (for compatibility with "silviculture" module)
-    #--------------------------------------------------------------------------
-
-    # Initialize dictionary
-    meta['Nutrient Management']={}
-
-    # Initialize index to stands affected by nutrient application
-    # This needs to be populated with an empty array for when Sawtooth is used.
-    meta['Nutrient Management']['iApplication']=np.array([])
-
-    # BGC zone exclusions (for on-the-fly application scheduler)
-    meta['Nutrient Management']['BGC Zone Exclusion CD']=['PP','MH','BAFA','BG','CMA','IMA']
-    meta['Nutrient Management']['BGC Zone Exclusion ID']=np.zeros(len(meta['Nutrient Management']['BGC Zone Exclusion CD']))
-    for iZ in range(len(meta['Nutrient Management']['BGC Zone Exclusion CD'])):
-        meta['Nutrient Management']['BGC Zone Exclusion ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['BGC Zone Exclusion CD'][iZ] ]
-
-    # Coastal zones used to make prob of occurrence region-specific
-    meta['Nutrient Management']['Coastal Zones CD']=['CWH','CDF']
-    meta['Nutrient Management']['Coastal Zones ID']=np.zeros(len(meta['Nutrient Management']['Coastal Zones CD']))
-    for iZ in range(len(meta['Nutrient Management']['Coastal Zones CD'])):
-        meta['Nutrient Management']['Coastal Zones ID'][iZ]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][ meta['Nutrient Management']['Coastal Zones CD'][iZ] ]
-
-    #--------------------------------------------------------------------------
-    # Simulate random numbers that can be used for simulating harvest on the fly
-    # The annual numbers will be the same among scenarios, but vary by ensemble
-    #--------------------------------------------------------------------------
-
-    # *** If you assign completely random numbers, random variation will occur among
-    # scenarios, which can add considerable noise and demands many ensembles.
-    # Conversely if you assign these pre-set sequeences, the random component will
-    # vary among ensembles, but not among scenarios.
-    meta['Project']['On the Fly']={}
-    meta['Project']['On the Fly']['Random Numbers']={}
-    meta['Project']['On the Fly']['Random Numbers']['Scale Factor']=0.0001
-
-    # Only create these files if they will be used
-
-    # Not needed for portfolio projects
-
-    if meta['Project']['Scenario Source']!='Portfolio':
-
-        flg_h=0
-        for iScn in range(meta['Project']['N Scenario']):
-            if (meta['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta['Scenario'][iScn]['Harvest Status Future']=='On'):
-                flg_h=1
-                break
-
-        flg_b=0
-        for iScn in range(meta['Project']['N Scenario']):
-            if (meta['Scenario'][iScn]['Breakup Status']=='On'):
-                flg_b=1
-                break
-
-        # Create random numbers and save them
-        if meta['Project']['Frozen Ensembles Status']=='Off':
-            for iEns in range(meta['Project']['N Ensemble']):
-                for iBat in range(meta['Project']['N Batch']):
-
-                    if flg_h==1:
-                        rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
-                        rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
-                        rn=rn.astype('int16')
-                        gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
-
-                    if flg_b==1:
-                        rn=np.random.random( (meta['Project']['N Time'],meta['Project']['Batch Size'][iBat]) )
-                        rn=rn/meta['Project']['On the Fly']['Random Numbers']['Scale Factor']
-                        rn=rn.astype('int16')
-                        gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
-
-    #meta['Project']['On the Fly']['Random Numbers']['Harvest']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
-    #meta['Project']['On the Fly']['Random Numbers']['Breakup']=np.random.random((meta['Project']['N Time'],meta['Project']['N Ensemble']))
-
-    #--------------------------------------------------------------------------
-    # Parameter uncertainty by ensemble
-    #--------------------------------------------------------------------------
-
-    # Initialize list
-    meta['Param']['By Ensemble']=[None]*meta['Project']['N Ensemble']
-
-    for iEns in range(meta['Project']['N Ensemble']):
-
-        # Initialize dictionary
-        meta['Param']['By Ensemble'][iEns]={}
-
-        #----------------------------------------------------------------------
-        # Biomass turnover
-        #----------------------------------------------------------------------
-
-        if meta['Project']['Uncertainty Status Biomass Turnover']=='On':
-
-            meta['Param']['By Ensemble'][iEns]['Biomass Turnover']={}
-
-            for k in meta['Param']['BE']['Biomass Turnover'].keys():
-
-                mu=meta['Param']['BE']['Biomass Turnover'][k]
-                sig=meta['Param']['Sigma']['Biomass Turnover'][k]
-                bl=meta['Param']['BL']['Biomass Turnover'][k]
-                bu=meta['Param']['BU']['Biomass Turnover'][k]
-
-                r=np.random.normal(loc=mu,scale=mu*sig)
-
-                if (bl!=-9999) & (bu!=-9999):
-                    r=gu.Clamp(r,bl,bu)
-                elif (bl!=-9999) & (bu==-9999):
-                    r=np.maximum(bl,r)
-                elif (bl==-9999) & (bu!=-9999):
-                    r=np.minimum(bu,r)
-                else:
-                    r=r
-
-                meta['Param']['By Ensemble'][iEns]['Biomass Turnover'][k]=r
-
-        #----------------------------------------------------------------------
-        # Decomposition
-        #----------------------------------------------------------------------
-
-        if meta['Project']['Uncertainty Status Decomposition']=='On':
-
-            meta['Param']['By Ensemble'][iEns]['Decomp']={}
-
-            for k in meta['Param']['BE']['Decomp'].keys():
-
-                mu=meta['Param']['BE']['Decomp'][k]
-                sig=meta['Param']['Sigma']['Decomp'][k]
-                bl=meta['Param']['BL']['Decomp'][k]
-                bu=meta['Param']['BU']['Decomp'][k]
-
-                r=np.random.normal(loc=mu,scale=mu*sig)
-
-                if (bl!=-9999) & (bu!=-9999):
-                    r=gu.Clamp(r,bl,bu)
-                elif (bl!=-9999) & (bu==-9999):
-                    r=np.maximum(bl,r)
-                elif (bl==-9999) & (bu!=-9999):
-                    r=np.minimum(bu,r)
-                else:
-                    r=r
-
-                meta['Param']['By Ensemble'][iEns]['Decomp'][k]=r
-
-        #----------------------------------------------------------------------
-        # Harvesting
-        #----------------------------------------------------------------------
-
-        if meta['Project']['Uncertainty Status Harvest Utilization']=='On':
-
-            meta['Param']['By Ensemble'][iEns]['Dist']={}
-
-            EventList=['Harvest','Harvest Salvage']
-
-            for Event in EventList:
-
-                ID_Type=meta['LUT']['Dist'][Event]
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]={}
-
-                #--------------------------------------------------------------
-                # Biomass merch
-                #--------------------------------------------------------------
-
-                # Removed fraction
-                mu=meta['Param']['BE']['Dist'][ID_Type]['BiomassMerch_Removed']
-                sig=np.array([0.1])
-                bl=np.array([0.0])
-                bu=np.array([1.0])
-                r_Removed=np.random.normal(loc=mu,scale=mu*sig)
-                r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Removed']=r_Removed
-
-                # Total fraction that is piled and dispersed
-                r_PiledAndDispersed=1.0-r_Removed
-
-                # Specific piled fraction
-                mu=np.array([0.60]) # Specific fraction that is piled
-                sig=np.array([0.1])
-                bl=np.array([0.0])
-                bu=np.array([1.0])
-                rSpecific_Piled=np.random.normal(loc=mu,scale=mu*sig)
-                rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
-
-                # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
-
-                # Specific dispersed fraction
-                rSpecific_Dispersed=1.0-rSpecific_Piled
-
-                # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
-
-                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassMerch_LeftOnSite'])
-
-                #--------------------------------------------------------------
-                # Biomass non-merch
-                #--------------------------------------------------------------
-
-                # Removed fraction
-                mu=meta['Param']['BE']['Dist'][ID_Type]['BiomassNonMerch_Removed']
-                sig=np.array([0.1])
-                bl=np.array([0.0])
-                bu=np.array([1.0])
-                r_Removed=np.random.normal(loc=mu,scale=mu*sig)
-                r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Removed']=r_Removed
-
-                # Total fraction that is piled and dispersed
-                r_PiledAndDispersed=1.0-r_Removed
-
-                # Specific piled fraction
-                mu=np.array([0.60]) # Specific fraction that is piled
-                sig=np.array([0.1])
-                bl=np.array([0.0])
-                bu=np.array([1.0])
-                rSpecific_Piled=np.random.normal(loc=mu,scale=mu*sig)
-                rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
-
-                # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
-
-                # Specific dispersed fraction
-                rSpecific_Dispersed=1.0-rSpecific_Piled
-
-                # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
-
-                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['BiomassNonMerch_LeftOnSite'])
-
-                #--------------------------------------------------------------
-                # Snags
-                #--------------------------------------------------------------
-
-                # Removed fraction
-                mu=meta['Param']['BE']['Dist'][ID_Type]['Snags_Removed']
-                sig=np.array([0.1])
-                bl=np.array([0.0])
-                bu=np.array([1.0])
-                r_Removed=np.random.normal(loc=mu,scale=mu*sig)
-                r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Removed']=r_Removed
-
-                # Total fraction that is piled and dispersed
-                r_PiledAndDispersed=1.0-r_Removed
-
-                # Specific piled fraction
-                mu=np.array([0.60]) # Specific fraction that is piled
-                sig=np.array([0.1])
-                bl=np.array([0.0])
-                bu=np.array([1.0])
-                rSpecific_Piled=np.random.normal(loc=mu,scale=mu*sig)
-                rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
-
-                # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Piled']=r_PiledAndDispersed*rSpecific_Piled
-
-                # Specific dispersed fraction
-                rSpecific_Dispersed=1.0-rSpecific_Piled
-
-                # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
-
-                #print(meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Removed']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_Piled']+meta['Param']['By Ensemble'][iEns]['Dist'][ID_Type]['Snags_LeftOnSite'])
-
-        #----------------------------------------------------------------------
-        # Substitution effects
-        #----------------------------------------------------------------------
-
-        if meta['Project']['Uncertainty Status Substitution']=='On':
-
-            meta['Param']['By Ensemble'][iEns]['Substitution']={}
-
-            #vL=['LumberDisplacementFactor','PanelDisplacementFactor']
-            vL=['SawnwoodFracDisplacingConcrete','SawnwoodFracDisplacingSteel','SawnwoodFracDisplacingAluminum',
-                'SawnwoodFracDisplacingPlastic','SawnwoodFracDisplacingTextile','PanelFracDisplacingConcrete','PanelFracDisplacingSteel',
-                'PanelFracDisplacingAluminum','PanelFracDisplacingPlastic','PanelFracDisplacingTextile','ResidualsFracDisplacingConcrete',
-                'ResidualsFracDisplacingSteel','ResidualsFracDisplacingAluminum','ResidualsFracDisplacingPlastic','ResidualsFracDisplacingTextile',
-                'DisplacementRatio_ConcreteForSawnwood','DisplacementRatio_ConcreteForPanel','DisplacementRatio_ConcreteForResiduals',
-                'DisplacementRatio_SteelForSawnwood','DisplacementRatio_SteelForPanel','DisplacementRatio_SteelForResiduals',
-                'DisplacementRatio_AluminumForSawnwood','DisplacementRatio_AluminumForPanel','DisplacementRatio_AluminumForResiduals',
-                'DisplacementRatio_PlasticForSawnwood','DisplacementRatio_PlasticForPanel','DisplacementRatio_PlasticForResiduals',
-                'DisplacementRatio_TextileForSawnwood','DisplacementRatio_TextileForPanel','DisplacementRatio_TextileForResiduals']
-            for k in vL:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=np.maximum(0,r)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-
-            lv0=np.array(['PowerFacilityDomFracDisplacingRenewables','PowerFacilityDomFracDisplacingCoal','PowerFacilityDomFracDisplacingDiesel','PowerFacilityDomFracDisplacingNaturalGas','PowerFacilityDomFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-            lv0=np.array(['PowerFacilityExportFracDisplacingRenewables','PowerFacilityExportFracDisplacingCoal','PowerFacilityExportFracDisplacingDiesel','PowerFacilityExportFracDisplacingNaturalGas','PowerFacilityExportFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-            lv0=np.array(['PelletExportFracDisplacingRenewables','PelletExportFracDisplacingCoal','PelletExportFracDisplacingDiesel','PelletExportFracDisplacingNaturalGas','PelletExportFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-            lv0=np.array(['PelletDomGridFracDisplacingRenewables','PelletDomGridFracDisplacingCoal','PelletDomGridFracDisplacingDiesel','PelletDomGridFracDisplacingNaturalGas','PelletDomGridFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-            lv0=np.array(['PelletDomRNGFracDisplacingRenewables','PelletDomRNGFracDisplacingCoal','PelletDomRNGFracDisplacingDiesel','PelletDomRNGFracDisplacingNaturalGas','PelletDomRNGFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-            lv0=np.array(['FirewoodDomFracDisplacingRenewables','FirewoodDomFracDisplacingCoal','FirewoodDomFracDisplacingDiesel','FirewoodDomFracDisplacingNaturalGas','FirewoodDomFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-            lv0=np.array(['FirewoodExportFracDisplacingRenewables','FirewoodExportFracDisplacingCoal','FirewoodExportFracDisplacingDiesel','FirewoodExportFracDisplacingNaturalGas','FirewoodExportFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-            lv0=np.array(['PowerGridFracDisplacingRenewables','PowerGridFracDisplacingCoal','PowerGridFracDisplacingDiesel','PowerGridFracDisplacingNaturalGas','PowerGridFracDisplacingOil'])
-            lv=lv0[np.argsort(np.random.random(len(lv0)))]
-            r_remain=1.0
-            for k in lv:
-                mu=meta['Param']['BE']['Substitution'][k]
-                sig=meta['Param']['Sigma']['Substitution'][k]
-                r=np.array(np.random.normal(loc=mu,scale=mu*sig),dtype=float)
-                r=gu.Clamp(r,0.0,r_remain)
-                meta['Param']['By Ensemble'][iEns]['Substitution'][k]=r
-                r_remain=r_remain-r
-
-        #----------------------------------------------------------------------
-        # Nutrient mmanagement
-        #----------------------------------------------------------------------
-
-        if meta['Project']['Uncertainty Status Nutrient Application']=='On':
-
-            meta['Param']['By Ensemble'][iEns]['Nutrient Management']={}
-
-            for k in meta['Param']['BE']['Nutrient Management'].keys():
-                mu=meta['Param']['BE']['Nutrient Management'][k]
-                sig=meta['Param']['Sigma']['Nutrient Management'][k]
-                r=np.random.normal(loc=mu,scale=mu*sig)
-                r=np.maximum(0,r)
-                meta['Param']['By Ensemble'][iEns]['Nutrient Management'][k]=r
-
-        #----------------------------------------------------------------------
-        # Mortality distribution
-        #----------------------------------------------------------------------
-
-        #meta['Project']['Mortality Distribution']={}
-        #meta['Project']['Mortality Distribution']['Frequency (%)']=np.arange(0,101,1)
-        #meta['Project']['Mortality Distribution']['Severity (%)']=np.arange(0,101,1)
-        #meta['Project']['Mortality Distribution']['Variable List']=['Regular','Harvest','Wildfire','Beetles','Mechanical']
-        #meta['Project']['Mortality Distribution']['Data']={}
-        #for v in meta['Project']['Mortality Distribution']['Variable List']:
-        #    meta['Project']['Mortality Distribution']['Data'][v]=np.zeros((meta['Project']['Mortality Distribution']['Frequency (%)'].size,meta['Project']['Mortality Distribution']['Severity (%)'].size),dtype='int8')
-
-    #--------------------------------------------------------------------------
-    # Scenario info for portfolio projects
-    #--------------------------------------------------------------------------
-
-    if meta['Project']['Scenario Source']=='Portfolio':
-
-        # Index to rows with implementation
-        indAT=np.where(np.sum(meta['Project']['AIL']['Area'],axis=0)>0)[0]
-
-        meta['Project']['Portfolio']['ID Portfolio']=np.zeros(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Portfolio']['ID AT']=np.zeros(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Portfolio']['ID AT Unique']=np.zeros(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Portfolio']['Area']=np.zeros(meta['Project']['N Stand'])
-        meta['Project']['Portfolio']['Year']=np.zeros(meta['Project']['N Stand'])
-        meta['Project']['Portfolio']['Region Code']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
-        meta['Project']['Portfolio']['Felled Fate Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
-        meta['Project']['Portfolio']['Removed Fate Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
-        meta['Project']['Portfolio']['HWP End Use Scenario']=np.array(['' for _ in range(meta['Project']['N Stand'])],dtype=object)
-        cnt=0
-        for iA in range(meta['Project']['AIL']['N AT']):
-            for iY in range(meta['Project']['AIL']['N Years']):
-                for iS in range(meta['Project']['N Stand per Activity Type']):
-
-                    ID_Portfolio=meta['Project']['AIL']['ID Portfolio'][indAT[iA]]
-
-                    meta['Project']['Portfolio']['ID Portfolio'][cnt]=ID_Portfolio
-                    meta['Project']['Portfolio']['ID AT'][cnt]=meta['Project']['AIL']['ID AT'][indAT[iA]]
-                    meta['Project']['Portfolio']['ID AT Unique'][cnt]=meta['Project']['AIL']['ID AT Unique'][indAT[iA]]
-                    meta['Project']['Portfolio']['Area'][cnt]=meta['Project']['AIL']['Area'][iY,indAT[iA]]
-                    meta['Project']['Portfolio']['Year'][cnt]=meta['Project']['AIL']['Year'][iY]
-
-                    # Region from Activities table
-                    ind=np.where(meta['Project']['Activities']['Activity ID']==meta['Project']['Portfolio']['ID AT'][cnt])
-                    meta['Project']['Portfolio']['Region Code'][cnt]=meta['Project']['Activities']['Region Code'][ind][0]
-
-                    # Scenarios from Portfolio table
-                    iPortfolio=np.where(meta['Project']['Portfolio']['Raw']['ID_Portfolio']==ID_Portfolio)[0]
-                    meta['Project']['Portfolio']['Felled Fate Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['Felled Fate Scenario'][iPortfolio][0]
-                    meta['Project']['Portfolio']['Removed Fate Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['Removed Fate Scenario'][iPortfolio][0]
-                    meta['Project']['Portfolio']['HWP End Use Scenario'][cnt]=meta['Project']['Portfolio']['Raw']['HWP End Use Scenario'][iPortfolio][0]
-                    cnt=cnt+1
-
-        # Scenario information
-        # Will this tool ever be used with on-the-fly disturbances? Current set
-        # to "off".
-        meta['Scenario']=[None]*meta['Project']['N Scenario']
-        for iScn in range(meta['Project']['N Scenario']):
-
-            meta['Scenario'][iScn]={}
-
-            # *** This is super awkward - simulations can't change between activities or scenarios!!!
-            # Do we need that type of functionality for the PT? ***
-            meta['Scenario'][iScn]['Wildfire Scenario ID']=meta['Project']['Activities']['Wildfire Scenario ID'][0]
-            meta['Scenario'][iScn]['Wildfire Status Pre-modern']=meta['Project']['Activities']['Wildfire Status Pre-modern'][0]
-            meta['Scenario'][iScn]['Wildfire Status Modern']=meta['Project']['Activities']['Wildfire Status Modern'][0]
-            meta['Scenario'][iScn]['Wildfire Status Future']=meta['Project']['Activities']['Wildfire Status Future'][0]
-
-            meta['Scenario'][iScn]['Harvest Status Historical']='Off'
-            meta['Scenario'][iScn]['Harvest Status Future']='Off'
-            meta['Scenario'][iScn]['Breakup Status']='Off'
-            meta['Scenario'][iScn]['Nutrient Application Status']='Off'
-
-    #--------------------------------------------------------------------------
-    # Project type and region
-    #--------------------------------------------------------------------------
-
-    if meta['Project']['Scenario Source']=='Spreadsheet':
-
-        # Define region from input of BGC zone (*** updated to start including ***)
-        # for iScn in range(meta['Project']['N Scenario']):
-        #     if np.isin(meta['Scenario'][iScn]['BGC Zone Code'],['CWH','CDF','MH'])==True:
-        #         meta['Scenario'][iScn]['Region Code']='Coast'
-        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Coast']
-        #     else:
-        #         meta['Scenario'][iScn]['Region Code']='Interior'
-        #         meta['Scenario'][iScn]['Region ID']=meta['LUT']['Region']['Interior']
-
-        # Define strata
-        meta['Project']['Strata']={}
-        meta['Project']['Strata']['Project']={}
-        meta['Project']['Strata']['Project']['Unique CD']=np.array(['All'],dtype=object)
-        meta['Project']['Strata']['Project']['Unique ID']=np.ones(1)
-        meta['Project']['Strata']['Project']['ID']=np.ones(meta['Project']['N Stand'],dtype=int)
-        meta['Project']['Strata']['Spatial']={}
-        meta['Project']['Strata']['Spatial']['Unique CD']=np.array(['All'],dtype=object)
-        meta['Project']['Strata']['Spatial']['Unique ID']=np.ones(1)
-        meta['Project']['Strata']['Spatial']['ID']=np.ones(meta['Project']['N Stand'],dtype=int)
-
-        # OLD
-        #meta['Project']['Project Stratum ID']=1.0*np.ones(meta['Project']['N Stand'])
-        #meta['Project']['Spatial Stratum ID']=1.0*np.ones(meta['Project']['N Stand'])
-
-    #--------------------------------------------------------------------------
-    # Grassland module
-    #--------------------------------------------------------------------------
-
-    for iScn in range(meta['Project']['N Scenario']):
-        if 'Grassland Module Status' not in meta['Scenario'][iScn]:
-            # Default is off
-            meta['Scenario'][iScn]['Grass Module Status']='Off'
-            meta['Scenario'][iScn]['Grass Module Year Start']=meta['Project']['Year Project']+1
-
-    #--------------------------------------------------------------------------
-    # Initialize run time tracking
-    #--------------------------------------------------------------------------
-
-    meta['Project']['Run Time Summary']={}
-
-    return meta
-
 #%% Load scenario results
 # Return a list of dictionaries for each scenario. If multiple ensemble were run,
 # the function will retun the average.
 
-def LoadSingleOutputFile(meta,iScn,iEns,iBat):
+def LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat):
 
     # Extract indices
     iEP=meta['Core']['iEP']
@@ -2430,7 +1507,7 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     bB=meta['Param']['BE']['Biophysical']
 
     # Open batch results
-    pth=meta['Paths']['Project'] + '\\Outputs\\Scenario' + FixFileNum(iScn) + '\\Data_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl'
+    pth=meta['Paths'][pNam]['Data'] + '\\Outputs\\Scenario' + FixFileNum(iScn) + '\\Data_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl'
     v0=gu.ipickle(pth)
 
     # Convert to float and apply scale factor
@@ -2452,10 +1529,10 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     #--------------------------------------------------------------------------
 
     # Add year
-    it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]
-    v0['Year']=meta['Year'][it]
+    it=np.where(meta[pNam]['Year']>=meta[pNam]['Project']['Year Start Saving'])[0]
+    v0['Year']=meta[pNam]['Year'][it]
 
-    if meta['Project']['Save Biomass Pools']=='On':
+    if meta[pNam]['Project']['Save Biomass Pools']=='On':
 
         # Aggregate variables not yet generated
 
@@ -2569,7 +1646,7 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     v0['E_CO2e_AGHGB_WOSub_cumu']=np.cumsum(v0['E_CO2e_AGHGB_WOSub'],axis=0)
 
     # Add cumulative (starting from a specified start year)
-    iT=np.where(v0['Year']>=meta['Project']['Year Start Cumulative'])[0]
+    iT=np.where(v0['Year']>=meta[pNam]['Project']['Year Start Cumulative'])[0]
     v0['E_CO2e_AGHGB_WSub_cumu_from_tref']=np.zeros(v0['A'].shape)
     v0['E_CO2e_AGHGB_WSub_cumu_from_tref'][iT,:]=np.cumsum(v0['E_CO2e_AGHGB_WSub'][iT,:],axis=0)
     v0['E_CO2e_AGHGB_WOSub_cumu_from_tref']=np.zeros(v0['A'].shape)
@@ -2635,7 +1712,7 @@ def LoadSingleOutputFile(meta,iScn,iEns,iBat):
     # Sawtooth variable adjustments
     #--------------------------------------------------------------------------
 
-    if meta['Project']['Biomass Module']=='Sawtooth':
+    if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
         v0['N']=np.maximum(0,v0['N'])
         v0['N_R']=np.maximum(0,v0['N_R'])
         v0['N_M_Tot']=np.maximum(0,v0['N_M_Tot'])
@@ -2653,29 +1730,29 @@ def LoadScenarioResults(meta):
 
     # Initialize list that will contain scenarios
     v1=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
                 #--------------------------------------------------------------
                 # Open batch results
                 #--------------------------------------------------------------
 
-                data_batch=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                data_batch=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
                 # Import event chronology
-                if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
-                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
+                    ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
                 else:
-                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                    ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
                 # Uncompress event chronology if it has been compressed
                 ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat)
 
                 # Inventory
-                inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
                 # Cashflow
                 econ=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,data_batch)
@@ -2741,19 +1818,19 @@ def LoadScenarioResults(meta):
 
                 # Nested dictioanry
                 for key2 in data_batch[key1].keys():
-                    data_sum2ave[key1][key2]=data_sum2ave[key1][key2]/meta['Project']['N Ensemble']
+                    data_sum2ave[key1][key2]=data_sum2ave[key1][key2]/meta[pNam]['Project']['N Ensemble']
 
             else:
 
                 # No nested dictionary
-                data_sum2ave[key1]=data_sum2ave[key1]/meta['Project']['N Ensemble']
+                data_sum2ave[key1]=data_sum2ave[key1]/meta[pNam]['Project']['N Ensemble']
 
         #----------------------------------------------------------------------
         # Add year
         #----------------------------------------------------------------------
 
-        it=np.where(meta['Year']>=meta['Project']['Year Start Saving'])[0]
-        data_sum2ave['Year']=meta['Year'][it]
+        it=np.where(meta[pNam]['Year']>=meta[pNam]['Project']['Year Start Saving'])[0]
+        data_sum2ave['Year']=meta[pNam]['Year'][it]
 
         #----------------------------------------------------------------------
         # Append to list
@@ -2773,7 +1850,7 @@ def LoadScenarioResults(meta):
 # This also calculates age class distribution stats, but it does not include uncertainty
 # (individual ensembles are not saved)
 
-def Calc_MOS_FromPoints_GHG(meta,**kwargs):
+def Calc_MOS_FromPoints_GHG(meta,pNam,**kwargs):
 
     t0=time.time()
     print('Calculating model output statistics for GHG balance and age class distribution')
@@ -2788,16 +1865,13 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
     if 'Scenarios' in kwargs.keys():
         scnL=kwargs['Scenarios']
     else:
-        scnL=list(np.arange(0,meta['Project']['N Scenario'],1).astype(int))
-
-    #if 'VariablesToKeep' in kwargs.keys():
-        # See below
+        scnL=list(np.arange(0,meta[pNam]['Project']['N Scenario'],1).astype(int))
 
     # Time series of saved results
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # All non-economic values
-    d1=LoadSingleOutputFile(meta,0,0,0)
+    d1=LoadSingleOutputFile(meta,pNam,0,0,0)
     del d1['C_M_ByAgent']
     del d1['C_M_Pct_ByAgent']
     del d1['Year']
@@ -2808,7 +1882,7 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
         v2include=kwargs['VariablesToKeep']
 
     # Add Sawtooth variables
-    if meta['Project']['Biomass Module']=='Sawtooth':
+    if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
         v2include=v2include+['N','N_R','N_M_Tot','N_M_Reg','TreeMean_A','TreeMean_H','TreeMean_D','TreeMean_Csw','TreeMean_Csw_G']
 
     # Loop through scenarios
@@ -2820,21 +1894,21 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
         # Initialize data structures
         #--------------------------------------------------------------------------
 
-        uPS_size=meta['Project']['Strata']['Project']['Unique ID'].size
-        uSS_size=meta['Project']['Strata']['Spatial']['Unique ID'].size
+        uPS_size=meta[pNam]['Project']['Strata']['Project']['Unique ID'].size
+        uSS_size=meta[pNam]['Project']['Strata']['Spatial']['Unique ID'].size
 
         # GHGs
         Data1={}
         for oper in ['Mean','Sum']:
             Data1[oper]={}
             for k in v2include:
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
 
         # Initialize age class distribution data
         acd={}
         acd['bwT']=10
-        acd['binT']=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End'],acd['bwT'])
+        acd['binT']=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End'],acd['bwT'])
         acd['bwA']=5
         acd['binA']=np.arange(0,400,acd['bwA'])
         acd['Data']=np.zeros( (acd['binT'].size,acd['binA'].size,uPS_size,uSS_size) )
@@ -2843,30 +1917,30 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
         # Loop through ensembles
         #--------------------------------------------------------------------------
 
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             # Initialize temporary data structure for full simulation
             Data0={}
             for k in v2include:
-                Data0[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
+                Data0[k]=np.nan*np.empty( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float64')
 
             # Initialize age class distribution for this ensemble
-            Age0=np.zeros( (acd['binT'].size,meta['Project']['N Stand']) )
+            Age0=np.zeros( (acd['binT'].size,meta[pNam]['Project']['N Stand']) )
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
                 #print(str(iScn) + ' ' + str(iEns) + ' ' + str(iBat) )
 
                 # Include specific subset of stands
                 if len(flag_stands_to_include)==0:
-                    iKeepStands=np.arange(0,meta['Project']['Batch Size'][iBat],1,dtype=int)
+                    iKeepStands=np.arange(0,meta[pNam]['Project']['Batch Size'][iBat],1,dtype=int)
                 else:
                     iKeepStands=np.where(flag_stands_to_include[iScn][iEns][iBat]==1)[0]
 
                 # Index to batch
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
                 for k in v2include:
                     if (d1[k].ndim>2):
@@ -2899,22 +1973,22 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
 
                 for iSS in range(uSS_size):
 
-                    if (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                    if (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                         # Index to all values for "All"
-                        ind1=np.where(meta['Project']['Strata']['Project']['ID']!=-77777)[0]
+                        ind1=np.where(meta[pNam]['Project']['Strata']['Project']['ID']!=-77777)[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                         # Index to specific project stratum
-                        ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                         # Index to specific spatial stratum
-                        ind1=np.where( (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                         # Index to specific project and spatial stratum
-                        ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) & \
-                                  (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) & \
+                                  (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
                     else:
                         continue
 
@@ -2933,11 +2007,11 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
         #--------------------------------------------------------------------------
 
         # GHGs
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl',Data1)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl',Data1)
 
         # Age class distribution
-        acd['Data']=acd['Data']/meta['Project']['N Ensemble']
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_AgeClassDist_Scn' + str(iScn+1) + '.pkl',acd)
+        acd['Data']=acd['Data']/meta[pNam]['Project']['N Ensemble']
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_AgeClassDist_Scn' + str(iScn+1) + '.pkl',acd)
 
     t1=time.time()
     print(str((t1-t0)/60) + ' min')
@@ -2948,7 +2022,7 @@ def Calc_MOS_FromPoints_GHG(meta,**kwargs):
 # Notes: You can't summarize the statistics in this script - the full set of ensemblers
 # must be saved so that the statistics can be calculate for each scenario comparison.
 
-def Calc_MOS_FromPoints_Econ(meta,**kwargs):
+def Calc_MOS_FromPoints_Econ(meta,pNam,**kwargs):
 
     t0=time.time()
     print('Calculating model output statistics for economic variables')
@@ -2959,18 +2033,15 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
         ScenariosToInclude=kwargs['ScenariosToInclude']
     else:
         # Default is to not save individual ensembles
-        ScenariosToInclude=np.arange(0,meta['Project']['N Scenario'])
+        ScenariosToInclude=np.arange(0,meta[pNam]['Project']['N Scenario'])
 
     if 'StandsToInclude' in kwargs.keys():
         flag_stands_to_include=kwargs['StandsToInclude']
     else:
         flag_stands_to_include=[]
 
-    # Import geos
-    #geos=gu.ipickle(meta['Paths']['Geospatial'] + '\\geos.pkl')
-
     # Time series of saved results
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # All (excluding 'C_M_ByAgent' and 'Year','C_M_Dist')
     v2include=['Cost Roads','Cost Harvest Overhead','Cost Harvest Felling and Piling','Cost Harvest Hauling','Cost Harvest Residuals',
@@ -2991,21 +2062,21 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
         # Initialize data structures
         #--------------------------------------------------------------------------
 
-        uPS_size=meta['Project']['Strata']['Project']['Unique ID'].size
-        uSS_size=meta['Project']['Strata']['Spatial']['Unique ID'].size
+        uPS_size=meta[pNam]['Project']['Strata']['Project']['Unique ID'].size
+        uSS_size=meta[pNam]['Project']['Strata']['Spatial']['Unique ID'].size
 
         Data1={}
         for oper in ['Mean','Sum']:
             Data1[oper]={}
             for k in v2include:
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
 
         # An option to skip economic calculations. The file will still be created, but all zeros
-        if meta['Project']['Skip Economics']=='Off':
+        if meta[pNam]['Project']['Skip Economics']=='Off':
 
             # Loop through ensembles
-            for iEns in range(meta['Project']['N Ensemble']):
+            for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
                 #--------------------------------------------------------------------------
                 # Initialize temporary data structure for full simulation
@@ -3013,38 +2084,38 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
 
                 DataSXY={}
                 for k in v2include:
-                    DataSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
+                    DataSXY[k]=np.nan*np.empty( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float64')
 
                 #--------------------------------------------------------------------------
                 # Import batches
                 #--------------------------------------------------------------------------
 
-                for iBat in range(meta['Project']['N Batch']):
+                for iBat in range(meta[pNam]['Project']['N Batch']):
 
                     # Include specific subset of stands
                     if len(flag_stands_to_include)==0:
-                        iKeepStands=np.arange(0,meta['Project']['Batch Size'][iBat],1,dtype=int)
+                        iKeepStands=np.arange(0,meta[pNam]['Project']['Batch Size'][iBat],1,dtype=int)
                     else:
                         iKeepStands=np.where(flag_stands_to_include[iScn][iEns][iBat]==1)[0]
 
                     # Index to batch
-                    indBat=IndexToBatch(meta,iBat)
+                    indBat=IndexToBatch(meta[pNam],iBat)
 
-                    d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                    d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
-                    if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
-                        ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                    if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
+                        ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
                     else:
-                        ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                        ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
                     # Uncompress event chronology if it has been compressed
-                    ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat)
+                    ec=EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat)
 
                     # Inventory
-                    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                    inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
                     # Cashflow
-                    econ1=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,d1)
+                    econ1=econo.CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,d1)
 
                     for k in v2include:
                         DataSXY[k][:,indBat[iKeepStands]]=econ1[k][:,iKeepStands].copy()
@@ -3060,22 +2131,22 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
 
                     for iSS in range(uSS_size):
 
-                        if (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                        if (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                             # Index to all values for "All"
-                            ind1=np.where(meta['Project']['Strata']['Project']['ID']!=-77777)[0]
+                            ind1=np.where(meta[pNam]['Project']['Strata']['Project']['ID']!=-77777)[0]
 
-                        elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                        elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                             # Index to specific project stratum
-                            ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
+                            ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
 
-                        elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                        elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                             # Index to specific spatial stratum
-                            ind1=np.where( (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                            ind1=np.where( (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
 
-                        elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                        elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                             # Index to specific project and spatial stratum
-                            ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) & \
-                                      (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                            ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) & \
+                                      (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
                         else:
                             continue
 
@@ -3087,7 +2158,7 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
         # Save
         #--------------------------------------------------------------------------
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(iScn+1) + '.pkl',Data1)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(iScn+1) + '.pkl',Data1)
 
     t1=time.time()
     print(str((t1-t0)/60) + ' min')
@@ -3098,7 +2169,7 @@ def Calc_MOS_FromPoints_Econ(meta,**kwargs):
 # Notes: Unlike the GHG and Econ scripts, the area can calculate the statistics
 # in this scripts (scenario comparisons don't need to include area)
 
-def Calc_MOS_FromPoints_Area(meta,**kwargs):
+def Calc_MOS_FromPoints_Area(meta,pNam,**kwargs):
 
     print('Calculating model output statistics for event areas')
     t0=time.time()
@@ -3109,81 +2180,78 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
     else:
         flag_stands_to_include=[]
 
-    # Import geos
-    #geos=gu.ipickle(meta['Paths']['Geospatial'] + '\\geos.pkl')
-
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # Time series of saved results
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # Full time series (for event chronology)
-    tv_full=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
+    tv_full=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
 
     # Loop through scenarios
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         #----------------------------------------------------------------------
         # Initialize data structures
         #----------------------------------------------------------------------
 
-        uPS_size=meta['Project']['Strata']['Project']['Unique ID'].size
-        uSS_size=meta['Project']['Strata']['Spatial']['Unique ID'].size
+        uPS_size=meta[pNam]['Project']['Strata']['Project']['Unique ID'].size
+        uSS_size=meta[pNam]['Project']['Strata']['Spatial']['Unique ID'].size
 
         Area1={}
         for oper in ['Mean','Sum']:
             Area1[oper]={}
-            for k in meta['LUT']['Dist'].keys():
-                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
-                Area1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+            for k in meta['LUT']['Event'].keys():
+                Area1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
+                Area1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float64')
 
         # An option to skip economic calculations. The file will still be created, but all zeros
-        #if meta['Project']['Skip Economics']=='Off':
+        #if meta[pNam]['Project']['Skip Economics']=='Off':
 
         # Loop through ensembles
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             #------------------------------------------------------------------
             # Initialize temporary data structure for full simulation
             #------------------------------------------------------------------
 
             AreaSXY={}
-            for k in meta['LUT']['Dist'].keys():
-                AreaSXY[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
+            for k in meta['LUT']['Event'].keys():
+                AreaSXY[k]=np.nan*np.empty( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float64')
 
             AreaSXY_Full={}
-            for k in meta['LUT']['Dist'].keys():
-                AreaSXY_Full[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
+            for k in meta['LUT']['Event'].keys():
+                AreaSXY_Full[k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float64')
 
             #------------------------------------------------------------------
             # Import batches
             #------------------------------------------------------------------
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
                 # Include specific subset of stands
                 if len(flag_stands_to_include)==0:
-                    iKeepStands=np.arange(0,meta['Project']['Batch Size'][iBat],1,dtype=int)
+                    iKeepStands=np.arange(0,meta[pNam]['Project']['Batch Size'][iBat],1,dtype=int)
                 else:
                     iKeepStands=np.where(flag_stands_to_include[iScn][iEns][iBat]==1)[0]
 
                 # Index to batches
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
                 # Import event chronology
-                if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
-                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
+                    ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
                 else:
-                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                    ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
                 # Uncompress event chronology if it has been compressed
-                ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat)
+                ec=EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat)
 
                 for iT in range(tv_full.size):
                     indT=np.where(tv==tv_full[iT])[0]
                     if indT.size==0:
                         continue
-                    idDist0=np.squeeze(ec['ID_Type'][iT,:,:])
+                    idDist0=np.squeeze(ec['ID Event Type'][iT,:,:])
                     for iDistWithinYear in range(idDist0.shape[1]):
                         idDist1=idDist0[:,iDistWithinYear]
                         uidDist=np.unique(idDist1)
@@ -3192,13 +2260,13 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
                         for iU in range(uidDist.size):
                             if uidDist[iU]==0:
                                 continue
-                            namDist=lut_n2s(meta['LUT']['Dist'],uidDist[iU])[0]
+                            namDist=lut_n2s(meta['LUT']['Event'],uidDist[iU])[0]
                             indDist=np.where(idDist1==uidDist[iU])[0]
 
                             AreaSXY_Full[namDist][indT,indBat[indDist]]=AreaSXY_Full[namDist][indT,indBat[indDist]]+1
 
                 # Pull results for subset of stands
-                for k in meta['LUT']['Dist'].keys():
+                for k in meta['LUT']['Event'].keys():
                     AreaSXY[k][:,indBat[iKeepStands]]=AreaSXY_Full[k][:,indBat[iKeepStands]]
 
             del ec
@@ -3212,26 +2280,26 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
 
                 for iSS in range(uSS_size):
 
-                    if (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                    if (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                         # Index to all values for "All"
-                        ind1=np.where(meta['Project']['Strata']['Project']['ID']!=-77777)[0]
+                        ind1=np.where(meta[pNam]['Project']['Strata']['Project']['ID']!=-77777)[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                         # Index to specific project stratum
-                        ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                         # Index to specific spatial stratum
-                        ind1=np.where( (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                         # Index to specific project and spatial stratum
-                        ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) & \
-                                  (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) & \
+                                  (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
                     else:
                         continue
 
-                    for k in meta['LUT']['Dist'].keys():
+                    for k in meta['LUT']['Event'].keys():
                         Area1['Mean'][k][:,iEns,iPS,iSS]=np.mean(AreaSXY[k][:,ind1],axis=1)
                         Area1['Sum'][k][:,iEns,iPS,iSS]=np.sum(AreaSXY[k][:,ind1],axis=1)
 
@@ -3246,7 +2314,7 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
                 Area2[oper][k]={}
                 Area2[oper][k]['Ensemble Mean']=np.mean(Area1[oper][k],axis=1)
                 Area2[oper][k]['Ensemble SD']=np.std(Area1[oper][k],axis=1)
-                Area2[oper][k]['Ensemble SE']=np.std(Area1[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                Area2[oper][k]['Ensemble SE']=np.std(Area1[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 Area2[oper][k]['Ensemble P005']=np.percentile(Area1[oper][k],0.5,axis=1)
                 Area2[oper][k]['Ensemble P025']=np.percentile(Area1[oper][k],2.5,axis=1)
                 Area2[oper][k]['Ensemble P250']=np.percentile(Area1[oper][k],25,axis=1)
@@ -3258,7 +2326,7 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
         # Save
         #----------------------------------------------------------------------
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl',Area2)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl',Area2)
 
         del Area1,Area2
         garc.collect()
@@ -3270,7 +2338,7 @@ def Calc_MOS_FromPoints_Area(meta,**kwargs):
 
 #%% Calculate mortality by agent (from points)
 
-def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
+def Calc_MOS_FromPoints_MortalityByAgent(meta,pNam,**kwargs):
 
     t0=time.time()
     print('Calculating model output statistics for mortality by agent')
@@ -3285,13 +2353,13 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
     if 'Scenarios' in kwargs.keys():
         scnL=kwargs['Scenarios']
     else:
-        scnL=list(np.arange(0,meta['Project']['N Scenario'],1).astype(int))
+        scnL=list(np.arange(0,meta[pNam]['Project']['N Scenario'],1).astype(int))
 
     # Time series of saved results
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # All non-economic values
-    d0=LoadSingleOutputFile(meta,0,0,0)
+    d0=LoadSingleOutputFile(meta,pNam,0,0,0)
 
     # Loop through scenarios
     for iScn0 in range(len(scnL)):
@@ -3302,41 +2370,41 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
         # Initialize data structures
         #----------------------------------------------------------------------
 
-        uPS_size=meta['Project']['Strata']['Project']['Unique ID'].size
-        uSS_size=meta['Project']['Strata']['Spatial']['Unique ID'].size
+        uPS_size=meta[pNam]['Project']['Strata']['Project']['Unique ID'].size
+        uSS_size=meta[pNam]['Project']['Strata']['Spatial']['Unique ID'].size
 
         Data1={}
         for oper in ['Mean']:
             Data1[oper]={}
             for k in d0['C_M_ByAgent'].keys():
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float32')
-                Data1[oper][k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float32')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float32')
+                Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size) ,dtype='float32')
 
         #----------------------------------------------------------------------
         # Loop through ensembles
         #----------------------------------------------------------------------
 
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             # Initialize temporary data structure for full simulation
             Data0={}
             for k in d0['C_M_ByAgent'].keys():
-                Data0[k]=np.nan*np.empty( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float32')
+                Data0[k]=np.nan*np.empty( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float32')
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
                 #print(str(iScn) + ' ' + str(iEns) + ' ' + str(iBat) )
 
                 # Include specific subset of stands
                 if len(flag_stands_to_include)==0:
-                    iKeepStands=np.arange(0,meta['Project']['Batch Size'][iBat],1,dtype=int)
+                    iKeepStands=np.arange(0,meta[pNam]['Project']['Batch Size'][iBat],1,dtype=int)
                 else:
                     iKeepStands=np.where(flag_stands_to_include[iScn][iEns][iBat]==1)[0]
 
                 # Index to batch
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
                 for k in d1['C_M_ByAgent'].keys():
                     idx=d1['C_M_ByAgent'][k]['idx']
@@ -3356,22 +2424,22 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
 
                 for iSS in range(uSS_size):
 
-                    if (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                    if (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                         # Index to all values for "All"
-                        ind1=np.where(meta['Project']['Strata']['Project']['ID']!=-77777)[0]
+                        ind1=np.where(meta[pNam]['Project']['Strata']['Project']['ID']!=-77777)[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]=='All'):
                         # Index to specific project stratum
-                        ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) )[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]=='All') & (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                         # Index to specific spatial stratum
-                        ind1=np.where( (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
 
-                    elif (meta['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
+                    elif (meta[pNam]['Project']['Strata']['Project']['Unique CD'][iPS]!='All') | (meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]!='All'):
                         # Index to specific project and spatial stratum
-                        ind1=np.where( (meta['Project']['Strata']['Project']['ID']==meta['Project']['Strata']['Project']['Unique ID'][iPS]) & \
-                                  (meta['Project']['Strata']['Spatial']['ID']==meta['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
+                        ind1=np.where( (meta[pNam]['Project']['Strata']['Project']['ID']==meta[pNam]['Project']['Strata']['Project']['Unique ID'][iPS]) & \
+                                  (meta[pNam]['Project']['Strata']['Spatial']['ID']==meta[pNam]['Project']['Strata']['Spatial']['Unique ID'][iSS]) )[0]
                     else:
                         continue
 
@@ -3383,7 +2451,7 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
         # Save
         #----------------------------------------------------------------------
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_MortByAgent_Scn' + str(iScn+1) + '.pkl',Data1)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_MortByAgent_Scn' + str(iScn+1) + '.pkl',Data1)
 
     t1=time.time()
     print(str((t1-t0)/60) + ' min')
@@ -3395,34 +2463,34 @@ def Calc_MOS_FromPoints_MortalityByAgent(meta,**kwargs):
 # *** This is not by project type and region because cbrunner is not currently
 # set up to save mortality by stand (too much data) ***
 
-def Calc_MOS_FromPoints_Mortality_WhenStandsCombined(meta):
+def Calc_MOS_FromPoints_Mortality_WhenStandsCombined(meta,pNam):
 
     print('Calculating model output statistics for mortality')
 
     # Time series of saved results
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # Initialize list
-    mos=[None]*meta['Project']['N Scenario']
+    mos=[None]*meta[pNam]['Project']['N Scenario']
 
     # Loop through scenarios
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         #--------------------------------------------------------------------------
         # Initialize data structures
         #--------------------------------------------------------------------------
 
-        d0=LoadSingleOutputFile(meta,0,0,0)
+        d0=LoadSingleOutputFile(meta,pNam,0,0,0)
 
         mos[iScn]={}
         for k in d0['C_M_ByAgent'].keys():
-            mos[iScn][k]=np.zeros((tv_saving.size,meta['Project']['N Ensemble']))
+            mos[iScn][k]=np.zeros((tv_saving.size,meta[pNam]['Project']['N Ensemble']))
 
         # An option to skip economic calculations. The file will still be created, but all zeros
-        #if meta['Project']['Skip Economics']=='Off':
+        #if meta[pNam]['Project']['Skip Economics']=='Off':
 
         # Loop through ensembles
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             # Initialize temporary data structure for full simulation
             Data={}
@@ -3430,8 +2498,8 @@ def Calc_MOS_FromPoints_Mortality_WhenStandsCombined(meta):
                 Data[k]=np.zeros(tv_saving.size)
 
             # Loop through batches and add to Data structure
-            for iBat in range(meta['Project']['N Batch']):
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+            for iBat in range(meta[pNam]['Project']['N Batch']):
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
                 for k in d0['C_M_ByAgent'].keys():
                     Data[k]=Data[k]+d1['C_M_ByAgent'][k].flatten()
 
@@ -3440,7 +2508,7 @@ def Calc_MOS_FromPoints_Mortality_WhenStandsCombined(meta):
 
             # Divide by N stand to get mean
             for k in d0['C_M_ByAgent'].keys():
-                Data[k]=Data[k]/meta['Project']['N Stand']
+                Data[k]=Data[k]/meta[pNam]['Project']['N Stand']
 
             # Populate ensembles
             for k in d0['C_M_ByAgent'].keys():
@@ -3451,25 +2519,25 @@ def Calc_MOS_FromPoints_Mortality_WhenStandsCombined(meta):
             mos[iScn][k]=np.nanmean(mos[iScn][k],axis=1)
 
     # Save
-    gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByAgent_Mortality.pkl',mos)
+    gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByAgent_Mortality.pkl',mos)
 
     return
 
 #%%
 
-def Calc_AgeClassDistribution(meta,acd):
+def Calc_AgeClassDistribution(meta,pNam,acd):
 
     # Time series of saved results
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
-    acd['Data']=[None]*meta['Project']['N Scenario']
-    for iScn in range(meta['Project']['N Scenario']):
+    acd['Data']=[None]*meta[pNam]['Project']['N Scenario']
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         acd['Data'][iScn]=np.zeros((acd['binT'].size,acd['binA'].size))
-        for iEns in range(meta['Project']['N Ensemble']):
-            A=np.zeros( (acd['binT'].size,meta['Project']['N Stand']) )
-            for iBat in range(meta['Project']['N Batch']):
-                indBat=IndexToBatch(meta,iBat)
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
+            A=np.zeros( (acd['binT'].size,meta[pNam]['Project']['N Stand']) )
+            for iBat in range(meta[pNam]['Project']['N Batch']):
+                indBat=IndexToBatch(meta[pNam],iBat)
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
                 for iT in range(acd['binT'].size):
                     indT=np.where(tv==acd['binT'][iT])[0]
                     A[iT,indBat]=d1['A'][indT,:]
@@ -3479,25 +2547,25 @@ def Calc_AgeClassDistribution(meta,acd):
                 for iT in range(acd['binT'].size):
                     ind=np.where( np.abs(A[iT,:]-acd['binA'][iA])<=acd['bwA']/2 )[0]
                     acd['Data'][iScn][iT,iA]=ind.size
-        acd['Data'][iScn]=acd['Data'][iScn]/meta['Project']['N Ensemble']
+        acd['Data'][iScn]=acd['Data'][iScn]/meta[pNam]['Project']['N Ensemble']
 
-    gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MOS_Scn' + str(iScn+1) + '_AgeClassDistribution.pkl',acd)
+    gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_Scn' + str(iScn+1) + '_AgeClassDistribution.pkl',acd)
 
     return acd
 
 #%% Map mean of ensembles for specified time period
 
-def Calc_MOS_MapMean(meta,iScn,tp,**kwargs):
+def Calc_MOS_MapMean(meta,pNam,iScn,tp,**kwargs):
 
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
     it_ref=np.where( (tv>=tp[0]) & (tv<=tp[1]) )[0]
 
     mu0={}
-    for iEns in range(meta['Project']['N Ensemble']):
+    for iEns in range(meta[pNam]['Project']['N Ensemble']):
         print(iEns)
-        for iBat in range(meta['Project']['N Batch']):
-            indBat=IndexToBatch(meta,iBat)
-            d0=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+        for iBat in range(meta[pNam]['Project']['N Batch']):
+            indBat=IndexToBatch(meta[pNam],iBat)
+            d0=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
             # Initialize
             if (iEns==0) & (iBat==0):
@@ -3508,7 +2576,7 @@ def Calc_MOS_MapMean(meta,iScn,tp,**kwargs):
                     v2include=kwargs['VariablesToKeep']
 
                 for k in v2include:
-                    mu0[k]=np.zeros(meta['Project']['N Stand'])
+                    mu0[k]=np.zeros(meta[pNam]['Project']['N Stand'])
 
             # Populate
             for k in v2include:
@@ -3518,14 +2586,17 @@ def Calc_MOS_MapMean(meta,iScn,tp,**kwargs):
 
     # Divide by number of ensembles to get ensemble mean
     for k in v2include:
-        mu0[k]=mu0[k]/meta['Project']['N Ensemble']
+        mu0[k]=mu0[k]/meta[pNam]['Project']['N Ensemble']
 
     return mu0
 
 #%% Import scenario data from points
 # *** You can't use the nanmean and nanpercentile - way too slow ***
 
-def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam,mos):
+def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam):
+
+    mos={}
+    mos[pNam]={}
 
     Data=[None]*meta[pNam]['Project']['N Scenario']
 
@@ -3541,7 +2612,7 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam,mos):
             # GHG
             #------------------------------------------------------------------
 
-            d=gu.ipickle(meta[pNam]['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl')
+            d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl')
             for k in d[oper].keys():
                 Data[iScn][oper][k]={}
                 Data[iScn][oper][k]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
@@ -3558,7 +2629,7 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam,mos):
             # Economics
             #------------------------------------------------------------------
 
-            d=gu.ipickle(meta[pNam]['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(iScn+1) + '.pkl')
+            d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(iScn+1) + '.pkl')
             for k in d[oper].keys():
                 Data[iScn][oper][k]={}
                 Data[iScn][oper][k]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
@@ -3576,7 +2647,7 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam,mos):
             #------------------------------------------------------------------
 
             if oper=='Mean':
-                d=gu.ipickle(meta[pNam]['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_MortbyAgent_Scn' + str(iScn+1) + '.pkl')
+                d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_MortbyAgent_Scn' + str(iScn+1) + '.pkl')
                 for k in d[oper].keys():
                     Data[iScn][oper]['C_M_' + k]={}
                     Data[iScn][oper]['C_M_' + k]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
@@ -3611,15 +2682,15 @@ def Import_MOS_ByScnComparisonAndStrata_FromPoints(meta,mos):
         # Add GHG
         #----------------------------------------------------------------------
 
-        dB=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos['Delta'][sc]['iB']+1) + '.pkl')
-        dP=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos['Delta'][sc]['iP']+1) + '.pkl')
+        dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos['Delta'][sc]['iB']+1) + '.pkl')
+        dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos['Delta'][sc]['iP']+1) + '.pkl')
 
         for oper in ['Mean','Sum']:
             for k in dB[oper].keys():
                 dC[oper][k]={}
                 dC[oper][k]['Ensemble Mean']=np.mean(dP[oper][k]-dB[oper][k],axis=1)
                 dC[oper][k]['Ensemble SD']=np.std(dP[oper][k]-dB[oper][k],axis=1)
-                dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 dC[oper][k]['Ensemble P005']=np.percentile(dP[oper][k]-dB[oper][k],0.5,axis=1)
                 dC[oper][k]['Ensemble P025']=np.percentile(dP[oper][k]-dB[oper][k],2.5,axis=1)
                 dC[oper][k]['Ensemble P250']=np.percentile(dP[oper][k]-dB[oper][k],25,axis=1)
@@ -3631,15 +2702,15 @@ def Import_MOS_ByScnComparisonAndStrata_FromPoints(meta,mos):
         # Add Economics
         #----------------------------------------------------------------------
 
-        dB=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos['Delta'][sc]['iB']+1) + '.pkl')
-        dP=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos['Delta'][sc]['iP']+1) + '.pkl')
+        dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos['Delta'][sc]['iB']+1) + '.pkl')
+        dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos['Delta'][sc]['iP']+1) + '.pkl')
 
         for oper in ['Mean','Sum']:
             for k in dB[oper].keys():
                 dC[oper][k]={}
                 dC[oper][k]['Ensemble Mean']=np.mean(dP[oper][k]-dB[oper][k],axis=1)
                 dC[oper][k]['Ensemble SD']=np.std(dP[oper][k]-dB[oper][k],axis=1)
-                dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 dC[oper][k]['Ensemble P005']=np.percentile(dP[oper][k]-dB[oper][k],0.5,axis=1)
                 dC[oper][k]['Ensemble P025']=np.percentile(dP[oper][k]-dB[oper][k],2.5,axis=1)
                 dC[oper][k]['Ensemble P250']=np.percentile(dP[oper][k]-dB[oper][k],25,axis=1)
@@ -3675,7 +2746,7 @@ def Import_MOS_ByScnComparisonAndStrata_AcrossProjects(meta,mos,sc):
             dC[oper][k]={}
             dC[oper][k]['Ensemble Mean']=np.mean(dP[oper][k]-dB[oper][k],axis=1)
             dC[oper][k]['Ensemble SD']=np.std(dP[oper][k]-dB[oper][k],axis=1)
-            dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+            dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
             dC[oper][k]['Ensemble P005']=np.percentile(dP[oper][k]-dB[oper][k],0.5,axis=1)
             dC[oper][k]['Ensemble P025']=np.percentile(dP[oper][k]-dB[oper][k],2.5,axis=1)
             dC[oper][k]['Ensemble P250']=np.percentile(dP[oper][k]-dB[oper][k],25,axis=1)
@@ -3693,7 +2764,7 @@ def Import_MOS_ByScnComparisonAndStrata_AcrossProjects(meta,mos,sc):
             dC[oper][k]={}
             dC[oper][k]['Ensemble Mean']=np.mean(dP[oper][k]-dB[oper][k],axis=1)
             dC[oper][k]['Ensemble SD']=np.std(dP[oper][k]-dB[oper][k],axis=1)
-            dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+            dC[oper][k]['Ensemble SE']=np.std(dP[oper][k]-dB[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
             dC[oper][k]['Ensemble P005']=np.percentile(dP[oper][k]-dB[oper][k],0.5,axis=1)
             dC[oper][k]['Ensemble P025']=np.percentile(dP[oper][k]-dB[oper][k],2.5,axis=1)
             dC[oper][k]['Ensemble P250']=np.percentile(dP[oper][k]-dB[oper][k],25,axis=1)
@@ -3715,9 +2786,9 @@ def Import_MOS_ByScnComparisonAndStrata_AcrossProjects(meta,mos,sc):
 
 def Import_MOS_ByScnAndStrata_Area_FromPoints(meta,mos):
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
-        d=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl')
+        d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl')
 
         for oper in ['Mean','Sum']:
             for k in d[oper].keys():
@@ -3755,8 +2826,8 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
         Crosswalk_sxy_to_mp[iMP]=d
 
     # Time series of saved results
-    tv_full=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_full=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
     it=np.where( (tv_full>=tv_saving[0]) & (tv_full<=tv_saving[-1]) )[0]
 
     # Variables to save
@@ -3780,8 +2851,8 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
     # Initialize data by multipolygon structure
     #--------------------------------------------------------------------------
 
-    MosByMP=[None]*meta['Project']['N Scenario']
-    for iScn in range(meta['Project']['N Scenario']):
+    MosByMP=[None]*meta[pNam]['Project']['N Scenario']
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         d={}
 
@@ -3806,7 +2877,7 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
 
         if switch_area=='On':
             d['Area']={}
-            for k in meta['LUT']['Dist'].keys():
+            for k in meta['LUT']['Event'].keys():
                 d['Area'][k]={}
                 d['Area'][k]['Ensemble Mean']=np.zeros((tv_saving.size,uMP.size))
                 #d['Area'][k]['Ensemble SD']=np.zeros((tv_saving.size,uMP.size))
@@ -3837,9 +2908,9 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
     # Loop through scenarios
     #--------------------------------------------------------------------------
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             #------------------------------------------------------------------
             # Initialize temporary data structure for full simulation
@@ -3849,28 +2920,28 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
 
             Data['v1']={}
             for iV in range(len(nam1)):
-                Data['v1'][nam1[iV]]=np.zeros((tv_saving.size,meta['Project']['N Stand']),dtype=int)
+                Data['v1'][nam1[iV]]=np.zeros((tv_saving.size,meta[pNam]['Project']['N Stand']),dtype=int)
 
             if switch_area=='On':
                 Data['Area']={}
                 for k in MosByMP[iScn]['Area']:
-                    Data['Area'][k]=np.zeros((tv_saving.size,meta['Project']['N Stand']),dtype=int)
+                    Data['Area'][k]=np.zeros((tv_saving.size,meta[pNam]['Project']['N Stand']),dtype=int)
 
             if switch_cashflow=='On':
                 Data['Cashflow']={}
                 for iV in range(len(nam_cashflow)):
                     nam=nam_cashflow[iV]
-                    Data['Cashflow'][nam]=np.zeros((tv_saving.size,meta['Project']['N Stand']),dtype=int)
+                    Data['Cashflow'][nam]=np.zeros((tv_saving.size,meta[pNam]['Project']['N Stand']),dtype=int)
 
             #------------------------------------------------------------------
             # Populate full simulation results
             #------------------------------------------------------------------
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
                 for iV in range(len(nam1)):
                     tmp=d1[nam1[iV]]/ScaleFactor
@@ -3879,26 +2950,26 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
                 if (switch_area=='On' ) | (switch_cashflow=='On'):
 
                     # Import event chronology
-                    if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
-                        ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                    if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
+                        ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
                     else:
-                        ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                        ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
                     # Uncompress event chronology if it has been compressed
-                    ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat)
+                    ec=EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat)
 
                 if switch_area=='On':
 
                     for k in Data['Area'].keys():
                         Data0=np.zeros((tv_saving.size,indBat.size))
                         for iEY in range(meta['Core']['Max Events Per Year']):
-                            ind=np.where(ec['ID_Type'][it,:,iEY]==meta['LUT']['Dist'][k])[0]
+                            ind=np.where(ec['ID Event Type'][it,:,iEY]==meta['LUT']['Event'][k])[0]
                             Data0[ind]=Data0[ind]+1
                         Data['Area'][k][:,indBat]=Data0
 
                 if switch_cashflow=='On':
 
-                    inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                    inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
                     econ=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,d1)
 
@@ -3968,38 +3039,38 @@ def MosByMultipolygon(meta,switch_area,switch_cashflow):
     # Divide by number of ensembles
     #--------------------------------------------------------------------------
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         for iV in range(len(nam1)):
-            MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble Mean']=MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
-            MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD']=MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
-            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
-            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
-            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10']/meta['Project']['N Ensemble']
-            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25']/meta['Project']['N Ensemble']
-            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75']/meta['Project']['N Ensemble']
-            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90']/meta['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble Mean']=MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble Mean']/meta[pNam]['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD']=MosByMP[iScn]['v1']['Mean'][nam1[iV]]['Ensemble SD']/meta[pNam]['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble Mean']/meta[pNam]['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble SD']/meta[pNam]['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P10']/meta[pNam]['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P25']/meta[pNam]['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P75']/meta[pNam]['Project']['N Ensemble']
+            MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90']=MosByMP[iScn]['v1']['Sum'][nam1[iV]]['Ensemble P90']/meta[pNam]['Project']['N Ensemble']
 
         if switch_cashflow=='On':
             for iV in range(len(nam_cashflow)):
-                MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
-                MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD']=MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
-                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean']/meta['Project']['N Ensemble']
-                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD']/meta['Project']['N Ensemble']
-                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10']/meta['Project']['N Ensemble']
-                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25']/meta['Project']['N Ensemble']
-                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75']/meta['Project']['N Ensemble']
-                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90']/meta['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble Mean']/meta[pNam]['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD']=MosByMP[iScn]['Cashflow']['Mean'][nam_cashflow[iV]]['Ensemble SD']/meta[pNam]['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble Mean']/meta[pNam]['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble SD']/meta[pNam]['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P10']/meta[pNam]['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P25']/meta[pNam]['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P75']/meta[pNam]['Project']['N Ensemble']
+                MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90']=MosByMP[iScn]['Cashflow']['Sum'][nam_cashflow[iV]]['Ensemble P90']/meta[pNam]['Project']['N Ensemble']
 
         if switch_area=='On':
             for iV in MosByMP[iScn]['Area']:
-                MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]/meta['Project']['N Ensemble']
+                MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]=MosByMP[iScn]['Area'][iV]['Ensemble Mean'][:,iMP]/meta[pNam]['Project']['N Ensemble']
 
     #--------------------------------------------------------------------------
     # Save
     #--------------------------------------------------------------------------
 
-    gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MosByMultipolygon.pkl',MosByMP)
+    gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MosByMultipolygon.pkl',MosByMP)
 
     return
 
@@ -4016,10 +3087,10 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
     uMP=np.unique(geos['Sparse']['ID_atu_multipolygons'])
 
     # Unique project types
-    uPT=np.unique(meta['Project']['ByMP']['Project Type'])
+    uPT=np.unique(meta[pNam]['Project']['ByMP']['Project Type'])
 
     # Unique regions
-    uReg=np.unique(meta['Project']['ByMP']['Region ID'])
+    uReg=np.unique(meta[pNam]['Project']['ByMP']['Region ID'])
 
     # Create listed index (faster than indexing on the fly)
     Crosswalk_sxy_to_mp=[None]*uMP.size
@@ -4034,13 +3105,13 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
     ProjectYear=np.zeros(uMP.size)
     Region=np.zeros(uMP.size)
     for iMP in range(uMP.size):
-        ProjectType[iMP]=meta['Project']['ByMP']['Project Type'][uMP[iMP]]
-        ProjectArea[iMP]=meta['Project']['ByMP']['Project Area'][uMP[iMP]]
-        ProjectYear[iMP]=meta['Project']['ByMP']['Project Year'][uMP[iMP]]
-        Region[iMP]=meta['Project']['ByMP']['Region ID'][uMP[iMP]]
+        ProjectType[iMP]=meta[pNam]['Project']['ByMP']['Project Type'][uMP[iMP]]
+        ProjectArea[iMP]=meta[pNam]['Project']['ByMP']['Project Area'][uMP[iMP]]
+        ProjectYear[iMP]=meta[pNam]['Project']['ByMP']['Project Year'][uMP[iMP]]
+        Region[iMP]=meta[pNam]['Project']['ByMP']['Region ID'][uMP[iMP]]
 
     # Time series of saved results
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # Years of implementation
     uT=np.unique(ProjectYear[ProjectYear!=0])
@@ -4067,7 +3138,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
     #ScaleFactor=1.0
 
     # Loop through scenarios
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         #--------------------------------------------------------------------------
         # Initialize data structures
@@ -4078,17 +3149,17 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
         MoMeanByPTAndYr={}
         MoSumByPTAndYr={}
         for k in v2include:
-            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
-            MoSumByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+            MoSumByPT[k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
             MoMeanByPTAndYr[k]={}
             MoSumByPTAndYr[k]={}
             for t in tv_Implementation:
-                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
-                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
         # Loop through ensembles
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             #--------------------------------------------------------------------------
             # Initialize temporary data structure for full simulation
@@ -4096,17 +3167,17 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
 
             DataSXY={}
             for k in v2include:
-                DataSXY[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
+                DataSXY[k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float64')
 
             #--------------------------------------------------------------------------
             # Import batches
             #--------------------------------------------------------------------------
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
                 for k in v2include:
 
@@ -4161,11 +3232,11 @@ def MOS_FromMPs_ByProjTypeRegAndYear_GHG(meta):
         # Save
         #--------------------------------------------------------------------------
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeReg_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPT)
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeReg_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPT)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeReg_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPT)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeReg_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPT)
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPTAndYr)
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPTAndYr)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPTAndYr)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPTAndYr)
 
     t1=time.time()
     print((t1-t0)/60)
@@ -4185,10 +3256,10 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
     uMP=np.unique(geos['Sparse']['ID_atu_multipolygons'])
 
     # Unique project types
-    uPT=np.unique(meta['Project']['ByMP']['Project Type'])
+    uPT=np.unique(meta[pNam]['Project']['ByMP']['Project Type'])
 
     # Unique regions
-    uReg=np.unique(meta['Project']['ByMP']['Region ID'])
+    uReg=np.unique(meta[pNam]['Project']['ByMP']['Region ID'])
 
     # Create listed index (faster than indexing on the fly)
     Crosswalk_sxy_to_mp=[None]*uMP.size
@@ -4203,13 +3274,13 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
     ProjectYear=np.zeros(uMP.size)
     Region=np.zeros(uMP.size)
     for iMP in range(uMP.size):
-        ProjectType[iMP]=meta['Project']['ByMP']['Project Type'][uMP[iMP]]
-        ProjectArea[iMP]=meta['Project']['ByMP']['Project Area'][uMP[iMP]]
-        ProjectYear[iMP]=meta['Project']['ByMP']['Project Year'][uMP[iMP]]
-        Region[iMP]=meta['Project']['ByMP']['Region ID'][uMP[iMP]]
+        ProjectType[iMP]=meta[pNam]['Project']['ByMP']['Project Type'][uMP[iMP]]
+        ProjectArea[iMP]=meta[pNam]['Project']['ByMP']['Project Area'][uMP[iMP]]
+        ProjectYear[iMP]=meta[pNam]['Project']['ByMP']['Project Year'][uMP[iMP]]
+        Region[iMP]=meta[pNam]['Project']['ByMP']['Region ID'][uMP[iMP]]
 
     # Time series of saved results
-    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # Years of implementation
     uT=np.unique(ProjectYear[ProjectYear!=0])
@@ -4231,7 +3302,7 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
     ScaleFactor=1.0
 
     # Loop through scenarios
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         #--------------------------------------------------------------------------
         # Initialize data structures
@@ -4242,17 +3313,17 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
         MoMeanByPTAndYr={}
         MoSumByPTAndYr={}
         for k in v2include:
-            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
-            MoSumByPT[k]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+            MoMeanByPT[k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+            MoSumByPT[k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
             MoMeanByPTAndYr[k]={}
             MoSumByPTAndYr[k]={}
             for t in tv_Implementation:
-                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
-                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+                MoMeanByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
+                MoSumByPTAndYr[k][t]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPT.size,uReg.size) ,dtype='float64')
 
         # Loop through ensembles
-        for iEns in range(meta['Project']['N Ensemble']):
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
             #--------------------------------------------------------------------------
             # Initialize temporary data structure for full simulation
@@ -4260,28 +3331,28 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
 
             DataSXY={}
             for k in v2include:
-                DataSXY[k]=np.zeros( (tv_saving.size,meta['Project']['N Stand']) ,dtype='float64')
+                DataSXY[k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float64')
 
             #--------------------------------------------------------------------------
             # Import batches
             #--------------------------------------------------------------------------
 
-            for iBat in range(meta['Project']['N Batch']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
 
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
-                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
-                if (meta['Scenario'][iScn]['Harvest Status Future']=='On') | (meta['Scenario'][iScn]['Breakup Status']=='On'):
-                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
+                    ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
                 else:
-                    ec=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+                    ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
                 # Uncompress event chronology if it has been compressed
-                ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat)
+                ec=EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat)
 
                 # Inventory
-                inv=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
                 # Cashflow
                 econ1=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,d1)
@@ -4339,11 +3410,11 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
         # Save
         #--------------------------------------------------------------------------
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeReg_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPT)
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeReg_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPT)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeReg_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPT)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeReg_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPT)
 
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPTAndYr)
-        gu.opickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPTAndYr)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_Mean_Scn' + str(iScn+1) + '_FromMPs.pkl',MoMeanByPTAndYr)
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_Sum_Scn' + str(iScn+1) + '_FromMPs.pkl',MoSumByPTAndYr)
 
     t1=time.time()
     print((t1-t0)/60)
@@ -4354,9 +3425,9 @@ def MOS_FromMPs_ByProjTypeRegAndYear_Econ(meta):
 
 def Import_Scenario_Data_FromMPs(meta,mos):
 
-    Data=[None]*meta['Project']['N Scenario']
+    Data=[None]*meta[pNam]['Project']['N Scenario']
 
-    for iS in range(meta['Project']['N Scenario']):
+    for iS in range(meta[pNam]['Project']['N Scenario']):
 
         Data[iS]={}
 
@@ -4368,14 +3439,14 @@ def Import_Scenario_Data_FromMPs(meta,mos):
             # GHG
             #------------------------------------------------------------------
 
-            d=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeReg_' + oper + '_Scn' + str(iS+1) + '_FromMPs.pkl')
+            d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeReg_' + oper + '_Scn' + str(iS+1) + '_FromMPs.pkl')
 
             for k in d.keys():
 
                 Data[iS][oper][k]={}
                 Data[iS][oper][k]['Ensemble Mean']=np.mean(d[k],axis=1)
                 Data[iS][oper][k]['Ensemble SD']=np.std(d[k],axis=1)
-                Data[iS][oper][k]['Ensemble SE']=np.std(d[k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                Data[iS][oper][k]['Ensemble SE']=np.std(d[k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 Data[iS][oper][k]['Ensemble P005']=np.percentile(d[k],0.5,axis=1)
                 Data[iS][oper][k]['Ensemble P025']=np.percentile(d[k],2.5,axis=1)
                 Data[iS][oper][k]['Ensemble P250']=np.percentile(d[k],25,axis=1)
@@ -4387,14 +3458,14 @@ def Import_Scenario_Data_FromMPs(meta,mos):
             # Economics
             #------------------------------------------------------------------
 
-            d=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeReg_' + oper + '_Scn' + str(iS+1) + '_FromMPs.pkl')
+            d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeReg_' + oper + '_Scn' + str(iS+1) + '_FromMPs.pkl')
 
             for k in d.keys():
 
                 Data[iS][oper][k]={}
                 Data[iS][oper][k]['Ensemble Mean']=np.mean(d[k],axis=1)
                 Data[iS][oper][k]['Ensemble SD']=np.std(d[k],axis=1)
-                Data[iS][oper][k]['Ensemble SE']=np.std(d[k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                Data[iS][oper][k]['Ensemble SE']=np.std(d[k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 Data[iS][oper][k]['Ensemble P005']=np.percentile(d[k],0.5,axis=1)
                 Data[iS][oper][k]['Ensemble P025']=np.percentile(d[k],2.5,axis=1)
                 Data[iS][oper][k]['Ensemble P250']=np.percentile(d[k],25,axis=1)
@@ -4426,15 +3497,15 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 
             # GHG
 
-            dB=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
-            dP=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
+            dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
+            dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
 
             for k in dB.keys():
 
                 dC[k]={}
                 dC[k]['Ensemble Mean']=np.mean(dP[k]-dB[k],axis=1)
                 dC[k]['Ensemble SD']=np.std(dP[k]-dB[k],axis=1)
-                dC[k]['Ensemble SE']=np.std(dP[k]-dB[k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                dC[k]['Ensemble SE']=np.std(dP[k]-dB[k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 dC[k]['Ensemble P005']=np.percentile(dP[k]-dB[k],0.5,axis=1)
                 dC[k]['Ensemble P025']=np.percentile(dP[k]-dB[k],2.5,axis=1)
                 dC[k]['Ensemble P250']=np.percentile(dP[k]-dB[k],25,axis=1)
@@ -4444,15 +3515,15 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 
             # Economics
 
-            dB=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
-            dP=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
+            dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
+            dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeReg_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
 
             for k in dB.keys():
 
                 dC[k]={}
                 dC[k]['Ensemble Mean']=np.mean(dP[k]-dB[k],axis=1)
                 dC[k]['Ensemble SD']=np.std(dP[k]-dB[k],axis=1)
-                dC[k]['Ensemble SE']=np.std(dP[k]-dB[k],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                dC[k]['Ensemble SE']=np.std(dP[k]-dB[k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                 dC[k]['Ensemble P005']=np.percentile(dP[k]-dB[k],0.5,axis=1)
                 dC[k]['Ensemble P025']=np.percentile(dP[k]-dB[k],2.5,axis=1)
                 dC[k]['Ensemble P250']=np.percentile(dP[k]-dB[k],25,axis=1)
@@ -4470,8 +3541,8 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 
             # GHG
 
-            dB=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
-            dP=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
+            dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
+            dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\GHGB_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
 
             for k in dB.keys():
 
@@ -4481,7 +3552,7 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
                     dC[k][t]={}
                     dC[k][t]['Ensemble Mean']=np.mean(dP[k][t]-dB[k][t],axis=1)
                     dC[k][t]['Ensemble SD']=np.std(dP[k][t]-dB[k][t],axis=1)
-                    dC[k][t]['Ensemble SE']=np.std(dP[k][t]-dB[k][t],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                    dC[k][t]['Ensemble SE']=np.std(dP[k][t]-dB[k][t],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                     dC[k][t]['Ensemble P005']=np.percentile(dP[k][t]-dB[k][t],0.5,axis=1)
                     dC[k][t]['Ensemble P025']=np.percentile(dP[k][t]-dB[k][t],2.5,axis=1)
                     dC[k][t]['Ensemble P250']=np.percentile(dP[k][t]-dB[k][t],25,axis=1)
@@ -4491,8 +3562,8 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 
             # Economics
 
-            dB=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
-            dP=gu.ipickle(meta['Paths']['Project'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
+            dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iB']+1) + '_FromMPs.pkl')
+            dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\Econ_ByProjTypeRegAndYear_' + oper + '_Scn' + str(mos['Delta'][sc]['iP']+1) + '_FromMPs.pkl')
 
             for k in dB.keys():
                 dC[k]={}
@@ -4504,7 +3575,7 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
                     dC[k][t]={}
                     dC[k][t]['Ensemble Mean']=np.mean(dP[k][t]-dB[k][t],axis=1)
                     dC[k][t]['Ensemble SD']=np.std(dP[k][t]-dB[k][t],axis=1)
-                    dC[k][t]['Ensemble SE']=np.std(dP[k][t]-dB[k][t],axis=1)/np.sqrt(meta['Project']['N Ensemble'])
+                    dC[k][t]['Ensemble SE']=np.std(dP[k][t]-dB[k][t],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
                     dC[k][t]['Ensemble P005']=np.percentile(dP[k][t]-dB[k][t],0.5,axis=1)
                     dC[k][t]['Ensemble P025']=np.percentile(dP[k][t]-dB[k][t],2.5,axis=1)
                     dC[k][t]['Ensemble P250']=np.percentile(dP[k][t]-dB[k][t],25,axis=1)
@@ -4548,7 +3619,7 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #        Area[iMP]=Area0
 #
 #    # Time series of saved results
-#    tv_saving=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+#    tv_saving=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 #
 #    # Op
 #    oper=['Mean','Sum']
@@ -4569,9 +3640,9 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #    # Initialize data by multipolygon structure
 #    #--------------------------------------------------------------------------
 #
-#    mos=[None]*meta['Project']['N Scenario']
+#    mos=[None]*meta[pNam]['Project']['N Scenario']
 #
-#    for iScn in range(meta['Project']['N Scenario']):
+#    for iScn in range(meta[pNam]['Project']['N Scenario']):
 #
 #        d={}
 #        for op in oper:
@@ -4594,18 +3665,18 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #    # Loop through scenarios
 #    #--------------------------------------------------------------------------
 #
-#    for iScn in range(meta['Project']['N Scenario']):
+#    for iScn in range(meta[pNam]['Project']['N Scenario']):
 #
 #        # Initialize data matrix
 #        Data={}
 #        for op in oper:
-#            Data[op]=np.zeros( (tv_saving.size,meta['Project']['N Ensemble'],len(ListSubsetMP),len(v2include)) ,dtype='float64')
+#            Data[op]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],len(ListSubsetMP),len(v2include)) ,dtype='float64')
 #
 #        #----------------------------------------------------------------------
 #        # Loop through ensembles
 #        #----------------------------------------------------------------------
 #
-#        for iEns in range(meta['Project']['N Ensemble']):
+#        for iEns in range(meta[pNam]['Project']['N Ensemble']):
 #            print(iEns)
 #
 #            #------------------------------------------------------------------
@@ -4613,14 +3684,14 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #            #------------------------------------------------------------------
 #
 #            # Initialize temporary data structure for full simulation
-#            DataSXY=np.zeros( (tv_saving.size,meta['Project']['N Stand'],len(v2include)) ,dtype='float64')
+#            DataSXY=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Stand'],len(v2include)) ,dtype='float64')
 #
 #            # Import batches
-#            for iBat in range(meta['Project']['N Batch']):
+#            for iBat in range(meta[pNam]['Project']['N Batch']):
 #
-#                indBat=IndexToBatch(meta,iBat)
+#                indBat=IndexToBatch(meta[pNam],iBat)
 #
-#                d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
+#                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 #
 #                cnt_k=0
 #                for k in d0.keys():
@@ -4666,8 +3737,8 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #
 #                mu=np.mean(Data[op][:,:,:,cnt_k],axis=1)
 #                sd=np.std(Data[op][:,:,:,cnt_k],axis=1)
-#                cil=mu-sigma_multiplier*sd/np.sqrt(meta['Project']['N Ensemble'])
-#                cih=mu+sigma_multiplier*sd/np.sqrt(meta['Project']['N Ensemble'])
+#                cil=mu-sigma_multiplier*sd/np.sqrt(meta[pNam]['Project']['N Ensemble'])
+#                cih=mu+sigma_multiplier*sd/np.sqrt(meta[pNam]['Project']['N Ensemble'])
 #
 #                mos[iScn][op][k]['Ensemble Mean']=mu
 #                mos[iScn][op][k]['Ensemble CIL']=cil
@@ -4679,7 +3750,7 @@ def Import_ScenarioComparisons_FromMPs(meta,mos):
 #    # Save
 #    #--------------------------------------------------------------------------
 #
-#    gu.opickle(meta['Paths']['Project'] + '\\Outputs\\MosByMPSubset_GHGB.pkl',mos)
+#    gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MosByMPSubset_GHGB.pkl',mos)
 #
 #    t1=time.time()
 #    print((t1-t0)/60)
@@ -4699,15 +3770,15 @@ def GetTASSCurves(meta,iScn,iGC,fny,fnc,fnm):
     # Initialize age response of net growth
     G=np.zeros((N_Age,1,6),dtype='int16')
 
-    G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-    G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-    G[:,iS,2]=G_Bark[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-    G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-    G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-    G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+    G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+    G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+    G[:,iS,2]=G_Bark[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+    G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+    G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+    G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
 
     # Save data to file in input variables folder of project
-    gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(1) + '.pkl',G)
+    gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(1) + '.pkl',G)
 
     return
 
@@ -4716,23 +3787,23 @@ def GetTASSCurves(meta,iScn,iGC,fny,fnc,fnm):
 def Import_BatchTIPSY_Output(meta,iScn,iGC):
 
     # Import unique growth curves
-    ugc=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\ugc.pkl')
+    ugc=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\ugc.pkl')
 
     # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
     # conversion factor.
     dm2c=0.5
 
     # Growth curve parameters and TIPSY outputs
-    #dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
-    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+    #dfPar=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+    txtDat=np.loadtxt(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
 
     # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+    dfDat=pd.DataFrame(txtDat,columns=meta['Modules']['GYM']['BatchTIPSY Column Names'])
 
     del txtDat
 
     # Define age vector (must be consistent with how TIPSY was set up)
-    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+    Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
     # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
     N_Age=Age.size
@@ -4774,7 +3845,7 @@ def Import_BatchTIPSY_Output(meta,iScn,iGC):
     #del C_Stem,C_StemMerch,C_StemNonMerch,C_Foliage,C_Branch,C_Bark,fMerch,fNonMerch
 
     # Index to the full set of growth curves for scenario iScn and growth curve iGC
-    ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC Unique'][iGC]) )[0]
+    ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['Modules']['GYM']['ID GC Unique'][iGC]) )[0]
 
     # Extract the unique growth curve ID for scenario iScn and growth curve iGC
     ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
@@ -4783,7 +3854,7 @@ def Import_BatchTIPSY_Output(meta,iScn,iGC):
     Inverse_ugc_ScnAndGc=ugc['Inverse'][ind_ugc_ScnAndGc]
 
     # Intersect
-    ind=np.arange(0,meta['Project']['N Stand'],1,dtype=int)
+    ind=np.arange(0,meta[pNam]['Project']['N Stand'],1,dtype=int)
     c,inda,indb=np.intersect1d(ID_ugc_ScnAndGc,ind,return_indices=True)
 
     Inverse_ugc_ScnAndGcAndBat=Inverse_ugc_ScnAndGc[inda]
@@ -4807,14 +3878,14 @@ def Import_BatchTIPSY_Output(meta,iScn,iGC):
 def Import_BatchTIPSY_Output_OLD(meta):
 
     # Growth curve parameters and TIPSY outputs
-    dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
-    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+    dfPar=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
+    txtDat=np.loadtxt(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
 
     # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+    dfDat=pd.DataFrame(txtDat,columns=meta['Modules']['GYM']['BatchTIPSY Column Names'])
 
     # Define age vector (must be consistent with how TIPSY was set up)
-    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+    Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
     # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
     N_Age=Age.size
@@ -4823,10 +3894,10 @@ def Import_BatchTIPSY_Output_OLD(meta):
     gc=[None]*N_GC
     for i in range(N_GC):
         gc[i]={}
-    for i in range(len(meta['GC']['BatchTIPSY Column Names'])):
-        data=np.reshape(dfDat[meta['GC']['BatchTIPSY Column Names'][i]].values,(N_Age,N_GC),order='F')
+    for i in range(len(meta['Modules']['GYM']['BatchTIPSY Column Names'])):
+        data=np.reshape(dfDat[meta['Modules']['GYM']['BatchTIPSY Column Names'][i]].values,(N_Age,N_GC),order='F')
         for j in range(N_GC):
-            gc[j][meta['GC']['BatchTIPSY Column Names'][i]]=data[:,j]
+            gc[j][meta['Modules']['GYM']['BatchTIPSY Column Names'][i]]=data[:,j]
 
     gc2=[]
     uScn=np.unique(dfPar['ID_Scenario'])
@@ -4841,9 +3912,9 @@ def Import_BatchTIPSY_Output_OLD(meta):
             for iGC in range(uGC.size):
                 ind=np.where( (dfPar['ID_Scenario']==uScn[iScn]) & (dfPar['ID_Stand']==uStand[iS]) & (dfPar['ID_GC']==uGC[iGC]) )[0]
                 d={}
-                for i in range(len(meta['GC']['BatchTIPSY Column Names'])):
-                    data=np.reshape(dfDat[meta['GC']['BatchTIPSY Column Names'][i]].values,(N_Age,N_GC),order='F')
-                    d[meta['GC']['BatchTIPSY Column Names'][i]]=data[:,ind]
+                for i in range(len(meta['Modules']['GYM']['BatchTIPSY Column Names'])):
+                    data=np.reshape(dfDat[meta['Modules']['GYM']['BatchTIPSY Column Names'][i]].values,(N_Age,N_GC),order='F')
+                    d[meta['Modules']['GYM']['BatchTIPSY Column Names'][i]]=data[:,ind]
                 gc0.append(d)
             gc1.append(gc0)
         gc2.append(gc1)
@@ -4854,38 +3925,38 @@ def Import_BatchTIPSY_Output_OLD(meta):
 def Import_CompiledGrowthCurves(meta,scn):
 
     gc=[]
-    for iScn in range(len(scn)): #range(meta['Project']['N Scenario']):
+    for iScn in range(len(scn)): #range(meta[pNam]['Project']['N Scenario']):
         gc0=[]
 
         gc1=[]
-        for iBat in range(0,meta['Project']['N Batch']):
-            tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve1_Bat' + FixFileNum(iBat) + '.pkl')
+        for iBat in range(0,meta[pNam]['Project']['N Batch']):
+            tmp=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve1_Bat' + FixFileNum(iBat) + '.pkl')
             tmp=tmp[:,:,0].astype(float)
             for iS in range(tmp.shape[1]):
-                gc1.append(tmp[:,iS].copy()*meta['GC']['Scale Factor'])
+                gc1.append(tmp[:,iS].copy()*meta['Modules']['GYM']['Scale Factor'])
         gc0.append(gc1.copy())
 
         gc1=[]
-        for iBat in range(0,meta['Project']['N Batch']):
-            tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve2_Bat' + FixFileNum(iBat) + '.pkl')
+        for iBat in range(0,meta[pNam]['Project']['N Batch']):
+            tmp=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve2_Bat' + FixFileNum(iBat) + '.pkl')
             tmp=tmp[:,:,0].astype(float)
             for iS in range(tmp.shape[1]):
-                gc1.append(tmp[:,iS].copy()*meta['GC']['Scale Factor'])
+                gc1.append(tmp[:,iS].copy()*meta['Modules']['GYM']['Scale Factor'])
         gc0.append(gc1.copy())
 
         gc1=[]
-        for iBat in range(0,meta['Project']['N Batch']):
-            tmp=gu.ipickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve3_Bat' + FixFileNum(iBat) + '.pkl')
+        for iBat in range(0,meta[pNam]['Project']['N Batch']):
+            tmp=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve3_Bat' + FixFileNum(iBat) + '.pkl')
             tmp=tmp[:,:,0].astype(float)
             for iS in range(tmp.shape[1]):
-                gc1.append(tmp[:,iS].copy()*meta['GC']['Scale Factor'])
+                gc1.append(tmp[:,iS].copy()*meta['Modules']['GYM']['Scale Factor'])
         gc0.append(gc1.copy())
         gc.append(gc0.copy())
     return gc
 
 #%% WRITE SPREADSHEET OF BatchTIPSY PARAMTERS
 
-def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
+def Write_BatchTIPSY_Input_Spreadsheet(meta,pNam,ugc):
 
     # Create a function that will return the column corresponding to a variable name
     fin=meta['Paths']['Model']['Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
@@ -4896,7 +3967,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
         return int(ind+1)
 
     # Open spreadsheet
-    PathGrowthCurveParameters=meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx'
+    PathGrowthCurveParameters=meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx'
     xfile=openpyxl.load_workbook(PathGrowthCurveParameters)
     sheet=xfile.get_sheet_by_name('Sheet1')
     N_headers=7
@@ -5060,13 +4131,13 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,ugc):
     # Save to spreadsheet
     #------------------------------------------------------------------------------
 
-    xfile.save(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx')
+    xfile.save(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx')
 
 #%% Write BatchTIPSY input file
 # Notes:
 #    If the input spreadsheet has nan's, all data will be converted to float
 
-def Write_BatchTIPSY_Input_File(meta):
+def Write_BatchTIPSY_Input_File(meta,pNam):
 
     # Import format info (number of designated positions per variable)
     fin=meta['Paths']['Model']['Code'] + '\\Parameters\\GrowthCurvesTIPSY_Parameters_Template.xlsx'
@@ -5076,7 +4147,7 @@ def Write_BatchTIPSY_Input_File(meta):
     nfrmt=df_frmt.iloc[1,4:53]
 
     # Import input data
-    df=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
+    df=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
 
     # Convert to dictionary
     Data=df.to_dict('list')
@@ -5097,7 +4168,7 @@ def Write_BatchTIPSY_Input_File(meta):
     Spacer=" "
 
     # Open file
-    fid=open(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_InputVariables.dat','w')
+    fid=open(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_InputVariables.dat','w')
 
     # Loop through rows of table
     for iStand in range(len(DataList)):
@@ -5139,11 +4210,11 @@ def Write_BatchTIPSY_Input_File(meta):
 
 def GetDisturbanceHistory(meta):
     dh=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         dhB=[]
-        for iBat in range(meta['Project']['N Batch']):
+        for iBat in range(meta[pNam]['Project']['N Batch']):
             iEns=0
-            dh0=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+            dh0=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
             if iBat==0:
                 dhB=dh0
             else:
@@ -5231,17 +4302,17 @@ def Import_GraphicsParameters(x):
 
 #%% Prepare inventory from spreadsheet
 
-def PrepareInventoryFromSpreadsheet(meta):
+def PrepareInventoryFromSpreadsheet(meta,pNam):
 
-    for iScn in range(0,meta['Project']['N Scenario']):
+    for iScn in range(0,meta[pNam]['Project']['N Scenario']):
 
         # Loop through batches, saving inventory to file
-        for iBat in range(0,meta['Project']['N Batch']):
+        for iBat in range(0,meta[pNam]['Project']['N Batch']):
 
             inv={}
 
             # Index to batch
-            indBat=IndexToBatch(meta,iBat)
+            indBat=IndexToBatch(meta[pNam],iBat)
             N_StandsInBatch=len(indBat)
 
             # Initialize inventory variables
@@ -5251,22 +4322,22 @@ def PrepareInventoryFromSpreadsheet(meta):
             inv['Y']=inv['Lon']
 
             # BEC zone
-            inv['ID_BECZ']=np.zeros((1,N_StandsInBatch),dtype='int16')
-            inv['ID_BECZ'][0,:]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][meta['Scenario'][iScn]['BGC Zone Code']]
+            inv['ID_BGCZ']=np.zeros((1,N_StandsInBatch),dtype='int16')
+            inv['ID_BGCZ'][0,:]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][meta[pNam]['Scenario'][iScn]['BGC Zone Code']]
 
             # Timber harvesting landbase (1=yes, 0=no)
-            inv['THLB']=meta['Scenario'][iScn]['THLB Status']*np.ones((meta['Year'].size,N_StandsInBatch))
+            inv['THLB']=meta[pNam]['Scenario'][iScn]['THLB Status']*np.ones((meta[pNam]['Year'].size,N_StandsInBatch))
 
             # Temperature will be updated automatically
             inv['MAT']=4.0*np.ones((1,N_StandsInBatch))
-            #cd=meta['Scenario'][iScn]['BGC Zone Code']
-            #ind=np.where(meta['Param']['BE']['ClimateByBGC']['Name']==cd)[0]
-            #mat=meta['Param']['BE']['ClimateByBGC']['MAT'][ind]
+            #cd=meta[pNam]['Scenario'][iScn]['BGC Zone Code']
+            #ind=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==cd)[0]
+            #mat=meta['Param']['BE']['BGC Zone Averages']['MAT'][ind]
             #inv['MAT']=mat*np.ones((1,N_StandsInBatch))
 
-            if meta['Project']['Biomass Module']=='Sawtooth':
+            if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
-                ind=np.where( meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_CD']==meta['Scenario'][iScn]['SRS1_CD'])[0]
+                ind=np.where( meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_CD']==meta[pNam]['Scenario'][iScn]['SRS1_CD'])[0]
 
                 id=meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_ID'][ind]
 
@@ -5280,7 +4351,7 @@ def PrepareInventoryFromSpreadsheet(meta):
                 inv['SRS3_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
 
             # Save
-            gu.opickle(meta['Paths']['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl',inv)
+            gu.opickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl',inv)
 
     return
 
@@ -5297,42 +4368,42 @@ def CompileEvents(ec,tv,iS,ID_Type,Year,MortalityFactor,GrowthFactor,ID_GrowthCu
                 continue
             indYear=np.where(YearFloor==uYearFloor[iU])[0]
             for iY in range(indYear.size):
-                indAvailable=np.where(ec['ID_Type'][iT,iS,:].flatten()==0)[0]
+                indAvailable=np.where(ec['ID Event Type'][iT,iS,:].flatten()==0)[0]
                 if indAvailable.size==0:
                     print('Warning, more events per year than can be handled!')
                 else:
                     iE=indAvailable[0]
-                    ec['ID_Type'][iT,iS,iE]=ID_Type[indYear[iY]]
-                    ec['MortalityFactor'][iT,iS,iE]=MortalityFactor[indYear[iY]]
-                    ec['GrowthFactor'][iT,iS,iE]=GrowthFactor[indYear[iY]]
-                    ec['ID_GrowthCurve'][iT,iS,iE]=ID_GrowthCurve[indYear[iY]]
+                    ec['ID Event Type'][iT,iS,iE]=ID_Type[indYear[iY]]
+                    ec['Mortality Factor'][iT,iS,iE]=MortalityFactor[indYear[iY]]
+                    ec['Growth Factor'][iT,iS,iE]=GrowthFactor[indYear[iY]]
+                    ec['ID Growth Curve'][iT,iS,iE]=ID_GrowthCurve[indYear[iY]]
     return ec
 
 #%% Mortality frequency distribution
 
-def GetMortalityFrequencyDistribution(meta):
+def GetMortalityFrequencyDistribution(meta,pNam):
 
     iEns=0
 
-    M=[None]*meta['Project']['N Scenario']
-    for iScn in range(meta['Project']['N Scenario']):
+    M=[None]*meta[pNam]['Project']['N Scenario']
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
-        tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+        tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
         M[iScn]={}
         M[iScn]['Ma']={}
         M[iScn]['Mr']={}
-        for k in meta['LUT']['Dist'].keys():
-            M[iScn]['Ma'][k]=np.zeros((tv.size,meta['Project']['N Stand']))
-            M[iScn]['Mr'][k]=np.zeros((tv.size,meta['Project']['N Stand']))
-        M[iScn]['Ma']['Reg']=np.zeros((tv.size,meta['Project']['N Stand']))
-        M[iScn]['Mr']['Reg']=np.zeros((tv.size,meta['Project']['N Stand']))
+        for k in meta['LUT']['Event'].keys():
+            M[iScn]['Ma'][k]=np.zeros((tv.size,meta[pNam]['Project']['N Stand']))
+            M[iScn]['Mr'][k]=np.zeros((tv.size,meta[pNam]['Project']['N Stand']))
+        M[iScn]['Ma']['Reg']=np.zeros((tv.size,meta[pNam]['Project']['N Stand']))
+        M[iScn]['Mr']['Reg']=np.zeros((tv.size,meta[pNam]['Project']['N Stand']))
 
-        for iBat in range(meta['Project']['N Batch']):
+        for iBat in range(meta[pNam]['Project']['N Batch']):
 
-            indBat=IndexToBatch(meta,iBat)
+            indBat=IndexToBatch(meta[pNam],iBat)
 
-            d1=LoadSingleOutputFile(meta,iScn,iEns,iBat)
-            dh=gu.ipickle(meta['Paths']['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
+            d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
+            dh=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
             for iStandInBat in range(len(indBat)):
                 iStand=indBat[iStandInBat]
@@ -5340,7 +4411,7 @@ def GetMortalityFrequencyDistribution(meta):
                     it=np.where(tv==int(dh[iStandInBat]['Year'][iYr]))[0]
                     if it.size==0:
                         continue
-                    nam=lut_n2s(meta['LUT']['Dist'],dh[iStandInBat]['ID_Type'][iYr])[0]
+                    nam=lut_n2s(meta['LUT']['Event'],dh[iStandInBat]['ID Event Type'][iYr])[0]
                     M[iScn]['Ma'][nam][it,iStand]=d1[0]['C_M_Dist'][it,iStandInBat]
                     M[iScn]['Mr'][nam][it,iStand]=d1[0]['C_M_Dist'][it,iStandInBat]/np.maximum(0.0001,d1[0]['Eco_Biomass'][it-1,iStandInBat])
                     M[iScn]['Ma']['Reg'][it,iStand]=d1[0]['C_M_Reg'][it,iStandInBat]
@@ -5433,7 +4504,7 @@ def AreaAffectedInSingleMultipolygon(meta,iScn,ivlT,tv,MosByMP,iMP):
 
 #%% Post process BatchTIPSY output
 
-def PrepGrowthCurvesForCBR(meta):
+def PrepGrowthCurvesForCBR(meta,pNam):
 
     # Function used to smooth curves
     def smooth(y, box_pts):
@@ -5445,14 +4516,14 @@ def PrepGrowthCurvesForCBR(meta):
     dm2c=0.5
 
     # Growth curve parameters and TIPSY outputs
-    dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
-    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+    dfPar=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=6)
+    txtDat=np.loadtxt(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
 
     # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+    dfDat=pd.DataFrame(txtDat,columns=meta['Modules']['GYM']['BatchTIPSY Column Names'])
 
     # Define age vector (must be consistent with how TIPSY was set up)
-    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+    Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
     # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
     N_Age=Age.size
@@ -5543,13 +4614,13 @@ def PrepGrowthCurvesForCBR(meta):
     G_Branch=np.append(z,np.diff(C_Branch,axis=0),axis=0)
     G_Bark=np.append(z,np.diff(C_Bark,axis=0),axis=0)
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         # Define growth curves (from TIPSY output)
-        for iBat in range(meta['Project']['N Batch']):
+        for iBat in range(meta[pNam]['Project']['N Batch']):
 
             # Index to batch
-            indBat=IndexToBatch(meta,iBat)
+            indBat=IndexToBatch(meta[pNam],iBat)
 
             for iGC in range(3):
 
@@ -5559,15 +4630,15 @@ def PrepGrowthCurvesForCBR(meta):
                 # Populate the growth curve
                 for iS in range(indBat.size):
 
-                    #u=np.unique(ec['ID_GrowthCurve'][:,iS,:])
+                    #u=np.unique(ec['ID Growth Curve'][:,iS,:])
 
-                    if (meta['Project']['Scenario Source']=='Spreadsheet'):
+                    if (meta[pNam]['Project']['Scenario Source']=='Spreadsheet'):
 
                         indTIPSY=np.where(
                                 (dfPar['ID_Scenario']==iScn+1) &
-                                (dfPar['ID_GC']==int(meta['GC']['ID GC Unique'][iGC])) )[0]
+                                (dfPar['ID_GC']==int(meta['Modules']['GYM']['ID GC Unique'][iGC])) )[0]
 
-                    elif (meta['Project']['Scenario Source']=='Script') | (meta['Project']['Scenario Source']=='Portfolio'):
+                    elif (meta[pNam]['Project']['Scenario Source']=='Script') | (meta[pNam]['Project']['Scenario Source']=='Portfolio'):
 
                         indTIPSY=np.where(
                             (dfPar['ID_Stand']==indBat[iS]+1) &
@@ -5578,21 +4649,21 @@ def PrepGrowthCurvesForCBR(meta):
                         # This can happen if only some stands have a third GC, for example
                         continue
 
-                    G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,2]=G_Bark[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['GC']['Scale Factor']
-                    G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['GC']['Scale Factor']
+                    G[:,iS,0]=G_StemMerch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iS,1]=G_StemNonMerch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iS,2]=G_Bark[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iS,3]=G_Branch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iS,4]=G_Foliage[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iS,5]=G_VStemMerch[:,indTIPSY[0]]/meta['Modules']['GYM']['Scale Factor']
 
                 # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
+                gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(iGC+1) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
 
     return
 
 #%% Prepare growth curves (with early correction)
 
-def PrepGrowthCurvesUniqueForCBR(meta,ugc):
+def PrepGrowthCurvesUniqueForCBR(meta,pNam,ugc):
 
     # *** This adjusts early net growth so that it is not zero. There is a
     # second version of this function that excludes the correction. ***
@@ -5602,16 +4673,16 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
     dm2c=0.5
 
     # Growth curve parameters and TIPSY outputs
-    #dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
-    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+    #dfPar=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+    txtDat=np.loadtxt(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
 
     # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+    dfDat=pd.DataFrame(txtDat,columns=meta['Modules']['GYM']['BatchTIPSY Column Names'])
 
     del txtDat
 
     # Define age vector (must be consistent with how TIPSY was set up)
-    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+    Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
     # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
     N_Age=Age.size
@@ -5732,12 +4803,12 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
 
     del C_Stem,C_StemMerch,C_StemNonMerch,C_Foliage,C_Branch,C_Bark,fMerch,fNonMerch
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
-        for iGC in range(meta['GC']['N Growth Curves']):
+        for iGC in range(meta['Modules']['GYM']['N Growth Curves']):
 
             # Index to the full set of growth curves for scenario iScn and growth curve iGC
-            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC Unique'][iGC]) )[0]
+            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['Modules']['GYM']['ID GC Unique'][iGC]) )[0]
 
             # Extract the unique growth curve ID for scenario iScn and growth curve iGC
             ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
@@ -5745,10 +4816,10 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
             # Extract the inverse index for scenario iScn and growth curve iGC
             Inverse_ugc_ScnAndGc=ugc['Inverse'][ind_ugc_ScnAndGc]
 
-            for iBat in range(0,meta['Project']['N Batch']):
+            for iBat in range(0,meta[pNam]['Project']['N Batch']):
 
                 # Index to batch
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
                 # Intersect
                 c,inda,indb=np.intersect1d(ID_ugc_ScnAndGc,indBat,return_indices=True)
@@ -5764,43 +4835,43 @@ def PrepGrowthCurvesUniqueForCBR(meta,ugc):
                     iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
 
                     try:
-                        G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                        G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
                     except:
                         print(iStand)
                         print(G.shape)
                         print(iGC_Unique)
                         print(G_StemMerch.shape)
 
-                    G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,4]=G_Foliage[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,4]=G_Foliage[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
 
                 # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC Unique'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
+                gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['Modules']['GYM']['ID GC Unique'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
 
     return
 
 #%% Prepare growth curves (without early correction)
 
-def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
+def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,pNam,ugc):
 
     # TIPSY exports curves as MgDM/ha/yr, CBRunner expects inputs of MgC/ha/yr. Create
     # conversion factor.
     dm2c=0.5
 
     # Growth curve parameters and TIPSY outputs
-    #dfPar=pd.read_excel(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
-    txtDat=np.loadtxt(meta['Paths']['Project'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
+    #dfPar=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx',sheet_name='Sheet1',skiprows=7)
+    txtDat=np.loadtxt(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Output.out',skiprows=4)
 
     # TIPSY saves to text file -> convert to dataframe (column names must match TIPSY output file design)
-    dfDat=pd.DataFrame(txtDat,columns=meta['GC']['BatchTIPSY Column Names'])
+    dfDat=pd.DataFrame(txtDat,columns=meta['Modules']['GYM']['BatchTIPSY Column Names'])
 
     del txtDat
 
     # Define age vector (must be consistent with how TIPSY was set up)
-    Age=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+    Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
     # Get dimensions of the TIPSY output file to reshape the data into Age x Stand
     N_Age=Age.size
@@ -5839,11 +4910,11 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
 
     del C_Stem,C_StemMerch,C_StemNonMerch,C_Foliage,C_Branch,C_Bark,fMerch,fNonMerch
 
-    for iScn in range(meta['Project']['N Scenario']):
-        for iGC in range(meta['GC']['N Growth Curves']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
+        for iGC in range(meta['Modules']['GYM']['N Growth Curves']):
 
             # Index to the full set of growth curves for scenario iScn and growth curve iGC
-            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['GC']['ID GC Unique'][iGC]) )[0]
+            ind_ugc_ScnAndGc=np.where( (ugc['Full'][:,1]==iScn) & (ugc['Full'][:,2]==meta['Modules']['GYM']['ID GC Unique'][iGC]) )[0]
 
             # Extract the unique growth curve ID for scenario iScn and growth curve iGC
             ID_ugc_ScnAndGc=ugc['Full'][ind_ugc_ScnAndGc,0]
@@ -5851,10 +4922,10 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
             # Extract the inverse index for scenario iScn and growth curve iGC
             Inverse_ugc_ScnAndGc=ugc['Inverse'][ind_ugc_ScnAndGc]
 
-            for iBat in range(0,meta['Project']['N Batch']):
+            for iBat in range(0,meta[pNam]['Project']['N Batch']):
 
                 # Index to batch
-                indBat=IndexToBatch(meta,iBat)
+                indBat=IndexToBatch(meta[pNam],iBat)
 
                 # Intersect
                 c,inda,indb=np.intersect1d(ID_ugc_ScnAndGc,indBat,return_indices=True)
@@ -5869,27 +4940,29 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,ugc):
                     iStand=indb[i]
                     iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
 
-                    G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,4]=G_Foliage[:,iGC_Unique].T/meta['GC']['Scale Factor']
-                    G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['GC']['Scale Factor']
+                    G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,4]=G_Foliage[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
+                    G[:,iStand,5]=G_VStemMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
 
                 # Save data to file in input variables folder of project
-                gu.opickle(meta['Paths']['Project'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['GC']['ID GC Unique'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
+                gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Scenario' + FixFileNum(iScn) + '\\GrowthCurve' + str(meta['Modules']['GYM']['ID GC Unique'][iGC]) + '_Bat' + FixFileNum(iBat) + '.pkl',G)
 
     return
 
 #%% Import parameters
 
-def ImportParameters(meta):
+def ImportParameters(meta,pNam):
 
     # Path to parameters
     pthin=meta['Paths']['Model']['Code'] + '\\Parameters\\'
 
     # Initialize parameter structure
-    meta['Param']={}
+    if 'Param' not in meta:
+        meta['Param']={}
+
     meta['Param']['BE']={}
     meta['Param']['Sigma']={}
     meta['Param']['BL']={}
@@ -5964,21 +5037,21 @@ def ImportParameters(meta):
 
     p=gu.ReadExcel(pthin + '\Parameters_Disturbances.xlsx')
 
-    str_to_exclude=['ID','Name','Species_CD','MortalityOccurs','GrowthFactor',
+    str_to_exclude=['ID','Name','Species_CD','MortalityOccurs','Growth Factor',
                     'GrowthFactor_Source','GrowthRecovery_HL','GrowthRecovery_HL_Source',
                     'QA1','QA2','QA3']
 
-    meta['Param']['BE']['Dist']={}
+    meta['Param']['BE']['Event']={}
     for i in range(p['ID'].size):
-        meta['Param']['BE']['Dist'][p['ID'][i]]={}
-        meta['Param']['BE']['Dist'][p['ID'][i]]['BiomassMerch_Affected']=1
-        meta['Param']['BE']['Dist'][p['ID'][i]]['BiomassNonMerch_Affected']=1
-        meta['Param']['BE']['Dist'][p['ID'][i]]['Snags_Affected']=1
+        meta['Param']['BE']['Event'][p['ID'][i]]={}
+        meta['Param']['BE']['Event'][p['ID'][i]]['BiomassMerch_Affected']=1
+        meta['Param']['BE']['Event'][p['ID'][i]]['BiomassNonMerch_Affected']=1
+        meta['Param']['BE']['Event'][p['ID'][i]]['Snags_Affected']=1
         for k in p.keys():
             # Exclude some legacy variables that may be re-implemented
             if np.isin(k,str_to_exclude)==True:
                 continue
-            meta['Param']['BE']['Dist'][p['ID'][i]][k]=np.nan_to_num(p[k][i])
+            meta['Param']['BE']['Event'][p['ID'][i]][k]=np.nan_to_num(p[k][i])
 
     #--------------------------------------------------------------------------
     # Disutrbance - fate of felled material
@@ -6106,7 +5179,7 @@ def ImportParameters(meta):
     # Climate by BGC zone
     #--------------------------------------------------------------------------
 
-    meta['Param']['BE']['ClimateByBGC']=gu.ReadExcel(pthin + '\Parameters_ByBGC.xlsx')
+    meta['Param']['BE']['BGC Zone Averages']=gu.ReadExcel(pthin + '\Parameters_ByBGC.xlsx')
 
     #--------------------------------------------------------------------------
     # Genetic worth
@@ -6118,7 +5191,7 @@ def ImportParameters(meta):
     # Sawtooth parameters
     #--------------------------------------------------------------------------
 
-    if meta['Project']['Biomass Module']=='Sawtooth':
+    if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
         ps={}
         #pthin=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters'
@@ -6150,16 +5223,16 @@ def ImportParameters(meta):
 
 #%% Delete all output files
 
-def DeleteAllOutputFiles(meta):
+def DeleteAllOutputFiles(meta,pNam):
 
-    for iScn in range(meta['Project']['N Scenario']):
-        files=glob.glob(meta['Paths']['Output Scenario'][iScn] + '\\*')
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
+        files=glob.glob(meta['Paths'][pNam]['Output Scenario'][iScn] + '\\*')
         for f in files:
             os.remove(f)
 
-    for iBat in range(meta['Project']['N Batch']):
+    for iBat in range(meta[pNam]['Project']['N Batch']):
         try:
-            pth=meta['Paths']['Project'] + '\\Outputs\\WorkingOnBatch_' + FixFileNum(iBat) + '.pkl'
+            pth=meta['Paths'][pNam]['Data'] + '\\Outputs\\WorkingOnBatch_' + FixFileNum(iBat) + '.pkl'
             os.remove(pth)
         except:
             pass
@@ -6223,16 +5296,16 @@ def ImportCustomHarvestAssumptions(pthin):
 
 #%% Unpack ensemble stats from MOS
 
-def UnpackEnsembleStatsFromMos(meta,mos):
+def UnpackEnsembleStatsFromMos(meta,pNam,mos):
 
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     #--------------------------------------------------------------------------
     # Unpack contents for easy use
     #--------------------------------------------------------------------------
 
     mu_mos=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         d={}
         for k in mos[iScn]['v1']['Mean'].keys():
             d[k]=mos[iScn]['v1']['Mean'][k]['Ensemble Mean']
@@ -6241,7 +5314,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
         mu_mos.append(d)
 
     cil_mos=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         d={}
         for k in mos[iScn]['v1']['Mean'].keys():
             d[k]=mos[iScn]['v1']['Mean'][k]['Ensemble CIL']
@@ -6250,7 +5323,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
         cil_mos.append(d)
 
     cih_mos=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         d={}
         for k in mos[iScn]['v1']['Mean'].keys():
             d[k]=mos[iScn]['v1']['Mean'][k]['Ensemble CIH']
@@ -6259,7 +5332,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
         cih_mos.append(d)
 
     sdl_mos=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         d={}
         for k in mos[iScn]['v1']['Mean'].keys():
             d[k]=mos[iScn]['v1']['Mean'][k]['Ensemble Mean']-mos[iScn]['v1']['Mean'][k]['Ensemble SD']
@@ -6268,7 +5341,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
         sdl_mos.append(d)
 
     sdh_mos=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         d={}
         for k in mos[iScn]['v1']['Mean'].keys():
             d[k]=mos[iScn]['v1']['Mean'][k]['Ensemble Mean']+mos[iScn]['v1']['Mean'][k]['Ensemble SD']
@@ -6277,7 +5350,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
         sdh_mos.append(d)
 
 #    p1_mos=[]
-#    for iScn in range(meta['Project']['N Scenario']):
+#    for iScn in range(meta[pNam]['Project']['N Scenario']):
 #        d={}
 #        for k in mos[iScn]['v1']['Sum'].keys():
 #            d[k]=mos[iScn]['v1']['Sum'][k]['Ensemble P1']
@@ -6286,7 +5359,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
 #        p1_mos.append(d)
 #
 #    p10_mos=[]
-#    for iScn in range(meta['Project']['N Scenario']):
+#    for iScn in range(meta[pNam]['Project']['N Scenario']):
 #        d={}
 #        for k in mos[iScn]['v1']['Sum'].keys():
 #            d[k]=mos[iScn]['v1']['Sum'][k]['Ensemble P10']
@@ -6296,7 +5369,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
 #
 #
 #    p90_mos=[]
-#    for iScn in range(meta['Project']['N Scenario']):
+#    for iScn in range(meta[pNam]['Project']['N Scenario']):
 #        d={}
 #        for k in mos[iScn]['v1']['Sum'].keys():
 #            d[k]=mos[iScn]['v1']['Sum'][k]['Ensemble P90']
@@ -6305,7 +5378,7 @@ def UnpackEnsembleStatsFromMos(meta,mos):
 #        p90_mos.append(d)
 #
 #    p99_mos=[]
-#    for iScn in range(meta['Project']['N Scenario']):
+#    for iScn in range(meta[pNam]['Project']['N Scenario']):
 #        d={}
 #        for k in mos[iScn]['v1']['Sum'].keys():
 #            d[k]=mos[iScn]['v1']['Sum'][k]['Ensemble P99']

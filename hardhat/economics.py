@@ -14,21 +14,21 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Calculate net revenue
 
-def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
+def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
     # Extract biophysical parameters
     b=meta['Param']['BEV']['Biophysical']
 
     # Time vector
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Year'][-1]+1,1)
-    tv_full=np.arange(meta['Project']['Year Start'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Year'][-1]+1,1)
+    tv_full=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
 
     #--------------------------------------------------------------------------
     # Discounting variables
     #--------------------------------------------------------------------------
 
     r_disc=meta['Param']['BEV']['Econ']['Discount Rate']
-    t_disc=np.maximum(0,tv-meta['Project']['Year Project'])
+    t_disc=np.maximum(0,tv-meta[pNam]['Project']['Year Project'])
     t_disc=np.tile(t_disc,(v1['A'].shape[1],1)).T
 
     # Import prices
@@ -106,7 +106,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Fertilization Aerial']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Fertilization Aerial']) )[0]
 
             if ind.size==0:
                 continue
@@ -128,7 +128,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Aerial Spray']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Aerial Spray']) )[0]
 
             if ind.size==0:
                 continue
@@ -148,7 +148,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Planting']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Planting']) )[0]
 
             if ind.size==0:
                 continue
@@ -207,7 +207,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Knockdown']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Knockdown']) )[0]
 
             if ind.size==0:
                 continue
@@ -230,7 +230,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Ripping']) | (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Disc Trenching']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Ripping']) | (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Disc Trenching']) )[0]
 
             if ind.size==0:
                 continue
@@ -253,10 +253,10 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            if 'PAS Deactivation' not in meta['LUT']['Dist']:
+            if 'PAS Deactivation' not in meta['LUT']['Event']:
                 continue
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['PAS Deactivation']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['PAS Deactivation']) )[0]
 
             if ind.size==0:
                 continue
@@ -279,14 +279,14 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest']) | \
-                         (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest Salvage']) | \
-                         (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest Custom 1']) | \
-                         (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest Custom 2']) | \
-                         (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest Custom 3']) | \
-                         (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest Custom 4']) | \
-                         (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest Custom 5']) | \
-                         (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Harvest Custom 6']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest']) | \
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Salvage']) | \
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 1']) | \
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 2']) | \
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 3']) | \
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 4']) | \
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 5']) | \
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 6']) )[0]
 
             if ind.size==0:
                 continue
@@ -328,7 +328,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
                 #d['Harvest Vol Merch'][it1,iStand]=Removed_V
 
-                if (inv['ID_BECZ'][0,iStand]==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE']['CWH']) | (inv['ID_BECZ'][0,iStand]==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE']['CDF']):
+                if (inv['ID_BGCZ'][0,iStand]==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE']['CWH']) | (inv['ID_BGCZ'][0,iStand]==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE']['CDF']):
 
                     d['Cost Harvest Overhead'][it1,iStand]=dCost['Cost Harvest Overhead Coast (CDN$/ha)'][it0]
 
@@ -357,7 +357,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID_Type'][:,iStand,k]==meta['LUT']['Dist']['Slashpile Burn']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Slashpile Burn']) )[0]
 
             if ind.size==0:
                 continue
@@ -468,7 +468,7 @@ def CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,v1):
     d['Cost Silviculture Total Disc']=d['Cost Silviculture Total'].copy()/((1+r_disc)**t_disc)
 
     # Cumulative
-    iT=np.where(tv>=meta['Project']['Year Start Cumulative'])[0]
+    iT=np.where(tv>=meta[pNam]['Project']['Year Start Cumulative'])[0]
     List=['Cost Total','Cost Silviculture Total','Cost Nutrient Management', \
           'Cost Total Disc','Cost Silviculture Total Disc','Cost Nutrient Management Disc', \
           'Revenue Gross','Revenue Gross Disc', \
