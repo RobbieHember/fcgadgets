@@ -17,6 +17,7 @@ import fcgadgets.macgyver.utilities_general as gu
 import fcgadgets.macgyver.utilities_gis as gis
 import fcgadgets.macgyver.utilities_query_gdb as qgdb
 import fcexplore.psp.Processing.psp_utilities as ugp
+import fcgadgets.cbrunner.cbrun_utilities as cbu
 
 #%% Initialize project
 
@@ -49,6 +50,7 @@ def Init(*argv):
     meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS'
 
     # Defaults assume province-wide map
+    meta['Graphics']['Map']['RGSF']=1
     meta['Graphics']['Map']['Fig Width']=9.75
     meta['Graphics']['Map']['Side Space']=0
     meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['Side Space']-0.01,1]
@@ -62,7 +64,7 @@ def Init(*argv):
     meta['Graphics']['Map']['Show Bound Within']='Off'
     meta['Graphics']['Map']['Show Lakes']='Off'
     meta['Graphics']['Map']['Show Rivers']='Off'
-    meta['Graphics']['Map']['Show Roads']='On'
+    meta['Graphics']['Map']['Show Roads']='Off'
 
     meta['Graphics']['Flowchart']={}
     meta['Graphics']['Flowchart']['Font Name']='Arial'
@@ -86,16 +88,16 @@ def Init(*argv):
     gdf_bm=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='TA_REGIONAL_DISTRICTS_SVW')
     meta['Geos']['crs']=gdf_bm.crs
 
+    # Import LUTs
+    if 'LUT' not in meta:
+        meta=ImportLUTs(meta)
+
     if 'Include GPs' in argv:
         meta['GP'],data=ugp.ImportPlotData(meta,type='Just Parameters')
         meta['GP']['Data']=data
 
-    if 'Param' not in meta.keys():
-        meta['Param']={}
-        meta['Param']['Comparison_With_NIR']=pd.read_excel(meta['Paths']['Model']['Parameters'] + '\\Comparison_With_NIR.xlsx')
-        meta['Param']['Reporting_Version_Comparison']=pd.read_excel(meta['Paths']['Model']['Parameters'] + '\\Reporting_Version_Comparison.xlsx')
-        meta['Param']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Forcing_Categories.xlsx')
-        meta['Param']['Level_4_Categories_Status']=pd.read_excel(meta['Paths']['Model']['Parameters'] + '\\Level_4_Categories_Status.xlsx')
+    # Import model parameters
+    meta=cbu.ImportParameters(meta)
 
     return meta
 
@@ -122,14 +124,6 @@ def ImportLUTs(meta):
     lNam='Derived'
     meta['LUT'][lNam]={}
     meta['LUT']['Raw']={}
-
-    # Funding source code
-    vNam='Legal Obligation'
-    d=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_ByFundingSourceCode.xlsx')
-    meta['LUT']['Raw'][vNam]=d
-    meta['LUT']['Derived'][vNam]={}
-    for i in range(d['Name'].size):
-        meta['LUT']['Derived'][vNam][d['Name'][i]]=d['Legal Obligation of Licensee To Fund Milestone'][i]
 
     # Land cover - level 2
     vNam='lc2'
@@ -204,6 +198,13 @@ def ImportLUTs(meta):
     for i in range(d['ID'].size):
         meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
 
+    d=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\LUTs\\LUT_regentype_no.xlsx')
+    vNam='RegenTypeNO'
+    meta['LUT']['Raw'][vNam]=d
+    meta['LUT'][lNam][vNam]={}
+    for i in range(d['ID'].size):
+        meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
+
     # Forest Cover Stocking Type
     #d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\Results\stocktype.tif.vat.xlsx')
     #d=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_ForestCover_StockingType.xlsx')
@@ -227,7 +228,7 @@ def BuildLUTsFromSourceDBs(meta):
     d={}
     for iL in range(uL.size):
 
-        if uL[iL]=='CLAB_NATIONAL_PARKS': # 'BEC_NATURAL_DISTURBANCE_SV':
+        if uL[iL]=='FTEN_CUT_BLOCK_POLY_SVW': # 'BEC_NATURAL_DISTURBANCE_SV':
             break
 
         t_start=time.time()
@@ -368,8 +369,8 @@ def RasterizeFromSource(meta,zRef,lNam,vNam):
     ind=np.where( (meta['Geos']['Variable Info']['Layer Name']==lNam) & (meta['Geos']['Variable Info']['Variable Name']==vNam) )[0]
 
     pthin=meta['Paths']['GDB'][ meta['Geos']['Variable Info']['Geodatabase Name'][ind[0]] ] # fiona.listlayers(pthin)
-
     df=gpd.read_file(pthin,layer=lNam)
+
     df=df[df.geometry!=None]
     df=df.reset_index()
 
@@ -481,9 +482,14 @@ def RasterizeVRI(meta,year):
 
 def DefineROI(meta,roi,gdf):
 
+    if roi['Type']=='Prov':
+        meta['Graphics']['Map']['Legend X']=0.7
+        meta['Graphics']['Map']['Show Lakes']='Off'
+        meta['Graphics']['Map']['Show Rivers']='Off'
+
     # Import TSA grid
     tsa=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\FADM_TSA\\TSA_NUMBER_DESCRIPTION.tif')
-    tsa['Data']=np.squeeze(tsa['Data'])
+    tsa=gis.UpdateGridCellsize(tsa,meta['Graphics']['Map']['RGSF'])
 
     roi['crs']=gdf['bc_bound']['gdf'].crs
 
@@ -545,6 +551,7 @@ def DefineROI(meta,roi,gdf):
 
     elif roi['Type']=='Prov':
         roi['grd']=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+        roi['grd']=gis.UpdateGridCellsize(roi['grd'],meta['Graphics']['Map']['RGSF'])
 
     # Vector layers
     roi['gdf']={}
@@ -796,11 +803,15 @@ def Import_Raster(meta,roi,vList):
         elif v=='BEC_ZONE_CODE':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BEC_ZONE_CODE.tif')
         elif v=='bgcz':
-            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\BEC_BIOGEOCLIMATIC_POLY\\ZONE.tif')
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\BEC_BIOGEOCLIMATIC_POLY\\ZONE_GapFilled.tif')
         elif v=='biomass_glob':
             d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\Biomass\GlobBiomass\N80W140_agb pc8.tif')
             d[v]['Data']=np.squeeze(d[v]['Data'])
             d[v]['Data']=0.5*d[v]['Data']
+        elif v=='bsr_yr':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_BURN_SEVERITY_SP\\FIRE_YEAR.tif')
+        elif v=='bsr_sc':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_BURN_SEVERITY_SP\\BURN_SEVERITY_RATING.tif')
         elif v=='btm':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\landuse.btm.tif')
             d[v]['Data']=np.squeeze(d[v]['Data'])
@@ -813,14 +824,14 @@ def Import_Raster(meta,roi,vList):
             d[v]['key']=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\Disturbances\\VEG_BURN_SEVERITY_SP.xlsx')
         elif v=='crownc':
             d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\crownc.tif')
-        elif v=='denseclass':
-            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_WithShrubsGrasses.tif')
         elif v=='d2road':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\DistanceFromRoads.tif')
         elif v=='d2fac':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Management\\DistanceFromForestryFacility.tif')
         elif v=='elev':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\elevation.tif')
+        elif v=='feca_yr':
+           d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_MaskAll.tif')
         elif v=='fire_yr':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_YearLast.tif')
         elif v=='gfcly':
@@ -839,6 +850,8 @@ def Import_Raster(meta,roi,vList):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\Harvest_Consol2_Year.tif')
         elif v=='harv_salv':
             d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\HarvestSalvageMask_FromCruise.tif')
+        elif v=='kd_yr':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP_KD_YearLast.tif')
         elif v=='ibm_yr':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_YearLast.tif')
         elif v=='idw_mask':
@@ -847,6 +860,8 @@ def Import_Raster(meta,roi,vList):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BCLCS_LEVEL_2.tif')
         elif v=='lc4':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BCLCS_LEVEL_4.tif')
+        elif v=='lc5':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BCLCS_LEVEL_5.tif')
         elif v=='lcc1_c':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1_Current.tif')
         elif v=='lcc1_pc':
@@ -879,6 +894,8 @@ def Import_Raster(meta,roi,vList):
             d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandCoverUse\rangeten_consol.tif')
         elif v=='rears':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\REARs_CompPlusProp.tif')
+        elif v=='refg':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
         elif v=='regentype':
             d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Results\Harvest_Regen_Type.tif')
         elif v=='rescon':
@@ -895,6 +912,10 @@ def Import_Raster(meta,roi,vList):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Soil\\soc_tot_forest_Shawetal2018.tif')
         elif v=='spc1_ntems':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Species\\NTEMS_Spc1_Filled_RD_CAPITAL.tif')
+        elif v=='tdc':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_Current.tif')
+        elif v=='tdc_wgs':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_WithShrubsGrasses.tif')
         elif v=='tmean_ann_n':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Seasonal\\BC1ha_tmean_ann_norm_1971to2000_si_hist_v1.tif')
         elif v=='si_spl_ntems':
@@ -915,6 +936,8 @@ def Import_Raster(meta,roi,vList):
             #d[v]['cm']=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\Colormaps\colormap_ws.xlsx')
         else:
             pass
+
+        d[v]=gis.UpdateGridCellsize(d[v],meta['Graphics']['Map']['RGSF'])
 
     if roi!=[]:
         for v in vList:
@@ -1129,7 +1152,7 @@ def ClipToBC1ha(meta):
 #%% Import packed event data and generate time series of occurrence
 
 def TimeSeriesOccurrenceFromPackedEvents(meta,lNam,vNam,nPack):
-    tv=np.arange(1900,2025,1)
+    tv=np.arange(1900,2030,1)
     N=np.zeros(tv.size)
     for i in range(nPack):
         z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_' + str(i+1) + '_Year.tif')['Data']
@@ -1153,8 +1176,14 @@ def GetRasterListFromSpreadsheet(path):
 
 def Plot_LandCoverClass1(meta,roi):
 
+    if 'lcc1_c' in roi['grd'].keys():
+        z0=roi['grd']['lcc1_c']['Data']
+    else:
+        z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1_Current.tif')
+        z0=gis.UpdateGridCellsize(z0,meta['Graphics']['Map']['RGSF'])['Data']
+
     lab=list(meta['LUT']['Derived']['lcc1'].keys())
-    z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1_Current.tif')['Data']
+
     z1=len(lab)*np.ones(z0.shape,dtype='int8')
     for k in meta['LUT']['Derived']['lcc1'].keys():
         ind=np.where(z0==meta['LUT']['Derived']['lcc1'][k])
@@ -1199,4 +1228,238 @@ def Plot_LandCoverClass1(meta,roi):
     ax[1].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
         gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_lcc1_c','png',900)
+    plt.show()
+    return fig,ax
+
+#%%
+
+def Plot_REARs(meta,roi):
+    if 'rears' in roi['grd'].keys():
+        z1=roi['grd']['rears']['Data']
+    else:
+        z1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\REARs_CompPlusProp.tif')['Data']
+        z1=gis.UpdateGridCellsize(z1,meta['Graphics']['Map']['RGSF'])['Data']
+    z1[(roi['grd']['Data']==1) & (z1==0) & (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Forest'])]=3
+    z1[(roi['grd']['Data']==1) & (roi['grd']['lcc1_c']['Data']!=meta['LUT']['Derived']['lcc1']['Forest'])]=4
+    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=5
+
+    lab=['Protected','Protected (proposed)','Unprotected forest','Non-forest land']
+
+    N_vis=4
+    N_hidden=1
+    N_tot=N_vis+N_hidden
+
+    cm=np.vstack( ((0.7,0.6,1,1),(0.25,0.85,0.9,1),(0,0.4,0,1),(0.83,0.86,0.9,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all')
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1[0::1,0::1],extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Within']=='On':
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+    ax[1].set(position=[0.71,0.6,0.05,0.14])
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+
+    if meta['Graphics']['Print Figures']=='On':
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_REARs','png',meta['Graphics']['gp']['save fig dpi'])
+
+    return fig,ax
+
+#%%
+
+def Plot_Harvest_Po(meta,roi):
+    z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\HarvestProbability.tif')
+    z=gis.UpdateGridCellsize(z,meta['Graphics']['Map']['RGSF'])
+    sf=1000
+    # Apply scale factor to convert to (%/yr)
+    #z['Data']=z['Data'].astype('float')/1000
+    bw=0.1; bin=np.arange(0,0.5+bw,bw)
+    z1=np.ones( z['Data'].shape)
+    for i in range(bin.size):
+        ind=np.where(np.abs( z['Data']-bin[i]*sf)<=bw*sf/2)
+        if ind[0].size==0:
+            z1[ind[0][i],ind[1][i]]=i
+        else:
+            z1[ind]=i
+    ind=np.where( z['Data']>=bin[i]*sf ); z1[ind]=i
+    ind=np.where( roi['grd']['Data']!=1 ); z1[ind]=i+1
+
+    lab=["%.2f" % x for x in bin]
+    lab=np.append(lab,np.array(['Water']))
+
+    N_vis=bin.size
+    N_hidden=1
+    N_tot=N_vis+N_hidden
+
+    cm=plt.cm.get_cmap('viridis',bin.size)
+    cm=np.vstack( (cm.colors,(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,3,figsize=gu.cm2inch(18,18*0.5*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    ax[0].set(position=[0,0,0.5,1],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],aspect='auto')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+    ax[1].set(position=[0.71,0.6,0.05,0.14])
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+    pos2=[0.39,0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],0.02,N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+
+    # Model
+    V_Merch=np.arange(1,1200)
+    beta=[0.005,-0.04,400]
+    Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
+    ax[2].plot(V_Merch,Po*100,'k-',linewidth=1,label='Harvest on-the-fly model 1')
+    beta=[0.005,-0.04,500]
+    Po=beta[0]*(1/(1+np.exp(beta[1]*(V_Merch-beta[2]))))
+    ax[2].plot(V_Merch,Po*100,'g--',linewidth=1,label='Harvest on-the-fly model 2')
+    ax[2].set(position=[0.55,0.12,0.4,0.86],xticks=np.arange(0,1300,100),xlabel='Merchantable volume (m$^3$ ha$^-$$^1$)',ylabel='Annual probability of harvest (%)',xlim=[0,800],ylim=[0,0.7])
+    ax[2].legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
+    ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+    if meta['Graphics']['Print Figures']=='On':
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\taz_ann_prob_harvest','png',meta['Graphics']['gp']['save fig dpi'])
+    plt.show()
+    return
+
+#%%
+
+def Plot_BGC_Zone(meta,roi):
+
+    z0=roi['grd']['bgcz']['Data']
+    lab0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys())
+    cl0=np.column_stack([meta['LUT']['Raw']['bgc_zone']['R'],meta['LUT']['Raw']['bgc_zone']['G'],meta['LUT']['Raw']['bgc_zone']['B']])
+    id0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].values())
+    z1,lab1,cl1=gis.CompressCats(z0,id0,lab0,cl0)
+
+    N_vis=int(np.max(z1))
+    N_hidden=2
+    N_tot=N_vis+N_hidden
+    ind=np.where(z1==0); z1[ind]=N_vis+1
+    lab1=lab1[1:]
+    cl1=cl1[1:,:]
+
+    z1[0,0]=N_vis+1
+    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=N_vis+2
+
+    lab1=np.append(lab1,[''])
+
+    # Colormap
+    cm=plt.cm.get_cmap('viridis',N_vis);
+    for i in range(N_vis):
+        cm.colors[i,0:3]=cl1[i,:]
+    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Within']=='On':
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+    ax[1].set(position=[0.71,0.6,0.05,0.14])
+    cb.ax.set(yticklabels=lab1)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+    if meta['Graphics']['Print Figures']=='On':
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_bgcz','png',meta['Graphics']['gp']['save fig dpi'])
+    plt.show()
+    return fig,ax
+
+#%%
+
+def Plot_SalvageLogging(meta,roi):
+
+    lab=['Salvage (>50% dead)','Salvage (>10% dead)','Harvest (<10% dead)','No harvesting','Non-forest land','Outside']
+    lab=lab[0:-1]
+    z1=roi['grd']['harv_salv']['Data']
+    z1[roi['grd']['Data']==0]=6
+
+    # Number of colours and number of colours excluded from colorbar
+    N_vis=4
+    N_hidden=2
+    N_tot=N_vis+N_hidden
+
+    # Colormap
+    cm=np.vstack( ((0.9,0,0,1),(1,0.85,0,1),(0.85,1,0.65,1),(0.6,0.6,0.6,1), (0.93,0.93,0.93,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Within']=='On':
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_harv_salv','png',900)
+
     return fig,ax

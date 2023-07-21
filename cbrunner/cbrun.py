@@ -33,7 +33,7 @@ def MeepMeep(meta,pNam):
         for iScn in ScenariosToRun:
 
             # Track the current scenario index
-            meta['iScn']=iScn
+            meta[pNam]['iScn']=iScn
 
             # Loop through ensembles
             for iEns in range(meta[pNam]['Project']['N Ensemble']):
@@ -65,55 +65,61 @@ def MeepMeep(meta,pNam):
 
                 # Track time
                 t1=time.time()
-                meta[pNam]['Project']['Run Time Summary']['Stand initialization']=t1-t0
+                meta[pNam]['Project']['Run Time Summary']['Stand initialization']=np.round(t1-t0,decimals=2)
 
                 # Set location-specific parameters
                 meta,vi=PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn)
 
                 # Track time
                 t2=time.time()
-                meta[pNam]['Project']['Run Time Summary']['Set location-specific parameters']=t2-t1
+                meta[pNam]['Project']['Run Time Summary']['Set location-specific parameters']=np.round(t2-t1,decimals=2)
 
                 # Indices to ecosystem pools
                 iEP=meta['Core']['iEP']
 
                 #--------------------------------------------------------------
-                # Try to start at a later date and adopt spinup from a previous run
+                # Start at a later date and adopt spinup from a previous run
                 #--------------------------------------------------------------
 
-                t_start=1
+                if (meta[pNam]['Project']['Early Record Recycling']=='On') & (iEns!=0):
 
-                # if (meta[pNam]['Project']['N Ensemble']==1): # | (iEns==0): # (iScn==0) &
-                #     # Start from beginning
-                #     t_start=1
-                # else:
-                #     # Start at an advanced date using previous data for spinup period
-                #     t_start=np.where(meta[pNam]['Year']==meta[pNam]['Project']['Year Start Saving'])[0][0]
+                    # Start at an advanced date using previous data for spinup period
+                    t_start=np.where(meta[pNam]['Year']==meta[pNam]['Project']['Year Start Saving']-meta['Core']['Recycle Early Record Buffer'])[0][0]
 
-                #     # Get output variables from first run of this batch
-                #     it=np.where(meta[pNam]['Year']==meta[pNam]['Project']['Year Start Saving']-1)[0]
-                #     for k in vo.keys():
-                #         if (k=='C_M_ByAgent'):
-                #             continue
-                #         if vo[k].size==0:
-                #             continue
-                #         vo[k][it,:]=vo_full[k]
+                    # Get output variables from first run of this batch
+                    it=np.where(meta[pNam]['Year']==meta[pNam]['Project']['Year Start Saving']-meta['Core']['Recycle Early Record Buffer']-1)[0]
+                    for k in vo.keys():
+                        if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
+                            continue
+                        if vo[k].size==0:
+                            continue
+                        try:
+                            vo[k][it,:]=vo_full[k]
+                        except:
+                            print(k)
+                            print(vo_full.keys())
 
-                #     # Set future periods to zero
-                #     it=np.where(meta[pNam]['Year']>=meta[pNam]['Project']['Year Start Saving'])[0]
-                #     for k in vo.keys():
-                #         if (k=='C_M_ByAgent'):
-                #             # Nested dictionaries
-                #             # *** These are already shortened time periods so set whole array to zero
-                #             for k2 in vo[k].keys():
-                #                 vo[k][k2]=0*vo[k][k2]
-                #         else:
+                    # Set future periods to zero
+                    it=np.where(meta[pNam]['Year']>=meta[pNam]['Project']['Year Start Saving']-meta['Core']['Recycle Early Record Buffer'])[0]
+                    for k in vo.keys():
+                        if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
+                            # Nested dictionaries
+                            # *** These are already shortened time periods so set whole array to zero
+                            for k2 in vo[k].keys():
+                                vo[k][k2]=0*vo[k][k2]
+                        else:
 
-                #             if vo[k].size==0:
-                #                 continue
+                            if vo[k].size==0:
+                                continue
 
-                #             # Not a nested dictionary
-                #             vo[k][it,:]=0*vo[k][it,:]
+                            # Not a nested dictionary
+                            vo[k][it,:]=0*vo[k][it,:]
+
+                else:
+
+                    # Start from beginning
+                    t_start=1
+                    vo_full=[]
 
                 # Track time
                 t3=time.time()
@@ -125,22 +131,23 @@ def MeepMeep(meta,pNam):
 
                 # Track time
                 t4=time.time()
-                meta[pNam]['Project']['Run Time Summary']['Running biomass dynamics from sawtooth']=t4-t3
+                meta[pNam]['Project']['Run Time Summary']['Running biomass dynamics from sawtooth']=np.round(t4-t3,decimals=2)
 
                 meta[pNam]['Project']['Run Time Summary']['Biomass from GY model']=0.0
                 meta[pNam]['Project']['Run Time Summary']['DOM']=0.0
                 meta[pNam]['Project']['Run Time Summary']['Events']=0.0
                 meta[pNam]['Project']['Run Time Summary']['HWP']=0.0
 
-                meta[pNam]['Project']['Run Time Summary']['Test1']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test2']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test3']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test4']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test5']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test6']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test7']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test8']=0.0
-                meta[pNam]['Project']['Run Time Summary']['Test9']=0.0
+                # Used for testing improvments in run time
+                # meta[pNam]['Project']['Run Time Summary']['Test1']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test2']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test3']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test4']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test5']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test6']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test7']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test8']=0.0
+                # meta[pNam]['Project']['Run Time Summary']['Test9']=0.0
 
                 # Loop through time intervals (start in second time step)
                 for iT in range(t_start,meta[pNam]['Project']['N Time']):
@@ -152,7 +159,7 @@ def MeepMeep(meta,pNam):
                         # Biomass from growth and yield model
                         vo=annproc.Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP)
                         t1=time.time()
-                        meta[pNam]['Project']['Run Time Summary']['Biomass from GY model']=meta[pNam]['Project']['Run Time Summary']['Biomass from GY model']+t1-t0
+                        meta[pNam]['Project']['Run Time Summary']['Biomass from GY model']=np.round(meta[pNam]['Project']['Run Time Summary']['Biomass from GY model']+t1-t0,decimals=2)
 
                     # Grassland dynamics
                     if (meta[pNam]['Scenario'][iScn]['Grass Module Status']=='On') & (meta[pNam]['Year'][iT]>=meta[pNam]['Scenario'][iScn]['Grass Module Year Start']):
@@ -162,13 +169,13 @@ def MeepMeep(meta,pNam):
                     t0=time.time()
                     vo=annproc.DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP)
                     t1=time.time()
-                    meta[pNam]['Project']['Run Time Summary']['DOM']=meta[pNam]['Project']['Run Time Summary']['DOM']+t1-t0
+                    meta[pNam]['Project']['Run Time Summary']['DOM']=np.round(meta[pNam]['Project']['Run Time Summary']['DOM']+t1-t0,decimals=2)
 
                     # Calculate effects of disturbance and management
                     t0=time.time()
                     vo,vi=annproc.Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP)
                     t1=time.time()
-                    meta[pNam]['Project']['Run Time Summary']['Events']=meta[pNam]['Project']['Run Time Summary']['Events']+t1-t0
+                    meta[pNam]['Project']['Run Time Summary']['Events']=np.round(meta[pNam]['Project']['Run Time Summary']['Events']+t1-t0,decimals=2)
 
                     # Calculate products sector
                     if meta[pNam]['Year'][iT]>=meta['Core']['HWP Year Start']:
@@ -177,11 +184,11 @@ def MeepMeep(meta,pNam):
                         t0=time.time()
                         vo=annproc.HWP_Update21(meta,pNam,iT,iBat,vi,vo)
                         t1=time.time()
-                        meta[pNam]['Project']['Run Time Summary']['HWP']=meta[pNam]['Project']['Run Time Summary']['HWP']+t1-t0
+                        meta[pNam]['Project']['Run Time Summary']['HWP']=np.round(meta[pNam]['Project']['Run Time Summary']['HWP']+t1-t0,decimals=2)
 
                 # Track time
                 t5=time.time()
-                meta[pNam]['Project']['Run Time Summary']['Full annual loop']=t5-t4
+                meta[pNam]['Project']['Run Time Summary']['Full annual loop']=np.round(t5-t4,decimals=2)
 
                 # Calculate fossil fuel emissions from operations
                 vo=geologic.FossilFuelEmissions(meta,pNam,vi,vo)
@@ -191,19 +198,14 @@ def MeepMeep(meta,pNam):
 
                 # Track time
                 t6=time.time()
-                meta[pNam]['Project']['Run Time Summary']['Run geological']=t6-t5
+                meta[pNam]['Project']['Run Time Summary']['Run geological']=np.round(t6-t5,decimals=2)
 
                 # Export simulation results to file
-                ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP)
-                # if (meta[pNam]['Project']['N Ensemble']==1) | (iScn==0) & (iEns==0):
-                #     # Only save output if it is the first instance of a batch
-                #     vo_full=ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
-                # else:
-                #     ExportSimulation(meta,vi,vo,iScn,iEns,iBat,iEP)
+                vo_full=ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full)
 
                 # Track time
                 t7=time.time()
-                meta[pNam]['Project']['Run Time Summary']['Export results to file']=t7-t6
+                meta[pNam]['Project']['Run Time Summary']['Export results to file']=np.round(t7-t6,decimals=2)
 
                 # Delete 'working on' file
                 #if meta[pNam]['Project']['Skip Completed Runs']=='On':
@@ -215,7 +217,7 @@ def MeepMeep(meta,pNam):
 
                 # Track time
                 t8=time.time()
-                meta[pNam]['Project']['Run Time Summary']['Collect garbage']=t8-t7
+                meta[pNam]['Project']['Run Time Summary']['Collect garbage']=np.round(t8-t7,decimals=2)
 
     return meta
 
@@ -235,6 +237,10 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 
     # Import inventory
     vi['Inv']=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+
+    # Create a biomass to volume conversion factor
+    rho=vi['Inv']['Wood Density'].astype('float')/100
+    vi['Inv']['Biomass to Volume CF']=(1/rho)*(1/meta['Param']['BE']['Biophysical']['Carbon Content Wood'])
 
     # Update number of stands for batch
     meta[pNam]['Project']['N Stand Batch']=vi['Inv']['ID_BGCZ'].shape[1]
@@ -667,8 +673,8 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
     elif meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
 
-        Scenario=meta[pNam]['Scenario'][meta['iScn']]['Felled Fate Scenario']
-        Region=meta[pNam]['Scenario'][meta['iScn']]['Region Code']
+        Scenario=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Felled Fate Change Scenario']
+        Region=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Region Code']
         for k in meta['Param']['BE']['Felled Fate'][Scenario][Region].keys():
             x=meta['Param']['BE']['Felled Fate'][Scenario][Region][k]
             x=np.reshape(x,(-1,1))
@@ -678,8 +684,8 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     elif meta[pNam]['Project']['Scenario Source']=='Script':
 
         # Isolate felled fate scenario names within this batch
-        HistoricalRegime=meta[pNam]['Scenario'][meta['iScn']]['Felled Fate Historical Regime']
-        ChangeScenario=meta[pNam]['Scenario'][meta['iScn']]['Felled Fate Change Scenario']
+        HistoricalRegime=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Felled Fate Historical Regime']
+        ChangeScenario=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Felled Fate Change Scenario']
 
         if HistoricalRegime=='Regional Defaults':
 
@@ -697,7 +703,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
                     meta['Param']['BEV']['Felled Fate'][k][:,i]=x
 
         # Override historical regime parameters for stands that have land use = energy production
-        if meta[pNam]['Scenario'][iScn]['Land Surface Scenario']!='None':
+        if meta[pNam]['Scenario'][iScn]['Land Surface Scenario']!='Off':
             iEnergy=np.where(vi['Inv']['LSC']['Use']==meta['LUT']['LSC']['Use']['Energy Production'])
             if iEnergy[0].size>0:
                 for k in meta['Param']['BEV']['Felled Fate'].keys():
@@ -740,8 +746,8 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
     elif meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
 
-        Scenario=meta[pNam]['Scenario'][meta['iScn']]['Removed Fate Scenario']
-        Region=meta[pNam]['Scenario'][meta['iScn']]['Region Code']
+        Scenario=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Removed Fate Change Scenario']
+        Region=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Region Code']
         for k in meta['Param']['BE']['Removed Fate'][Scenario][Region].keys():
             x=meta['Param']['BE']['Removed Fate'][Scenario][Region][k]
             x=np.reshape(x,(-1,1))
@@ -751,8 +757,8 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     elif meta[pNam]['Project']['Scenario Source']=='Script':
 
         # Isolate Removal Fate scenario names within this batch
-        HistoricalRegime=meta[pNam]['Scenario'][meta['iScn']]['Removed Fate Historical Regime']
-        ChangeScenario=meta[pNam]['Scenario'][meta['iScn']]['Removed Fate Change Scenario']
+        HistoricalRegime=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Removed Fate Historical Regime']
+        ChangeScenario=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Removed Fate Change Scenario']
 
         if HistoricalRegime=='Regional Defaults':
 
@@ -771,7 +777,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
                     meta['Param']['BEV']['Removed Fate'][k][:,i]=x
 
         # Override historical regime parameters for stands that have land use = energy production
-        if meta[pNam]['Scenario'][iScn]['Land Surface Scenario']!='None':
+        if meta[pNam]['Scenario'][iScn]['Land Surface Scenario']!='Off':
             iEnergy=np.where(vi['Inv']['LSC']['Use']==meta['LUT']['LSC']['Use']['Energy Production'])
             if iEnergy[0].size>0:
                 for k in meta['Param']['BEV']['Removed Fate'].keys():
@@ -783,8 +789,8 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
     for i in range(len(meta['Param']['BEV']['HWP']['Raw'])):
 
-        Name=meta['Param']['BEV']['HWP']['Raw']['Name'].iloc[i]
-        Value=meta['Param']['BEV']['HWP']['Raw']['Coast'].iloc[i]
+        Name=meta['Param']['BEV']['HWP']['Raw']['Name'][i]
+        Value=meta['Param']['BEV']['HWP']['Raw']['Coast'][i]
 
         # Convert half life to turnover rate
         if Name[-2:]=='hl':
@@ -800,13 +806,17 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
     if 'Salvage Mill Transfers' in meta[pNam]['Scenario'][iScn]:
         if meta[pNam]['Scenario'][iScn]['Salvage Mill Transfers']=='On':
-            y=meta['Param']['BEV']['HWP']['RemovedMerchToLumberMill'].copy()
-            meta['Param']['BEV']['HWP']['RemovedMerchToLumberMill']=0.0*y
-            meta['Param']['BEV']['HWP']['RemovedMerchToPulpMill']=meta['Param']['BEV']['HWP']['RemovedMerchToPulpMill']+1.0*y
+            for k1 in meta['Param']['BE']['Removed Fate'].keys():
+                if k1=='Year':
+                    continue
+                for k2 in meta['Param']['BE']['Removed Fate'][k1].keys():
+                    y=meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedMerchToLumberMill'].copy()
+                    meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedMerchToLumberMill']=0.0*y
+                    meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedMerchToPulpMill']=meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedMerchToPulpMill']+1.0*y
 
-            y=meta['Param']['BEV']['HWP']['RemovedSnagStemToLumberMill'].copy()
-            meta['Param']['BEV']['HWP']['RemovedSnagStemToLumberMill']=0.0*y
-            meta['Param']['BEV']['HWP']['RemovedSnagStemToPulpMill']=meta['Param']['BEV']['HWP']['RemovedSnagStemToPulpMill']+1.0*y
+                    y=meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedSnagStemToLumberMill'].copy()
+                    meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedSnagStemToLumberMill']=0.0*y
+                    meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedSnagStemToPulpMill']=meta['Param']['BE']['Removed Fate'][k1][k2]['RemovedSnagStemToPulpMill']+1.0*y
 
     #--------------------------------------------------------------------------
     # Harvested Wood Products - End Uses
@@ -846,8 +856,8 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
     elif meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
 
-        Scenario=meta[pNam]['Scenario'][meta['iScn']]['HWP End Use Scenario']
-        Region=meta[pNam]['Scenario'][meta['iScn']]['Region Code']
+        Scenario=meta[pNam]['Scenario'][meta[pNam]['iScn']]['HWP End Use Change Scenario']
+        Region=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Region Code']
         for k in meta['Param']['BE']['HWP End Use'][Scenario][Region].keys():
             x=meta['Param']['BE']['HWP End Use'][Scenario][Region][k]
             x=np.reshape(x,(-1,1))
@@ -857,8 +867,8 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     else:
 
         # Isolate Removal Fate scenario names within this batch
-        HistoricalRegime=meta[pNam]['Scenario'][meta['iScn']]['Removed Fate Historical Regime']
-        ChangeScenario=meta[pNam]['Scenario'][meta['iScn']]['HWP End Use Change Scenario']
+        HistoricalRegime=meta[pNam]['Scenario'][meta[pNam]['iScn']]['Removed Fate Historical Regime']
+        ChangeScenario=meta[pNam]['Scenario'][meta[pNam]['iScn']]['HWP End Use Change Scenario']
 
         if HistoricalRegime=='Regional Defaults':
 
@@ -907,7 +917,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
 #%% Export simulation results
 
-def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP):
+def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 
     #--------------------------------------------------------------------------
     # Save project metadata
@@ -920,9 +930,9 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP):
     # Save a full copy of the first ensemble for re-use in big projects
     #--------------------------------------------------------------------------
 
-    if (meta[pNam]['Project']['N Ensemble']>1) & (iScn==0) & (iEns==0):
+    if (meta[pNam]['Project']['Early Record Recycling']=='On') & (iEns==0):
 
-        it=np.where(meta[pNam]['Year']==meta[pNam]['Project']['Year Start Saving']-1)[0]
+        it=np.where(meta[pNam]['Year']==meta[pNam]['Project']['Year Start Saving']-meta['Core']['Recycle Early Record Buffer']-1)[0]
 
         vo_full={}
         for k in vo.keys():
@@ -936,9 +946,6 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP):
             vo_full[k]=vo[k][it,:]
 
         #vo_full=copy.deepcopy(vo)
-    else:
-
-        vo_full=[]
 
     #--------------------------------------------------------------------------
     # Extract parameters

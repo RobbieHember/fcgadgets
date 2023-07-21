@@ -33,26 +33,26 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     for iS in range(meta[pNam]['Project']['Batch Size'][iBat]):
         NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:].copy()
 
-    # Growth enhancement
-    if 'Growth Enhancement Status' in meta[pNam]['Scenario'][iScn]:
-        if meta[pNam]['Scenario'][iScn]['Growth Enhancement Status']=='On':
+    # # Growth enhancement
+    # if 'Growth Enhancement Status' in meta[pNam]['Scenario'][iScn]:
+    #     if meta[pNam]['Scenario'][iScn]['Growth Enhancement Status']=='On':
 
-            # if 'Growth Enhancement' not in meta[pNam]['Project']:
-            #     #tv=np.arange(1800,2151,1)
-            #     tv=meta[pNam]['Year'].copy()
-            #     fG_PreI=0.5
-            #     fG_PosI=1.0
-            #     fG=fG_PreI*np.ones(tv.size)
-            #     it1=np.where(tv==1860)[0]
-            #     it2=np.where(tv==2010)[0]
-            #     ind=np.arange(it1,it2+1,dtype='int16')
+    #         # if 'Growth Enhancement' not in meta[pNam]['Project']:
+    #         #     #tv=np.arange(1800,2151,1)
+    #         #     tv=meta[pNam]['Year'].copy()
+    #         #     fG_PreI=0.5
+    #         #     fG_PosI=1.0
+    #         #     fG=fG_PreI*np.ones(tv.size)
+    #         #     it1=np.where(tv==1860)[0]
+    #         #     it2=np.where(tv==2010)[0]
+    #         #     ind=np.arange(it1,it2+1,dtype='int16')
 
-            #     fG[ind]=np.linspace(fG_PreI,fG_PosI,ind.size)
-            #     fG[it2[0]:]=fG_PosI
-            #     #plt.plot(tv,fG,'b-')
-            #     meta[pNam]['Project']['Growth Enhancement']=fG
+    #         #     fG[ind]=np.linspace(fG_PreI,fG_PosI,ind.size)
+    #         #     fG[it2[0]:]=fG_PosI
+    #         #     #plt.plot(tv,fG,'b-')
+    #         #     meta[pNam]['Project']['Growth Enhancement']=fG
 
-            NetGrowth=np.tile(meta[pNam]['Project']['Growth Enhancement'][iT,:],(NetGrowth.shape[1],1)).T*NetGrowth
+    #         NetGrowth=np.tile(meta[pNam]['Project']['Growth Enhancement'][iT,:],(NetGrowth.shape[1],1)).T*NetGrowth
 
     # # *** Special EvalAtPlots With GaiaSL Modifier***
     # t0=1950
@@ -78,16 +78,16 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     # # *** Special ***
 
     # Net growth of total stemwood
-    Gnet_Stem=NetGrowth[:,iEP['StemMerch']]+NetGrowth[:,iEP['StemNonMerch']]
+    Gnet_Stem=NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['StemMerch']]+NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['StemNonMerch']]
 
     # Net growth of foliage
-    NetGrowth[:,iEP['Foliage']]=Gnet_Stem*(meta['Param']['BEV']['Biomass Allometry']['Gf1']+(meta['Param']['BEV']['Biomass Allometry']['Gf2']-meta['Param']['BEV']['Biomass Allometry']['Gf1'])*np.exp(-meta['Param']['BEV']['Biomass Allometry']['Gf3']*vo['A'][iT,:]))
+    NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['Foliage']]=Gnet_Stem*(meta['Param']['BEV']['Biomass Allometry']['Gf1']+(meta['Param']['BEV']['Biomass Allometry']['Gf2']-meta['Param']['BEV']['Biomass Allometry']['Gf1'])*np.exp(-meta['Param']['BEV']['Biomass Allometry']['Gf3']*vo['A'][iT,:]))
 
     # Net growth of branches
-    NetGrowth[:,iEP['Branch']]=Gnet_Stem*(meta['Param']['BEV']['Biomass Allometry']['Gbr1']+(meta['Param']['BEV']['Biomass Allometry']['Gbr2']-meta['Param']['BEV']['Biomass Allometry']['Gbr1'])*np.exp(-meta['Param']['BEV']['Biomass Allometry']['Gbr3']*vo['A'][iT,:]))
+    NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['Branch']]=Gnet_Stem*(meta['Param']['BEV']['Biomass Allometry']['Gbr1']+(meta['Param']['BEV']['Biomass Allometry']['Gbr2']-meta['Param']['BEV']['Biomass Allometry']['Gbr1'])*np.exp(-meta['Param']['BEV']['Biomass Allometry']['Gbr3']*vo['A'][iT,:]))
 
     # Net growth of bark
-    NetGrowth[:,iEP['Bark']]=Gnet_Stem*(meta['Param']['BEV']['Biomass Allometry']['Gbk1']+(meta['Param']['BEV']['Biomass Allometry']['Gbk2']-meta['Param']['BEV']['Biomass Allometry']['Gbk1'])*np.exp(-meta['Param']['BEV']['Biomass Allometry']['Gbk3']*vo['A'][iT,:]))
+    NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['Bark']]=Gnet_Stem*(meta['Param']['BEV']['Biomass Allometry']['Gbk1']+(meta['Param']['BEV']['Biomass Allometry']['Gbk2']-meta['Param']['BEV']['Biomass Allometry']['Gbk1'])*np.exp(-meta['Param']['BEV']['Biomass Allometry']['Gbk3']*vo['A'][iT,:]))
 
     # Add net growth to output variable structure
     # Oddly, using meta['iEP']['BiomassAboveground'] will invert the dimensions
@@ -102,15 +102,6 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     vo['C_G_Net'][iT,:,iEP['RootCoarse']]=(1-0.072)*G_Net_Root_Total
     vo['C_G_Net'][iT,:,iEP['RootFine']]=0.072*G_Net_Root_Total
 
-    # Update live stemwood merchantable volume
-    vo['V_MerchLive'][iT,:]=vo['V_MerchLive'][iT-1,:]+NetGrowth[:,5]#.astype(float)*meta['Modules']['GYM']['Scale Factor']
-
-    # Update dead stemwood merchantable volume
-    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT-1,:]
-
-    # Update total (live+dead) stemwood merchantable volume
-    vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
-
     #--------------------------------------------------------------------------
     # Nutrient application effects to net growth
     #--------------------------------------------------------------------------
@@ -120,11 +111,11 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
     # Adjust N application response counter
     if meta['Modules']['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'UpdateCounter')
+        vi,vo,meta=napp.UpdateStatus(meta,pNam,vi,vo,iT,'UpdateCounter')
 
     # Adjust root net growth
     if meta['Modules']['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'BelowgroundNetGrowth')
+        vi,vo,meta=napp.UpdateStatus(meta,pNam,vi,vo,iT,'BelowgroundNetGrowth')
 
     #--------------------------------------------------------------------------
     # Add net growth to biomass pools
@@ -175,6 +166,19 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     #     #Gnet_RF=vo['C_Eco_Pools'][iT,:,iEP['RootFine']]-vo['C_Eco_Pools'][iT-1,:,iEP['RootFine']]
 
     #--------------------------------------------------------------------------
+    # Add net growth to live merch volume and update other volume variables
+    # Notes:
+    # 1) Regualr mortality to be added to dead volume in DOM function ***
+    # 2) Total volume updated at the start of disturfance event function.
+    #--------------------------------------------------------------------------
+
+    # Update live stemwood merchantable volume
+    vo['V_MerchLive'][iT,:]=vo['V_MerchLive'][iT-1,:]+NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['StemMerchV']]
+
+    # Update dead stemwood merchantable volume
+    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT-1,:]
+
+    #--------------------------------------------------------------------------
     # Biomass turnover
     #--------------------------------------------------------------------------
 
@@ -189,14 +193,7 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
     # Adjust mortality to account for N application response
     if meta['Modules']['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'Mortality')
-
-    # Apply optional factor to mortality
-    #if meta['Scenario Switch']['Mortality Factor Status'][iScn]=='On':
-    #    mortality_factor=meta[pNam]['Scenario'][iScn]['Mortality Factor'][iT]
-    #    if mortality_factor!=0:
-    #        # Normal operation
-    #        vo['C_M_Reg'][iT,:,:]=net_growth_factor*vo['C_M_Reg'][iT,:,:]
+        vi,vo,meta=napp.UpdateStatus(meta,pNam,vi,vo,iT,'Mortality')
 
     #--------------------------------------------------------------------------
     # If TIPSY indicates negative net growth (e.g., alder break-up), revise so
@@ -269,7 +266,7 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
     # Adjust litterfall to account for N application response
     if meta['Modules']['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'Litterfall')
+        vi,vo,meta=napp.UpdateStatus(meta,pNam,vi,vo,iT,'Litterfall')
 
     #--------------------------------------------------------------------------
     # Update summary variables
@@ -279,6 +276,7 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     vo['C_G_Gross'][iT,:,:]=vo['C_G_Net'][iT,:,:]+C_M_Reg
 
     # Update NPP
+    # *** Compiled after the simulation is complete. ***
     #vo['C_NPP'][iT,:,:]=vo['C_G_Net'][iT,:,:]+C_M_Reg+vo['C_LF'][iT,:,:]
 
     return vo
@@ -954,7 +952,7 @@ def BiomassFromSawtooth(meta,pNam,iScn,iS,vi,vo,iEP):
 
     return vo
 
-#%% STAND DEAD ORGANIC MATTER DYNAMICS
+#%% Dead organic matter and soil organic matter dynamics
 
 def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
@@ -996,6 +994,9 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
         bIPF['StemMerchMorToSnagStem']*vo['C_M_Reg'][iT,:,iEP['StemMerch']]+ \
         bIPF['StemNonMerchMorToSnagStem']*vo['C_M_Reg'][iT,:,iEP['StemNonMerch']]
 
+    # Transfer mortality from live merch volume to dead merch volume
+    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT,:]+vi['Inv']['Biomass to Volume CF']*bIPF['StemMerchMorToSnagStem']*vo['C_M_Reg'][iT,:,iEP['StemMerch']]
+
     # Transfer biomass turnover to snag branch pool
     vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT-1,:,iEP['SnagBranch']]+ \
         bIPF['BranchLitToSnagBranch']*vo['C_LF'][iT,:,iEP['Branch']]+ \
@@ -1031,8 +1032,10 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
     #--------------------------------------------------------------------------
     # Decomposition
-    # Vectorizing the parts of this that can be vectorized was attempted, but
+    # Notes:
+    # 1) Vectorizing the parts of this that can be vectorized was attempted, but
     # runtime actually increased a bit.
+    # 2) *** Currently no decomposition effect on dead volume ***
     #--------------------------------------------------------------------------
 
     # Prepare air temperature for respiration calculation
@@ -1062,7 +1065,7 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
     # Adjust decomposition to account for N application response
     if meta['Modules']['Nutrient Management']['iApplication'].size>0:
-        vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'HeterotrophicRespiration')
+        vi,vo,meta=napp.UpdateStatus(meta,pNam,vi,vo,iT,'HeterotrophicRespiration')
 
     # Remove respired carbon from source DOM pools
     vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]-meta[pNam]['Project']['R_LitterVF']
@@ -1117,7 +1120,6 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
     #--------------------------------------------------------------------------
     # Physical transfer
-    #--------------------------------------------------------------------------
 
     PT_LitterS=bDec['LitterS_PhysTransRate']*vo['C_Eco_Pools'][iT,:,iEP['LitterS']]
     PT_SnagStem=bDec['SnagStem_PhysTransRate']*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
@@ -1127,6 +1129,9 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
     vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]-PT_LitterS
     vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]-PT_SnagStem
     vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]-PT_SnagBranch
+
+    # Remove volume that is physically transferred from snags to litter
+    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT,:]-vi['Inv']['Biomass to Volume CF']*PT_SnagStem
 
     # Add decomposed carbon to more decomposed DOM pools
     vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]+PT_LitterS
@@ -1142,9 +1147,12 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
     return vo
 
-#%% Disturbance and management events (from TAZ)
+#%% Disturbance and management events
 
 def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
+
+    # Update total (live+dead) stemwood merchantable volume
+    vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
 
     #t0=time.time()
     # Predict stand breakup (on the fly)
@@ -1155,17 +1163,13 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     if meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On':
         if vi['tv'][iT]<meta[pNam]['Scenario'][iScn]['Harvest Year Transition']:
             Period='Historical'
-            #Volume=vo['V_MerchLive'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-            Volume=vo['V_MerchTotal'][iT,:]
-            vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,Volume,Period)
+            vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
 
     # Predict future harvesting (on the fly)
     if meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On':
         if vi['tv'][iT]>=meta[pNam]['Scenario'][iScn]['Harvest Year Transition']:
             Period='Future'
-            #Volume=vo['V_MerchLive'][iT,:]+2*(1/0.45)*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-            Volume=vo['V_MerchTotal'][iT,:]
-            vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,Volume,Period)
+            vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
 
     # Predict future nutrient application (on the fly)
     if meta[pNam]['Scenario'][iScn]['Nutrient Application Status']=='On':
@@ -1327,6 +1331,7 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
             # Remove stemwood merch volume
             vo['V_MerchLive'][iT,:]=np.maximum(0,vo['V_MerchLive'][iT,:]-Affected_VolumeStemMerchLive)
+            vo['V_MerchDead'][iT,:]=np.maximum(0,vo['V_MerchDead'][iT,:]-Affected_VolumeStemMerchDead)
 
         #----------------------------------------------------------------------
         # We have not explicity tracked a partition of snags into merch and
@@ -1362,24 +1367,21 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+SnagBranch_Removed
 
         #----------------------------------------------------------------------
-        # Volume that is removed (ie sent to mills)
+        # Volume that is removed (sent to mills)
         #----------------------------------------------------------------------
 
-        # Conversion factor
-        cf=(1/meta['Param']['BEV']['Biophysical']['Density Wood'])*(1/meta['Param']['BEV']['Biophysical']['Carbon Content Wood'])
-
-        if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
-            vo['V_ToMillMerchLive'][iT,:]=cf*vo['C_ToMillMerch'][iT,:]
-            vo['V_ToMillMerchDead'][iT,:]=cf*vo['C_ToMillSnagStem'][iT,:]
-        else:
+        if meta[pNam]['Project']['Biomass Module']!='Sawtooth':
             vo['V_ToMillMerchLive'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+b['BiomassMerch_Removed']*Affected_VolumeStemMerchLive
             vo['V_ToMillMerchDead'][iT,:]=vo['V_ToMillMerchDead'][iT,:]+b['Snags_Removed']*Affected_VolumeStemMerchDead
+        else:
+            vo['V_ToMillMerchLive'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillMerch'][iT,:]
+            vo['V_ToMillMerchDead'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillSnagStem'][iT,:]
 
         # Total merch stemwood volume removed
         vo['V_ToMillMerchTotal'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+vo['V_ToMillMerchDead'][iT,:]
 
         # Non-mech volume removed
-        vo['V_ToMillNonMerch'][iT,:]=cf*vo['C_ToMillNonMerch'][iT,:]
+        vo['V_ToMillNonMerch'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillNonMerch'][iT,:]
 
         #----------------------------------------------------------------------
         # Carbon that is left dispersed on site (after felling or wind storms)
@@ -1470,14 +1472,6 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         vo['C_E_WildfireAsCH4'][iT,:]=vo['C_E_WildfireAsCH4'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CH4']*Total_Burned
         vo['C_E_WildfireAsCO'][iT,:]=vo['C_E_WildfireAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
 
-        #----------------------------------------------------------------------
-        # Update total stemwood volume
-        #----------------------------------------------------------------------
-
-        vo['V_MerchDead'][iT,:]=(1/meta['Param']['BEV']['Biophysical']['Density Wood'])*(1/meta['Param']['BEV']['Biophysical']['Carbon Content Wood'])*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-        vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test8']=meta[pNam]['Project']['Run Time Summary']['Test8']+t1-t0
         #----------------------------------------------------------------------
         # Update stand age
         #----------------------------------------------------------------------
@@ -1665,10 +1659,10 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     if meta['Modules']['Nutrient Management']['iApplication'].size>0:
 
         # Adjust net growth of aboveground biomass
-        vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'AbovegroundNetGrowth')
+        vi,vo,meta=napp.UpdateStatus(meta,pNam,vi,vo,iT,'AbovegroundNetGrowth')
 
         # Adjust emissions
-        vi,vo,meta=napp.UpdateStatus(vi,vo,iT,meta,'Emissions')
+        vi,vo,meta=napp.UpdateStatus(meta,pNam,vi,vo,iT,'Emissions')
 
     return vo,vi
 

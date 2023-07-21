@@ -108,19 +108,15 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Fertilization Aerial']) )[0]
 
-            if ind.size==0:
-                continue
-
-            Year=tv_full[ind]
-            it0=np.where(dPrice['Year']==Year)[0]
-            it1=np.where(tv==Year)[0]
-
-            if it1.size==0:
-                continue
-
-            d['Cost Nutrient Management'][it1,iStand]=dCost['Cost Nutrient Purchase (CDN$/ha)'][it0]+ \
-                dCost['Cost Nurtrient Application (CDN$/ha)'][it0]+ \
-                dCost['Cost Nutrient Overhead (CDN$/ha)'][it0]
+            for i in ind:
+                Year=tv_full[i]
+                it0=np.where(dPrice['Year']==Year)[0]
+                it1=np.where(tv==Year)[0]
+                if it1.size==0:
+                    continue
+                d['Cost Nutrient Management'][it1,iStand]=dCost['Cost Nutrient Purchase (CDN$/ha)'][it0]+ \
+                    dCost['Cost Nurtrient Application (CDN$/ha)'][it0]+ \
+                    dCost['Cost Nutrient Overhead (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Aerial spray (Btk)

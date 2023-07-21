@@ -79,9 +79,11 @@ def ReadCSV(fin):
 #%% PICKLE INPUT AND OUTPUT
 
 def ipickle(path):
-    fin=open(path,'rb')
-    data=pickle.load(fin)
-    fin.close()
+    data=pd.read_pickle(path)
+    # Below started to give errors when opening old files
+    #fin=open(path,'rb')
+    #data=pickle.load(fin)
+    #fin.close()
     return data
 
 def opickle(path,data):
@@ -704,12 +706,12 @@ def SetGraphics(type):
         gp['Alpha1']=0.225;
         gp['Alpha2']=0.45;
         gp['tickl']=1.5;
-        gp['dpi']=900;
 
-        params={'font.sans-serif':'Arial',
-                'font.size':gp['fs1'],
+        params={'figure.dpi':125,
                 'figure.titlesize':gp['fs2'],
                 'figure.constrained_layout.use':False,
+                'font.sans-serif':'Arial',
+                'font.size':gp['fs1'],
                 'axes.edgecolor':gp['cla'],
                 'axes.labelsize':gp['fs1'],
                 'axes.labelcolor':gp['cla'],
@@ -730,7 +732,7 @@ def SetGraphics(type):
                 'ytick.major.size':3,
                 'ytick.direction':'in',
                 'legend.fontsize':gp['fs1'],
-                'savefig.dpi':gp['dpi'],
+                'savefig.dpi':900,
                 'savefig.transparent':False,
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,
@@ -739,11 +741,10 @@ def SetGraphics(type):
     elif type=='Web':
 
         #gp['printfigs']='Off'
-        gp['fig dpi']=150 # This controls the size of graphics in web browser
-        gp['fs_s']=6
-        gp['fs_m']=7
-        gp['fs_l']=8
-        gp['fs_xl']=9
+        gp['fs_s']=5
+        gp['fs_m']=6
+        gp['fs_l']=7
+        gp['fs_xl']=8
         gp['cla']=[0,0,0]
         gp['clt']=[0,0,0]
         gp['cl1']=[0.27,0.49,0.79];
@@ -757,9 +758,8 @@ def SetGraphics(type):
         gp['Alpha1']=0.225;
         gp['Alpha2']=0.45;
         gp['tickl']=1.5;
-        gp['save fig dpi']=900;
 
-        params={'figure.dpi':gp['fig dpi'],
+        params={'figure.dpi':125,
                 'figure.constrained_layout.use':True,
                 'figure.titlesize':gp['fs_m'],
                 'font.size':gp['fs_m'],
@@ -784,7 +784,7 @@ def SetGraphics(type):
                 'ytick.major.width':0.5,
                 'ytick.major.size':3,
                 'ytick.direction':'in',
-                'savefig.dpi':gp['save fig dpi'],
+                'savefig.dpi':900,
                 'savefig.transparent':False,
                 'savefig.format':'png',
                 'savefig.pad_inches':0.1,

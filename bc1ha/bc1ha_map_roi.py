@@ -18,21 +18,27 @@ import fcgadgets.macgyver.utilities_query_gdb as qgdb
 
 meta=u1ha.Init()
 meta=u1ha.ImportLUTs(meta)
-meta['Graphics']={'Map':{}}
+meta['Graphics']['Map']['RGSF']=2
 meta['Graphics']['Map']['Fig Width']=9.75
 meta['Graphics']['Map']['Side Space']=0
-meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['sidespace']-0.01,1]
+meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['Side Space']-0.01,1]
 meta['Graphics']['Map']['Map Axis Vis']='off'
 meta['Graphics']['Map']['Map Grid Vis']=False
-meta['Graphics']['Map']['Legend X']=1-meta['Graphics']['Map']['sidespace']+meta['Graphics']['Map']['Map Position'][0]#+0.01,0.6,0.03,0.35]
+meta['Graphics']['Map']['Legend X']=1-meta['Graphics']['Map']['Side Space']+meta['Graphics']['Map']['Map Position'][0]#+0.01,0.6,0.03,0.35]
 meta['Graphics']['Map']['Legend Width']=0.0275
 meta['Graphics']['Map']['Legend Font Size']=7
 meta['Graphics']['Map']['Legend Text Space']=0.035
 meta['Graphics']['Map']['Show Bound Land Mask']='On'
 meta['Graphics']['Map']['Show Bound Within']='Off'
-gp=gu.SetGraphics('Manuscript')
+meta['Graphics']['Map']['Show Lakes']='On'
+meta['Graphics']['Map']['Show Rivers']='On'
+meta['Graphics']['Map']['Show Roads']='On'
 
-#%% Import base maps (full province)
+meta['Graphics']['Plot Style']='Manuscript'
+meta['Graphics']['gp']=gu.SetGraphics(meta['Graphics']['Plot Style'])
+meta['Graphics']['Print Figures']='On'
+
+#%% Import base maps
 
 gdf=u1ha.Import_GDBs_ProvinceWide(meta)
 
@@ -40,6 +46,7 @@ gdf=u1ha.Import_GDBs_ProvinceWide(meta)
 
 # Identify how ROI is defined
 roi={}
+
 roi['Type']='Prov'
 #roi['Type']='ByRegDis'
 #roi['Type']='ByTSA'
@@ -63,11 +70,11 @@ roi['Name']='Prov'
 #roi['Name']='COWICHAN VALLEY'
 
 if roi['Type']=='ByTSA':
-    meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\TSAs\\' + roi['Name']
+    meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\TSAs\\' + roi['Name']
 elif roi['Type']=='ByRegDis':
-    meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\Regional Districts\\' + roi['Name']
+    meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\Regional Districts\\' + roi['Name']
 elif roi['Type']=='Prov':
-    meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\Province\\' + roi['Name']
+    meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures' + '\\Province\\' + roi['Name']
 
 t0=time.time()
 if roi['Type']=='ByTSA':
@@ -105,14 +112,14 @@ elif roi['Type']=='ByLatLon':
     if flg==1:
         roi['Centre']=[-122.92,51.92]
         roi['Radius']=40*1000
-        meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\Reforestation Hanceville ROI'
+        meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\Reforestation Hanceville ROI'
 
     # Elephant Hill fire
     flg=0
     if flg==1:
         roi['Centre']=[-121.15,51.15]
         roi['Radius']=45*1000 # metres
-        meta['Paths']['Figures']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\Reforestation Elephant Hill ROI'
+        meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\Reforestation Elephant Hill ROI'
 
     # Yung Lake, Elephant Hill fire
     flg=0
@@ -156,10 +163,6 @@ print((t1-t0)/60)
 vList=u1ha.GetRasterListFromSpreadsheet(r'C:\Users\rhember\Documents\Data\BC1ha\RasterInclusion.xlsx')
 roi=u1ha.Import_Raster(meta,roi,vList)
 
-ind=np.where(roi['grd']['lcc1_c']['Data']!=meta['LUT']['Derived']['lcc1']['Water'])
-np.mean(roi['grd']['biomass_glob']['Data'][ind])
-
-
 #%% Import required vector geodatabases
 
 #vList=['cc','fcres']
@@ -174,125 +177,15 @@ np.mean(roi['grd']['biomass_glob']['Data'][ind])
 
 #%% Land Cover Class 1
 
-def Plot_LandCoverClass1(meta,roi,gdf):
+fig,ax=u1ha.Plot_LandCoverClass1(meta,roi)
 
-    nam='pc'
-    z0=roi['grd']['lcc1_' + nam]['Data']
+#%%
 
-    lab=list(meta['LUT']['Derived']['lcc1'].keys())
-    z1=len(lab)*np.ones(roi['grd']['Data'].shape,dtype='int8')
-    for k in meta['LUT']['Derived']['lcc1'].keys():
-        ind=np.where(z0==meta['LUT']['Derived']['lcc1'][k])
-        if ind[0].size>0:
-            z1[ind]=meta['LUT']['Derived']['lcc1'][k]
-        else:
-            z1[0,meta['LUT']['Derived']['lcc1'][k]]=meta['LUT']['Derived']['lcc1'][k]
-    z1[roi['grd']['Data']==0]=meta['LUT']['Derived']['lcc1'][k]+1
-
-    N_vis=len(lab)
-    N_hidden=1
-    N_tot=N_vis+N_hidden
-
-    # Colormap
-    cm=np.vstack( ((0.3,0.6,0,1),(0.65,1,0,1),(1,1,0.5,1),(0.75,0.4,1,1),(0.75,0.5,0.5,1),(0.75,0.75,0.75,1),(0.8,0,0,1),(0.95,0.95,0.95,1),(0.75,0.85,0.95,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
-        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-
-    #gdf['cities'].plot(ax=ax[0],marker='s',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=1,markersize=20,alpha=1,zorder=2)
-    #for x,y,label in zip(gdf['cities'].geometry.x,gdf['cities'].geometry.y,gdf['cities'].Name):
-    #    ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0.75,0.3,0],fontsize=4)
-
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
-
-    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-    ax[1].set(position=[0.71,0.6,0.05,0.14])
-    cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(cb_bnd.size):
-        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
-    ax[1].set(position=pos2)
-
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_lcc1_' + nam,'png',900)
-
-    return fig,ax
-
-fig,ax=Plot_LandCoverClass1(meta,roi,gdf)
+u1ha.Plot_REARs(meta,roi)
 
 #%% Plot BGC Zones
 
-def Plot_BGC_Zone(roi):
-
-    z0=roi['grd']['bgcz']['Data']
-    lab0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys())
-    cl0=np.column_stack([meta['LUT']['Raw']['bgc_zone']['R'],meta['LUT']['Raw']['bgc_zone']['G'],meta['LUT']['Raw']['bgc_zone']['B']])
-    id0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].values())
-    z1,lab1,cl1=gis.CompressCats(z0,id0,lab0,cl0)
-
-    N_vis=int(np.max(z1))
-    N_hidden=2
-    N_tot=N_vis+N_hidden
-    ind=np.where(z1==0); z1[ind]=N_vis+1
-    lab1=lab1[1:]
-    cl1=cl1[1:,:]
-
-    z1[0,0]=N_vis+1
-    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=N_vis+2
-
-    lab1=np.append(lab1,[''])
-
-    # Colormap
-    cm=plt.cm.get_cmap('viridis',N_vis);
-    for i in range(N_vis):
-        cm.colors[i,0:3]=cl1[i,:]
-    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
-        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
-
-    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-    ax[1].set(position=[0.71,0.6,0.05,0.14])
-    cb.ax.set(yticklabels=lab1)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(cb_bnd.size):
-        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
-    ax[1].set(position=pos2)
-
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_bgcz','png',900)
-
-    return fig,ax
-
-fig,ax=Plot_BGC_Zone(roi)
+fig,ax=u1ha.Plot_BGC_Zone(meta,roi)
 
 #%% Species leading NTEMS
 
@@ -323,34 +216,37 @@ def Plot_Spc1(roi):
     cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
 
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab1)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_spc1_ntems','png',900)
-
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_spc1_ntems','png',900)
+    plt.show()
     return fig,ax
 
 fig,ax=Plot_Spc1(roi)
@@ -386,35 +282,37 @@ def Plot_MAT(roi):
     cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
 
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_tmean_ann_n','png',900)
-
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_tmean_ann_n','png',900)
+    plt.show()
     return fig,ax
 
 fig,ax=Plot_MAT(roi)
@@ -450,34 +348,36 @@ def Plot_MAP(roi):
     cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
 
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_prcp_ann_n','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_prcp_ann_n','png',900)
 
     return fig,ax
 
@@ -515,34 +415,36 @@ def Plot_PROJ_AGE_1(roi):
     cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
 
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_PROJ_AGE_1','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_PROJ_AGE_1','png',900)
 
     return fig,ax
 
@@ -584,36 +486,38 @@ def Plot_SI(roi):
     cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
 
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    #gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_SITE_INDEX','png',900)
-    #gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_si_spl_hw','png',900)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_si_spl_ntems','png',900)
+    #gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_SITE_INDEX','png',900)
+    #gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_si_spl_hw','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_si_spl_ntems','png',900)
 
     return fig,ax
 
@@ -653,34 +557,36 @@ def Plot_Age_NTEMS(roi):
     cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
 
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_Age_NTEM','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_Age_NTEM','png',900)
 
     return fig,ax
 
@@ -702,33 +608,36 @@ def Plot_RegenType(meta,roi,gdf):
     cm=np.vstack( ((0.85,0.7,1,1),(1,1,0,1),(1,0.25,0,1),(0.7,0.7,0.7,1),(0.7,1,0.2,1),(0.9,0.9,0.9,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
     #gdf['cities'].plot(ax=ax[0],marker='s',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=1,markersize=20,alpha=1,zorder=2)
     #for x,y,label in zip(gdf['cities'].geometry.x,gdf['cities'].geometry.y,gdf['cities'].Name):
     #    ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0.75,0.3,0],fontsize=4)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_regentype','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_regentype','png',900)
 
     return fig,ax
 
@@ -753,32 +662,35 @@ def Plot_PlantedMask(meta,roi):
     cm=np.vstack( ((0,0.6,0,1),(0.83,0.83,0.83,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_planted','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_planted','png',900)
 
     return fig,ax
 
@@ -818,17 +730,18 @@ def Plot_Elev(meta,roi):
     if (roi['Type']=='ByTSA') | (roi['Type']=='ByRegDis'):
         z[roi['grd']['Data']==0]=0
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(roi['grd']['elev']['Data'],extent=roi['grd']['Extent'],cmap='Greys')
     if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    #roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2,label='Road',alpha=1,zorder=1)
-    #roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0,0,0],linewidth=0.5,label='Road',alpha=1,zorder=1)
-    #roi['gdf']['wf']['gdf'].plot(ax=ax[0],facecolor=[1,.5,0],edgecolor=[1,.5,0],linewidth=0.5,label='Opening',alpha=0.2)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
 
     # Plot fuel treatments
     #fre['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0.5,0],linewidth=1.5,label='Opening',alpha=1)
@@ -846,8 +759,8 @@ def Plot_Elev(meta,roi):
     for x,y,label in zip(roi['gdf']['popp'].geometry.x,roi['gdf']['popp'].geometry.y,roi['gdf']['popp'].NAME):
         ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0.9,0.45,0],fontsize=4)
 
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     # Add relief shading
     #z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['Cellsize'],roi['grd']['Cellsize']
@@ -857,10 +770,10 @@ def Plot_Elev(meta,roi):
     #ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
 
     plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis+1.5,1))
-    pos=[meta['Graphics']['leg x'],0.5,meta['Graphics']['leg w'],0.4]
+    pos=[meta['Graphics']['Map']['Legend X'],0.5,meta['Graphics']['Map']['Legend Width'],0.4]
     ax[1].set(position=pos);
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_elev','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_elev','png',900)
     return fig,ax
 
 plt.close('all')
@@ -916,18 +829,20 @@ def Plot_ROI_BTM(roi):
     cm=np.vstack( (cm.colors,(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,clim=(0,N_vis),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    #roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    #roi['gdf']['road'].plot(ax=ax[0],edgecolor='y',linewidth=2.25,label='Road',alpha=1,zorder=1)
-    #roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.2,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     # Add relief shading
     # z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['elev']['Cellsize'],roi['grd']['elev']['Cellsize']
@@ -940,11 +855,11 @@ def Plot_ROI_BTM(roi):
     #cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-1,1),ticks=np.arange(0.5,N_vis+1.5,1))
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
     return fig,ax
@@ -960,7 +875,7 @@ fig,ax=Plot_ROI_BTM(roi)
 #wf['gdf'].plot(ax=ax[0],facecolor='None',ls='-',edgecolor=[1,0.5,0.5],linewidth=2,label='Planting',alpha=1)
 #wfp.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1,label='Wildfire',alpha=1)
 #atup['gdf overlay'].plot(ax=ax[0],facecolor=[0,0,0],edgecolor=[0,0.5,0],linewidth=1.25,label='Planting',alpha=0.25)
-gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_btm','png',900)
+gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_btm','png',900)
 
 #%% PLOT Land Cover 2020 from CEC
 
@@ -994,27 +909,30 @@ def Plot_CEC_LC20(roi):
     cm=np.vstack( (cm.colors,(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0,0,0],linewidth=0.5,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_lc20_cec','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_lc20_cec','png',900)
 
     return fig,ax
 
@@ -1046,31 +964,34 @@ def Plot_LUC(meta,roi):
     cm=np.vstack( ((0.5,0.0,0.0,1),(1.0,0,0,1),(1.0,0.5,0,1),(0.83,0.83,0.83,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_luc_' + type + '_cec','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_luc_' + type + '_cec','png',900)
 
     return fig,ax
 
@@ -1093,84 +1014,41 @@ def Plot_DensityClass(meta,roi,gdf):
     cm=matplotlib.colors.ListedColormap(cm)
 
     plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_denseclass','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_denseclass','png',900)
 
     return fig,ax
 
 Plot_DensityClass(meta,roi,gdf)
 
-#%% Resource extraction area restrictions
-
-def Plot_REARs(meta,roi,gdf):
-
-    z1=roi['grd']['rears']['Data'].copy()
-    z1[(roi['grd']['Data']==1) & (z1==0) & (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Forest'])]=3
-    z1[(roi['grd']['Data']==1) & (roi['grd']['lcc1_c']['Data']!=meta['LUT']['Derived']['lcc1']['Forest'])]=4
-    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=5
-
-    lab=['Protected','Protected (proposed)','Unprotected forest','Non-forest land']
-
-    # Number of colours and number of colours excluded from colorbar
-    N_vis=4
-    N_hidden=1
-    N_tot=N_vis+N_hidden
-
-    cm=np.vstack( ((0.7,0.6,1,1),(0.25,0.85,0.9,1),(0,0.4,0,1),(0.83,0.86,0.9,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],extent=roi['grd']['Extent'],cmap=cm)
-    if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
-        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
-
-    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-    ax[1].set(position=[0.71,0.6,0.05,0.14])
-    cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(cb_bnd.size):
-        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
-    ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_rears','png',900)
-
-    return fig,ax
+#%%
 
 Plot_REARs(meta,roi,gdf)
 
@@ -1184,12 +1062,12 @@ def Plot_DistanceFromRoad(meta,roi):
 
     # Plot
     plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z,extent=roi['grd']['Extent'],cmap='Greys')
 
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     # Add relief shading
     z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['Cellsize'],roi['grd']['Cellsize']
@@ -1199,7 +1077,7 @@ def Plot_DistanceFromRoad(meta,roi):
     ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
 
     cb=plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis+1.5,1))
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
     return fig,ax
@@ -1228,11 +1106,11 @@ def Plot_SI(meta,roi):
 
     # Plot
     plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(roi['grd']['SITE_INDEX']['Data'],extent=roi['grd']['Extent'],cmap='magma',clim=[5,22])
 
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
     ax[0].grid(False)
 
     # # Add relief shading
@@ -1243,7 +1121,7 @@ def Plot_SI(meta,roi):
     # ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
 
     cb=plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis+1.5,1))
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
     return fig,ax
@@ -1283,25 +1161,28 @@ def Plot_PFI(meta,roi):
     N_hidden=3
 
     # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor=[1,0.6,0],linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
     return fig,ax
@@ -1314,7 +1195,7 @@ fig,ax=Plot_PFI(meta,roi)
 #    ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0.75,0.3,0])
 #roi['gdf']['cc']['gdf'].plot(ax=ax[0],facecolor=None,edgecolor=[0.5,1,1],linewidth=0.25,label='Opening',alpha=0.3)
 
-gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_pfi_c','png',900)
+gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_pfi_c','png',900)
 
 #%% PLOT PFI stemwood carbon (20 m resolution(
 
@@ -1350,21 +1231,24 @@ def Plot_PFI(meta,roi):
     N_hidden=3
 
     # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor=[1,0.6,0],linewidth=1,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
@@ -1407,29 +1291,32 @@ def Plot_biomass_glob(meta,roi):
     N_hidden=3
 
     # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_biomass_glob','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_biomass_glob','png',900)
 
     return fig,ax
 
@@ -1462,28 +1349,31 @@ def Plot_SOC_WithinROI(roi):
     N_hidden=3
 
     # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_gsoc','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_gsoc','png',900)
 
     return fig,ax
 
@@ -1517,21 +1407,21 @@ def Plot_CrownCover(meta,roi):
     N_hidden=3
 
     # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_crownc','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_crownc','png',900)
 
     return fig,ax
 
@@ -1565,22 +1455,22 @@ def Plot_SPH_Live(meta,roi):
     N_hidden=3
 
     # Plot
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[0].grid(False)
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i/(N_vis-N_hidden),i/(N_vis-N_hidden)],'k-',linewidth=0.5)
     ax[1].set(position=meta['Graphics']['ax2 pos long']);
 
     # cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis+1.5,1))
     # cb.ax.set(yticklabels=lab)
-    # cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    # cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     # for i in range(0,N_vis):
     #     ax[1].plot([0,100],[i/(N_vis-N_hidden),i/(N_vis-N_hidden)],'k-',linewidth=0.5)
     # ax[1].set(position=meta['Graphics']['ax2 pos long']);
@@ -1595,7 +1485,7 @@ plt.close('all')
 fig,ax=Plot_SPH_Live(meta,roi)
 #wfp.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1,label='Wildfire',alpha=1)
 #atup['gdf overlay'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1.25,label='Planting',alpha=1)
-#gu.PrintFig(meta['Paths']['Figures'] + '\\sphlive','png',300)
+#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\sphlive','png',300)
 
 #%% Plot harvested year
 
@@ -1626,27 +1516,30 @@ def Plot_HarvestYear(roi):
 
     # Plot
     plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_harv_yr_' + nam,'png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_harv_yr_' + nam,'png',900)
     return fig,ax
 
 fig,ax=Plot_HarvestYear(roi)
@@ -1679,27 +1572,30 @@ def Plot_LUC_Year(roi):
 
     # Plot
     plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_luc1_yr','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_luc1_yr','png',900)
     return fig,ax
 
 fig,ax=Plot_LUC_Year(roi)
@@ -1731,29 +1627,32 @@ def Plot_FireYear(roi):
 
     # Plot
     plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
 
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_fire_yr','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_fire_yr','png',900)
 
     return fig,ax
 
@@ -1787,31 +1686,34 @@ def Plot_GFC_LossYear(roi):
     N_vis=bin.size+3
     N_hidden=3
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
     cb.ax.set(yticklabels=lab)
 
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_gfcly','png',900)
-    #gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_gfcly_filt','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_gfcly','png',900)
+    #gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_gfcly_filt','png',900)
 
     return fig,ax
 
@@ -1840,24 +1742,27 @@ def Plot_ROI_BSR(bsr):
     cm=np.vstack( ( (0.5,0,0,1),(1,0.25,0.25,1),(1,0.75,0.75,1),(0.96,0.96,0.96,1),(1,1,1,1) ) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,clim=(0,N_vis),extent=lc2['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf_lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],edgecolor=[0.7*0.82,0.7*0.88,0.7*1],linewidth=0.25,label='Water')
-    roi['gdf_rivers'].plot(ax=ax[0],linecolor=[0,0,0.7],label='Water',linewidth=0.25)
-    roi['gdf_roads'].plot(ax=ax[0],facecolor='none',edgecolor=[0,0,0],label='Roads',linewidth=0.75,alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[0].grid(False)
 
     cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis,1),ticks=np.arange(0.5,N_vis+1.5,1))
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     for i in range(0,N_vis):
         ax[1].plot([0,100],[i/(N_vis-N_hidden-1),i/(N_vis-N_hidden-1)],'k-',linewidth=0.5)
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
     return fig,ax
@@ -1866,7 +1771,7 @@ plt.close('all')
 fig,ax=Plot_ROI_BSR(bsr)
 #wfp.plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],linewidth=1.5,label='Wildfire',alpha=1)
 #atup['gdf overlay'].plot(ax=ax[0],facecolor=[0,0,0],edgecolor=[0,0.5,0],linewidth=1.25,label='Planting',alpha=0.25)
-#gu.PrintFig(meta['Paths']['Figures'] + '\\Planted areas and BSR','png',300)
+#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Planted areas and BSR','png',300)
 
 
 #%% Plot soil water content
@@ -1895,17 +1800,20 @@ def Plot_SoilWaterContent(roi):
     cm=np.vstack( (cm,(1,1,1,1)) ) # (0.83137,0.81569,0.78431,1)
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1);
     zmx=np.max(z1);
@@ -1915,15 +1823,15 @@ def Plot_SoilWaterContent(roi):
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_SoilWaterContent_Normal','png',300)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_SoilWaterContent_Normal','png',300)
 
     return fig,ax
 
@@ -1939,7 +1847,7 @@ cm=np.vstack( ((1,1,1,1),(0.95,0.95,0.95,1),(0.8,0.8,0.8,1)) )
 cm=matplotlib.colors.ListedColormap(cm)
 
 ms=2
-plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
 mp=ax.matshow(tmp,extent=roi['grd']['Extent'],cmap=cm,label='Forest mask')
 roi['gdf']['bound'].plot(ax=ax,facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
 roi['gdf']['bound within'].plot(ax=ax,facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
@@ -1963,60 +1871,15 @@ gdf1.crs=roi['crs']
 gdf1=gpd.overlay(gdf1,roi['gdf']['bound within'],how='intersection')
 gdf1.plot(ax=ax,markersize=0.7,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='Proposed sample')
 
-ax.set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],aspect='auto')
+ax.set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],aspect='auto')
 ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
-ax.grid(meta['Graphics']['ax1 gridvis'])
-ax.axis(meta['Graphics']['ax1 vis'])
+ax.grid(meta['Graphics']['Map']['Map Grid Vis'])
+ax.axis(meta['Graphics']['Map']['Map Axis Vis'])
 #gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Biomass\SamplingPowerMap2','png',900)
 
 #%% Salvage mask from timber cruise
 
-def Plot_SalvageMask(meta,roi):
-
-    lab=['Salvage (>50% dead)','Salvage (>10% dead)','Harvest (<10% dead)','No harvesting','Non-forest land','Outside']
-    lab=lab[0:-1]
-    z1=roi['grd']['salvage']['Data']
-    z1[roi['grd']['Data']==0]=6
-
-    # Number of colours and number of colours excluded from colorbar
-    N_vis=4
-    N_hidden=2
-    N_tot=N_vis+N_hidden
-
-    # Colormap
-    cm=np.vstack( ((0.9,0,0,1),(1,0.85,0,1),(0.85,1,0.65,1),(0.6,0.6,0.6,1), (0.93,0.93,0.93,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
-        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
-
-    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-    ax[1].set(position=[0.71,0.6,0.05,0.14])
-    cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(cb_bnd.size):
-        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
-    ax[1].set(position=pos2)
-
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_salvage_mask','png',900)
-
-    return fig,ax
-
-fig,ax=Plot_SalvageMask(meta,roi)
+fig,ax=u1ha.Plot_SalvageLogging(meta,roi)
 
 #%% Plot consolidate forest range
 
@@ -2036,32 +1899,35 @@ def Plot_RangeTenure(meta,roi):
     cm=np.vstack( ((0.85,1,0.5,1),(0,0.5,0,1),(0.6,0.6,0.6,1),(0.83,0.83,0.83,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_range_consol','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_range_consol','png',900)
 
     return fig,ax
 
@@ -2085,32 +1951,35 @@ def Plot_ReservesConsolidated(meta,roi):
     cm=np.vstack( ((0.6,1,0,1),(1,0.5,0,1),(0.5,0.8,1,1),(0,0.5,0,1),(0.75,0,1,1), (0.4,0.4,0.4,1),(0.83,0.83,0.83,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['figwidth'],(1-meta['Graphics']['sidespace'])*meta['Graphics']['figwidth']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
         roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    roi['gdf']['lakes'].plot(ax=ax[0],color=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.5,label='Road',alpha=1,zorder=1)
-    ax[0].set(position=meta['Graphics']['ax1 pos'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['ax1 gridvis']); ax[0].axis(meta['Graphics']['ax1 vis'])
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
     cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
     ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['leg fontsize'],length=0)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
 
-    pos2=[meta['Graphics']['leg x'],0.99-N_vis*meta['Graphics']['leg text space'],meta['Graphics']['leg w'],N_vis*meta['Graphics']['leg text space']]
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_reserves_consol','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_reserves_consol','png',900)
 
     return fig,ax
 

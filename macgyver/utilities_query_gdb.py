@@ -76,6 +76,10 @@ def Query_Openings(meta,roi):
                     if np.isin(prop['SILV_TECHNIQUE_CODE'],meta['STC'])==False:
                         continue
 
+                if meta['SMC'].size!=0:
+                    if np.isin(prop['SILV_METHOD_CODE'],meta['SMC'])==False:
+                        continue
+
                 if meta['FSC'].size!=0:
                     if np.isin(prop['SILV_FUND_SOURCE_CODE'],meta['FSC'])==False:
                         continue
@@ -154,6 +158,7 @@ def Query_Openings(meta,roi):
                 if meta['SBC'].size!=0:
                     if np.isin(prop['SILV_BASE_CODE'],meta['SBC'])==False:
                         continue
+
                     # Planting (isolate real planting)
                     if meta['SBC']=='PL':
                         if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
@@ -161,6 +166,10 @@ def Query_Openings(meta,roi):
 
                 if meta['STC'].size!=0:
                     if np.isin(prop['SILV_TECHNIQUE_CODE'],meta['STC'])==False:
+                        continue
+
+                if meta['SMC'].size!=0:
+                    if np.isin(prop['SILV_METHOD_CODE'],meta['SMC'])==False:
                         continue
 
                 if meta['FSC'].size!=0:

@@ -194,18 +194,17 @@ def BuildEventChronologyFromSpreadsheet(meta,pNam):
                 # Add spinup events
                 #----------------------------------------------------------
 
-                if 'Spinup Disturbance Return Inverval' in meta[pNam]['Scenario'][iScn]:
-                    # The project-level default has been overridden by scenario-specific values
-                    ivl_spin=meta[pNam]['Scenario'][iScn]['Spinup Disturbance Return Inverval']
-                else:
-                    # Default project level
-                    #ivl_spin=meta[pNam]['Project']['Spinup Disturbance Return Inverval']
-
-                    # New BGC zone-specific
-                    #cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],inv['ID_BGCZ'][0,iS])[0]
+                # Spinup interval
+                if meta[pNam]['Project']['Return Interval Source']=='Custom':
+                    # From custom input
+                    ivl_spin=meta[pNam]['Project']['Custom Return Interval']
+                elif meta[pNam]['Project']['Return Interval Source']=='BGC Zone':
+                    # BGC Zone values
                     cd=meta[pNam]['Scenario'][iScn]['BGC Zone Code']
-                    ind=np.where(meta['Param']['BE']['SpinupRI']['Name']==cd)[0]
-                    ivl_spin=meta['Param']['BE']['SpinupRI']['Value'][ind]
+                    ind=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==cd)[0]
+                    ivl_spin=meta['Param']['BE']['BGC Zone Averages']['Disturbance Return Interval'][ind]
+                else:
+                    print('Spin-up return interval source incorrect.')
 
                 YearRef=meta[pNam]['Scenario'][iScn]['Year1_DisFromInv']
                 AgeRef=meta[pNam]['Scenario'][iScn]['Age1_DisFromInv']
@@ -214,7 +213,7 @@ def BuildEventChronologyFromSpreadsheet(meta,pNam):
                 else:
                     Year1=meta[pNam]['Project']['Year Start']+ivl_spin
                     Year2=meta[pNam]['Project']['Spinup Year End']
-                    Year=np.arange(Year1,Year2+1,meta[pNam]['Project']['Spinup Disturbance Return Inverval'])
+                    Year=np.arange(Year1,Year2+1,ivl_spin)
 
                 for iYr in range(Year.size):
                     iT=np.where(tv==Year[iYr])[0]
@@ -641,6 +640,12 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     meta['Core']['Max Events Per Year']=8
 
     #--------------------------------------------------------------------------
+    # If Early Record Recycling is on, include a buffer before t_StartSaving
+    #--------------------------------------------------------------------------
+
+    meta['Core']['Recycle Early Record Buffer']=200
+
+    #--------------------------------------------------------------------------
     # Define time
     #--------------------------------------------------------------------------
 
@@ -656,17 +661,19 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     if meta[pNam]['Project']['Scenario Source']=='Script':
 
         # Import land cover class
-        zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1.tif')
+        zLCC1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1_Current.tif')
 
         #gdf_tsa=gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\LandUse\\tsa.geojson')
         gdf_bcb=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
 
         # Import mask (0=excluded, 1=included)
         if meta[pNam]['Project']['ROI Source']=='Province':
+
             # Land mask for BC
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
         elif meta[pNam]['Project']['ROI Source']=='Regional District':
+
             # Mask from regional district
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\TA_REGIONAL_DISTRICTS_SVW\\REGIONAL_DISTRICT_NAME.tif')
             ind=np.where( (zMask['Data']!=meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta[pNam]['Project']['ROI Elements']]) )
@@ -675,10 +682,22 @@ def ImportProjectConfig(meta,pNam,**kwargs):
             zMask['Data'][ind]=1
 
         elif meta[pNam]['Project']['ROI Source']=='BCFCS_NM':
+
             # Nutrient management
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_MaskAll.tif')
 
+        elif meta[pNam]['Project']['ROI Source']=='EvalAtPlots':
+            gplts=gu.ipickle(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2\Processed\L2\L2_BC.pkl')
+            soils=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
+            x=np.append(gplts['sobs']['X'],soils['x'])
+            y=np.append(gplts['sobs']['Y'],soils['y'])
+            xy=np.unique(np.column_stack((x,y)),axis=0)
+            zMask=zLCC1.copy()
+            zMask['Data']=np.zeros(zLCC1['Data'].shape,dtype='int16')
+            ind=gis.GetGridIndexToPoints(zLCC1,xy[:,0],xy[:,1])
+            zMask['Data'][ind]=1
         else:
+            print('ROI Source not recognized.')
             pass
 
         # Initialize geosptial info
@@ -693,19 +712,27 @@ def ImportProjectConfig(meta,pNam,**kwargs):
         meta['Geos']['Grid']=gis.UpdateGridCellsize(meta['Geos']['Grid'],meta['Geos']['RGSF'])
 
         # Resample required grids
-        zLC_r=gis.UpdateGridCellsize(zLC,meta['Geos']['RGSF'])
+        zLCC1_r=gis.UpdateGridCellsize(zLCC1,meta['Geos']['RGSF'])
         zMask_r=gis.UpdateGridCellsize(zMask,meta['Geos']['RGSF'])
 
         # Define additional sampling criteria
+        if meta[pNam]['Project']['Land Cover Scope']=='Forest':
 
-        iMask_Full=np.where( (zMask['Data']==1) & (zLC['Data']>0) & (zLC['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
-        meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLC_r['Data']>0) & (zLC_r['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
-        #iMask_Full=np.where( (zMask['Data']==1) & (zLC2['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_2']['T']) )
-        #meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLC2_r['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_2']['T']) )
+            iMask_Full=np.where( (zMask['Data']==1) & (zLCC1['Data']==meta['LUT']['Derived']['lcc1']['Forest']) )
+            meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLCC1_r['Data']==meta['LUT']['Derived']['lcc1']['Forest']) )
+
+        elif meta[pNam]['Project']['Land Cover Scope']=='All Land':
+
+            iMask_Full=np.where( (zMask['Data']==1) & (zLCC1['Data']>0) & (zLCC1['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
+            meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLCC1_r['Data']>0) & (zLCC1_r['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
+
+        else:
+            print('Land Cover Scope not recognized.')
 
         # Area expansion factor
         meta['Geos']['AEF']=iMask_Full[0].size/meta['Geos']['iMask'][0].size
         #meta['Geos']['AEF']=bc_grid_size/(meta['Geos']['Grid']['m']*meta['Geos']['Grid']['n'])
+        meta[pNam]['Project']['AEF']=meta['Geos']['AEF']
 
         # Revise mask
         meta['Geos']['Grid']['Data'][meta['Geos']['iMask']]=1
@@ -798,7 +825,7 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     # Import model parameters
     #--------------------------------------------------------------------------
 
-    meta=ImportParameters(meta,pNam)
+    meta=ImportParameters(meta)
 
     #--------------------------------------------------------------------------
     # Define scenario parameters
@@ -806,7 +833,7 @@ def ImportProjectConfig(meta,pNam,**kwargs):
 
     if meta[pNam]['Project']['Scenario Source']!='Portfolio':
 
-        df=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios',usecols='A:OM')
+        df=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios') # ,usecols='A:OM'
 
         df=df.iloc[:,df.iloc[0,:].isnull().values==False]
 
@@ -828,7 +855,7 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
 
     meta[pNam]['Project']['LSC']={}
-    if meta[pNam]['Project']['Scenario Source']!='Portfolio':
+    if meta[pNam]['Project']['Scenario Source']=='Script':
         meta[pNam]['Project']['LSC']['Scenario Names Unique']=np.unique(np.array([meta[pNam]['Scenario'][i]['Land Surface Scenario'] for i in range(len(meta[pNam]['Scenario']))],dtype=object))
         meta[pNam]['Project']['LSC']['N Scenario']=meta[pNam]['Project']['LSC']['Scenario Names Unique'].size
     else:
@@ -881,6 +908,9 @@ def ImportProjectConfig(meta,pNam,**kwargs):
         'VolMerch175','ODT_Bark','ODT_Branch','ODT_Foliage','ODT_Roots',
         'ODT_Stem','MortalityVolumeTotal']
 
+    # GC Input file variables
+    meta['Modules']['GYM']['GC Input Indices']={'StemMerch':0,'StemNonMerch':1,'Bark':2,'Branch':3,'Foliage':4,'StemMerchV':5}
+
     # Scale factor for growth curves
     # Note: Do not change this to 0.1 - aerial fertilization response will not work properly at 0.1
     meta['Modules']['GYM']['Scale Factor']=0.001
@@ -892,8 +922,8 @@ def ImportProjectConfig(meta,pNam,**kwargs):
         'fert_age1','fert_age2','fert_age3','fert_age4','fert_age5']
 
     # Operational adjustment factors (see TIPSY documentation)
-    meta['Modules']['GYM']['OAF1 Default']=np.round(0.85,decimals=2)
-    meta['Modules']['GYM']['OAF2 Default']=np.round(0.95,decimals=2)
+    meta['Modules']['GYM']['OAF1 Default']=0.85
+    meta['Modules']['GYM']['OAF2 Default']=0.95
 
     #--------------------------------------------------------------------------
     # Growth factor information
@@ -2667,12 +2697,12 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam):
 
 #%% Import future scenario comparison
 
-def Import_MOS_ByScnComparisonAndStrata_FromPoints(meta,mos):
+def Import_MOS_ByScnComparisonAndStrata_FromPoints(meta,pNam,mos):
 
-    for sc in mos['Delta']:
+    for cNam in mos[pNam]['Delta']:
 
         # Initialize
-        mos['Delta'][sc]['ByStrata']={}
+        mos[pNam]['Delta'][cNam]['ByStrata']={}
 
         dC={}
         for oper in ['Mean','Sum']:
@@ -2682,8 +2712,8 @@ def Import_MOS_ByScnComparisonAndStrata_FromPoints(meta,mos):
         # Add GHG
         #----------------------------------------------------------------------
 
-        dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos['Delta'][sc]['iB']+1) + '.pkl')
-        dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos['Delta'][sc]['iP']+1) + '.pkl')
+        dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos[pNam]['Delta'][cNam]['iB']+1) + '.pkl')
+        dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(mos[pNam]['Delta'][cNam]['iP']+1) + '.pkl')
 
         for oper in ['Mean','Sum']:
             for k in dB[oper].keys():
@@ -2702,8 +2732,8 @@ def Import_MOS_ByScnComparisonAndStrata_FromPoints(meta,mos):
         # Add Economics
         #----------------------------------------------------------------------
 
-        dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos['Delta'][sc]['iB']+1) + '.pkl')
-        dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos['Delta'][sc]['iP']+1) + '.pkl')
+        dB=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos[pNam]['Delta'][cNam]['iB']+1) + '.pkl')
+        dP=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Econ_Scn' + str(mos[pNam]['Delta'][cNam]['iP']+1) + '.pkl')
 
         for oper in ['Mean','Sum']:
             for k in dB[oper].keys():
@@ -2719,7 +2749,7 @@ def Import_MOS_ByScnComparisonAndStrata_FromPoints(meta,mos):
                 dC[oper][k]['Ensemble P995']=np.percentile(dP[oper][k]-dB[oper][k],99.5,axis=1)
 
         # Add to final structure
-        mos['Delta'][sc]['ByStrata']=copy.deepcopy(dC)
+        mos[pNam]['Delta'][cNam]['ByStrata']=copy.deepcopy(dC)
 
         del dB,dP,dC
         garc.collect()
@@ -2784,7 +2814,7 @@ def Import_MOS_ByScnComparisonAndStrata_AcrossProjects(meta,mos,sc):
 # Area isn't considered in scenario comparisons so the model output statistics
 # have already been calculated and just need to be imported.
 
-def Import_MOS_ByScnAndStrata_Area_FromPoints(meta,mos):
+def Import_MOS_ByScnAndStrata_Area_FromPoints(meta,pNam,mos):
 
     for iScn in range(meta[pNam]['Project']['N Scenario']):
 
@@ -2792,7 +2822,7 @@ def Import_MOS_ByScnAndStrata_Area_FromPoints(meta,mos):
 
         for oper in ['Mean','Sum']:
             for k in d[oper].keys():
-                mos['Scenarios'][iScn][oper]['Area_' + k]=d[oper][k]
+                mos[pNam]['Scenarios'][iScn][oper]['Area_' + k]=d[oper][k]
 
     return mos
 
@@ -4109,7 +4139,7 @@ def Write_BatchTIPSY_Input_Spreadsheet(meta,pNam,ugc):
         # BEC zone
         vnam='bec_zone'
         id=ugc['Unique'][iUGC,np.where(ugc['GC_Variable_List']==vnam)[0]]
-        cd=lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'],id)[0]
+        cd=lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],id)[0]
         sheet.cell(row=cnt+N_headers,column=GetColumn(vnam)).value=cd
 
         # FIZ
@@ -4335,6 +4365,8 @@ def PrepareInventoryFromSpreadsheet(meta,pNam):
             #mat=meta['Param']['BE']['BGC Zone Averages']['MAT'][ind]
             #inv['MAT']=mat*np.ones((1,N_StandsInBatch))
 
+            inv['Wood Density']=meta['Param']['BE']['Biophysical']['Density Wood']*np.ones((1,N_StandsInBatch))
+
             if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
                 ind=np.where( meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_CD']==meta[pNam]['Scenario'][iScn]['SRS1_CD'])[0]
@@ -4423,7 +4455,7 @@ def GetMortalityFrequencyDistribution(meta,pNam):
 
 #%% Summarize affected area due to natural disturbance and management
 
-def SummarizeAreaAffected(meta,mos,pNam,tv,iScn,iPS,iSS,ivlT):
+def SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,ivlT):
 
     A={}
     A['Nat Dist']=[None]*7; c=-1
@@ -4835,13 +4867,13 @@ def PrepGrowthCurvesUniqueForCBR(meta,pNam,ugc):
                     iGC_Unique=Inverse_ugc_ScnAndGcAndBat[i]
 
                     try:
+                        # This crashes often so leave it in try for troubleshooting
                         G[:,iStand,0]=G_StemMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
                     except:
                         print(iStand)
                         print(G.shape)
                         print(iGC_Unique)
                         print(G_StemMerch.shape)
-
                     G[:,iStand,1]=G_StemNonMerch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
                     G[:,iStand,2]=G_Bark[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
                     G[:,iStand,3]=G_Branch[:,iGC_Unique].T/meta['Modules']['GYM']['Scale Factor']
@@ -4954,7 +4986,7 @@ def PrepGrowthCurvesUniqueForCBR_WithoutEarlyCorrection(meta,pNam,ugc):
 
 #%% Import parameters
 
-def ImportParameters(meta,pNam):
+def ImportParameters(meta):
 
     # Path to parameters
     pthin=meta['Paths']['Model']['Code'] + '\\Parameters\\'
@@ -4963,11 +4995,11 @@ def ImportParameters(meta,pNam):
     if 'Param' not in meta:
         meta['Param']={}
 
+    # Best estimates, variance, lower and upper confidence levels
     meta['Param']['BE']={}
     meta['Param']['Sigma']={}
     meta['Param']['BL']={}
     meta['Param']['BU']={}
-    meta['Param']['BEV']={}
 
     #--------------------------------------------------------------------------
     # Biophysical
@@ -5004,16 +5036,10 @@ def ImportParameters(meta,pNam):
         meta['Param']['BU']['Biomass Turnover'][Name]=df['BU'][i]
 
     #--------------------------------------------------------------------------
-    # Inter-pool transfer parameters (Kurz et al. 2009)
+    # By BGC zone
     #--------------------------------------------------------------------------
 
-    df=pd.read_excel(pthin + '\Parameters_InterPoolFluxes.xlsx',sheet_name='Sheet1')
-    meta['Param']['BE']['Inter Pool Fluxes']={}
-    meta['Param']['Sigma']['Inter Pool Fluxes']={}
-    for i in range(len(df)):
-        Name=df['Name'][i]
-        meta['Param']['BE']['Inter Pool Fluxes'][Name]=df['Best Estimate'][i]
-        meta['Param']['Sigma']['Inter Pool Fluxes'][Name]=df['Sigma'][i]
+    meta['Param']['BE']['BGC Zone Averages']=gu.ReadExcel(pthin + '\Parameters_ByBGC.xlsx')
 
     #--------------------------------------------------------------------------
     # Decomposition parameters (Kurz et al. 2009)
@@ -5113,11 +5139,31 @@ def ImportParameters(meta,pNam):
     meta['Param']['BE']['DistBySC']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
 
     #--------------------------------------------------------------------------
-    # Removed fate scenarios
-    # Values are location specific so no specific processing is done here (see cbrun.py)
+    # Economics
     #--------------------------------------------------------------------------
 
-    meta['Param']['BE']['Removed Fate']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_RemovedFate.pkl')
+    df=pd.read_excel(pthin + '\Parameters_Economics.xlsx',sheet_name='Sheet1')
+    meta['Param']['BE']['Econ']={}
+    for i in range(len(df)):
+        Name=df['Name'].iloc[i]
+        meta['Param']['BE']['Econ'][Name]=df['Value'].iloc[i]
+
+    #--------------------------------------------------------------------------
+    # Funding source code
+    #--------------------------------------------------------------------------
+
+    meta['Param']['BE']['FSC']={}
+    meta['Param']['BE']['FSC']['Raw']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_ByFundingSourceCode.xlsx')
+
+    ind=np.where(meta['Param']['BE']['FSC']['Raw']['Legal Obligation of Licensee To Fund Milestone']=='No')[0]
+    meta['Param']['BE']['FSC']['NO List Name']=meta['Param']['BE']['FSC']['Raw']['Name'][ind]
+
+    meta['Param']['BE']['FSC']['NO List ID']=meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE']['FTM']*np.ones(meta['Param']['BE']['FSC']['NO List Name'].size,dtype='int16')
+    for i in range(meta['Param']['BE']['FSC']['NO List Name'].size):
+        try:
+            meta['Param']['BE']['FSC']['NO List ID'][i]=meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'][ meta['Param']['BE']['FSC']['NO List Name'][i] ]
+        except:
+            pass
 
     #--------------------------------------------------------------------------
     # HWP - static parameters
@@ -5136,6 +5182,24 @@ def ImportParameters(meta,pNam):
     meta['Param']['BE']['HWP End Use']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_HWP_EndUse.pkl')
 
     #--------------------------------------------------------------------------
+    # Genetic worth
+    #--------------------------------------------------------------------------
+
+    meta['Param']['BE']['Genetic Worth']=gu.ReadExcel(pthin + '\\Parameters_Seedlot_GW.xlsx')
+
+    #--------------------------------------------------------------------------
+    # Inter-pool transfer parameters (Kurz et al. 2009)
+    #--------------------------------------------------------------------------
+
+    df=pd.read_excel(pthin + '\Parameters_InterPoolFluxes.xlsx',sheet_name='Sheet1')
+    meta['Param']['BE']['Inter Pool Fluxes']={}
+    meta['Param']['Sigma']['Inter Pool Fluxes']={}
+    for i in range(len(df)):
+        Name=df['Name'][i]
+        meta['Param']['BE']['Inter Pool Fluxes'][Name]=df['Best Estimate'][i]
+        meta['Param']['Sigma']['Inter Pool Fluxes'][Name]=df['Sigma'][i]
+
+    #--------------------------------------------------------------------------
     # Nutrient application paramaters
     #--------------------------------------------------------------------------
 
@@ -5148,14 +5212,11 @@ def ImportParameters(meta,pNam):
         meta['Param']['Sigma']['Nutrient Management'][Name]=df['Sigma'].iloc[i]
 
     #--------------------------------------------------------------------------
-    # Economics
+    # Removed fate scenarios
+    # Values are location specific so no specific processing is done here (see cbrun.py)
     #--------------------------------------------------------------------------
 
-    df=pd.read_excel(pthin + '\Parameters_Economics.xlsx',sheet_name='Sheet1')
-    meta['Param']['BE']['Econ']={}
-    for i in range(len(df)):
-        Name=df['Name'].iloc[i]
-        meta['Param']['BE']['Econ'][Name]=df['Value'].iloc[i]
+    meta['Param']['BE']['Removed Fate']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_RemovedFate.pkl')
 
     #--------------------------------------------------------------------------
     # Substitution effects (use of basic displacement factors)
@@ -5170,54 +5231,57 @@ def ImportParameters(meta,pNam):
         meta['Param']['Sigma']['Substitution'][Name]=df['Sigma'].iloc[i]
 
     #--------------------------------------------------------------------------
-    # Spinup return interval by BGC zone
+    # By Tree Density Class
     #--------------------------------------------------------------------------
 
-    meta['Param']['BE']['SpinupRI']=gu.ReadExcel(pthin + '\Parameters_SpinupRI.xlsx')
+    meta['Param']['BE']['Tree Density Class Averages']=gu.ReadExcel(pthin + '\Parameters_TreeDensityClassStatistics.xlsx')
 
     #--------------------------------------------------------------------------
-    # Climate by BGC zone
+    # Wood density by species
     #--------------------------------------------------------------------------
 
-    meta['Param']['BE']['BGC Zone Averages']=gu.ReadExcel(pthin + '\Parameters_ByBGC.xlsx')
-
-    #--------------------------------------------------------------------------
-    # Genetic worth
-    #--------------------------------------------------------------------------
-
-    meta['Param']['BE']['Genetic Worth']=gu.ReadExcel(pthin + '\\Parameters_Seedlot_GW.xlsx')
+    meta['Param']['BE']['Wood Density']=gu.ReadExcel(pthin + '\Parameters_WoodDensity.xlsx')
 
     #--------------------------------------------------------------------------
     # Sawtooth parameters
     #--------------------------------------------------------------------------
 
-    if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
+    #if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
-        ps={}
-        #pthin=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters'
+    ps={}
+    #pthin=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters'
 
-        # Core sawtooth parameters
-        d=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','Core')
-        ps['Core']={}
-        for i in range(d['Name'].size):
-            ps['Core'][d['Name'][i]]=d['Value'][i]
+    # Core sawtooth parameters
+    d=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','Core')
+    ps['Core']={}
+    for i in range(d['Name'].size):
+        ps['Core'][d['Name'][i]]=d['Value'][i]
 
-        # Sawtooth key between provincial species codes adn species-region sample
-        # codes
-        ps['SRS Key']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','SRS Key')
+    # Sawtooth key between provincial species codes adn species-region sample
+    # codes
+    ps['SRS Key']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','SRS Key')
 
-        # Tree-level allometry
-        ps['Allom']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','Allometry')
-        ps['Eq R']={}
-        ps['Eq R']['Def1']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','R_Def1')
+    # Tree-level allometry
+    ps['Allom']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','Allometry')
+    ps['Eq R']={}
+    ps['Eq R']['Def1']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','R_Def1')
 
-        ps['Eq M']={}
-        ps['Eq M']['Def1']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','M_Def1')
+    ps['Eq M']={}
+    ps['Eq M']['Def1']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','M_Def1')
 
-        ps['Eq G']={}
-        ps['Eq G']['Def1']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','G_Def1')
+    ps['Eq G']={}
+    ps['Eq G']['Def1']=gu.ReadExcel(pthin + '\Parameters_Sawtooth.xlsx','G_Def1')
 
-        meta['Param']['BE']['Sawtooth']=ps
+    meta['Param']['BE']['Sawtooth']=ps
+
+    #--------------------------------------------------------------------------
+    # Other stuff
+    #--------------------------------------------------------------------------
+
+    meta['Param']['BE']['Comparison_With_NIR']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Comparison_With_NIR.xlsx')
+    meta['Param']['BE']['Reporting_Version_Comparison']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Reporting_Version_Comparison.xlsx')
+    meta['Param']['BE']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Forcing_Categories.xlsx')
+    meta['Param']['BE']['Level_4_Categories_Status']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Level_4_Categories_Status.xlsx')
 
     return meta
 

@@ -4,7 +4,7 @@ from fcgadgets.cbrunner import cbrun_utilities as cbu
 
 #%% Nutrient application effects
 
-def UpdateStatus(vi,vo,iT,meta,comp):
+def UpdateStatus(meta,pNam,vi,vo,iT,comp):
 
     # Exctract parameters
     bNA=meta['Param']['BEV']['Nutrient Management']
@@ -16,7 +16,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
 
         meta['Modules']['Nutrient Management']['ResponseCounter'][iApp]=meta['Modules']['Nutrient Management']['ResponseCounter'][iApp]+1
 
-    elif (comp=='AbovegroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
+    elif (comp=='AbovegroundNetGrowth') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
         # Think about revising to be based on N
         # r_NonUniform_Spatial_Distribution
@@ -60,11 +60,11 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         rr=np.append(rr,rrS)
 
         # Get age vector for GC's
-        A_gc=np.arange(0,meta['GC']['BatchTIPSY Maximum Age']+1,1)
+        A_gc=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
         # Extract active growth curves, apply scale factor
-        #GCA_SP=vi['GC']['Active'][:,iApp,:].copy().astype(float)*meta['GC']['Scale Factor']
-        GCA_SP=vi['GC']['Active'][:,iApp,:].copy()#.astype(float)*meta['GC']['Scale Factor']
+        #GCA_SP=vi['GC']['Active'][:,iApp,:].copy().astype(float)*meta['Modules']['GYM']['Scale Factor']
+        GCA_SP=vi['GC']['Active'][:,iApp,:].copy()#.astype(float)*meta['Modules']['GYM']['Scale Factor']
 
         for iStand in range(iApp.size):
 
@@ -87,7 +87,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
                 #print(AgeAtApplication)
 
         # Re-applly scalefactor
-        #GCA_SP=GCA_SP/meta['GC']['Scale Factor']
+        #GCA_SP=GCA_SP/meta['Modules']['GYM']['Scale Factor']
 
         # Convert to 16-bit integers
         #GCA_SP=GCA_SP.astype('int16')
@@ -95,7 +95,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
         # Repopulate in input variable dictionary
         vi['GC']['Active'][:,iApp,:]=GCA_SP
 
-    elif (comp=='BelowgroundNetGrowth') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
+    elif (comp=='BelowgroundNetGrowth') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
         #----------------------------------------------------------------------
         # Adjust root net growth
@@ -142,12 +142,12 @@ def UpdateStatus(vi,vo,iT,meta,comp):
 
             meta['Modules']['Nutrient Management']['ResponseCounter'][iStop]=0
 
-            #uGC=np.unique(meta['GC']['ID GC'][iStop])
+            #uGC=np.unique(meta['Modules']['GYM']['ID GC'][iStop])
             #for iGC in range(uGC.size):
-            #    indGC=np.where(meta['GC']['ID GC'][iStop]==uGC[iGC])[0]
+            #    indGC=np.where(meta['Modules']['GYM']['ID GC'][iStop]==uGC[iGC])[0]
             #    vi['GC']['Active'][:,iStop[indGC],:]=vi['GC'][ uGC[iGC] ][:,iStop[indGC],:]
 
-    elif (comp=='Mortality') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
+    elif (comp=='Mortality') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
         #----------------------------------------------------------------------
         # Adjust mortality
@@ -155,7 +155,7 @@ def UpdateStatus(vi,vo,iT,meta,comp):
 
         vo['C_M_Reg'][iT,iApp,0:7]=bNA['rPrime_TreeMortality']*vo['C_M_Reg'][iT,iApp,0:7]
 
-    elif (comp=='Litterfall') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
+    elif (comp=='Litterfall') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
         #----------------------------------------------------------------------
         # Adjust biomass turnover
@@ -230,11 +230,11 @@ def UpdateStatus(vi,vo,iT,meta,comp):
 
         flg=1
 
-        if 'Nutrient Application Footprint Status' in meta['Scenario'][meta['iScn']]:
-            if meta['Scenario'][meta['iScn']]['Nutrient Application Footprint Status']!='On':
+        if 'Nutrient Application Footprint Status' in meta[pNam]['Scenario'][meta[pNam]['iScn']]:
+            if meta[pNam]['Scenario'][meta[pNam]['iScn']]['Nutrient Application Footprint Status']!='On':
                 flg=0
 
-        if (meta['Project']['External Footprint Effect Status']=='On') & (flg==1):
+        if (meta[pNam]['Project']['External Footprint Effect Status']=='On') & (flg==1):
 
             # Dose (kgN/ha)
             DoseN=bNA['DoseUrea_Standard']*bNA['Ratio_N_to_Urea']
@@ -275,29 +275,29 @@ def UpdateStatus(vi,vo,iT,meta,comp):
             except:
                 pass
 
-    elif (comp=='HeterotrophicRespiration') & (meta['Project']['Nutrient Application Module']=='cbrunner'):
+    elif (comp=='HeterotrophicRespiration') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
         #----------------------------------------------------------------------
         # Adjust rate of heterotrophic respiration
         #----------------------------------------------------------------------
 
         rr=bNA['r_Decomp']
-        meta['R_LitterVF'][0,iApp]=rr*meta['R_LitterVF'][0,iApp]
-        meta['R_LitterF'][0,iApp]=rr*meta['R_LitterF'][0,iApp]
-        meta['R_LitterM'][0,iApp]=rr*meta['R_LitterM'][0,iApp]
-        meta['R_LitterS'][0,iApp]=rr*meta['R_LitterS'][0,iApp]
-        meta['R_SoilVF'][0,iApp]=rr*meta['R_SoilVF'][0,iApp]
-        meta['R_SoilF'][0,iApp]=rr*meta['R_SoilF'][0,iApp]
-        meta['R_SoilS'][0,iApp]=rr*meta['R_SoilS'][0,iApp]
+        meta[pNam]['Project']['R_LitterVF'][0,iApp]=rr*meta[pNam]['Project']['R_LitterVF'][0,iApp]
+        meta[pNam]['Project']['R_LitterF'][0,iApp]=rr*meta[pNam]['Project']['R_LitterF'][0,iApp]
+        meta[pNam]['Project']['R_LitterM'][0,iApp]=rr*meta[pNam]['Project']['R_LitterM'][0,iApp]
+        meta[pNam]['Project']['R_LitterS'][0,iApp]=rr*meta[pNam]['Project']['R_LitterS'][0,iApp]
+        meta[pNam]['Project']['R_SoilVF'][0,iApp]=rr*meta[pNam]['Project']['R_SoilVF'][0,iApp]
+        meta[pNam]['Project']['R_SoilF'][0,iApp]=rr*meta[pNam]['Project']['R_SoilF'][0,iApp]
+        meta[pNam]['Project']['R_SoilS'][0,iApp]=rr*meta[pNam]['Project']['R_SoilS'][0,iApp]
 
     return vi,vo,meta
 
 #%% Simulate probability of harvesting on the fly
 
-def ScheduleNutrientApplication(meta,vi,vo,iT,iScn,iEns,iBat):
+def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
 
     # Create a random number
-    rn=np.random.random(meta['Project']['Batch Size'][iBat])
+    rn=np.random.random(meta[pNam]['Project']['Batch Size'][iBat])
 
     # Regional probabilities
     Po_Sat_Coast=0.00775
