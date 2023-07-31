@@ -9,18 +9,17 @@ from matplotlib.colors import LightSource
 from shapely.geometry import Polygon,Point
 import copy
 import time
-import fcgadgets.macgyver.utilities_general as gu
-import fcgadgets.macgyver.utilities_gis as gis
-import fcgadgets.bc1ha.bc1ha_utilities as u1ha
-import fcgadgets.macgyver.utilities_query_gdb as qgdb
+import fcgadgets.macgyver.util_general as gu
+import fcgadgets.macgyver.util_gis as gis
+import fcgadgets.bc1ha.bc1ha_util as u1ha
+import fcgadgets.macgyver.util_query_gdb as qgdb
 
 #%% Import parameters
 
 meta=u1ha.Init()
-meta=u1ha.ImportLUTs(meta)
-meta['Graphics']['Map']['RGSF']=2
-meta['Graphics']['Map']['Fig Width']=9.75
-meta['Graphics']['Map']['Side Space']=0
+meta['Graphics']['Map']['RGSF']=1
+meta['Graphics']['Map']['Fig Width']=15.5
+meta['Graphics']['Map']['Side Space']=0.25
 meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['Side Space']-0.01,1]
 meta['Graphics']['Map']['Map Axis Vis']='off'
 meta['Graphics']['Map']['Map Grid Vis']=False
@@ -87,12 +86,12 @@ if roi['Type']=='ByTSA':
     #roi['List']=['Merritt TSA']
     #roi['List']=['Prince George TSA']
     #roi['List']=['Kamloops TSA','100 Mile House TSA','Williams Lake TSA']
-    roi['List']=['Williams Lake TSA']
+    #roi['List']=['Williams Lake TSA']
     #roi['List']=['North Island TSA']
     #roi['List']=['Quesnel TSA']
     #roi['List']=['100 Mile House TSA']
     #roi['List']=['Kootenay Lake TSA']
-    #roi['List']=['100 Mile House TSA']
+    roi['List']=['100 Mile House TSA']
     #roi['List']=['Okanagan TSA']
     #roi['List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
     #roi['List']=list(gdf['tsa']['key']['Name'])
@@ -175,6 +174,58 @@ roi=u1ha.Import_Raster(meta,roi,vList)
 #gdf['rd']['gdf']=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='FTEN_ROAD_SEGMENT_LINES_SVW')
 #gdf['rd']['gdf']=gpd.overlay(gdf['rd']['gdf'],roi['gdf']['bound within'],how='intersection')
 
+#%% Plot FECA year
+
+def Plot_FECA_Year(meta,roi):
+
+    z0=roi['grd']['feca_yr']['Data']
+    bw=5; bin=np.arange(1975,2025+bw,bw);
+    z1=(bin.size)*np.ones( z0.shape)
+    for i in range(bin.size):
+        ind=np.where(np.abs(z0-bin[i])<=bw/2)
+        z1[ind]=i
+    z1[(z0==0)]=i+1
+    z1[(roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=i+2
+
+    N_vis=bin.size+3
+    N_hidden=3
+    N_tot=N_vis+N_hidden
+
+    lab=bin.astype(str)
+
+    #cm=plt.cm.get_cmap('viridis',N_vis)
+    cm=plt.cm.get_cmap('plasma',N_vis)
+    cm=np.vstack( (cm.colors,(0,0,0,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Within']=='On':
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(0,N_vis):
+        ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_feca_yr','png',900)
+    return fig,ax
+
+fig,ax=Plot_FECA_Year(meta,roi)
+
 #%% Land Cover Class 1
 
 fig,ax=u1ha.Plot_LandCoverClass1(meta,roi)
@@ -189,7 +240,7 @@ fig,ax=u1ha.Plot_BGC_Zone(meta,roi)
 
 #%% Species leading NTEMS
 
-def Plot_Spc1(roi):
+def Plot_Spc1(meta,roi):
 
     # Compress categories
     z0=roi['grd']['spc1_ntems']['Data']
@@ -249,143 +300,19 @@ def Plot_Spc1(roi):
     plt.show()
     return fig,ax
 
-fig,ax=Plot_Spc1(roi)
+fig,ax=Plot_Spc1(meta,roi)
 
 #%% Plot mean annual temp
 
-def Plot_MAT(roi):
-
-    z0=roi['grd']['tmean_ann_n']['Data']
-
-    bw=5; bin=np.arange(20,110+bw,bw)
-
-    N_vis=bin.size
-    N_hidden=2
-    N_tot=N_vis+N_hidden
-
-    z1=N_vis*np.ones(z0.shape)
-    for i in range(N_vis):
-        ind=np.where(np.abs(z0-bin[i])<=bw/2)
-        if ind[0].size>0:
-            z1[ind]=i+1
-    ind=np.where(z0>=bin[i]); z1[ind]=i+1
-    z1[1,1]=i+2
-    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=i+3
-
-    for i in range(N_vis):
-        z1[0,i]=i+1
-
-    lab=['']*(N_tot-1)
-    lab[0:N_vis]=np.array(bin/10).astype(str)
-
-    cm=plt.cm.get_cmap('viridis',N_vis)
-    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
-        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Lakes']=='On':
-        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    if meta['Graphics']['Map']['Show Rivers']=='On':
-        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Roads']=='On':
-        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-
-    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-    ax[1].set(position=[0.71,0.6,0.05,0.14])
-    cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(cb_bnd.size):
-        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
-    ax[1].set(position=pos2)
-
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_tmean_ann_n','png',900)
-    plt.show()
-    return fig,ax
-
-fig,ax=Plot_MAT(roi)
+fig,ax=u1ha.Plot_MAT(meta,roi)
 
 #%% Plot mean annual precip
 
-def Plot_MAP(roi):
-
-    z0=roi['grd']['prcp_ann_n']['Data']
-
-    bw=250; bin=np.arange(0,4000+bw,bw)
-
-    N_vis=bin.size
-    N_hidden=2
-    N_tot=N_vis+N_hidden
-
-    z1=N_vis*np.ones(z0.shape)
-    for i in range(N_vis):
-        ind=np.where(np.abs(z0-bin[i])<=bw/2)
-        if ind[0].size>0:
-            z1[ind]=i+1
-    ind=np.where(z0>=bin[i]); z1[ind]=i+1
-    z1[1,1]=i+2
-    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=i+3
-
-    for i in range(N_vis):
-        z1[0,i]=i+1
-
-    lab=['']*(N_tot-1)
-    lab[0:N_vis]=bin.astype(str)
-
-    cm=plt.cm.get_cmap('viridis',N_vis)
-    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    if meta['Graphics']['Map']['Show Bound Within']=='On':
-        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
-        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Lakes']=='On':
-        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
-    if meta['Graphics']['Map']['Show Rivers']=='On':
-        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
-    if meta['Graphics']['Map']['Show Roads']=='On':
-        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
-
-    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-    ax[1].set(position=[0.71,0.6,0.05,0.14])
-    cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(cb_bnd.size):
-        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
-    ax[1].set(position=pos2)
-
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_prcp_ann_n','png',900)
-
-    return fig,ax
-
-fig,ax=Plot_MAP(roi)
+fig,ax=u1ha.Plot_MAP(meta,roi)
 
 #%% PLOT age from VRI
 
-def Plot_PROJ_AGE_1(roi):
+def Plot_PROJ_AGE_1(meta,roi):
 
     z0=roi['grd']['PROJ_AGE_1']['Data']
 
@@ -448,11 +375,11 @@ def Plot_PROJ_AGE_1(roi):
 
     return fig,ax
 
-fig,ax=Plot_PROJ_AGE_1(roi)
+fig,ax=Plot_PROJ_AGE_1(meta,roi)
 
 #%% Plot Site Index from VRI
 
-def Plot_SI(roi):
+def Plot_SI(meta,roi):
 
     #z0=roi['grd']['SITE_INDEX']['Data']
     #z0=roi['grd']['si_spl_fd']['Data']
@@ -521,13 +448,13 @@ def Plot_SI(roi):
 
     return fig,ax
 
-fig,ax=Plot_SI(roi)
+fig,ax=Plot_SI(meta,roi)
 
 
 
 #%% PLOT age from NTEMS
 
-def Plot_Age_NTEMS(roi):
+def Plot_Age_NTEMS(meta,roi):
 
     z0=roi['grd']['age_ntem']['Data']
 
@@ -590,7 +517,7 @@ def Plot_Age_NTEMS(roi):
 
     return fig,ax
 
-fig,ax=Plot_Age_NTEMS(roi)
+fig,ax=Plot_Age_NTEMS(meta,roi)
 
 #%%
 
@@ -799,7 +726,7 @@ fig,ax=Plot_Elev(meta,roi)
 
 #%% Plot BTM
 
-def Plot_ROI_BTM(roi):
+def Plot_ROI_BTM(meta,roi):
 
     # Grid
     bin=np.unique(roi['grd']['btm']['Compressed']['Data'])
@@ -865,7 +792,7 @@ def Plot_ROI_BTM(roi):
     return fig,ax
 
 plt.close('all')
-fig,ax=Plot_ROI_BTM(roi)
+fig,ax=Plot_ROI_BTM(meta,roi)
 #roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor='c',facecolor=[0.5,1,1],markersize=75,zorder=2)
 #roi['gdf']['ogsr']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,1,0],linewidth=0.5,label='Opening',alpha=1)
 #op['gdf'].plot(ax=ax[0],facecolor='None',ls='-',edgecolor=[0.8,0.8,1],linewidth=2,label='Wildfire',alpha=1)
@@ -879,7 +806,7 @@ gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_btm',
 
 #%% PLOT Land Cover 2020 from CEC
 
-def Plot_CEC_LC20(roi):
+def Plot_CEC_LC20(meta,roi):
 
     dCEC=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\LUTs\LUT_lcc_cec_Compressed.xlsx')
 
@@ -936,7 +863,7 @@ def Plot_CEC_LC20(roi):
 
     return fig,ax
 
-fig,ax=Plot_CEC_LC20(roi)
+fig,ax=Plot_CEC_LC20(meta,roi)
 
 #%% Plot LUC (Afforestation or Deforestation) from CEC
 
@@ -965,7 +892,7 @@ def Plot_LUC(meta,roi):
     cm=matplotlib.colors.ListedColormap(cm)
 
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1015,7 +942,7 @@ def Plot_DensityClass(meta,roi,gdf):
 
     plt.close('all')
     fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1162,7 +1089,7 @@ def Plot_PFI(meta,roi):
 
     # Plot
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1292,7 +1219,7 @@ def Plot_biomass_glob(meta,roi):
 
     # Plot
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1324,7 +1251,7 @@ fig,ax=Plot_biomass_glob(meta,roi)
 
 #%% PLOT soc
 
-def Plot_SOC_WithinROI(roi):
+def Plot_SOC_WithinROI(meta,roi):
 
     # Grid
     bw=10; bin=np.arange(0,100+bw,bw);
@@ -1350,7 +1277,7 @@ def Plot_SOC_WithinROI(roi):
 
     # Plot
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1377,7 +1304,7 @@ def Plot_SOC_WithinROI(roi):
 
     return fig,ax
 
-fig,ax=Plot_SOC_WithinROI(roi)
+fig,ax=Plot_SOC_WithinROI(meta,roi)
 
 #%% Plot Crown Cover Percent from VRI
 
@@ -1408,7 +1335,7 @@ def Plot_CrownCover(meta,roi):
 
     # Plot
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
     ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
@@ -1456,7 +1383,7 @@ def Plot_SPH_Live(meta,roi):
 
     # Plot
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
     ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[0].grid(False)
@@ -1489,7 +1416,7 @@ fig,ax=Plot_SPH_Live(meta,roi)
 
 #%% Plot harvested year
 
-def Plot_HarvestYear(roi):
+def Plot_HarvestYear(meta,roi):
 
     nam='ntem'
     z0=roi['grd']['harv_yr_' + nam]['Data']
@@ -1517,7 +1444,7 @@ def Plot_HarvestYear(roi):
     # Plot
     plt.close('all')
     fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1542,11 +1469,11 @@ def Plot_HarvestYear(roi):
     gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_harv_yr_' + nam,'png',900)
     return fig,ax
 
-fig,ax=Plot_HarvestYear(roi)
+fig,ax=Plot_HarvestYear(meta,roi)
 
 #%% Plot Land Use Change year
 
-def Plot_LUC_Year(roi):
+def Plot_LUC_Year(meta,roi):
 
     z0=roi['grd']['luc1_yr']['Data']
 
@@ -1573,7 +1500,7 @@ def Plot_LUC_Year(roi):
     # Plot
     plt.close('all')
     fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1598,11 +1525,11 @@ def Plot_LUC_Year(roi):
     gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_luc1_yr','png',900)
     return fig,ax
 
-fig,ax=Plot_LUC_Year(roi)
+fig,ax=Plot_LUC_Year(meta,roi)
 
 #%% Plot wildfire year
 
-def Plot_FireYear(roi):
+def Plot_FireYear(meta,roi):
 
     # Grid
     bw=10; bin=np.arange(1910,2020+bw,bw);
@@ -1628,7 +1555,7 @@ def Plot_FireYear(roi):
     # Plot
     plt.close('all')
     fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1656,11 +1583,11 @@ def Plot_FireYear(roi):
 
     return fig,ax
 
-fig,ax=Plot_FireYear(roi)
+fig,ax=Plot_FireYear(meta,roi)
 
 #%% Plot Global Forest Change Loss Year
 
-def Plot_GFC_LossYear(roi):
+def Plot_GFC_LossYear(meta,roi):
 
     z0=roi['grd']['gfcly']['Data']
     #z0=roi['grd']['gfcly_filt']['Data']
@@ -1687,7 +1614,7 @@ def Plot_GFC_LossYear(roi):
     N_hidden=3
 
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1[0::1,0::1],clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
     if meta['Graphics']['Map']['Show Bound Within']=='On':
         roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
     if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
@@ -1717,7 +1644,7 @@ def Plot_GFC_LossYear(roi):
 
     return fig,ax
 
-fig,ax=Plot_GFC_LossYear(roi)
+fig,ax=Plot_GFC_LossYear(meta,roi)
 
 #%% Plot Burn Severity within the TSA mask
 
@@ -1776,7 +1703,7 @@ fig,ax=Plot_ROI_BSR(bsr)
 
 #%% Plot soil water content
 
-def Plot_SoilWaterContent(roi):
+def Plot_SoilWaterContent(meta,roi):
 
     bw=20; bin=np.arange(0,200+bw,bw);
     z1=bin.size*np.ones( roi['grd']['ws_gs_n']['Data'].shape)
@@ -1835,7 +1762,7 @@ def Plot_SoilWaterContent(roi):
 
     return fig,ax
 
-fig,ax=Plot_SoilWaterContent(roi)
+fig,ax=Plot_SoilWaterContent(meta,roi)
 
 #%% Plot ground plot sample grid
 

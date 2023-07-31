@@ -6,8 +6,8 @@ import copy
 import gc as garc
 import time
 import datetime
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.cbrunner import cbrun_util as cbu
 from fcgadgets.cbrunner import cbrun_annproc as annproc
 from fcgadgets.hardhat import geological as geologic
 
@@ -241,6 +241,10 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
     # Create a biomass to volume conversion factor
     rho=vi['Inv']['Wood Density'].astype('float')/100
     vi['Inv']['Biomass to Volume CF']=(1/rho)*(1/meta['Param']['BE']['Biophysical']['Carbon Content Wood'])
+
+    # Create relative index from spatial map of harvest annual probability
+    Pa_H_Max=0.005
+    vi['Inv']['Harvest Index']=(vi['Inv']['Prob Harvest (%/yr) x 1000'].astype('float')/1000/100)/Pa_H_Max
 
     # Update number of stands for batch
     meta[pNam]['Project']['N Stand Batch']=vi['Inv']['ID_BGCZ'].shape[1]
@@ -544,7 +548,7 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
         rn=rn*meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
         meta[pNam]['Project']['On the Fly']['Random Numbers']['Harvest']=rn.copy()
 
-    if (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
+    if (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
         if meta[pNam]['Project']['Frozen Ensembles Status']=='Off':
             rn=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
         else:
@@ -1149,7 +1153,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
     # If events are added on the fly, they will only be accessable if resaved.
     #--------------------------------------------------------------------------
 
-    if (meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status']=='On'):
+    if (meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On'):
 
         # If it was input as compressed, output as re-compressed
         if 'idx' in vi['EC']:

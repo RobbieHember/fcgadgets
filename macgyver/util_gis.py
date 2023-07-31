@@ -18,7 +18,7 @@ from shapely.geometry import Point, Polygon
 from shapely import geometry
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.transform import from_origin
-from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import util_general as gu
 
 #%% IMPORT SPATIAL REFERENCE SYSTEMS
 

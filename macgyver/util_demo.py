@@ -11,8 +11,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 from matplotlib.patches import Rectangle
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.cbrunner import cbrun_util as cbu
 
 #%%
 

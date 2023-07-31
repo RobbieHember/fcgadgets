@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import copy
 import matplotlib.pyplot as plt
-from fcgadgets.macgyver import utilities_general as gu
+from fcgadgets.macgyver import util_general as gu
 
 # Graphics parameters
 gp=gu.SetGraphics('Manuscript')

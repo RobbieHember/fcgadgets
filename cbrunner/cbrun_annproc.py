@@ -2,8 +2,8 @@
 #%% Import python modules
 
 import numpy as np
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.cbrunner import cbrun_util as cbu
 from fcgadgets.hardhat import nutrient_application as napp
 from fcgadgets.taz import aspatial_stat_models as asm
 import warnings
@@ -1154,10 +1154,17 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     # Update total (live+dead) stemwood merchantable volume
     vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
 
-    #t0=time.time()
     # Predict stand breakup (on the fly)
-    if meta[pNam]['Scenario'][iScn]['Breakup Status']=='On':
+    if (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') & (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
         vi=asm.PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+    elif (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') & (meta[pNam]['Scenario'][iScn]['Breakup Status Future']!='On'):
+        if (vi['tv'][iT]<meta[pNam]['Project']['Year Project']):
+            vi=asm.PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+    elif (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']!='On') & (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
+        if (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
+            vi=asm.PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+    else:
+        pass
 
     # Predict historical harvesting (on the fly)
     if meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On':
@@ -1179,9 +1186,6 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
 
-    #t1=time.time()
-    #meta[pNam]['Project']['Run Time Summary']['Test3']=meta[pNam]['Project']['Run Time Summary']['Test3']+t1-t0
-
     # Check to see how many events occur in this time step (don't do more than necessary)
     NumEventsInTimeStep=np.sum(np.sum(vi['EC']['ID Event Type'][iT,:,:]>0,axis=0)>0)
 
@@ -1198,16 +1202,13 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         MortalityFactor=vi['EC']['Mortality Factor'][iT,:,iE].copy()
 
         # Record stands with aerial nutrient application
-        #t0=time.time()
-        iApp=np.where( (ID_Type==meta['LUT']['Event']['Fertilization Aerial']) | (ID_Type==meta['LUT']['Event']['Fertilization Hand']) )[0]
+        iApp=np.where( (ID_Type==meta['LUT']['Event']['Fertilization Aerial']) )[0]
         flag_nutrient_application[iApp]=1
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test9']=meta[pNam]['Project']['Run Time Summary']['Test9']+t1-t0
 
         #----------------------------------------------------------------------
         # Get event-specific parameters
         #----------------------------------------------------------------------
-        #t0=time.time()
+
         u,idx,inver=np.unique(ID_Type,return_index=True,return_inverse=True)
         b={}
         for k in meta['Param']['BEV']['Event'][1].keys():
@@ -1217,14 +1218,12 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
                     continue
                 bU[iU]=meta['Param']['BEV']['Event'][u[iU]][k]
             b[k]=bU[inver]
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test1']=meta[pNam]['Project']['Run Time Summary']['Test1']+t1-t0
 
         #----------------------------------------------------------------------
         # Adjust event-specific parameters to reflect time- and region-specific
-        # fate of felled material and fate of removed fibre
+        # fate of felled material
         #----------------------------------------------------------------------
-        #t0=time.time()
+
         # Index to harvesting
         iHarvest=np.where( (ID_Type==meta['LUT']['Event']['Harvest']) | (ID_Type==meta['LUT']['Event']['Harvest Salvage']) )[0]
 
@@ -1241,63 +1240,60 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
             for k in meta['Param']['BEV']['Felled Fate'].keys():
                 b[k][iHarvest]=meta['Param']['BEV']['Felled Fate'][k][iT_P,iHarvest]
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test2']=meta[pNam]['Project']['Run Time Summary']['Test2']+t1-t0
 
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
         #----------------------------------------------------------------------
 
         # Fractions
-        FracBiomassMerchAffected=b['BiomassMerch_Affected']*MortalityFactor
-        FracBiomassNonMerchAffected=b['BiomassNonMerch_Affected']*MortalityFactor
-        FracSnagsAffected=b['Snags_Affected']*MortalityFactor
+        #FracBiomassMerchAffected=b['BiomassMerch_Affected']*MortalityFactor
+        #FracBiomassNonMerchAffected=b['BiomassNonMerch_Affected']*MortalityFactor
+        #FracSnagsAffected=b['Snags_Affected']*MortalityFactor
 
         # Affected biomass carbon
         if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
-            Affected_StemMerch=vo['C_M_Tot'][iT,:,iEP['StemMerch']]
-            Affected_StemNonMerch=vo['C_M_Tot'][iT,:,iEP['StemNonMerch']]
+            Affected_StemwoodMerch=vo['C_M_Tot'][iT,:,iEP['StemMerch']]
+            Affected_StemwoodNonMerch=vo['C_M_Tot'][iT,:,iEP['StemNonMerch']]
             Affected_Foliage=vo['C_M_Tot'][iT,:,iEP['Foliage']]
             Affected_Branch=vo['C_M_Tot'][iT,:,iEP['Branch']]
             Affected_Bark=vo['C_M_Tot'][iT,:,iEP['Bark']]
             Affected_RootCoarse=vo['C_M_Tot'][iT,:,iEP['RootCoarse']]
             Affected_RootFine=vo['C_M_Tot'][iT,:,iEP['RootFine']]
         else:
-            Affected_StemMerch=FracBiomassMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]
-            Affected_StemNonMerch=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]
-            Affected_Foliage=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['Foliage']]
-            Affected_Branch=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['Branch']]
-            Affected_Bark=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['Bark']]
-            Affected_RootCoarse=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]
-            Affected_RootFine=FracBiomassNonMerchAffected*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
+            Affected_StemwoodMerch=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]
+            Affected_StemwoodNonMerch=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]
+            Affected_Foliage=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['Foliage']]
+            Affected_Branch=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['Branch']]
+            Affected_Bark=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['Bark']]
+            Affected_RootCoarse=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]
+            Affected_RootFine=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['RootFine']]
 
         # Partition bark into merch and non-merch components
         Affected_BarkMerch=0.85*Affected_Bark
         Affected_BarkNonMerch=(1.00-0.85)*Affected_Bark
 
         # Sum up total affected non-merchantable biomass
-        Affected_TotNonMerch=Affected_StemNonMerch+Affected_Branch+Affected_BarkNonMerch
+        Affected_TotNonMerch=Affected_StemwoodNonMerch+Affected_Branch+Affected_BarkNonMerch
 
         # Snags
-        Affected_SnagStem=FracSnagsAffected*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
-        Affected_SnagBranch=FracSnagsAffected*vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]
+        Affected_SnagStem=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]
+        Affected_SnagBranch=MortalityFactor*vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]
 
-        # All carbon
-        Affected_All=Affected_StemMerch+Affected_StemNonMerch+Affected_Foliage+Affected_Branch+Affected_Bark+Affected_RootCoarse+Affected_RootFine
+        # All biomass
+        Affected_BiomassTotal=Affected_StemwoodMerch+Affected_StemwoodNonMerch+Affected_Foliage+Affected_Branch+Affected_Bark+Affected_RootCoarse+Affected_RootFine
 
         # Live merch. stemwood volume
-        Affected_VolumeStemMerchLive=FracBiomassMerchAffected*vo['V_MerchLive'][iT,:]
+        Affected_VolumeStemMerchLive=MortalityFactor*vo['V_MerchLive'][iT,:]
 
         # Dead merch. stemwood volume
-        Affected_VolumeStemMerchDead=FracSnagsAffected*vo['V_MerchDead'][iT,:]
+        Affected_VolumeStemMerchDead=MortalityFactor*vo['V_MerchDead'][iT,:]
 
         #----------------------------------------------------------------------
         # Calculate mortality
         #----------------------------------------------------------------------
-        #t0=time.time()
 
         # Total mortality
-        vo['C_M_Dist'][iT,:]=vo['C_M_Dist'][iT,:]+Affected_All
+        vo['C_M_Dist'][iT,:]=vo['C_M_Dist'][iT,:]+Affected_BiomassTotal
 
         # Mortality by category (lumping stands together)
         uType=np.unique(ID_Type)
@@ -1306,19 +1302,17 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
                 continue
             ind=np.where(ID_Type==uType[iType])[0]
             Type=cbu.lut_n2s(meta['LUT']['Event'],uType[iType])[0]
-            vo['C_M_ByAgent'][Type][iT,ind]=vo['C_M_ByAgent'][Type][iT,ind]+Affected_All[ind]
-
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test4']=meta[pNam]['Project']['Run Time Summary']['Test4']+t1-t0
+            vo['C_M_ByAgent'][Type][iT,ind]=vo['C_M_ByAgent'][Type][iT,ind]+Affected_BiomassTotal[ind]
 
         #----------------------------------------------------------------------
         # Remove affected amount from each pool
         #----------------------------------------------------------------------
-        #t0=time.time()
+
         if meta[pNam]['Project']['Biomass Module']!='Sawtooth':
+
             # Remove carbon from affected biomass pools
-            vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]-Affected_StemMerch
-            vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]-Affected_StemNonMerch
+            vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['StemMerch']]-Affected_StemwoodMerch
+            vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['StemNonMerch']]-Affected_StemwoodNonMerch
             vo['C_Eco_Pools'][iT,:,iEP['Foliage']]=vo['C_Eco_Pools'][iT,:,iEP['Foliage']]-Affected_Foliage
             vo['C_Eco_Pools'][iT,:,iEP['Branch']]=vo['C_Eco_Pools'][iT,:,iEP['Branch']]-Affected_Branch
             vo['C_Eco_Pools'][iT,:,iEP['Bark']]=vo['C_Eco_Pools'][iT,:,iEP['Bark']]-Affected_Bark
@@ -1348,31 +1342,27 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         #----------------------------------------------------------------------
 
         # Merch biomass to mill - of the total amount of biomass affected,
-        # Add bark
-        Biomass_Merch_Removed=b['BiomassMerch_Removed']*(Affected_StemMerch+Affected_BarkMerch)
-        vo['C_ToMillMerch'][iT,:]=vo['C_ToMillMerch'][iT,:]+Biomass_Merch_Removed
+        vo['C_ToMillMerch'][iT,:]=vo['C_ToMillMerch'][iT,:]+b['StemwoodMerchRemoved']*Affected_StemwoodMerch
+        vo['C_ToMillMerch'][iT,:]=vo['C_ToMillMerch'][iT,:]+b['BarkRemoved']*Affected_Bark
 
         # NonMerch biomass to mill - of the total amount of biomass affected,
         # what fraction of non-merch biomass was sent to the mill?
         # - NonMerch = NonMerchStem + Foliage + Branch + Bark
-        Biomass_NonMerch_Removed=b['BiomassNonMerch_Removed']*Affected_TotNonMerch
-        vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+Biomass_NonMerch_Removed
+        vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+b['StemwoodNonMerchRemoved']*Affected_TotNonMerch
 
         # Snag stemwood to mill
-        SnagStem_Removed=b['Snags_Removed']*Affected_SnagStem
-        vo['C_ToMillSnagStem'][iT,:]=vo['C_ToMillSnagStem'][iT,:]+SnagStem_Removed
+        vo['C_ToMillSnagStem'][iT,:]=vo['C_ToMillSnagStem'][iT,:]+b['SnagStemRemoved']*Affected_SnagStem
 
         # Snag branches to mill
-        SnagBranch_Removed=b['Snags_Removed']*Affected_SnagBranch
-        vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+SnagBranch_Removed
+        vo['C_ToMillNonMerch'][iT,:]=vo['C_ToMillNonMerch'][iT,:]+b['SnagBranchRemoved']*Affected_SnagBranch
 
         #----------------------------------------------------------------------
         # Volume that is removed (sent to mills)
         #----------------------------------------------------------------------
 
         if meta[pNam]['Project']['Biomass Module']!='Sawtooth':
-            vo['V_ToMillMerchLive'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+b['BiomassMerch_Removed']*Affected_VolumeStemMerchLive
-            vo['V_ToMillMerchDead'][iT,:]=vo['V_ToMillMerchDead'][iT,:]+b['Snags_Removed']*Affected_VolumeStemMerchDead
+            vo['V_ToMillMerchLive'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+b['StemwoodMerchRemoved']*Affected_VolumeStemMerchLive
+            vo['V_ToMillMerchDead'][iT,:]=vo['V_ToMillMerchDead'][iT,:]+b['SnagStemRemoved']*Affected_VolumeStemMerchDead
         else:
             vo['V_ToMillMerchLive'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillMerch'][iT,:]
             vo['V_ToMillMerchDead'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillSnagStem'][iT,:]
@@ -1388,21 +1378,21 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         #----------------------------------------------------------------------
 
         # Foliage transferred directly to very fast litter
-        vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]+Affected_Foliage
+        vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]+b['FoliageLeftOnSite']*Affected_Foliage
 
         # Stem, branch and bark carbon transfered to medium and fast litter pools
-        vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+b['BiomassMerch_LeftOnSite']*Affected_StemMerch
-        vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+b['BiomassNonMerch_LeftOnSite']*Affected_StemNonMerch
-        vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+b['BiomassMerch_LeftOnSite']*Affected_Branch
-        vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+b['BiomassMerch_LeftOnSite']*Affected_Bark
+        vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+b['BranchLeftOnSite']*Affected_Branch
+        vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+b['BarkLeftOnSite']*Affected_Bark
+        vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+b['SnagBranchLeftOnSite']*Affected_SnagBranch
 
-        vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+b['Snags_LeftOnSite']*Affected_SnagStem
-        vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+b['Snags_LeftOnSite']*Affected_SnagBranch
+        vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+b['StemwoodMerchLeftOnSite']*Affected_StemwoodMerch
+        vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+b['StemwoodNonMerchLeftOnSite']*Affected_StemwoodNonMerch
+        vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]+b['SnagStemLeftOnSite']*Affected_SnagStem
 
         # Roots transferred directly to DOM
+        vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]+0.5*Affected_RootFine
         vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]+0.5*Affected_RootCoarse
         vo['C_Eco_Pools'][iT,:,iEP['SoilF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilF']]+0.5*Affected_RootCoarse
-        vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]+0.5*Affected_RootFine
         vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]+0.5*Affected_RootFine
 
         #----------------------------------------------------------------------
@@ -1410,24 +1400,25 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         # (a small fraction of piled wood is collected for firewood)
         #----------------------------------------------------------------------
 
-        PiledStemMerch=b['BiomassMerch_Piled']*Affected_StemMerch
-        PiledSnagStem=b['Snags_Piled']*Affected_SnagStem
+        PiledStemMerch=(1.0-meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom'])*b['StemwoodMerchPiled']*Affected_StemwoodMerch
+        PiledSnagStem=(1.0-meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom'])*b['SnagStemPiled']*Affected_SnagStem
 
-        vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]+(1.0-meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom'])*PiledStemMerch
-        vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]+b['BiomassNonMerch_Piled']*Affected_StemNonMerch
-        vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]+b['BiomassNonMerch_Piled']*Affected_Branch
-        vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]+b['BiomassNonMerch_Piled']*Affected_Bark
-        vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]+(1.0-meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom'])*PiledSnagStem
-        vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]+b['Snags_Piled']*Affected_SnagBranch
+        vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]+PiledStemMerch
+        vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]+b['StemwoodNonMerchPiled']*Affected_StemwoodNonMerch
+        vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]+b['BranchPiled']*Affected_Branch
+        vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]=vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]+b['BarkPiled']*Affected_Bark
+        #vo['C_Eco_Pools'][iT,:,iEP['PiledFoliage']]=vo['C_Eco_Pools'][iT,:,iEP['PiledFoliage']]+b['FoliagePiled']*Affected_Foliage
+        vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]+PiledSnagStem
+        vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]+b['SnagBranchPiled']*Affected_SnagBranch
         vo['C_ToFirewoodDom'][iT,:]=vo['C_ToFirewoodDom'][iT,:]+meta['Param']['BEV']['HWP']['PiledStemwoodToFirewoodDom']*(PiledStemMerch+PiledSnagStem)
 
         # Affected carbon
-        StemMerch=b['PiledStemMerch_Burned']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]
-        StemNonMerch=b['PiledStemNonMerch_Burned']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]
-        Branch=b['PiledBranch_Burned']*vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]
-        Bark=b['PiledBark_Burned']*vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]
-        SnagStem=b['PiledSnagStem_Burned']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]
-        SnagBranch=b['PiledSnagBranch_Burned']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]
+        StemMerch=b['PiledStemMerchBurned']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemMerch']]
+        StemNonMerch=b['PiledStemNonMerchBurned']*vo['C_Eco_Pools'][iT,:,iEP['PiledStemNonMerch']]
+        Branch=b['PiledBranchBurned']*vo['C_Eco_Pools'][iT,:,iEP['PiledBranch']]
+        Bark=b['PiledBarkBurned']*vo['C_Eco_Pools'][iT,:,iEP['PiledBark']]
+        SnagStem=b['PiledSnagStemBurned']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagStem']]
+        SnagBranch=b['PiledSnagBranchBurned']*vo['C_Eco_Pools'][iT,:,iEP['PiledSnagBranch']]
         Total_Burned=StemMerch+StemNonMerch+Branch+Bark+SnagStem+SnagBranch
         NonMerch_Burned=StemNonMerch+Branch+Bark+SnagBranch
 
@@ -1444,7 +1435,7 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         vo['C_E_OpenBurningAsCH4'][iT,:]=vo['C_E_OpenBurningAsCH4'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CH4']*Total_Burned
         vo['C_E_OpenBurningAsCO'][iT,:]=vo['C_E_OpenBurningAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
 
-        # If it is slashpile burning, track it accordingly
+        # If it is slashpile burning, record it
         vo['C_ToSlashpileBurnTot'][iT,:]=vo['C_ToSlashpileBurnTot'][iT,:]+Total_Burned
         vo['C_ToSlashpileBurnNonMerch'][iT,:]=vo['C_ToSlashpileBurnNonMerch'][iT,:]+NonMerch_Burned
 
@@ -1452,30 +1443,56 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         # Carbon that is moved from biomass to snags
         #----------------------------------------------------------------------
 
-        # Merch biomass that is killed by wildfire
-        vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]+b['BiomassMerch_ToSnag']*(Affected_StemMerch+Affected_BarkMerch)
+        # Stem biomass to snag stem
+        vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]+b['StemwoodMerchToSnagStem']*Affected_StemwoodMerch
+        vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]+b['StemwoodNonMerchToSnagStem']*Affected_StemwoodNonMerch
+        vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]=vo['C_Eco_Pools'][iT,:,iEP['SnagStem']]+b['BarkToSnagStem']*Affected_Bark
 
-        # Non-merch biomass that is killed by wildfire
-        vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]+b['BiomassNonMerch_ToSnag']*(Affected_StemNonMerch+Affected_BarkNonMerch)
+        # Branch biomass to snag branch
+        vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]+b['BranchToSnagBranch']*Affected_Bark
 
         #----------------------------------------------------------------------
         # Biomass and DOM burned in wildfire
         #----------------------------------------------------------------------
 
-        Biomass_Merch_Burned=b['BiomassMerch_Burned']*(Affected_StemMerch+Affected_BarkMerch)
-        Biomass_NonMerch_Burned=b['BiomassNonMerch_Burned']*Affected_TotNonMerch
-        SnagStem_Burned=b['Snags_Burned']*Affected_SnagStem
-        SnagBranch_Burned=b['Snags_Burned']*Affected_SnagBranch
-        Total_Burned=Biomass_Merch_Burned+Biomass_NonMerch_Burned+SnagStem_Burned+SnagBranch_Burned
+        BurnedStemwoodMerch=b['StemwoodMerchBurned']*Affected_StemwoodMerch
+        BurnedStemwoodNonMerch=b['StemwoodNonMerchBurned']*Affected_StemwoodNonMerch
+        BurnedBark=b['BarkBurned']*Affected_Bark
+        BurnedBranch=b['BranchBurned']*Affected_Branch
+        BurnedFoliage=b['FoliageBurned']*Affected_Foliage
+        BurnedSnagStem=b['SnagStemBurned']*Affected_SnagStem
+        BurnedSnagBranch=b['SnagBranchBurned']*Affected_SnagBranch
 
-        vo['C_E_WildfireAsCO2'][iT,:]=vo['C_E_WildfireAsCO2'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO2']*Total_Burned
-        vo['C_E_WildfireAsCH4'][iT,:]=vo['C_E_WildfireAsCH4'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CH4']*Total_Burned
-        vo['C_E_WildfireAsCO'][iT,:]=vo['C_E_WildfireAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
+        BurnedLitterVF=MortalityFactor*b['LitterVFBurned']*vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]
+        BurnedLitterF=MortalityFactor*b['LitterFBurned']*vo['C_Eco_Pools'][iT,:,iEP['LitterF']]
+        BurnedLitterM=MortalityFactor*b['LitterMBurned']*vo['C_Eco_Pools'][iT,:,iEP['LitterM']]
+        BurnedLitterS=MortalityFactor*b['LitterSBurned']*vo['C_Eco_Pools'][iT,:,iEP['LitterS']]
+        BurnedSoilVF=MortalityFactor*b['SoilVFBurned']*vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]
+        BurnedSoilF=MortalityFactor*b['SoilFBurned']*vo['C_Eco_Pools'][iT,:,iEP['SoilF']]
+        BurnedSoilS=MortalityFactor*b['SoilSBurned']*vo['C_Eco_Pools'][iT,:,iEP['SoilS']]
+
+        vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterVF']]-BurnedLitterVF
+        vo['C_Eco_Pools'][iT,:,iEP['LitterF']]=vo['C_Eco_Pools'][iT,:,iEP['LitterF']]-BurnedLitterF
+        vo['C_Eco_Pools'][iT,:,iEP['LitterM']]=vo['C_Eco_Pools'][iT,:,iEP['LitterM']]-BurnedLitterM
+        vo['C_Eco_Pools'][iT,:,iEP['LitterS']]=vo['C_Eco_Pools'][iT,:,iEP['LitterS']]-BurnedLitterS
+        vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilVF']]-BurnedSoilVF
+        vo['C_Eco_Pools'][iT,:,iEP['SoilF']]=vo['C_Eco_Pools'][iT,:,iEP['SoilF']]-BurnedSoilF
+        vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]-BurnedSoilS
+
+        BurnedBiomass=BurnedStemwoodMerch+BurnedStemwoodNonMerch+BurnedBark+BurnedBranch+BurnedFoliage
+        BurnedDeadWood=BurnedSnagStem+BurnedSnagBranch
+        BurnedLitter=BurnedLitterVF+BurnedLitterF+BurnedLitterM+BurnedLitterS
+        BurnedSoil=BurnedSoilVF+BurnedSoilF+BurnedSoilS
+        BurnedTotal=BurnedBiomass+BurnedDeadWood+BurnedLitter+BurnedSoil
+
+        vo['C_E_WildfireAsCO2'][iT,:]=vo['C_E_WildfireAsCO2'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO2']*BurnedTotal
+        vo['C_E_WildfireAsCH4'][iT,:]=vo['C_E_WildfireAsCH4'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CH4']*BurnedTotal
+        vo['C_E_WildfireAsCO'][iT,:]=vo['C_E_WildfireAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*BurnedTotal
 
         #----------------------------------------------------------------------
         # Update stand age
         #----------------------------------------------------------------------
-        #t0=time.time()
+
         if (meta[pNam]['Project']['Biomass Module']!='Sawtooth') & (meta[pNam]['Project']['Partial Mortality Affects Age']=='On'):
 
             # List of exception event types (that will remain at the same age)
@@ -1494,8 +1511,6 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
         # Ensure planting resets to age 0
         vo['A'][iT,(ID_Type==meta['LUT']['Event']['Planting']) | (ID_Type==meta['LUT']['Event']['Direct Seeding'])]=0
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test7']=meta[pNam]['Project']['Run Time Summary']['Test7']+t1-t0
 
         #----------------------------------------------------------------------
         # Transition to new growth curve
@@ -1505,7 +1520,6 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         #flg_gc_change=0
         #if vi['EH'][iS]['ID_GrowthCurveM'][indDist[iDist]]!=vi['ID_GCA'][iS]:
         #    flg_gc_change=1
-        #t0=time.time()
 
         # Only applies to BatchTIPSY
         if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
@@ -1513,16 +1527,13 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
             for iGC in range(meta['Modules']['GYM']['N Growth Curves']):
 
                 # Don't alter growth curve for fertilization - index to non-fertilization events
-                ind=np.where( (vi['EC']['ID Growth Curve'][iT,:,iE]==meta['Modules']['GYM']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Event']['Fertilization Aerial']) | \
-                              (vi['EC']['ID Growth Curve'][iT,:,iE]==meta['Modules']['GYM']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Event']['Fertilization Hand']) )[0]
+                ind=np.where( (vi['EC']['ID Growth Curve'][iT,:,iE]==meta['Modules']['GYM']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Event']['Fertilization Aerial']) )[0]
 
                 if ind.size>0:
                     # Notes: This crashes often when the GY model has been accidently run with the wrong project info
                     # - because the project path in BatchTipsy is wrong.
                     vi['GC']['Active'][:,ind,:]=vi['GC'][ meta['Modules']['GYM']['ID GC Unique'][iGC] ][:,ind,:].astype(float)*meta['Modules']['GYM']['Scale Factor']
                     vi['GC']['ID_GCA'][ind]=int(meta['Modules']['GYM']['ID GC Unique'][iGC])
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test5']=meta[pNam]['Project']['Run Time Summary']['Test5']+t1-t0
 
         #----------------------------------------------------------------------
         # Impose regen failure
@@ -1603,13 +1614,12 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         # 10 = 10% increase, -10 = 10% decrease
         #----------------------------------------------------------------------
 
-        #t0=time.time()
         flg=1
         if (flg==1) & (meta[pNam]['Project']['Biomass Module']!='Sawtooth'):
 
             GrowthFactor=vi['EC']['Growth Factor'][iT,:,iE].copy()
 
-            indAdj=np.where( (GrowthFactor!=-999) & (GrowthFactor!=0) )[0]
+            indAdj=np.where( (GrowthFactor!=9999) & (GrowthFactor!=0) )[0]
 
             if (indAdj.size>0):
 
@@ -1638,9 +1648,6 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
                         NetGrowth[:,iAdj,:]=GrowthResponseRatio[iAdj]*NetGrowth[:,iAdj,:]
 
                 vi['GC']['Active']=NetGrowth
-
-        #t1=time.time()
-        #meta[pNam]['Project']['Run Time Summary']['Test6']=meta[pNam]['Project']['Run Time Summary']['Test6']+t1-t0
 
     #--------------------------------------------------------------------------
     # Relative gravimetric mortality (%)

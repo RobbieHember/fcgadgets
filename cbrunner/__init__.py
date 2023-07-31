@@ -1,2 +1,2 @@
 name="cbrunner"
-__all__=["cbrun","cbrun_annproc","cbrun_utilities"]
+__all__=["cbrun","cbrun_annproc","cbrun_util"]

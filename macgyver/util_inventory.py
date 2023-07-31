@@ -14,9 +14,9 @@ import copy
 import gc as garc
 import matplotlib.pyplot as plt
 import scipy.io as spio
-from fcgadgets.macgyver import utilities_gis as gis
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.macgyver import util_gis as gis
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.cbrunner import cbrun_util as cbu
 from fcgadgets.taz import aspatial_stat_models as asm
 
 #%% Import variables
@@ -83,15 +83,15 @@ def Process1_ImportVariables(meta,pNam):
         # Use custom species
         z=gis.OpenGeoTiff(meta[pNam]['Project']['Custom Species Source'])
         inv['Spc1_ID']=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-        inv['Spc2_ID']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
-        inv['Spc3_ID']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
-        inv['Spc4_ID']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
-        inv['Spc5_ID']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc2_ID']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc3_ID']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc4_ID']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc5_ID']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
         inv['Spc1_P']=100*np.ones(inv['Spc1_ID'].size,dtype='int16')
-        inv['Spc2_P']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
-        inv['Spc3_P']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
-        inv['Spc4_P']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
-        inv['Spc5_P']=-999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc2_P']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc3_P']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc4_P']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
+        inv['Spc5_P']=9999*np.ones(inv['Spc1_ID'].size,dtype='int16')
     else:
         # Use species from VRI
         for s in range(5):
@@ -108,16 +108,13 @@ def Process1_ImportVariables(meta,pNam):
         for s in range(5):
             ss=str(s+1)
             ind=np.where( (inv['Spc' + ss + '_ID']==0) )[0]
-            inv['Spc' + ss + '_ID'][ind]=-999
-            inv['Spc' + ss + '_P'][ind]=-999
+            inv['Spc' + ss + '_ID'][ind]=9999
+            inv['Spc' + ss + '_P'][ind]=9999
 
-    #inv['LAND_COVER_CLASS_CD_1']=-999*np.ones(meta[pNam]['Project']['N Stand'],dtype='int16')
+    #inv['LAND_COVER_CLASS_CD_1']=9999*np.ones(meta[pNam]['Project']['N Stand'],dtype='int16')
 
     z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\HarvestProbability.tif')
-    inv['P Harvest Weight']=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-
-    P_Harvest_Max=0.486 # (%/yr)
-    inv['P Harvest Weight']=inv['P Harvest Weight']/P_Harvest_Max
+    inv['Prob Harvest (%/yr) x 1000']=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
 
     z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\REARs_CompPlusProp.tif')
     inv['THLB Layer']=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
@@ -125,17 +122,20 @@ def Process1_ImportVariables(meta,pNam):
     z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_Current.tif')
     inv['Tree Density Class']=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
 
-    inv['OAF1']=(100*meta['Modules']['GYM']['OAF1 Default'])*np.ones(meta[pNam]['Project']['N Stand'],dtype='int16')
-    u=np.unique(inv['Tree Density Class'])
-    for iU in range(u.size):
-        ind0=np.where(inv['Tree Density Class']==u[iU])[0]
-        ind1=np.where(meta['Param']['BE']['Tree Density Class Averages']['Name']==cbu.lut_n2s(meta['LUT']['Derived']['tdc'],u[iU])[0])[0]
-        inv['OAF1'][ind0]=100*meta['Param']['BE']['Tree Density Class Averages']['OAF1'][ind1[0]]
+    if 'Custom OAF1' in meta[pNam]['Project']:
+        inv['OAF1']=(100*meta[pNam]['Project']['Custom OAF1'])*np.ones(meta[pNam]['Project']['N Stand'],dtype='int16')
+    else:
+        inv['OAF1']=(100*meta['Modules']['GYM']['OAF1 Default'])*np.ones(meta[pNam]['Project']['N Stand'],dtype='int16')
+        u=np.unique(inv['Tree Density Class'])
+        for iU in range(u.size):
+            ind0=np.where(inv['Tree Density Class']==u[iU])[0]
+            ind1=np.where(meta['Param']['BE']['Tree Density Class Averages']['Name']==cbu.lut_n2s(meta['LUT']['Derived']['tdc'],u[iU])[0])[0]
+            inv['OAF1'][ind0]=100*meta['Param']['BE']['Tree Density Class Averages']['OAF1'][ind1[0]]
 
-    z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\Harvest_Consol1_Year.tif')
-    z=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-    ind=np.where(z>0)
-    inv['OAF1'][ind]=100
+        z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\Harvest_Consol1_Year.tif')
+        z=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        ind=np.where(z>0)
+        inv['OAF1'][ind]=100
 
     inv['Wood Density']=meta['Param']['BE']['Biophysical']['Density Wood']*np.ones(meta[pNam]['Project']['N Stand'],dtype='int16')
     u=np.unique(inv['Spc1_ID'])
@@ -160,22 +160,24 @@ def Process1_ImportVariables(meta,pNam):
     cnt_e=np.zeros(meta[pNam]['Project']['N Stand'],'int16')
 
     # Initialize each stand with 100 events
-    N_init=50
+    N_Events_Init=50
 
     for iStand in range(meta[pNam]['Project']['N Stand']):
         dmec0[iStand]={}
-        dmec0[iStand]['Year']=-999*np.ones(N_init,dtype='float')
-        dmec0[iStand]['Month']=-999*np.ones(N_init,dtype='int16')
-        dmec0[iStand]['Day']=-999*np.ones(N_init,dtype='int16')
-        dmec0[iStand]['ID Event Type']=-999*np.ones(N_init,dtype='int16')
-        dmec0[iStand]['Mortality Factor']=-999*np.ones(N_init,dtype='int16')
-        dmec0[iStand]['Growth Factor']=-999*np.ones(N_init,dtype='int16')
-        dmec0[iStand]['SILV_FUND_SOURCE_CODE']=-999*np.ones(N_init,dtype='int16')
-        dmec0[iStand]['Planted SPH']=-999*np.ones(N_init,dtype='int16')
+        dmec0[iStand]['Year']=9999*np.ones(N_Events_Init,dtype='float')
+        dmec0[iStand]['Month']=9999*np.ones(N_Events_Init,dtype='int16')
+        dmec0[iStand]['Day']=9999*np.ones(N_Events_Init,dtype='int16')
+        dmec0[iStand]['ID Event Type']=9999*np.ones(N_Events_Init,dtype='int16')
+        dmec0[iStand]['Mortality Factor']=9999*np.ones(N_Events_Init,dtype='int16')
+        dmec0[iStand]['Growth Factor']=9999*np.ones(N_Events_Init,dtype='int16')
+        dmec0[iStand]['SILV_FUND_SOURCE_CODE']=9999*np.ones(N_Events_Init,dtype='int16')
+        dmec0[iStand]['Planted SPH']=9999*np.ones(N_Events_Init,dtype='int16')
         for iSpc in range(6):
-            dmec0[iStand]['PL_SPECIES_CD' + str(iSpc+1)]=-999*np.ones(N_init,dtype='int16')
-            dmec0[iStand]['PL_SPECIES_PCT' + str(iSpc+1)]=-999*np.ones(N_init,dtype='int16')
-            dmec0[iStand]['PL_SPECIES_GW' + str(iSpc+1)]=-999*np.ones(N_init,dtype='int16')
+            dmec0[iStand]['PL_SPECIES_CD' + str(iSpc+1)]=9999*np.ones(N_Events_Init,dtype='int16')
+            dmec0[iStand]['PL_SPECIES_PCT' + str(iSpc+1)]=9999*np.ones(N_Events_Init,dtype='int16')
+            dmec0[iStand]['PL_SPECIES_GW' + str(iSpc+1)]=9999*np.ones(N_Events_Init,dtype='int16')
+        if meta[pNam]['Project']['Special Attribution Method']=='NOSE':
+            dmec0[iStand]['Index to Event Inciting NOSE']=9999*np.ones(N_Events_Init,dtype='int8')
 
     if meta[pNam]['Project']['DMEC Method']=='From Events':
 
@@ -185,71 +187,75 @@ def Process1_ImportVariables(meta,pNam):
 
         # Add wildfire observations
         for iY in range(6):
-            z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(iY+1) + '_Year.tif')
-            Year=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where(Year>0)[0]
+            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(iY+1) + '_Year.tif')
+            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            ind=np.where(zY>0)[0]
             for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=Year[iStand]
+                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Wildfire']
                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=58
                 cnt_e[iStand]=cnt_e[iStand]+1
 
-        # # Add IBM observations
-        # for iY in range(10):
-        #     zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Year.tif')
-        #     zS=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Severity.tif')
-        #     Year=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-        #     Sev=gis.UpdateGridCellsize(zS,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-        #     ind=np.where( (Year>0) & (Sev==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['S']) )[0]
-        #     for iStand in ind:
-        #         dmec0[iStand]['Year'][cnt_e[iStand]]=Year[iStand]
-        #         dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['IBM']
-        #         dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=65
-        #         cnt_e[iStand]=cnt_e[iStand]+1
+        # Add IBM observations
+        for iY in range(10):
+            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Year.tif')
+            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            zS=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Severity.tif')
+            zS=gis.UpdateGridCellsize(zS,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            ind=np.where( (zY>0) & (zS==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['S']) )[0]
+            for iStand in ind:
+                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['IBM']
+                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=65
+                cnt_e[iStand]=cnt_e[iStand]+1
 
         # Add harvest observations
         for iY in range(3):
-            z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_' + str(iY+1) + '_Year.tif')
-            Year=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where(Year>0)[0]
+            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_' + str(iY+1) + '_Year.tif')
+            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            ind=np.where(zY>0)[0]
             for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=Year[iStand]
+                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Harvest']
                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
                 cnt_e[iStand]=cnt_e[iStand]+1
 
                 # Pile burning
                 if np.random.random(1)<inv['Pile Burn Rate'][iStand].astype(float)/100:
-                    dmec0[iStand]['Year'][cnt_e[iStand]]=Year[iStand]+1
+                    dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]+1
                     dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Slashpile Burn']
                     dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
                     cnt_e[iStand]=cnt_e[iStand]+1
 
         # Add planting observations
-        for iY in range(3):
-            z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_FirstOnly_' + str(iY+1) + '_Year.tif')
-            Year=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_FirstOnly_' + str(iY+1) + '_SILV_FUND_SOURCE_CODE.tif')
-            FSC=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_FirstOnly_' + str(iY+1) + '_SPH_Planted.tif')
-            SPH_Planted=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        for iY in range(6):
+            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_Year.tif')
+            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SILV_FUND_SOURCE_CODE.tif')
+            zFSC=gis.UpdateGridCellsize(zFSC,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            zSPH=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SPH_Planted.tif')
+            zSPH=gis.UpdateGridCellsize(zSPH,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
             cd={}; pct={}; gw={}
             for iSpc in range(6):
-                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_FirstOnly_' + str(iY+1) + '_PL_SPECIES_CD' + str(iSpc+1) + '.tif')
+                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_CD' + str(iSpc+1) + '.tif')
                 cd[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_FirstOnly_' + str(iY+1) + '_PL_SPECIES_PCT' + str(iSpc+1) + '.tif')
+                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_PCT' + str(iSpc+1) + '.tif')
                 pct[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_FirstOnly_' + str(iY+1) + '_PL_SPECIES_GW' + str(iSpc+1) + '.tif')
+                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_GW' + str(iSpc+1) + '.tif')
                 gw[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
 
-            ind=np.where(Year>0)[0]
+                # Remove zeros
+                ind=np.where(cd[iSpc+1]==0)[0]
+                cd[iSpc+1][ind]=9999
+
+            ind=np.where(zY>0)[0]
             for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=Year[iStand]
+                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Planting']
                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
-                dmec0[iStand]['SILV_FUND_SOURCE_CODE'][cnt_e[iStand]]=FSC[iStand]
-                dmec0[iStand]['Planted SPH'][cnt_e[iStand]]=SPH_Planted[iStand]
-                for iS in range(6):
+                dmec0[iStand]['SILV_FUND_SOURCE_CODE'][cnt_e[iStand]]=zFSC[iStand]
+                dmec0[iStand]['Planted SPH'][cnt_e[iStand]]=zSPH[iStand]
+                for iSpc in range(6):
                     dmec0[iStand]['PL_SPECIES_CD' + str(iSpc+1)][cnt_e[iStand]]=cd[iSpc+1][iStand]
                     dmec0[iStand]['PL_SPECIES_PCT' + str(iSpc+1)][cnt_e[iStand]]=pct[iSpc+1][iStand]
                     dmec0[iStand]['PL_SPECIES_GW' + str(iSpc+1)][cnt_e[iStand]]=gw[iSpc+1][iStand]
@@ -257,12 +263,23 @@ def Process1_ImportVariables(meta,pNam):
 
         # Add aerial fertilization observations
         for iY in range(3):
-            z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_' + str(iY+1) + '_Year.tif')
-            Year=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where(Year>0)[0]
+            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_' + str(iY+1) + '_Year.tif')
+            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            ind=np.where(zY>0)[0]
             for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=Year[iStand]
+                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Fertilization Aerial']
+                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
+                cnt_e[iStand]=cnt_e[iStand]+1
+
+        # Add knockdown
+        for iY in range(3):
+            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP_KD_' + str(iY+1) + '_Year.tif')
+            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+            ind=np.where(zY>0)[0]
+            for iStand in ind:
+                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Knockdown']
                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
                 cnt_e[iStand]=cnt_e[iStand]+1
 
@@ -272,7 +289,6 @@ def Process1_ImportVariables(meta,pNam):
         # Carbon stocks in the project year are being constrained by observations
         # through input of specified age and productivity.
         #----------------------------------------------------------------------
-
         dType=meta['LUT']['Event']['Harvest']*np.ones(inv['Age'].size)
         dType[np.where(np.random.random(inv['Age'].size)<0.1)]=meta['LUT']['Event']['Wildfire']
 
@@ -280,71 +296,50 @@ def Process1_ImportVariables(meta,pNam):
             dmec0[iStand]['Year'][cnt_e[iStand]]=meta[pNam]['Project']['Year Project']-inv['Age'][iStand]
             dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=dType[iStand]
             dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
-            # if 'OAF1 Modified' in inv:
-            #     if inv['OAF1 Modified'][iStand]!=inv['OAF1 Default'][iStand]:
-            #         dmec0[iStand]['Growth Factor'][cnt_e[iStand]]=1
-            #         dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['LUC']
             cnt_e[iStand]=cnt_e[iStand]+1
-
-    # Remove excess size from each stand
-    for iStand in range(meta[pNam]['Project']['N Stand']):
-        ind=np.where(dmec0[iStand]['Year']!=-999)
-        for k in dmec0[iStand].keys():
-            dmec0[iStand][k]=dmec0[iStand][k][ind]
 
     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
 
     #--------------------------------------------------------------------------
     # Exclude duplicate events
     #--------------------------------------------------------------------------
-
-    if meta[pNam]['Project']['Exclude duplicate events']=='On':
-        print('Removing duplicate events from dmec0')
-        t0=time.time()
-        dmec0=Exclude_Duplicate_Events(meta,pNam,dmec0)
-        print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
+    # if meta[pNam]['Project']['Exclude duplicate events']=='On':
+    #     print('Removing duplicate events from dmec0')
+    #     t0=time.time()
+    #     dmec0=Exclude_Duplicate_Events(meta,pNam,dmec0)
+    #     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
     #--------------------------------------------------------------------------
     # Put events in order
     # *** Must be done before several other processing steps ***
     #--------------------------------------------------------------------------
-
     print('Putting events in order')
     t0=time.time()
     dmec0=PutEventsInOrder(meta,pNam,dmec0)
     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
     # Ensure that a stand-replacing disturbance precedes fertilization so that age
     #--------------------------------------------------------------------------
-
     # Assume previous disturbance must be missing. Assume fertilization occurs at age
     # 35. Assume previous disturbance was harvest.
     # *** Must be in order of calendar date first ***
     # *** This will not work if the previous harvest or fire had a severity < 100. ***
     # Only applies to cbrunner when fertilization is simulated from TIPSY
-
     if meta[pNam]['Project']['Ensure aerial fert is preceded by disturbance']=='On':
         print('Ensure stand-replacing disturbance precedes fertilization')
         t0=time.time()
         dmec0=Ensure_Fert_Preceded_By_Disturbance(meta,pNam,dmec0,inv)
-        dmec0=PutEventsInOrder(meta,pNam,dmec0)
         print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
     # Ensure knockdown events are followed by slashpile events
     # *** Not written. ***
     #--------------------------------------------------------------------------
-
     if meta[pNam]['Project']['Revise some knockdown to include slashpile burn']=='On':
         print('Add slashpile burns after knockdown')
         #dmec0=Revise_Knockdown_to_Include_Slashpile_Burning(meta,dmec0)
-
     #--------------------------------------------------------------------------
     # Ensure every stand has a modern disturbance
     # So that there is at least one event
     #--------------------------------------------------------------------------
-
     if meta[pNam]['Project']['Ensure every stand has a modern disturbance']=='On':
         name_dist='Wildfire'
         severity=100
@@ -352,64 +347,83 @@ def Process1_ImportVariables(meta,pNam):
         t0=time.time()
         dmec0=Ensure_Every_Stand_Has_Modern_Disturbance(meta,pNam,dmec0,name_dist,severity)
         print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
-    # Gap-fill stands with no event history based on VRI age
+    # Gap-fill stands with no event history based on age from inventory input
     # So that there is at least one event
     #--------------------------------------------------------------------------
-
     if meta[pNam]['Project']['Gap-fill DMEC with inventory age']=='On':
         print('Gap-fill DMEC with inventory age')
         t0=time.time()
         dmec0=GapFill_DMEC_WithAge(meta,pNam,dmec0,inv)
         print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
     # IDW - Western Spruce Budworm - Fix severity
-    #--------------------------------------------------------------------------
     # The dmec was populated with the numeric severity ID. Mortality only occurs
     # following repeated outrbreak years.
-
+    #--------------------------------------------------------------------------
     # if meta[pNam]['Project']['Fix severity of western spruce budworm']=='On':
     #     print('Adjust severity of IDW')
     #     t0=time.time()
     #     dmec0=IDW_Fix_Severity(meta,dmec0)
     #     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
     # Reduce number of growth curves by adjusting site index
     #--------------------------------------------------------------------------
-
     if meta[pNam]['Project']['Revise SI to reduce num of growth curves']=='On':
         print('Reducing the number of growth curves by lowering the precision of site index')
         t0=time.time()
-        #ba=ReduceVariationInSiteIndex(meta,ba)
+        inv=ReduceVariationInSiteIndex(meta,pNam,inv)
         print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
     # Clean species composition - TIPSY will not recognize certain codes
+    # Decomissioned - now cleaned upon import
     #--------------------------------------------------------------------------
-
     # print('Cleaning species composition')
     # t0=time.time()
     # #meta,dmec0,vri,fcinv=Clean_Species_Composition(meta,dmec0,vri,fcinv)
     # print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
-    # Define project type (salvage, knockdown, underplanting, NSR backlog)
+    # Put events in order
+    # *** Must be done before NOSE types are defined ***
     #--------------------------------------------------------------------------
-
-    # if meta[pNam]['Project']['Special Attribution Method']=='NOSE':
-    #     print('Defining types of stand establishment')
-    #     t0=time.time()
-    #     dmec0=DefineTypeOfStandEstablishment(meta,dmec0)
-    #     dmec0=PutEventsInOrder(meta,pNam,dmec0)
-    #     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
+    print('Putting events in order')
+    t0=time.time()
+    dmec0=PutEventsInOrder(meta,pNam,dmec0)
+    print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
+    #--------------------------------------------------------------------------
+    # Define type of non-obligation stand establishment
+    #--------------------------------------------------------------------------
+    if meta[pNam]['Project']['Special Attribution Method']=='NOSE':
+        print('Defining types of non-obligation stand establishment')
+        t0=time.time()
+        dmec0=Define_NOSE_ProjectType(meta,pNam,dmec0)
+        print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
+    #--------------------------------------------------------------------------
+    # Put events in order
+    # *** Must be done before NOSE types are defined ***
+    #--------------------------------------------------------------------------
+    print('Putting events in order')
+    t0=time.time()
+    dmec0=PutEventsInOrder(meta,pNam,dmec0)
+    print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
+    #--------------------------------------------------------------------------
+    # Remove excess size from each stand
+    #--------------------------------------------------------------------------
+    for iStand in range(meta[pNam]['Project']['N Stand']):
+        ind=np.where(dmec0[iStand]['Year']!=9999)
+        for k in dmec0[iStand].keys():
+            dmec0[iStand][k]=dmec0[iStand][k][ind]
+    #--------------------------------------------------------------------------
+    # Exclude unidentified activities or disturbances
+    #--------------------------------------------------------------------------
+    if meta[pNam]['Project']['Exclude unidentified events']=='On':
+        print('Removing unrecognized events from DMEC')
+        t0=time.time()
+        dmec0=Exclude_Unidentified_Events(meta,pNam,dmec0)
+        print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
     #--------------------------------------------------------------------------
     # Expand DMEC to each scenario
     #--------------------------------------------------------------------------
-
     print('Expanding DMEC for each scenario')
     t0=time.time()
     dmec=[]
@@ -417,11 +431,9 @@ def Process1_ImportVariables(meta,pNam):
         dmec.append(copy.deepcopy(dmec0))
     del dmec0
     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     #--------------------------------------------------------------------------
     # Import land surface classification
     #--------------------------------------------------------------------------
-
     print('Importing land surface classification')
     t0=time.time()
     if meta[pNam]['Project']['Land Surface Class Dependent']=='Yes':
@@ -438,10 +450,247 @@ def Process1_ImportVariables(meta,pNam):
         print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
     else:
         lsc={}
-
     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
-
     return meta,dmec,inv,lsc
+
+#%% Define type of stand establishment (salvage, knockdown, underplanting, NSR backlog)
+# *** Decomissioned ***
+# Create index to the inciting disturbance:
+# It is critical that the above steps (ensuring there is a previous
+# stand-replacing disturbance) work before this will work properly.
+
+# If it is a salvage logging project, change the inciting disturbance (harvest)
+# to be "Harvest Salvage" so that it removes a higher percentage of snags. I
+# checked that a combo of "Harvest Salvage" + "Slashpile Burn" is consistent with
+# the custom harvest (with slashpile burn) used in the salvage demo (March 2021).
+
+# The mortality corrections can be overridden by the adjustment of species-specific
+# mortality (Adjust species-specific mortality='Off' to avoid this)
+
+def Define_NOSE_ProjectType(meta,pNam,dmec0):
+
+    # Threshold search period for disturbances prior to stand establishment
+    LeadUpPeriod=20
+
+    # Initialize project type
+    meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype=int)
+
+    for iStand in range(meta[pNam]['Project']['N Stand']):
+        # Status
+        StatusNO=np.isin(dmec0[iStand]['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List ID'])
+
+        # Index to stand establishment events (exclude direct seeding)
+        iEstab=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatusNO==True) )[0]
+        if iEstab.size==0:
+            continue
+
+        # If multiple planting events, focus on...
+        iEstab=iEstab[0]
+
+        # Define a lead-up period
+        iLeadUp=np.where( (dmec0[iStand]['Year']>=dmec0[iStand]['Year'][iEstab]-LeadUpPeriod) & (dmec0[iStand]['Year']<=dmec0[iStand]['Year'][iEstab]) )[0]
+        Year_LeadUp=dmec0[iStand]['Year'][iLeadUp]
+        ID_LeadUp=dmec0[iStand]['ID Event Type'][iLeadUp]
+        Mort_LeadUp=dmec0[iStand]['Mortality Factor'][iLeadUp]
+
+        # Define open spaces if an event needs to be added
+        iOpen=np.where(dmec0[iStand]['Year']==9999)[0]
+        if iOpen.size>1:
+            iOpen=iOpen[0]
+
+        # Index to inciting event types in the lead up period
+        iH=np.where( (ID_LeadUp==meta['LUT']['Event']['Harvest']) |  (ID_LeadUp==meta['LUT']['Event']['Harvest Salvage']) )[0]
+        iH_All=iH.copy()
+
+        # There can be multiple harvests - try choosing the last one
+        if iH.size>1:
+            iH=iH[-1]
+
+        # Index to planting
+        #iPL=np.where(ID_LeadUp==meta['LUT']['Event']['Planting'])[0]
+
+        # Index to knockdown
+        iKD=np.where(ID_LeadUp==meta['LUT']['Event']['Knockdown'])[0]
+
+        # Index to wildfire
+        iWF=np.where(ID_LeadUp==meta['LUT']['Event']['Wildfire'])[0]
+
+        # Index to insects
+        iI=np.where( (ID_LeadUp==meta['LUT']['Event']['IBM']) | (ID_LeadUp==meta['LUT']['Event']['IBD']) | (ID_LeadUp==meta['LUT']['Event']['IBB']) | (ID_LeadUp==meta['LUT']['Event']['IBS']) )[0]
+
+        # Index to wildfire and insects
+        iWF_and_I=np.where( (ID_LeadUp==meta['LUT']['Event']['Wildfire']) | (ID_LeadUp==meta['LUT']['Event']['IBM']) | (ID_LeadUp==meta['LUT']['Event']['IBD']) | (ID_LeadUp==meta['LUT']['Event']['IBB']) | (ID_LeadUp==meta['LUT']['Event']['IBS']) )[0]
+
+        # Add a negative one so that it is never empty
+        iHa=np.append(-1,iH)
+        iKDa=np.append(-1,iKD)
+        iWFa=np.append(-1,iWF)
+        iIa=np.append(-1,iI)
+
+        if (iH.size>0) & (Year_LeadUp[iH]>=1987) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
+            #----------------------------------------------------------------------
+            # Salvage logging
+            #----------------------------------------------------------------------
+            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Salvage']
+            # Find the event that incited the funded stand establishment
+            # If the event has more than 75% mortality, use it. If it is less than
+            # 75%, assume disturbance databases have underestimated mortality and
+            # change mortality to 80%.
+            if (iWF.size>0) & (iI.size==0):
+                # Wildfire only
+                iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
+                if iMaxMort.size>1:
+                    iMaxMort=iMaxMort[0]
+                if Mort_LeadUp[iMaxMort]<75:
+                    # Unrealistically low, fix
+                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=80
+                try:
+                    dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
+                except:
+                    print(iEstab)
+                    print(iLeadUp)
+                    print(iWF)
+                    print(iMaxMort)
+                    print(iStand)
+                    break
+            elif (iWF.size==0) & (iI.size>0):
+                # Insects only
+                iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
+                if iMaxMort.size>1:
+                    iMaxMort=iMaxMort[0]
+                if Mort_LeadUp[iI[iMaxMort]]<75:
+                    # Unrealistically low, fix
+                    dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=80
+                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
+            elif (iWF_and_I.size>0):
+                # Wildfire and insects
+                iMaxMort=np.where(Mort_LeadUp[iWF_and_I]==np.max(Mort_LeadUp[iWF_and_I]))[0]
+                if iMaxMort.size>1:
+                    iMaxMort=iMaxMort[0]
+                if Mort_LeadUp[iWF_and_I[iMaxMort]]<75:
+                    # Unrealistically low, fix
+                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=80
+                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
+            elif (iWF.size==0) & (iI.size==0):
+                # Disturbance databases presumably misses the inciting event
+                # (eg fireguards), create an event five years before the harvest
+                ID_GapFill=meta['LUT']['Event']['Wildfire']
+                Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]-5
+                Mort_GapFill=85
+                dmec0[iStand]['Year'][iOpen]=Year_GapFill
+                dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
+                dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
+                iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
+                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iIncite
+            # Change harvest to salvage so that more dead trees are taken
+            dmec0[iStand]['ID Event Type'][iLeadUp[iH_All]]=meta['LUT']['Event']['Harvest Salvage']
+
+        elif (iH.size>0) & (Year_LeadUp[iH]<1987) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
+            #----------------------------------------------------------------------
+            # NSR backlog
+            # There is no inciting event - it is regen failure or poor effort that leads
+            # to the decision to plant by gov programs. Add dummy event just before the
+            # non-ob stand establishment event. Assume trace beetles
+            #----------------------------------------------------------------------
+            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
+            ID_GapFill=meta['LUT']['Event']['Regen Failure']
+            Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]+0.1
+            Mort_GapFill=100
+            dmec0[iStand]['Year'][iOpen]=Year_GapFill
+            dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
+            dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
+            iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
+            if iIncite.size>1:
+                iIncite=iIncite[0]
+            dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iIncite
+
+        elif (iKD.size>0) & (np.max(iKDa)>=np.max(iHa)) & (np.max(iKDa)>=np.max(iWFa)):
+            #----------------------------------------------------------------------
+            # Knockdown
+            #----------------------------------------------------------------------
+            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Knockdown']
+
+            # Find the event that incited the funded stand establishment
+            # If the event has more than 75% mortality, use it. If it is less than
+            # 75%, assume disturbance databases have underestimated mortality and
+            # change mortality to 90%.
+            if (iWF.size>0) & (iI.size==0):
+                # Wildfire only
+                iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
+                if iMaxMort.size>0:
+                    iMaxMort=iMaxMort[0]
+                if Mort_LeadUp[iWF[iMaxMort]]<75:
+                    # Unrealistically low, fix
+                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=90
+                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
+            elif (iWF.size==0) & (iI.size>0):
+                # Insects only
+                iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
+                if iMaxMort.size>0:
+                    iMaxMort=iMaxMort[0]
+                if Mort_LeadUp[iI[iMaxMort]]<75:
+                    dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=90
+                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
+            elif (iWF_and_I.size>0):
+                # Wildfire and insects
+                iMaxMort=np.where(Mort_LeadUp[iWF_and_I]==np.max(Mort_LeadUp[iWF_and_I]))[0]
+                if iMaxMort.size>0:
+                    iMaxMort=iMaxMort[0]
+                if Mort_LeadUp[iWF_and_I[iMaxMort]]<75:
+                    # Unrealistically low, fix
+                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=90
+                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
+
+        elif (iWF.size>0) & (np.max(iWFa)>=np.max(iHa)) & (np.max(iWFa)>=np.max(iKDa)):
+            #----------------------------------------------------------------------
+            # Straight planting (fire)
+            #----------------------------------------------------------------------
+            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight Fire']
+
+            # Find the event that incited the funded stand establishment
+            # If the event has more than 75% mortality, use it. If it is less than
+            # 90%, assume disturbance databases have underestimated mortality and
+            # change mortality to 100%.
+            iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
+            if iMaxMort.size>1:
+                iMaxMort=iMaxMort[0]
+            if Mort_LeadUp[iWF[iMaxMort]]<90:
+                # Unrealistically low, fix
+                dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=95
+            dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
+
+        elif (iI.size>0) & (np.max(iIa)>=np.max(iHa)) & (np.max(iIa)>=np.max(iKDa)) & (np.max(iIa)>=np.max(iWFa)):
+            #----------------------------------------------------------------------
+            # Straight planting (beetle)
+            #----------------------------------------------------------------------
+            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight Insect']
+
+            # Find the event that incited the funded stand establishment
+            # If the event has more than 75% mortality, use it. If it is less than
+            # 90%, assume disturbance databases have underestimated mortality and
+            # change mortality to 100%.
+            iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
+            if iMaxMort.size>1:
+                iMaxMort=iMaxMort[0]
+            if Mort_LeadUp[iI[iMaxMort]]<90:
+                # Unrealistically low, fix
+                dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=75
+            dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
+        else:
+            #print('Not working')
+            pass
+
+    return dmec0
+
+# Trouble shooting
+# u,N=gu.CountByCategories(meta[pNam]['Project']['RegTypeNO'])
+
+# for iStand in range(1000):
+#    print(np.min(dmec0[iStand]['Index to Event Inciting NOSE']))
+
+#for iStand in range(len(dmec0)):
+#    ind=np.where(dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Planting'])[0]
+#    print(dmec0[iStand]['PL_SPECIES_PCT1'][ind])
 
 #%% Process project inputs 2
 
@@ -470,30 +719,24 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
             elif meta[pNam]['Project']['Special Attribution Method']=='Actual':
 
                 meta[pNam]['Project']['Activities To Exclude From Baseline']=np.array([meta['LUT']['Event']['Direct Seeding'],
-                   meta['LUT']['Event']['Dwarf Mistletoe Control'],
                    meta['LUT']['Event']['Knockdown'],
-                   meta['LUT']['Event']['Ripping'],
-                   meta['LUT']['Event']['Disc Trenching'],
+                   meta['LUT']['Event']['Mechanical Site Prep'],
                    meta['LUT']['Event']['Harvest'],
                    meta['LUT']['Event']['Harvest Salvage'],
                    meta['LUT']['Event']['Thinning'],
-                   meta['LUT']['Event']['Aerial Spray'],
+                   meta['LUT']['Event']['Aerial BTK Spray'],
                    meta['LUT']['Event']['Planting'],
                    meta['LUT']['Event']['Fertilization Aerial'],
-                   meta['LUT']['Event']['Fertilization Hand'],
-                   meta['LUT']['Event']['Fertilization Teabag'],
                    meta['LUT']['Event']['Slashpile Burn'],
                    meta['LUT']['Event']['Prescribed Burn']])
 
                 for iT in range(dmec[iScn][iStand]['Year'].size):
-
                     if np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==False:
 
                         # All events impact
                         dmec[iScn][iStand]['Scenario Affected'][iT]=1
 
                     elif np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==True:
-
                         if np.isin(dmec[iScn][iStand]['ID Event Type'][iT],meta[pNam]['Project']['Activities To Exclude From Baseline'])==False:
 
                             # Events not in the list are added
@@ -505,50 +748,34 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
 
                 meta[pNam]['Project']['Activities To Exclude From Baseline']=np.array([
                    meta['LUT']['Event']['Direct Seeding'],
-                   meta['LUT']['Event']['Dwarf Mistletoe Control'],
                    meta['LUT']['Event']['Knockdown'],
-                   meta['LUT']['Event']['Ripping'],
-                   meta['LUT']['Event']['Disc Trenching'],
+                   meta['LUT']['Event']['Mechanical Site Prep'],
                    meta['LUT']['Event']['Harvest'],
                    meta['LUT']['Event']['Harvest Salvage'],
                    meta['LUT']['Event']['Thinning'],
-                   meta['LUT']['Event']['Aerial Spray'],
+                   meta['LUT']['Event']['Aerial BTK Spray'],
                    meta['LUT']['Event']['Planting'],
                    meta['LUT']['Event']['Fertilization Aerial'],
-                   meta['LUT']['Event']['Fertilization Hand'],
-                   meta['LUT']['Event']['Fertilization Teabag'],
                    meta['LUT']['Event']['Slashpile Burn'],
                    meta['LUT']['Event']['Prescribed Burn']])
-
                 meta[pNam]['Project']['Activities To Exclude From Actual']=np.array([
-                   meta['LUT']['Event']['Dwarf Mistletoe Control'],
-                   meta['LUT']['Event']['Ripping'],
-                   meta['LUT']['Event']['Disc Trenching'],
+                   meta['LUT']['Event']['Mechanical Site Prep'],
                    meta['LUT']['Event']['Thinning'],
-                   meta['LUT']['Event']['Aerial Spray'],
+                   meta['LUT']['Event']['Aerial BTK Spray'],
                    meta['LUT']['Event']['Fertilization Aerial'],
-                   meta['LUT']['Event']['Fertilization Hand'],
-                   meta['LUT']['Event']['Fertilization Teabag'],
                    meta['LUT']['Event']['Prescribed Burn']])
 
-                # Obligation status for events of stand iStand
-                StatusNO=np.zeros(dmec[iScn][iStand]['Year'].size,dtype=int)
                 for iT in range(dmec[iScn][iStand]['Year'].size):
-                    if QueryNonObStandEstablishment(meta,dmec[iScn][iStand]['SILV_FUND_SOURCE_CODE'][iT])==True:
-                        StatusNO[iT]=1
+                    # Non-obligation status
+                    StatusNO=np.isin(dmec[iScn][iStand]['SILV_FUND_SOURCE_CODE'][iT],meta['Param']['BE']['FSC']['NO List ID'])
 
-                for iT in range(dmec[iScn][iStand]['Year'].size):
-
-                    if (np.isin(iScn,meta[pNam]['Project']['Actual Indices'])==True) & (np.isin(dmec[iScn][iStand]['ID Event Type'][iT],meta[pNam]['Project']['Activities To Exclude From Actual'])==False) & (StatusNO[iT]==0):
-
+                    if (np.isin(iScn,meta[pNam]['Project']['Actual Indices'])==True) & (np.isin(dmec[iScn][iStand]['ID Event Type'][iT],meta[pNam]['Project']['Activities To Exclude From Actual'])==False) & (StatusNO==False):
                         # All but excluded events
                         dmec[iScn][iStand]['Scenario Affected'][iT]=1
 
                     elif (np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==True) & (np.isin(dmec[iScn][iStand]['ID Event Type'][iT],meta[pNam]['Project']['Activities To Exclude From Baseline'])==False):
-
                         # Events not in the list are added
                         dmec[iScn][iStand]['Scenario Affected'][iT]=1
-
                     else:
                         pass
 
@@ -556,7 +783,8 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
 
                 # Non-obligation stand establishment
 
-                # List of activities that will be excluded from reforestation baseline
+                # List of activities that will be excluded from non-ob stand
+                # establishment baseline
                 meta[pNam]['Project']['Activities To Exclude From Baseline']=np.array([
                     meta['LUT']['Event']['Planting'],
                     meta['LUT']['Event']['Direct Seeding'],
@@ -564,41 +792,32 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                     meta['LUT']['Event']['Harvest Salvage'],
                     meta['LUT']['Event']['Knockdown'],
                     meta['LUT']['Event']['Slashpile Burn'],
-                    meta['LUT']['Event']['Disc Trenching'],
-                    meta['LUT']['Event']['Ripping'],
-                    meta['LUT']['Event']['Dwarf Mistletoe Control'] ])
-
-                # Obligation status for events of stand iStand
-                StatusNO=np.zeros(dmec[iScn][iStand]['Year'].size,dtype=int)
-                for iA in range(dmec[iScn][iStand]['Year'].size):
-                    if QueryNonObStandEstablishment(meta,dmec[iScn][iStand]['SILV_FUND_SOURCE_CODE'][iA])==True:
-                        StatusNO[iA]=1
+                    meta['LUT']['Event']['Mechanical Site Prep'] ])
 
                 # Index to stand establishment events
-                iEstabNO=np.where( (dmec[iScn][iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatusNO==True) | \
-                                 (dmec[iScn][iStand]['ID Event Type']==meta['LUT']['Event']['Direct Seeding']) & (StatusNO==True) )[0]
+                #StatusNO=np.isin(dmec[iScn][iStand]['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List ID'])
+                iEstabNO=np.where( (dmec[iScn][iStand]['Index to Event Inciting NOSE']!=9999) )[0]
+                #iEstabNO=np.where( (dmec[iScn][iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatusNO==True) | \
+                #                 (dmec[iScn][iStand]['ID Event Type']==meta['LUT']['Event']['Direct Seeding']) & (StatusNO==True) )[0]
 
                 if iEstabNO.size>0:
-
                     # If multiple planting events, focus on the first instance
                     iEstabNO=iEstabNO[0]
 
-                    # Index to inciting event
-                    iIncitingEvent=dmec[iScn][iStand]['IndIncitingEvent'][iEstabNO]
+                # Index to inciting event
+                iIncitingEvent=dmec[iScn][iStand]['Index to Event Inciting NOSE'][iEstabNO]
 
                 for iT in range(dmec[iScn][iStand]['Year'].size):
-
-                    if (np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==True) & (iT>=iIncitingEvent) & (np.isin(dmec[iScn][iStand]['ID Event Type'][iT],meta[pNam]['Project']['Activities To Exclude From Baseline'])==True):
-                        # Events only impact the project scenarios
-                        dmec[iScn][iStand]['Scenario Affected'][iT]=1
+                    if np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==True:
+                        if (iT<=iIncitingEvent) | (np.isin(dmec[iScn][iStand]['ID Event Type'][iT],meta[pNam]['Project']['Activities To Exclude From Baseline'])==False):
+                            # Baseline scenario, some events excluded after the inciting event
+                            dmec[iScn][iStand]['Scenario Affected'][iT]=1
                     else:
-                        # Otherwise, everything occurs in all scenarios
+                        # Project scenario, everything occurs in all scenarios
                         dmec[iScn][iStand]['Scenario Affected'][iT]=1
 
             elif meta[pNam]['Project']['Special Attribution Method']=='Nutrient Management':
-
                 for iT in range(dmec[iScn][iStand]['Year'].size):
-
                     if (np.isin(iScn,meta[pNam]['Project']['Actual Indices'])==True):
                         dmec[iScn][iStand]['Scenario Affected'][iT]=1
                     else:
@@ -630,7 +849,10 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
             # Initialize growth curve info
             gc[iScn][iStand]={}
             for key in meta['Modules']['GYM']['GC_Variable_List']:
-                gc[iScn][iStand][key]=-999*np.ones(12)
+                if np.isin(key,['ID_Stand','ID_Scn','ID_GC','s1','p1','s2','p2','s3','p3','s4','p4','s5','p5','s6','p6','init_density','regen_delay','regeneration_method','bec_zone','FIZ'])==True:
+                    gc[iScn][iStand][key]=9999*np.ones(12,dtype='int16')
+                else:
+                    gc[iScn][iStand][key]=9999*np.ones(12)
 
             if inv['Region Code'][iStand]==meta['LUT']['Region']['Coast']:
                 fiz=meta['LUT']['TIPSY']['FIZ']['C']
@@ -640,7 +862,6 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
             #--------------------------------------------------------------------------
             # Add pre-contact growth curve
             #--------------------------------------------------------------------------
-
             gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
             gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
             gc[iScn][iStand]['ID_GC'][cnt_gc]=1
@@ -667,7 +888,6 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
             #--------------------------------------------------------------------------
             # Add events from disturbance/management event history
             #--------------------------------------------------------------------------
-
             for iYr in range(dmec[iScn][iStand]['Year'].size):
 
                 # Calculate planting density
@@ -696,14 +916,12 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                 #IndPrevDistForFert=int(dmec[iStand]['IndPrevDistForFert'][iYr])
 
                 # Non-obligation status
-                StatusNO=QueryNonObStandEstablishment(meta,pNam,dmec[iScn][iStand]['SILV_FUND_SOURCE_CODE'][iYr])
+                StatusNO=np.isin(dmec[iScn][iStand]['SILV_FUND_SOURCE_CODE'][iYr],meta['Param']['BE']['FSC']['NO List ID'])
 
                 if (meta[pNam]['Project']['Special Attribution Method']=='Off') | (meta[pNam]['Project']['Special Attribution Method']=='Actual') | (meta[pNam]['Project']['Special Attribution Method']=='Nutrient Management'):
-
                     #--------------------------------------------------------------
-                    # None or Actual or Nutrient Management
+                    # Off or Actual or Nutrient Management
                     #--------------------------------------------------------------
-
                     if (dmec[iScn][iStand]['Scenario Affected'][iYr]==1) & (dmec[iScn][iStand]['ID Event Type'][iYr]==meta['LUT']['Event']['Planting']):
 
                         dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
@@ -712,12 +930,11 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                         gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
                         gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
                         gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
-                        gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                        gc[iScn][iStand]['init_density'][cnt_gc]=PlantingDensity
                         gc[iScn][iStand]['regen_delay'][cnt_gc]=0
                         gc[iScn][iStand]['i1'][cnt_gc]=inv['SI'][iStand]
 
-                        if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
-
+                        if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=9999) & (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]!=9999):
                             # *** Adjust site index if it is energy production ***
                             if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['AT']):
                                 gc[iScn][iStand]['i1'][cnt_gc]=30
@@ -728,45 +945,34 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                             gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
                             gc[iScn][iStand]['gain1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr]
                             gc[iScn][iStand]['selage1'][cnt_gc]=10
-
                             gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
                             gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
                             gc[iScn][iStand]['gain2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr]
                             gc[iScn][iStand]['selage2'][cnt_gc]=10
-
                             gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
                             gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
                             gc[iScn][iStand]['gain3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr]
                             gc[iScn][iStand]['selage3'][cnt_gc]=10
-
                             gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
                             gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
                             gc[iScn][iStand]['gain4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr]
                             gc[iScn][iStand]['selage4'][cnt_gc]=10
-
                             gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
                             gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
                             gc[iScn][iStand]['gain5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr]
                             gc[iScn][iStand]['selage5'][cnt_gc]=10
-
                         else:
-
                             # Otherwise assume best-available inventory spc. comp.
                             gc[iScn][iStand]['s1'][cnt_gc]=inv['Spc1_ID'][iStand]
                             gc[iScn][iStand]['p1'][cnt_gc]=inv['Spc1_P'][iStand]
-
                             gc[iScn][iStand]['s2'][cnt_gc]=inv['Spc2_ID'][iStand]
                             gc[iScn][iStand]['p2'][cnt_gc]=inv['Spc2_P'][iStand]
-
                             gc[iScn][iStand]['s3'][cnt_gc]=inv['Spc3_ID'][iStand]
                             gc[iScn][iStand]['p3'][cnt_gc]=inv['Spc3_P'][iStand]
-
                             gc[iScn][iStand]['s4'][cnt_gc]=inv['Spc4_ID'][iStand]
                             gc[iScn][iStand]['p4'][cnt_gc]=inv['Spc4_P'][iStand]
-
                             gc[iScn][iStand]['s5'][cnt_gc]=inv['Spc5_ID'][iStand]
                             gc[iScn][iStand]['p5'][cnt_gc]=inv['Spc5_P'][iStand]
-
                         gc[iScn][iStand]['oaf1'][cnt_gc]=inv['OAF1'][iStand].astype(float)/100
                         gc[iScn][iStand]['oaf2'][cnt_gc]=meta['Modules']['GYM']['OAF2 Default']
                         gc[iScn][iStand]['bec_zone'][cnt_gc]=inv['ID_BGCZ'][iStand]
@@ -776,13 +982,11 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                         cnt_gc=cnt_gc+1
 
                 elif (meta[pNam]['Project']['Special Attribution Method']=='BAU'):
-
                     #--------------------------------------------------------------
                     # Harvesting
                     # Exclude incremental improvements in silviculture, including:
                     #  - genetic gains
                     #--------------------------------------------------------------
-
                     if (dmec[iScn][iStand]['Scenario Affected'][iYr]==1) & (dmec[iScn][iStand]['ID Event Type'][iYr]==meta['LUT']['Event']['Planting']):
 
                         dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
@@ -791,46 +995,34 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                         gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
                         gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
                         gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
-                        gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                        gc[iScn][iStand]['init_density'][cnt_gc]=PlantingDensity
                         gc[iScn][iStand]['regen_delay'][cnt_gc]=0
                         gc[iScn][iStand]['i1'][cnt_gc]=inv['SI'][iStand]
 
-                        if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
-
+                        if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=9999) & (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]!=9999):
                             # Using planting info if it exists
                             gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
                             gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
-
                             gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
                             gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
-
                             gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
                             gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
-
                             gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
                             gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
-
                             gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
                             gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
-
                         else:
-
                             # Otherwise assume best-available inventory spc. comp.
                             gc[iScn][iStand]['s1'][cnt_gc]=inv['Spc1_ID'][iStand]
                             gc[iScn][iStand]['p1'][cnt_gc]=inv['Spc1_P'][iStand]
-
                             gc[iScn][iStand]['s2'][cnt_gc]=inv['Spc2_ID'][iStand]
                             gc[iScn][iStand]['p2'][cnt_gc]=inv['Spc2_P'][iStand]
-
                             gc[iScn][iStand]['s3'][cnt_gc]=inv['Spc3_ID'][iStand]
                             gc[iScn][iStand]['p3'][cnt_gc]=inv['Spc3_P'][iStand]
-
                             gc[iScn][iStand]['s4'][cnt_gc]=inv['Spc4_ID'][iStand]
                             gc[iScn][iStand]['p4'][cnt_gc]=inv['Spc4_P'][iStand]
-
                             gc[iScn][iStand]['s5'][cnt_gc]=inv['Spc5_ID'][iStand]
                             gc[iScn][iStand]['p5'][cnt_gc]=inv['Spc5_P'][iStand]
-
                         gc[iScn][iStand]['oaf1'][cnt_gc]=inv['OAF1'][iStand].astype(float)/100
                         gc[iScn][iStand]['oaf2'][cnt_gc]=meta['Modules']['GYM']['OAF2 Default']
                         gc[iScn][iStand]['bec_zone'][cnt_gc]=inv['ID_BGCZ'][iStand]
@@ -846,33 +1038,53 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                     #--------------------------------------------------------------
 
                     # Index to event that incited NO stand establishment
-                    iIncitingNOSE=int(dmec[iScn][iStand]['IndIncitingEvent'][iYr])
+                    iIncitingNOSE=dmec[iScn][iStand]['Index to Event Inciting NOSE'][iYr]
 
                     #----------------------------------------------------------------------
                     # Planting (non-obligation)
                     #----------------------------------------------------------------------
 
-                    if (dmec[iScn][iStand]['Scenario Affected'][iYr]==1) & (dmec[iScn][iStand]['ID Event Type'][iYr]==meta['LUT']['Event']['Planting']) & (Flag_PlantingBackToBack==0) & (StatusNO==True):
+                    if (dmec[iScn][iStand]['ID Event Type'][iYr]==meta['LUT']['Event']['Planting']) & (StatusNO==True) & (iIncitingNOSE!=9999):
 
-                        if (np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==True):
+                        gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
+                        gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
+                        gc[iScn][iStand]['i1'][cnt_gc]=inv['SI'][iStand]
+                        gc[iScn][iStand]['oaf1'][cnt_gc]=meta['Modules']['GYM']['OAF1 Default']
+                        gc[iScn][iStand]['oaf2'][cnt_gc]=meta['Modules']['GYM']['OAF2 Default']
+                        gc[iScn][iStand]['bec_zone'][cnt_gc]=inv['ID_BGCZ'][iStand]
+                        gc[iScn][iStand]['FIZ'][cnt_gc]=fiz
+
+                        if np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==True:
 
                             # Baseline scenarios:
 
-                            # Growth curve update
-                            if iIncitingNOSE>=0:
-                                # Baseline scenarios, transition at time of inciting evnet
-                                dmec[iScn][iStand]['ID_GC'][iIncitingNOSE:]=dmec[iScn][iStand]['ID_GC'][iIncitingNOSE]+1
-                            else:
-                                print('Problem with NOSE project - cant find an inciting event (unitentified SE Type)!')
-                                dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
+                            # Growth curve update (at the time of inciting event)
+                            dmec[iScn][iStand]['ID_GC'][iIncitingNOSE:]=dmec[iScn][iStand]['ID_GC'][iIncitingNOSE]+1
+                            gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
 
                             gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['N']
-                            if meta[pNam]['Project']['SE Type'][iStand]==3:
+                            if meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenTypeNO']['Straight Fire']:
                                 gc[iScn][iStand]['init_density'][cnt_gc]=200
                                 gc[iScn][iStand]['regen_delay'][cnt_gc]=5
-                            else:
-                                gc[iScn][iStand]['init_density'][cnt_gc]=1800
-                                gc[iScn][iStand]['regen_delay'][cnt_gc]=1
+                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenTypeNO']['Straight Insect']:
+                                gc[iScn][iStand]['init_density'][cnt_gc]=200
+                                gc[iScn][iStand]['regen_delay'][cnt_gc]=5
+                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenTypeNO']['Salvage']:
+                                gc[iScn][iStand]['init_density'][cnt_gc]=1400
+                                gc[iScn][iStand]['regen_delay'][cnt_gc]=0
+                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenTypeNO']['Knockdown']:
+                                gc[iScn][iStand]['init_density'][cnt_gc]=1400
+                                gc[iScn][iStand]['regen_delay'][cnt_gc]=0
+                            gc[iScn][iStand]['s1'][cnt_gc]=inv['Spc1_ID'][iStand]
+                            gc[iScn][iStand]['p1'][cnt_gc]=inv['Spc1_P'][iStand]
+                            gc[iScn][iStand]['s2'][cnt_gc]=inv['Spc2_ID'][iStand]
+                            gc[iScn][iStand]['p2'][cnt_gc]=inv['Spc2_P'][iStand]
+                            gc[iScn][iStand]['s3'][cnt_gc]=inv['Spc3_ID'][iStand]
+                            gc[iScn][iStand]['p3'][cnt_gc]=inv['Spc3_P'][iStand]
+                            gc[iScn][iStand]['s4'][cnt_gc]=inv['Spc4_ID'][iStand]
+                            gc[iScn][iStand]['p4'][cnt_gc]=inv['Spc4_P'][iStand]
+                            gc[iScn][iStand]['s5'][cnt_gc]=inv['Spc5_ID'][iStand]
+                            gc[iScn][iStand]['p5'][cnt_gc]=inv['Spc5_P'][iStand]
 
                         else:
 
@@ -880,65 +1092,44 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
 
                             # Growth curve update: Project scenarios with planting at iYr
                             dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
-
+                            gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
                             gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
-                            gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                            gc[iScn][iStand]['init_density'][cnt_gc]=PlantingDensity
                             gc[iScn][iStand]['regen_delay'][cnt_gc]=0
-
-                        gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
-                        gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
-                        gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
-                        gc[iScn][iStand]['i1'][cnt_gc]=inv['SI'][iStand]
-                        gc[iScn][iStand]['oaf1'][cnt_gc]=meta['Modules']['GYM']['OAF1 Default']
-                        gc[iScn][iStand]['oaf2'][cnt_gc]=meta['Modules']['GYM']['OAF2 Default']
-                        gc[iScn][iStand]['bec_zone'][cnt_gc]=inv['ID_BGCZ'][iStand]
-                        gc[iScn][iStand]['FIZ'][cnt_gc]=fiz
-
-                        if (np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==False) & (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
-
-                            # Include genetic gain
-                            gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
-                            gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
-                            gc[iScn][iStand]['gain1'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr])
-                            gc[iScn][iStand]['selage1'][cnt_gc]=10
-
-                            gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
-                            gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
-                            gc[iScn][iStand]['gain2'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr])
-                            gc[iScn][iStand]['selage2'][cnt_gc]=10
-
-                            gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
-                            gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
-                            gc[iScn][iStand]['gain3'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr])
-                            gc[iScn][iStand]['selage3'][cnt_gc]=10
-
-                            gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
-                            gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
-                            gc[iScn][iStand]['gain4'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr])
-                            gc[iScn][iStand]['selage4'][cnt_gc]=10
-
-                            gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
-                            gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
-                            gc[iScn][iStand]['gain5'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr])
-                            gc[iScn][iStand]['selage5'][cnt_gc]=10
-
-                        else:
-
-                            # Baseline
-                            gc[iScn][iStand]['s1'][cnt_gc]=inv['Spc1_ID'][iStand]
-                            gc[iScn][iStand]['p1'][cnt_gc]=inv['Spc1_P'][iStand]
-
-                            gc[iScn][iStand]['s2'][cnt_gc]=inv['Spc2_ID'][iStand]
-                            gc[iScn][iStand]['p2'][cnt_gc]=inv['Spc2_P'][iStand]
-
-                            gc[iScn][iStand]['s3'][cnt_gc]=inv['Spc3_ID'][iStand]
-                            gc[iScn][iStand]['p3'][cnt_gc]=inv['Spc3_P'][iStand]
-
-                            gc[iScn][iStand]['s4'][cnt_gc]=inv['Spc4_ID'][iStand]
-                            gc[iScn][iStand]['p4'][cnt_gc]=inv['Spc4_P'][iStand]
-
-                            gc[iScn][iStand]['s5'][cnt_gc]=inv['Spc5_ID'][iStand]
-                            gc[iScn][iStand]['p5'][cnt_gc]=inv['Spc5_P'][iStand]
+                            if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=9999) & (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]!=9999):
+                                # Using planting layer information
+                                gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
+                                gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
+                                gc[iScn][iStand]['gain1'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr])
+                                gc[iScn][iStand]['selage1'][cnt_gc]=10
+                                gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
+                                gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
+                                gc[iScn][iStand]['gain2'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr])
+                                gc[iScn][iStand]['selage2'][cnt_gc]=10
+                                gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
+                                gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
+                                gc[iScn][iStand]['gain3'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr])
+                                gc[iScn][iStand]['selage3'][cnt_gc]=10
+                                gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
+                                gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
+                                gc[iScn][iStand]['gain4'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr])
+                                gc[iScn][iStand]['selage4'][cnt_gc]=10
+                                gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
+                                gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
+                                gc[iScn][iStand]['gain5'][cnt_gc]=int(dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr])
+                                gc[iScn][iStand]['selage5'][cnt_gc]=10
+                            else:
+                                # Planting info not available, using inventory
+                                gc[iScn][iStand]['s1'][cnt_gc]=inv['Spc1_ID'][iStand]
+                                gc[iScn][iStand]['p1'][cnt_gc]=inv['Spc1_P'][iStand]
+                                gc[iScn][iStand]['s2'][cnt_gc]=inv['Spc2_ID'][iStand]
+                                gc[iScn][iStand]['p2'][cnt_gc]=inv['Spc2_P'][iStand]
+                                gc[iScn][iStand]['s3'][cnt_gc]=inv['Spc3_ID'][iStand]
+                                gc[iScn][iStand]['p3'][cnt_gc]=inv['Spc3_P'][iStand]
+                                gc[iScn][iStand]['s4'][cnt_gc]=inv['Spc4_ID'][iStand]
+                                gc[iScn][iStand]['p4'][cnt_gc]=inv['Spc4_P'][iStand]
+                                gc[iScn][iStand]['s5'][cnt_gc]=inv['Spc5_ID'][iStand]
+                                gc[iScn][iStand]['p5'][cnt_gc]=inv['Spc5_P'][iStand]
 
                         # Update counter
                         cnt_gc=cnt_gc+1
@@ -946,7 +1137,6 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                     #----------------------------------------------------------------------
                     # Planting (obligation)
                     #----------------------------------------------------------------------
-
                     if (dmec[iScn][iStand]['Scenario Affected'][iYr]==1) & (dmec[iScn][iStand]['ID Event Type'][iYr]==meta['LUT']['Event']['Planting']) & (Flag_PlantingBackToBack==0) & (StatusNO==False):
 
                         dmec[iScn][iStand]['ID_GC'][iYr:]=dmec[iScn][iStand]['ID_GC'][iYr]+1
@@ -956,34 +1146,30 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                         gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
                         gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['P']
                         gc[iScn][iStand]['i1'][cnt_gc]=inv['SI'][iStand]
-                        gc[iScn][iStand]['init_density'][cnt_gc]=int(PlantingDensity)
+                        gc[iScn][iStand]['init_density'][cnt_gc]=PlantingDensity
                         gc[iScn][iStand]['regen_delay'][cnt_gc]=0
                         gc[iScn][iStand]['oaf1'][cnt_gc]=meta['Modules']['GYM']['OAF1 Default']
                         gc[iScn][iStand]['oaf2'][cnt_gc]=meta['Modules']['GYM']['OAF2 Default']
                         gc[iScn][iStand]['bec_zone'][cnt_gc]=inv['ID_BGCZ'][iStand]
                         gc[iScn][iStand]['FIZ'][cnt_gc]=fiz
 
-                        if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]>0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]>0):
+                        if (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=9999) & (dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]!=0) & (dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]!=9999):
                             gc[iScn][iStand]['s1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD1'][iYr]
                             gc[iScn][iStand]['p1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT1'][iYr]
                             gc[iScn][iStand]['gain1'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW1'][iYr]
                             gc[iScn][iStand]['selage1'][cnt_gc]=10
-
                             gc[iScn][iStand]['s2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD2'][iYr]
                             gc[iScn][iStand]['p2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT2'][iYr]
                             gc[iScn][iStand]['gain2'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW2'][iYr]
                             gc[iScn][iStand]['selage2'][cnt_gc]=10
-
                             gc[iScn][iStand]['s3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD3'][iYr]
                             gc[iScn][iStand]['p3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT3'][iYr]
                             gc[iScn][iStand]['gain3'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW3'][iYr]
                             gc[iScn][iStand]['selage3'][cnt_gc]=10
-
                             gc[iScn][iStand]['s4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD4'][iYr]
                             gc[iScn][iStand]['p4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT4'][iYr]
                             gc[iScn][iStand]['gain4'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW4'][iYr]
                             gc[iScn][iStand]['selage4'][cnt_gc]=10
-
                             gc[iScn][iStand]['s5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_CD5'][iYr]
                             gc[iScn][iStand]['p5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_PCT5'][iYr]
                             gc[iScn][iStand]['gain5'][cnt_gc]=dmec[iScn][iStand]['PL_SPECIES_GW5'][iYr]
@@ -991,16 +1177,12 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                         else:
                             gc[iScn][iStand]['s1'][cnt_gc]=inv['Spc1_ID'][iStand]
                             gc[iScn][iStand]['p1'][cnt_gc]=inv['Spc1_P'][iStand]
-
                             gc[iScn][iStand]['s2'][cnt_gc]=inv['Spc2_ID'][iStand]
                             gc[iScn][iStand]['p2'][cnt_gc]=inv['Spc2_P'][iStand]
-
                             gc[iScn][iStand]['s3'][cnt_gc]=inv['Spc3_ID'][iStand]
                             gc[iScn][iStand]['p3'][cnt_gc]=inv['Spc3_P'][iStand]
-
                             gc[iScn][iStand]['s4'][cnt_gc]=inv['Spc4_ID'][iStand]
                             gc[iScn][iStand]['p4'][cnt_gc]=inv['Spc4_P'][iStand]
-
                             gc[iScn][iStand]['s5'][cnt_gc]=inv['Spc5_ID'][iStand]
                             gc[iScn][iStand]['p5'][cnt_gc]=inv['Spc5_P'][iStand]
 
@@ -1012,7 +1194,6 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
             # may be harvested on-the-fly. Add a second growth curve for the on-the-fly
             # planting.
             if cnt_gc==1:
-
                 gc[iScn][iStand]['ID_Stand'][cnt_gc]=iStand
                 gc[iScn][iStand]['ID_Scn'][cnt_gc]=iScn
                 gc[iScn][iStand]['ID_GC'][cnt_gc]=np.max(gc[iScn][iStand]['ID_GC'])+1
@@ -1031,7 +1212,6 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                 gain=15
 
                 if (inv['ID_BGCZ'][iStand]==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE']['CWH']) | (inv['ID_BGCZ'][iStand]==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE']['CDF']):
-
                     # Coastal
                     gc[iScn][iStand]['s1'][cnt_gc]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['FDC']
                     gc[iScn][iStand]['p1'][cnt_gc]=70
@@ -1045,9 +1225,7 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                     gc[iScn][iStand]['p3'][cnt_gc]=15
                     gc[iScn][iStand]['gain3'][cnt_gc]=gain
                     gc[iScn][iStand]['selage3'][cnt_gc]=10
-
                 elif (inv['ID_BGCZ'][iStand]==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE']['ICH']):
-
                     # Interior wetbelt
                     gc[iScn][iStand]['s1'][cnt_gc]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['CW']
                     gc[iScn][iStand]['p1'][cnt_gc]=70
@@ -1057,9 +1235,7 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                     gc[iScn][iStand]['p2'][cnt_gc]=15
                     gc[iScn][iStand]['gain2'][cnt_gc]=gain
                     gc[iScn][iStand]['selage2'][cnt_gc]=10
-
                 else:
-
                     # Interior
                     gc[iScn][iStand]['s1'][cnt_gc]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['PL']
                     gc[iScn][iStand]['p1'][cnt_gc]=60
@@ -1070,14 +1246,37 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                     gc[iScn][iStand]['gain2'][cnt_gc]=gain
                     gc[iScn][iStand]['selage2'][cnt_gc]=10
 
+                if gc[iScn][iStand]['s1'][cnt_gc]==0:
+                    print(iScn)
+                    print(iStand)
+                    print(iYr)
+
     # Get rid of rows with no info
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         for iStand in range(meta[pNam]['Project']['N Stand']):
-            ind=np.where(gc[iScn][iStand]['ID_Stand']!=-999)[0]
+            ind=np.where(gc[iScn][iStand]['ID_Stand']!=9999)[0]
             for key in meta['Modules']['GYM']['GC_Variable_List']:
                 gc[iScn][iStand][key]=gc[iScn][iStand][key][ind]
 
     print(str(np.round((time.time()-t0)/60,decimals=1)) + ' min')
+
+    # iScn=1
+    # for iStand in range(len(gc[iScn])):
+    #     ind=np.where(gc[iScn][iStand]['s1']==0)[0]
+    #     if ind.size>0:
+    #         print(iStand)
+    # iScn=0
+    # for iStand in range(len(gc[iScn])):
+    #     ind=np.where(dmec[iScn][iStand]['Index to Event Inciting NOSE']!=9999)[0]
+    #     print(dmec[iScn][iStand]['PL_SPECIES_CD1'][ind])
+    #     #print(iStand)
+    # iScn=1
+    # for iStand in range(len(gc[iScn])):
+    #     ind=np.where(gc[iScn][iStand]['s1']==0)[0]
+    #     if ind.size>0:
+    #         print(gc[iScn][iStand])
+    #         break
+    #     ['s1']
 
     #--------------------------------------------------------------------------
     # Adjust mortality factors that only affect specific tree species
@@ -1198,7 +1397,7 @@ def Process3_PrepInputsByBatch(meta,pNam,inv,dmec,lsc,gc,ugc):
             inv1['Spc3_P']=0*np.ones((1,N_StandsInBatch),dtype='int16')
 
             # Probability of harvest (%/yr) from spatial map
-            inv1['P Harvest Weight']=inv['P Harvest Weight'][indBat]
+            inv1['Prob Harvest (%/yr) x 1000']=inv['Prob Harvest (%/yr) x 1000'][indBat]
 
             # Wood density (kg/m3)
             inv1['Wood Density']=inv['Wood Density'][indBat]
@@ -1324,12 +1523,14 @@ def Process3_PrepInputsByBatch(meta,pNam,inv,dmec,lsc,gc,ugc):
 
                         # New BGC zone-specific
                         cd=cbu.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],inv0['ID_BGCZ'][0,iS])[0]
-                        ind=np.where(meta['Param']['BE']['SpinupRI']['Name']==cd)[0]
-                        ivl_pi=meta['Param']['BE']['SpinupRI']['Value'][ind]
+                        ind=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==cd)[0]
+                        ivl_pi=meta['Param']['BE']['BGC Zone Averages']['Disturbance Return Interval'][ind]
 
                         # Timing of transition between pre-industrial and modern periods
-                        YearRef=dmec[iScn][iStandFull]['Year'][0]
-                        #YearRef=np.random.randint(1775,high=1920,size=1,dtype=int)
+                        try:
+                            YearRef=dmec[iScn][iStandFull]['Year'][0]
+                        except:
+                            YearRef=np.random.randint(1775,high=1920,size=1,dtype=int)
                         AgeRef=ivl_pi
 
                         YrRegCyc=np.arange(YearRef-AgeRef-100*ivl_pi,YearRef-AgeRef+ivl_pi,ivl_pi)
@@ -1374,7 +1575,7 @@ def Process3_PrepInputsByBatch(meta,pNam,inv,dmec,lsc,gc,ugc):
                         # Populate
                         ec['ID Event Type'][ind[0],ind[1],iEPY]=meta['LUT']['Event']['Wildfire']
                         ec['Mortality Factor'][ind[0],ind[1],iEPY]=Mort[ind[0],ind[1]]
-                        ec['Growth Factor'][ind[0],ind[1],iEPY]=-999
+                        ec['Growth Factor'][ind[0],ind[1],iEPY]=9999
                         ec['ID Growth Curve'][ind[0],ind[1],iEPY]=1
 
                         # Eliminate occurrence so that it is not populated again as loop
@@ -1393,7 +1594,7 @@ def Process3_PrepInputsByBatch(meta,pNam,inv,dmec,lsc,gc,ugc):
                             # Populate
                             ec['ID Event Type'][ind[0],ind[1],iEPY]=meta['LUT']['Event']['Wildfire']
                             ec['Mortality Factor'][ind[0],ind[1],iEPY]=Mort[ind[0],ind[1]]
-                            ec['Growth Factor'][ind[0],ind[1],iEPY]=-999
+                            ec['Growth Factor'][ind[0],ind[1],iEPY]=9999
                             ec['ID Growth Curve'][ind[0],ind[1],iEPY]=1
 
                             # Eliminate occurrence so that it is not populated again as loop
@@ -1416,7 +1617,7 @@ def Process3_PrepInputsByBatch(meta,pNam,inv,dmec,lsc,gc,ugc):
                         # Populate
                         ec['ID Event Type'][ind[0],ind[1],iEPY]=meta['LUT']['Event']['IBM']
                         ec['Mortality Factor'][ind[0],ind[1],iEPY]=Mort[ind[0],ind[1]]
-                        ec['Growth Factor'][ind[0],ind[1],iEPY]=-999
+                        ec['Growth Factor'][ind[0],ind[1],iEPY]=9999
                         ec['ID Growth Curve'][ind[0],ind[1],iEPY]=1
 
                         # Eliminate occurrence so that it is not populated again as loop
@@ -1661,355 +1862,7 @@ def ExtractUniqueGrowthCurves(meta,pNam,gc):
 
     return ugc
 
-#%% Define type of stnad establishment (salvage, knockdown, underplanting, NSR backlog)
 
-# Create index to the inciting disturbance:
-# It is critical that the above steps (ensuring there is a previous
-# stand-replacing disturbance) work before this will work properly.
-
-# If it is a salvage logging project, change the inciting disturbance (harvest)
-# to be "Harvest Salvage" so that it removes a higher percentage of snags. I
-# checked that a combo of "Harvest Salvage" + "Slashpile Burn" is consistent with
-# the custom harvest (with slashpile burn) used in the salvage demo (March 2021).
-
-# The mortality corrections can be overridden by the adjustment of species-specific
-# mortality (Adjust species-specific mortality='Off' to avoid this)
-
-def DefineTypeOfStandEstablishment(meta,pNam,dmec):
-
-    # Threshold search period for disturbances prior to stand establishment
-    LeadUpPeriod=20
-
-    # Look up table for project type
-    meta['LUT']['SE Type']={'Not simulated':0,'SL':1,'KD':2,'SP':3,'NSR Backlog':4,'Unclassified':5}
-
-    # Initialize project type
-    meta[pNam]['Project']['SE Type']=np.zeros(meta[pNam]['Project']['N Stand'],dtype=int)
-
-    for iStand in range(meta[pNam]['Project']['N Stand']):
-
-        L=dmec[iStand]['Year'].size
-
-        # Initialize variable
-        dmec[iStand]['IndIncitingEvent']=-999*np.ones(L,dtype=int)
-
-        # Status
-        StatNO=np.zeros(L,dtype=int)
-        for iA in range(L):
-            if QueryNonObStandEstablishment(meta,pNam,dmec[iStand]['SILV_FUND_SOURCE_CODE'][iA])==True:
-                StatNO[iA]=1
-
-        # Index to stand establishment events
-        #iEstab=np.where( (dmec[iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatNO==True) | \
-        #                (dmec[iStand]['ID Event Type']==meta['LUT']['Event']['Direct Seeding']) & (StatNO==True) )[0]
-
-        # Exclude direct seeding
-        iEstab=np.where( (dmec[iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatNO==True) )[0]
-
-        if iEstab.size==0:
-            continue
-
-        # If multiple planting events, focus on...
-        iEstab=iEstab[0]
-
-        # Define a lead-up period
-        iLeadUp=np.where( (dmec[iStand]['Year']>=dmec[iStand]['Year'][iEstab]-LeadUpPeriod) & (dmec[iStand]['Year']<=dmec[iStand]['Year'][iEstab]) )[0]
-        Year_LeadUp=dmec[iStand]['Year'][iLeadUp]
-        id=dmec[iStand]['ID Event Type'][iLeadUp]
-        mort=dmec[iStand]['Mortality Factor'][iLeadUp]
-
-        # Index to inciting event types in the lead up period
-        iH=np.where( (id==meta['LUT']['Event']['Harvest']) |  (id==meta['LUT']['Event']['Harvest Salvage']) )[0]
-        iH_All=iH.copy()
-
-        # There can be multiple harvests - try choosing the last one
-        if iH.size>1:
-            iH=iH[-1]
-
-        # Index to knockdown
-        iKD=np.where(id==meta['LUT']['Event']['Knockdown'])[0]
-
-        # Index to wildfire
-        iWF=np.where(id==meta['LUT']['Event']['Wildfire'])[0]
-
-        # Index to insects
-        iI=np.where( (id==meta['LUT']['Event']['Beetles']) | (id==meta['LUT']['Event']['IBM']) | (id==meta['LUT']['Event']['IBD']) | (id==meta['LUT']['Event']['IBB']) | (id==meta['LUT']['Event']['IBS']) )[0]
-
-        # Index to wildfire and insects
-        iWF_and_I=np.where( (id==meta['LUT']['Event']['Wildfire']) | (id==meta['LUT']['Event']['Beetles']) | (id==meta['LUT']['Event']['IBM']) | (id==meta['LUT']['Event']['IBD']) | (id==meta['LUT']['Event']['IBB']) | (id==meta['LUT']['Event']['IBS']) )[0]
-
-        # Add a negative one so that it is never empty
-        iHa=np.append(-1,iH)
-        iKDa=np.append(-1,iKD)
-        iWFa=np.append(-1,iWF)
-        #iIa=np.append(-1,iI)
-
-        if (iH.size>0) & (Year_LeadUp[iH]>=1987) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
-
-            #----------------------------------------------------------------------
-            # Salvage logging
-            #----------------------------------------------------------------------
-
-            meta[pNam]['Project']['SE Type'][iStand]=meta['LUT']['SE Type']['SL']
-
-            # Find the event that incited the funded stand establishment
-            # If the event has more than 75% mortality, use it. If it is less than
-            # 75%, assume disturbance databases have underestimated mortality and
-            # change mortality to 80%.
-
-            if (iWF.size>0) & (iI.size==0):
-
-                # Wildfire only
-                iMaxMort=np.where(mort[iWF]==np.max(mort[iWF]))[0]
-                if iMaxMort.size>1:
-                    iMaxMort=iMaxMort[0]
-
-                dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iWF[iMaxMort][0]]#iLeadUp[iWF[iMaxMort]]
-
-                if mort[iMaxMort]<75:
-                    # Unrealistically low, fix
-                    dmec[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=80
-
-            elif (iWF.size==0) & (iI.size>0):
-
-                # Insects only
-                iMaxMort=np.where(mort[iI]==np.max(mort[iI]))[0]
-                if iMaxMort.size>1:
-                    iMaxMort=iMaxMort[0]
-
-                dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iI[iMaxMort]]
-
-                if mort[iI[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=80
-
-            elif (iWF_and_I.size>0):
-
-                # Wildfire and insects
-                iMaxMort=np.where(mort[iWF_and_I]==np.max(mort[iWF_and_I]))[0]
-                if iMaxMort.size>1:
-                    iMaxMort=iMaxMort[0]
-
-                dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
-
-                if mort[iWF_and_I[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=80
-
-            elif (iWF.size==0) & (iI.size==0):
-
-                # Disturbance databases presumably misses the inciting event (eg fireguards), create
-                # an event five years before the harvest
-
-                ID_GapFill=meta['LUT']['Event']['Wildfire']
-                Year_GapFill=dmec[iStand]['Year'][iLeadUp[iH]]-5
-                Mort_GapFill=85
-
-                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
-                dmec[iStand]['ID Event Type']=np.append(dmec[iStand]['ID Event Type'],ID_GapFill)
-                dmec[iStand]['Mortality Factor']=np.append(dmec[iStand]['Mortality Factor'],Mort_GapFill)
-                dmec[iStand]['Growth Factor']=np.append(dmec[iStand]['Growth Factor'],-999)
-                for v in meta['Core']['StringsToFill']:
-                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-                dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
-
-                iIncite=np.where( (dmec[iStand]['ID Event Type']==ID_GapFill) & (dmec[iStand]['Year']==Year_GapFill) )[0]
-                dmec[iStand]['IndIncitingEvent'][iEstab]=iIncite
-
-            # Change harvest to salvage so that more dead trees are taken
-            dmec[iStand]['ID Event Type'][iLeadUp[iH_All]]=meta['LUT']['Event']['Harvest Salvage']
-
-        elif (iH.size>0) & (Year_LeadUp[iH]<1987) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
-
-            #----------------------------------------------------------------------
-            # NSR backlog
-            #----------------------------------------------------------------------
-
-            meta[pNam]['Project']['SE Type'][iStand]=meta['LUT']['SE Type']['NSR Backlog']
-
-            # There is no inciting event - it is regen failure or poor effort that leads
-            # to the decision to plant by gov programs. Add dummy event just before the
-            # non-ob stand establishment event. Assume trace beetles
-
-            ID_GapFill=meta['LUT']['Event']['Regen Failure']
-            #Year_GapFill=dmec[iStand]['Year'][iEstab]-0.1
-            Year_GapFill=dmec[iStand]['Year'][iLeadUp[iH]]+0.1
-            Mort_GapFill=100
-
-            dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
-            dmec[iStand]['ID Event Type']=np.append(dmec[iStand]['ID Event Type'],ID_GapFill)
-            dmec[iStand]['Mortality Factor']=np.append(dmec[iStand]['Mortality Factor'],Mort_GapFill)
-            dmec[iStand]['Growth Factor']=np.append(dmec[iStand]['Growth Factor'],-999)
-            dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
-            for v in meta['Core']['StringsToFill']:
-                dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-
-            ind=np.where( (dmec[iStand]['ID Event Type']==ID_GapFill) & (dmec[iStand]['Year']==Year_GapFill) )[0]
-            dmec[iStand]['IndIncitingEvent'][iEstab]=ind
-
-            #        # As initial plantings presumably fail, add a regen failure event.
-            #
-            #        ID_GapFill=meta['LUT']['Event']['Regen Failure'].copy()
-            #        Year_GapFill=dmec[iStand]['Year'][iH]+1
-            #        Mort_GapFill=100
-            #
-            #        dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
-            #        dmec[iStand]['ID Event Type']=np.append(dmec[iStand]['ID Event Type'],ID_GapFill)
-            #        dmec[iStand]['Mortality Factor']=np.append(dmec[iStand]['Mortality Factor'],Mort_GapFill)
-            #        dmec[iStand]['Growth Factor']=np.append(dmec[iStand]['Growth Factor'],-999)
-            #        for v in meta['Core']['StringsToFill']:
-            #            dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-            #        dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
-            #
-            #        # Put everything back in order
-            #        dTmp=dmec[iStand].copy()
-            #        ord=np.argsort(dTmp['Year'])
-            #        for key in dTmp.keys():
-            #            dTmp[key]=dTmp[key][ord]
-            #            dmec[iStand]=dTmp.copy()
-
-        elif (iKD.size>0) & (np.max(iKDa)>=np.max(iHa)) & (np.max(iKDa)>=np.max(iWFa)):
-
-            #----------------------------------------------------------------------
-            # Knockdown
-            #----------------------------------------------------------------------
-
-            meta[pNam]['Project']['SE Type'][iStand]=meta['LUT']['SE Type']['KD']
-
-            # Find the event that incited the funded stand establishment
-            # If the event has more than 75% mortality, use it. If it is less than
-            # 75%, assume disturbance databases have underestimated mortality and
-            # change mortality to 90%.
-            if (iWF.size>0) & (iI.size==0):
-
-                # Wildfire only
-                iMaxMort=np.where(mort[iWF]==np.max(mort[iWF]))[0]
-                if iMaxMort.size>0:
-                    iMaxMort=iMaxMort[0]
-
-                dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iWF[iMaxMort]]
-
-                if mort[iWF[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=90
-
-            elif (iWF.size==0) & (iI.size>0):
-
-                # Insects only
-                iMaxMort=np.where(mort[iI]==np.max(mort[iI]))[0]
-                if iMaxMort.size>0:
-                    iMaxMort=iMaxMort[0]
-
-                if mort[iI[iMaxMort]]>=75:
-                    dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iI[iMaxMort]]
-                else:
-                    dmec[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=90
-                    dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iI[iMaxMort]]
-
-            elif (iWF_and_I.size>0):
-
-                # Wildfire and insects
-                iMaxMort=np.where(mort[iWF_and_I]==np.max(mort[iWF_and_I]))[0]
-                if iMaxMort.size>0:
-                    iMaxMort=iMaxMort[0]
-
-                dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
-                if mort[iWF_and_I[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=90
-
-        elif (iWF.size>0) & (np.max(iWFa)>=np.max(iHa)) & (np.max(iWFa)>=np.max(iKDa)):
-
-            #----------------------------------------------------------------------
-            # Straight planting
-            #----------------------------------------------------------------------
-
-            meta[pNam]['Project']['SE Type'][iStand]=meta['LUT']['SE Type']['SP']
-
-            # Find the event that incited the funded stand establishment
-            # If the event has more than 75% mortality, use it. If it is less than
-            # 90%, assume disturbance databases have underestimated mortality and
-            # change mortality to 100%.
-
-            iMaxMort=np.where(mort[iWF]==np.max(mort[iWF]))[0]
-            if iMaxMort.size>1:
-                iMaxMort=iMaxMort[0]
-
-            dmec[iStand]['IndIncitingEvent'][iEstab]=iLeadUp[iWF[iMaxMort]]
-            if mort[iWF[iMaxMort]]<90:
-                # Unrealistically low, fix
-                dmec[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=95
-
-        else:
-            pass
-#            #----------------------------------------------------------------------
-#            # Unclassified -> straight planting or salvage
-#            # No inciting event was found - assume a mix of salvage and straight planting
-#            #----------------------------------------------------------------------
-#
-#            rn=np.random.random(1)[0]
-#
-#            if rn<0.5:
-#
-#                # Straight planting
-#                meta[pNam]['Project']['SE Type'][iStand]=meta['LUT']['SE Type']['SP']
-#                ID_GapFill=meta['LUT']['Event']['Wildfire']
-#                Year_GapFill=dmec[iStand]['Year'][iEstab]-5
-#                Mort_GapFill=100
-#                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
-#                dmec[iStand]['ID Event Type']=np.append(dmec[iStand]['ID Event Type'],ID_GapFill)
-#                dmec[iStand]['Mortality Factor']=np.append(dmec[iStand]['Mortality Factor'],Mort_GapFill)
-#                dmec[iStand]['Growth Factor']=np.append(dmec[iStand]['Growth Factor'],-999)
-#                dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
-#                for v in meta['Core']['StringsToFill']:
-#                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-#                ind=np.where( (dmec[iStand]['ID Event Type']==ID_GapFill) & (dmec[iStand]['Year']==Year_GapFill) )[0]
-#                dmec[iStand]['IndIncitingEvent'][iEstab]=ind
-#
-#            else:
-#
-#                # Salvage logging
-#                meta[pNam]['Project']['SE Type'][iStand]=meta['LUT']['SE Type']['SL']
-#                ID_GapFill=meta['LUT']['Event']['IBM']
-#                Year_GapFill=dmec[iStand]['Year'][iEstab]-7
-#                Mort_GapFill=75
-#                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
-#                dmec[iStand]['ID Event Type']=np.append(dmec[iStand]['ID Event Type'],ID_GapFill)
-#                dmec[iStand]['Mortality Factor']=np.append(dmec[iStand]['Mortality Factor'],Mort_GapFill)
-#                dmec[iStand]['Growth Factor']=np.append(dmec[iStand]['Growth Factor'],-999)
-#                dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
-#                for v in meta['Core']['StringsToFill']:
-#                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-#                ind=np.where( (dmec[iStand]['ID Event Type']==ID_GapFill) & (dmec[iStand]['Year']==Year_GapFill) )[0]
-#                dmec[iStand]['IndIncitingEvent'][iEstab]=ind
-#
-#                # Now add harvest
-#                ID_GapFill=meta['LUT']['Event']['Harvest Salvage']
-#                Year_GapFill=dmec[iStand]['Year'][iEstab]-2
-#                Mort_GapFill=100
-#                dmec[iStand]['Year']=np.append(dmec[iStand]['Year'],Year_GapFill)
-#                dmec[iStand]['ID Event Type']=np.append(dmec[iStand]['ID Event Type'],ID_GapFill)
-#                dmec[iStand]['Mortality Factor']=np.append(dmec[iStand]['Mortality Factor'],Mort_GapFill)
-#                dmec[iStand]['Growth Factor']=np.append(dmec[iStand]['Growth Factor'],-999)
-#                dmec[iStand]['IndIncitingEvent']=np.append(dmec[iStand]['IndIncitingEvent'],-999)
-#                for v in meta['Core']['StringsToFill']:
-#                    dmec[iStand][v]=np.append(dmec[iStand][v],-999)
-
-    #--------------------------------------------------------------------------
-    # Look at summary by type
-    #--------------------------------------------------------------------------
-    flg=0
-    if flg==1:
-
-        N=np.zeros(len(meta['LUT']['SE Type']))
-        for i in range(len(meta['LUT']['SE Type'])):
-            N[i]=np.where(meta[pNam]['Project']['SE Type']==i)[0].size
-        plt.close('all')
-        fig,ax=plt.subplots(1,figsize=gu.cm2inch(16,7))
-        ax.bar(np.arange(0,N.size),N/np.sum(N)*100)
-        ax.set(xticks=np.arange(0,N.size),xticklabels=np.array(['None','SL','KD','SP','NSR Backlog','Unclassified']))
-
-    return dmec
 
 #%% Add changes in land surface classfication to DMEC
 
@@ -2047,31 +1900,31 @@ def AddLandSurfaceChangesToDMEC(meta,pNam,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT])
                     dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Harvest'])
                     dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],100)
-                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                    if 'IndIncitingEvent' in dmec[iScn][iS]:
-                        dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                    if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                        dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                     for v in meta['Core']['StringsToFill']:
-                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
 
                     # Add slashpile burn
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+1)
                     dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Slashpile Burn'])
                     dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],100)
-                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                    if 'IndIncitingEvent' in dmec[iScn][iS]:
-                        dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                    if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                        dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                     for v in meta['Core']['StringsToFill']:
-                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
 
                     # Add planting
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2)
                     dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Planting'])
                     dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],0)
-                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                    if 'IndIncitingEvent' in dmec[iScn][iS]:
-                        dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                    if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                        dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                     for v in meta['Core']['StringsToFill']:
-                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
                     dmec[iScn][iS]['PL_SPECIES_CD1'][-1]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['AT']
                     dmec[iScn][iS]['PL_SPECIES_PCT1'][-1]=100
 
@@ -2081,11 +1934,11 @@ def AddLandSurfaceChangesToDMEC(meta,pNam,dmec,lsc):
                         dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2+iR*RotationLength)
                         dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Harvest'])
                         dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],100)
-                        dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                        if 'IndIncitingEvent' in dmec[iScn][iS]:
-                            dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                        dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                        if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                            dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                         for v in meta['Core']['StringsToFill']:
-                            dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                            dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
 
             #----------------------------------------------------------------------
             # Energy Production
@@ -2103,31 +1956,31 @@ def AddLandSurfaceChangesToDMEC(meta,pNam,dmec,lsc):
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT])
                     dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Harvest'])
                     dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],100)
-                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                    if 'IndIncitingEvent' in dmec[iScn][iS]:
-                        dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                    if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                        dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                     for v in meta['Core']['StringsToFill']:
-                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
 
                     # Add slashpile burn
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+1)
                     dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Slashpile Burn'])
                     dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],100)
-                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                    if 'IndIncitingEvent' in dmec[iScn][iS]:
-                        dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                    if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                        dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                     for v in meta['Core']['StringsToFill']:
-                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
 
                     # Add planting
                     dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2)
                     dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Planting'])
                     dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],0)
-                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                    if 'IndIncitingEvent' in dmec[iScn][iS]:
-                        dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                    dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                    if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                        dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                     for v in meta['Core']['StringsToFill']:
-                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                        dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
                     dmec[iScn][iS]['PL_SPECIES_CD1'][-1]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['AT']
                     dmec[iScn][iS]['PL_SPECIES_PCT1'][-1]=100
 
@@ -2137,30 +1990,28 @@ def AddLandSurfaceChangesToDMEC(meta,pNam,dmec,lsc):
                         dmec[iScn][iS]['Year']=np.append(dmec[iScn][iS]['Year'],lsc['tv'][iT]+2+iR*RotationLength)
                         dmec[iScn][iS]['ID Event Type']=np.append(dmec[iScn][iS]['ID Event Type'],meta['LUT']['Event']['Harvest'])
                         dmec[iScn][iS]['Mortality Factor']=np.append(dmec[iScn][iS]['Mortality Factor'],100)
-                        dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],-999)
-                        if 'IndIncitingEvent' in dmec[iScn][iS]:
-                            dmec[iScn][iS]['IndIncitingEvent']=np.append(dmec[iScn][iS]['IndIncitingEvent'],-999)
+                        dmec[iScn][iS]['Growth Factor']=np.append(dmec[iScn][iS]['Growth Factor'],9999)
+                        if 'Index to Event Inciting NOSE' in dmec[iScn][iS]:
+                            dmec[iScn][iS]['Index to Event Inciting NOSE']=np.append(dmec[iScn][iS]['Index to Event Inciting NOSE'],9999)
                         for v in meta['Core']['StringsToFill']:
-                            dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],-999)
+                            dmec[iScn][iS][v]=np.append(dmec[iScn][iS][v],9999)
 
     return dmec
 
-#%% Query for non-obligation events
-
-def QueryNonObStandEstablishment(meta,pNam,ID_FSC):
-
-    ListOfNonObFSC=['FTL','FTM','RBM','RBL','FR','VG','FIL','FID','FIM','S', \
-                    'FRP','XXX','O','GFS','IR','FES','FCE','FCM']
-
-    if ID_FSC==0:
-        String_FSC=['Unidentified']
-    else:
-        String_FSC=cbu.lut_n2s(meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'],ID_FSC)
-
-    return np.isin(String_FSC,ListOfNonObFSC)
+#%% Exclude unidentified events
+def Exclude_Unidentified_Events(meta,pNam,dmec0):
+    N_Removed=0
+    for iStand in range(meta[pNam]['Project']['N Stand']):
+        if dmec0[iStand]==None:
+            continue
+        ind=np.where(dmec0[iStand]['ID Event Type']!=9999)[0]
+        N_Removed=N_Removed+ind.size
+        for key in dmec0[iStand]:
+            dmec0[iStand][key]=dmec0[iStand][key][ind]
+    print(str(N_Removed) + ' unidentifiable events removed.')
+    return dmec0
 
 #%% Adjust species-specific mortality
-
 # Make sure iScn_Actual is the index to the actual inventory. If you run it with
 # a counterfactual scenario, it may encounter stands with only one GC. Yet, this
 # method requires a previous GC.
@@ -2229,7 +2080,7 @@ def Exclude_Duplicate_Events(meta,pNam,dmec):
             uYear=np.unique(np.floor(dmec[iStand]['Year'][indType]))
             for iYear in range(uYear.size):
                 ind=np.where( (dmec[iStand]['ID Event Type']==meta['LUT']['Event'][key]) & (np.floor(dmec[iStand]['Year'])==uYear[iYear]) )[0]
-                dmec[iStand]['ID Event Type'][ind[1:]]=-999
+                dmec[iStand]['ID Event Type'][ind[1:]]=9999
     return dmec
 
 #%% Put DMEC events in order
@@ -2240,45 +2091,33 @@ def PutEventsInOrder(meta,pNam,dmec):
         return sum(1 + count_lists(i) for i in l if isinstance(i,list))
 
     if count_lists(dmec)==0:
-
         for iStand in range(meta[pNam]['Project']['N Stand']):
-            #iStand=4584
             d=dmec[iStand].copy()
-
             ord=np.argsort(d['Year'])
-
             # Fix index to inciting events
-            if 'IndIncitingEvent' in d.keys():
-                indOld=np.where(d['IndIncitingEvent']>=0)[0]
-                indNew=np.where(ord==d['IndIncitingEvent'][indOld])[0]
-                d['IndIncitingEvent'][indOld]=indNew
+            if 'Index to Event Inciting NOSE' in d.keys():
+                indOld=np.where(d['Index to Event Inciting NOSE']>=0)[0]
+                indNew=np.where(ord==d['Index to Event Inciting NOSE'][indOld])[0]
+                if indNew.size>0:
+                    d['Index to Event Inciting NOSE'][indOld]=indNew
 
             for key in d.keys():
                 d[key]=d[key][ord]
-
             dmec[iStand]=d.copy()
-
     else:
-
         for iScn in range(meta[pNam]['Project']['N Scenario']):
-
             for iStand in range(meta[pNam]['Project']['N Stand']):
-
                 d=dmec[iScn][iStand].copy()
-
                 ord=np.argsort(d['Year'])
-
                 # Fix index to inciting events
-                if 'IndIncitingEvent' in d.keys():
-                    indOld=np.where(d['IndIncitingEvent']>=0)[0]
-                    indNew=np.where(ord==d['IndIncitingEvent'][indOld])[0]
-                    d['IndIncitingEvent'][indOld]=indNew
-
+                if 'Index to Event Inciting NOSE' in d.keys():
+                    indOld=np.where(d['Index to Event Inciting NOSE']>=0)[0]
+                    indNew=np.where(ord==d['Index to Event Inciting NOSE'][indOld])[0]
+                    if indNew.size>0:
+                        d['Index to Event Inciting NOSE'][indOld]=indNew
                 for key in d.keys():
                     d[key]=d[key][ord]
-
                 dmec[iScn][iStand]=d.copy()
-
     return dmec
 
 #%% Ensure disturbance prededes fertilization so age is specified
@@ -2290,7 +2129,6 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,pNam,dmec,ba):
                       meta['LUT']['Event']['Harvest'],
                       meta['LUT']['Event']['Knockdown'],
                       meta['LUT']['Event']['Harvest Salvage'],
-                      meta['LUT']['Event']['Beetles'],
                       meta['LUT']['Event']['IBM'],
                       meta['LUT']['Event']['IBB'],
                       meta['LUT']['Event']['IBD'],
@@ -2322,27 +2160,27 @@ def Ensure_Fert_Preceded_By_Disturbance(meta,pNam,dmec,ba):
 
         # Add harvest
         for k in dmec[iStand].keys():
-            dmec[iStand][k]=np.append(dmec[iStand][k],-999)
+            dmec[iStand][k]=np.append(dmec[iStand][k],9999)
         dmec[iStand]['Year'][-1]=Year
         dmec[iStand]['ID Event Type'][-1]=meta['LUT']['Event']['Harvest']
         dmec[iStand]['Mortality Factor'][-1]=100
-        dmec[iStand]['Growth Factor'][-1]=-999
+        dmec[iStand]['Growth Factor'][-1]=9999
 
         # Add slashpile burn
         for k in dmec[iStand].keys():
-            dmec[iStand][k]=np.append(dmec[iStand][k],-999)
+            dmec[iStand][k]=np.append(dmec[iStand][k],9999)
         dmec[iStand]['Year'][-1]=Year+1
         dmec[iStand]['ID Event Type'][-1]=meta['LUT']['Event']['Slashpile Burn']
         dmec[iStand]['Mortality Factor'][-1]=100
-        dmec[iStand]['Growth Factor'][-1]=-999
+        dmec[iStand]['Growth Factor'][-1]=9999
 
         # Add planting
         for k in dmec[iStand].keys():
-            dmec[iStand][k]=np.append(dmec[iStand][k],-999)
+            dmec[iStand][k]=np.append(dmec[iStand][k],9999)
         dmec[iStand]['Year'][-1]=Year+2
         dmec[iStand]['ID Event Type'][-1]=meta['LUT']['Event']['Planting']
         dmec[iStand]['Mortality Factor'][-1]=0
-        dmec[iStand]['Growth Factor'][-1]=-999
+        dmec[iStand]['Growth Factor'][-1]=9999
 
     return dmec
 
@@ -2380,7 +2218,7 @@ def Ensure_Every_Stand_Has_Modern_Disturbance(meta,pNam,dmec,name_dist,severity)
             if 'FCI Funded' in dmec[iStand]:
                 dmec[iStand]['FCI Funded']=np.append(dmec[iStand]['FCI Funded'],np.array(0,dtype='int16'))
             for v in meta['Core']['StringsToFill']:
-                dmec[iStand][v]=np.append(dmec[iStand][v],-999)
+                dmec[iStand][v]=np.append(dmec[iStand][v],9999)
 
     return dmec
 
@@ -2409,11 +2247,11 @@ def GapFill_DMEC_WithAge(meta,pNam,dmec,inv):
                 type=meta['LUT']['Event']['IBM']
 
             for k in dmec[iStand].keys():
-                dmec[iStand][k]=np.append(dmec[iStand][k],-999)
+                dmec[iStand][k]=np.append(dmec[iStand][k],9999)
 
             dmec[iStand]['Year'][-1]=meta[pNam]['Project']['Year Project']-inv['Age'][iStand]
             dmec[iStand]['ID Event Type'][-1]=type
             dmec[iStand]['Mortality Factor'][-1]=np.array(100,dtype='int16')
-            dmec[iStand]['Growth Factor'][-1]=-999
+            dmec[iStand]['Growth Factor'][-1]=9999
 
     return dmec

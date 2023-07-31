@@ -9,8 +9,8 @@ import openpyxl
 import gc as garc
 import copy
 import time
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.cbrunner import cbrun_util as cbu
 
 #%% Calculate net revenue
 
@@ -94,7 +94,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
     d['Cost Ripping']=np.zeros(v1['A'].shape)
     d['Cost PAS Deactivation']=np.zeros(v1['A'].shape)
     d['Cost Slashpile Burn']=np.zeros(v1['A'].shape)
-    d['Cost Aerial Spray']=np.zeros(v1['A'].shape)
+    d['Cost Aerial BTK Spray']=np.zeros(v1['A'].shape)
     #d['Harvest Vol Merch']=np.zeros(v1['A'].shape)
     #d['Harvest Vol Resid']=np.zeros(v1['A'].shape)
 
@@ -119,12 +119,12 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
                     dCost['Cost Nutrient Overhead (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
-        # Aerial spray (Btk)
+        # Aerial BTK Spray (Btk)
         #----------------------------------------------------------------------
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Aerial Spray']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Aerial BTK Spray']) )[0]
 
             if ind.size==0:
                 continue
@@ -136,7 +136,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
             if it1.size==0:
                 continue
 
-            d['Cost Aerial Spray'][it1,iStand]=dCost['Cost Aerial Spray (CDN$/ha)'][it0]
+            d['Cost Aerial BTK Spray'][it1,iStand]=dCost['Cost Aerial BTK Spray (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Planting
@@ -207,6 +207,8 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
             if ind.size==0:
                 continue
+            if ind.size>1:
+                ind=ind[0]
 
             Year=tv_full[ind]
             it0=np.where(dPrice['Year']==Year)[0]
@@ -226,7 +228,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Ripping']) | (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Disc Trenching']) )[0]
+            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Mechanical Site Prep']) )[0]
 
             if ind.size==0:
                 continue
@@ -276,13 +278,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
         for k in range(meta['Core']['Max Events Per Year']):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest']) | \
-                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Salvage']) | \
-                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 1']) | \
-                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 2']) | \
-                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 3']) | \
-                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 4']) | \
-                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 5']) | \
-                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Custom 6']) )[0]
+                         (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest Salvage']) )[0]
 
             if ind.size==0:
                 continue
@@ -388,7 +384,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
         d['Cost PAS Deactivation']+ \
         d['Cost Slashpile Burn']+ \
         d['Cost Knockdown']+ \
-        d['Cost Aerial Spray']
+        d['Cost Aerial BTK Spray']
 
     # Total silviculture
     d['Cost Silviculture Total']=d['Cost Harvest Residuals']+ \
@@ -399,7 +395,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
         d['Cost PAS Deactivation']+ \
         d['Cost Slashpile Burn']+ \
         d['Cost Knockdown']+ \
-        d['Cost Aerial Spray']
+        d['Cost Aerial BTK Spray']
 
     # Thousand board feet lumber / ha
     mbf_Lumber=b['Ratio bd ft Lumber per m3']*v1['ODT Lumber']/b['Density Wood']/1000

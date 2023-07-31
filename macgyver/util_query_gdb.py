@@ -15,11 +15,11 @@ import numpy.matlib as ml
 from shapely.geometry import Polygon,Point,box,shape
 import time
 import gc as garc
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.macgyver import utilities_gis as gis
-from fcgadgets.macgyver import utilities_inventory as invu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
-from fcgadgets.bc1ha import bc1ha_utilities as bc1hau
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.macgyver import util_gis as gis
+from fcgadgets.macgyver import util_inventory as invu
+from fcgadgets.cbrunner import cbrun_util as cbu
+from fcgadgets.bc1ha import bc1ha_util as bc1hau
 
 #%% Query openings
 

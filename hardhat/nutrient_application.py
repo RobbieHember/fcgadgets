@@ -1,6 +1,6 @@
 
 import numpy as np
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.cbrunner import cbrun_util as cbu
 
 #%% Nutrient application effects
 
@@ -330,16 +330,16 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
             (vo['A'][iT,:]<=71) & \
             (rn<Po_Coast[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['Coastal Zones ID'])==True) )[0]
+            (np.isin(vi['Inv']['ID_BGCZ'][0,:],meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
+            (np.isin(vi['Inv']['ID_BGCZ'][0,:],meta['Modules']['Nutrient Management']['Coastal Zones ID'])==True) )[0]
 
     indS_Interior=np.where( (meta['Modules']['Nutrient Management']['ResponseCounter']==0) & \
             (vo['A'][iT,:]>=9) & \
             (vo['A'][iT,:]<=71) & \
             (rn<Po_Interior[iT]) & \
             (vo['V_MerchLive'][iT,:]>10) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
-            (np.isin(vi['Inv']['ID_BECZ'][0,:],meta['Modules']['Nutrient Management']['Coastal Zones ID'])==False) )[0]
+            (np.isin(vi['Inv']['ID_BGCZ'][0,:],meta['Modules']['Nutrient Management']['BGC Zone Exclusion ID'])==False) & \
+            (np.isin(vi['Inv']['ID_BGCZ'][0,:],meta['Modules']['Nutrient Management']['Coastal Zones ID'])==False) )[0]
 
     indS=np.append(indS_Coast,indS_Interior)
 
@@ -349,7 +349,7 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
             if iAvailable.size>0:
                 iE=iAvailable[0]
                 vi['EC']['ID Event Type'][iT,indS[i],iE]=meta['LUT']['Event']['Fertilization Aerial']
-                vi['EC']['MortalityFactor'][iT,indS[i],iE]=np.array(0,dtype='int16')
+                vi['EC']['Mortality Factor'][iT,indS[i],iE]=np.array(0,dtype='int16')
                 #vi['EC']['ID Growth Curve'][iT,indS[i],iE]=np.max(vi['EC']['ID Growth Curve'][0:iT,indS[i],:])
 
     return vi

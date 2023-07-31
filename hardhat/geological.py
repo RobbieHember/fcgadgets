@@ -3,8 +3,8 @@
 
 import numpy as np
 import time
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.cbrunner import cbrun_util as cbu
 
 #%% Calculate fossil fuel GHG emissions during operations
 

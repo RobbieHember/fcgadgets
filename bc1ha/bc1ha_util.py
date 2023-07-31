@@ -13,11 +13,11 @@ from shapely.geometry import Polygon,Point,box,shape
 from rasterio import features
 import fiona
 import time
-import fcgadgets.macgyver.utilities_general as gu
-import fcgadgets.macgyver.utilities_gis as gis
-import fcgadgets.macgyver.utilities_query_gdb as qgdb
-import fcexplore.psp.Processing.psp_utilities as ugp
-import fcgadgets.cbrunner.cbrun_utilities as cbu
+import fcgadgets.macgyver.util_general as gu
+import fcgadgets.macgyver.util_gis as gis
+import fcgadgets.macgyver.util_query_gdb as qgdb
+import fcexplore.psp.Processing.psp_util as ugp
+import fcgadgets.cbrunner.cbrun_util as cbu
 
 #%% Initialize project
 
@@ -82,7 +82,7 @@ def Init(*argv):
     meta['Geos']={}
 
     # Import variable info
-    meta['Geos']['Variable Info']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\BC1ha Raster Variable List.xlsx')
+    meta['Geos']['Variable Info']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_BC1haRasterVariableList.xlsx')
 
     # Import coordinate reference system
     gdf_bm=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='TA_REGIONAL_DISTRICTS_SVW')
@@ -200,6 +200,13 @@ def ImportLUTs(meta):
 
     d=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\LUTs\\LUT_regentype_no.xlsx')
     vNam='RegenTypeNO'
+    meta['LUT']['Raw'][vNam]=d
+    meta['LUT'][lNam][vNam]={}
+    for i in range(d['ID'].size):
+        meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
+
+    d=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\LUTs\\LUT_EcozoneCanada.xlsx')
+    vNam='ezcan'
     meta['LUT']['Raw'][vNam]=d
     meta['LUT'][lNam][vNam]={}
     for i in range(d['ID'].size):
@@ -496,11 +503,13 @@ def DefineROI(meta,roi,gdf):
     if roi['Type']=='ByTSA':
 
         # Index to TSAs in query
-        iROI=gdf['tsa']['key'].VALUE[np.isin(gdf['tsa']['key'].Name,roi['List'])].values
+        List=[]
+        for k in roi['List']:
+            List.append(meta['LUT']['FADM_TSA']['TSA_NUMBER_DESCRIPTION'][k])
 
         roi['grd']=tsa.copy()
         roi['grd']['Data']=np.zeros(tsa['Data'].shape)
-        ind=(np.isin(tsa['Data'],iROI))
+        ind=(np.isin(tsa['Data'],List))
         roi['grd']['Data'][ind]=1
 
         # Define extent based on mask
@@ -792,12 +801,13 @@ def Import_GDB_Over_ROI(meta_bc1ha,roi,vList):
 
 #%% Import variables for ROI
 
-def Import_Raster(meta,roi,vList):
+def Import_Raster(meta,roi,vList,*argv):
     d={}
     for v in vList:
         if roi!=[]:
-            if v in roi['grd'].keys():
-                continue
+            if 'grd' in roi.keys():
+                if v in roi['grd'].keys():
+                    continue
         if v=='age_ntem':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Age\\Age_NTEM_2019.tif')
         elif v=='BEC_ZONE_CODE':
@@ -830,10 +840,14 @@ def Import_Raster(meta,roi,vList):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Management\\DistanceFromForestryFacility.tif')
         elif v=='elev':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\elevation.tif')
+        elif v=='ezcan':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Ecozones_Canada\\Ecozones_Canada.tif')
         elif v=='feca_yr':
-           d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_MaskAll.tif')
+           d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_YearLast.tif')
         elif v=='fire_yr':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_YearLast.tif')
+        elif v=='fire_2023':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_2023.tif')
         elif v=='gfcly':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\GlobalForestChange_LossYear_2021.tif')
         elif v=='gfcly_filt':
@@ -850,6 +864,8 @@ def Import_Raster(meta,roi,vList):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\Harvest_Consol2_Year.tif')
         elif v=='harv_salv':
             d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\HarvestSalvageMask_FromCruise.tif')
+        elif v=='harv_prob':
+            d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\HarvestProbability.tif')
         elif v=='kd_yr':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP_KD_YearLast.tif')
         elif v=='ibm_yr':
@@ -937,16 +953,27 @@ def Import_Raster(meta,roi,vList):
         else:
             pass
 
-        d[v]=gis.UpdateGridCellsize(d[v],meta['Graphics']['Map']['RGSF'])
+        if meta['Graphics']['Map']['RGSF']!=1:
+            d[v]=gis.UpdateGridCellsize(d[v],meta['Graphics']['Map']['RGSF'])
+
+        if roi!=[]:
+            if 'points' in roi.keys():
+                if v==vList[0]:
+                    iPoints=gis.GetGridIndexToPoints(d[vList[0]],roi['points']['x'],roi['points']['y'])
+                d[v]=d[v]['Data'][iPoints]
 
     if roi!=[]:
-        for v in vList:
-            if v in roi['grd'].keys():
-                continue
-            # Add to ROI structure and clip to ROI
-            roi['grd'][v]=d[v]
-            roi['grd'][v]=gis.ClipToRaster(roi['grd'][v],roi['grd'])
-        return roi
+        if 'grd' in roi.keys():
+            for v in vList:
+                if v in roi['grd'].keys():
+                    continue
+                # Add to ROI structure and clip to ROI
+                roi['grd'][v]=d[v]
+                roi['grd'][v]=gis.ClipToRaster(roi['grd'][v],roi['grd'])
+            return roi
+        elif 'points' in roi.keys():
+            return d
+
     else:
         return d
 
@@ -1227,7 +1254,7 @@ def Plot_LandCoverClass1(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Paths']['Figures'] + '\\' + roi['Name'] + '_lcc1_c','png',900)
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_lcc1_c','png',900)
     plt.show()
     return fig,ax
 
@@ -1282,7 +1309,7 @@ def Plot_REARs(meta,roi):
     ax[1].set(position=pos2)
 
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_REARs','png',meta['Graphics']['gp']['save fig dpi'])
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_REARs','png',900)
 
     return fig,ax
 
@@ -1348,7 +1375,7 @@ def Plot_Harvest_Po(meta,roi):
     ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].tick_params(length=meta['Graphics']['gp']['tickl'])
 
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\taz_ann_prob_harvest','png',meta['Graphics']['gp']['save fig dpi'])
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\taz_ann_prob_harvest','png',900)
     plt.show()
     return
 
@@ -1410,7 +1437,7 @@ def Plot_BGC_Zone(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_bgcz','png',meta['Graphics']['gp']['save fig dpi'])
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_bgcz','png',900)
     plt.show()
     return fig,ax
 
@@ -1461,5 +1488,187 @@ def Plot_SalvageLogging(meta,roi):
     ax[1].set(position=pos2)
 
     gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_harv_salv','png',900)
+
+    return fig,ax
+
+#%%
+def Plot_MAP(meta,roi):
+
+    z0=roi['grd']['prcp_ann_n']['Data']
+
+    bw=200; bin=np.arange(0,2400+bw,bw)
+
+    N_vis=bin.size
+    N_hidden=2
+    N_tot=N_vis+N_hidden
+
+    z1=N_vis*np.ones(z0.shape)
+    for i in range(N_vis):
+        ind=np.where(np.abs(z0-bin[i])<=bw/2)
+        if ind[0].size>0:
+            z1[ind]=i+1
+    ind=np.where(z0>=bin[i]); z1[ind]=i+1
+    z1[1,1]=i+2
+    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=i+3
+
+    for i in range(N_vis):
+        z1[0,i]=i+1
+
+    lab=['']*(N_tot-1)
+    lab[0:N_vis]=bin.astype(str)
+
+    cm=plt.cm.get_cmap('viridis',N_vis)
+    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Within']=='On':
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+    ax[1].set(position=[0.71,0.6,0.05,0.14])
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_prcp_ann_n','png',900)
+
+    return fig,ax
+
+#%%
+def Plot_MAT(meta,roi):
+
+    z0=roi['grd']['tmean_ann_n']['Data']
+
+    bw=10; bin=np.arange(-30,120+bw,bw)
+
+    N_vis=bin.size
+    N_hidden=2
+    N_tot=N_vis+N_hidden
+
+    z1=N_vis*np.ones(z0.shape)
+    for i in range(N_vis):
+        ind=np.where(np.abs(z0-bin[i])<=bw/2)
+        if ind[0].size>0:
+            z1[ind]=i+1
+    ind=np.where(z0>=bin[i]); z1[ind]=i+1
+    z1[1,1]=i+2
+    z1[(roi['grd']['Data']==0) | (roi['grd']['lcc1_c']['Data']==0) | (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water'])]=i+3
+
+    for i in range(N_vis):
+        z1[0,i]=i+1
+
+    lab=['']*(N_tot-1)
+    lab[0:N_vis]=np.array(bin/10).astype(str)
+
+    cm=plt.cm.get_cmap('viridis',N_vis)
+    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Within']=='On':
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+    ax[1].set(position=[0.71,0.6,0.05,0.14])
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_tmean_ann_n','png',900)
+    plt.show()
+    return fig,ax
+
+#%%
+
+def Plot_Fire2023(meta,roi):
+
+    z1=4*np.ones(roi['grd']['Data'].shape,dtype='int8')
+
+    ind=np.where( (roi['grd']['lcc1_c']['Data']==1) ); z1[ind]=1
+    ind=np.where( (roi['grd']['lcc1_c']['Data']==1) & (roi['grd']['fire_2023']['Data']>0) ); z1[ind]=2
+    ind=np.where( (roi['grd']['lcc1_c']['Data']!=1) ); z1[ind]=3
+    ind=np.where( (roi['grd']['lcc1_c']['Data']==meta['LUT']['Derived']['lcc1']['Water']) ); z1[ind]=4
+
+    lab=['Forest land','Forest land (affected)','Non-forest land']
+
+    N_vis=len(lab)
+    N_hidden=1
+    N_tot=N_vis+N_hidden
+
+    cm=np.vstack( ((0.8,0.8,0.8,1),(0.85,0,0,1),(0.9,0.9,0.9,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+    if meta['Graphics']['Map']['Show Bound Within']=='On':
+        roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
+        roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Lakes']=='On':
+        roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=2.25)
+    if meta['Graphics']['Map']['Show Rivers']=='On':
+        roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    if meta['Graphics']['Map']['Show Roads']=='On':
+        roi['gdf']['road'].plot(ax=ax[0],edgecolor='k',linewidth=0.25,label='Road',alpha=1,zorder=1)
+
+    gdf['cities'][gdf['cities']['Territory']=='BC'].plot(ax=ax[0],marker='s',edgecolor=[0,0,0],facecolor=[1,1,0],lw=0.25,markersize=9,alpha=1,zorder=2)
+    for x,y,label in zip(gdf['cities'].geometry.x,gdf['cities'].geometry.y,gdf['cities'].Name):
+        ax[0].annotate(label,xy=(x,y),xytext=(3,2),textcoords="offset points",color=[0,0,0],fontsize=4)
+
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+    ax[1].set(position=[0.71,0.6,0.05,0.14])
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+    if meta['Graphics']['Print Figures']=='On':
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_fire2023','png',900)
 
     return fig,ax

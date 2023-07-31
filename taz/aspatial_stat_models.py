@@ -7,8 +7,8 @@ Aspatial Statistical Models of Disturbance Events
 
 import numpy as np
 import scipy.stats as stats
-from fcgadgets.macgyver import utilities_general as gu
-from fcgadgets.cbrunner import cbrun_utilities as cbu
+from fcgadgets.macgyver import util_general as gu
+from fcgadgets.cbrunner import cbrun_util as cbu
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -273,10 +273,6 @@ def SimulateWildfireFromAAO_StandsActAsEnsembles(meta,pNam,inv,iScn):
 
 def SimulateIBMFromAAO(meta,pNam,inv):
 
-    # Ensure BGC zone has the right key name
-    if 'ID_BECZ' in inv:
-        inv['ID_BGCZ']=inv['ID_BECZ']
-
     # Import IBM stats
     ibmss=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
 
@@ -378,102 +374,6 @@ def SimulateIBMFromAAO(meta,pNam,inv):
             fout=meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + cbu.FixFileNum(iScn) + '_Ens' + cbu.FixFileNum(iEns) + '.pkl'
             gu.opickle(fout,ibm_sim_sparse)
 
-
-##%% Generate disturbances from Pareto distribution
-#
-#def GenerateDisturbancesFromPareto(N_t,N_s,beta,rn):
-#
-#    # Initialize occurrence array
-#    oc=np.zeros((N_t,N_s),dtype='int8')
-#
-#    # Draw a probability of area disturbed per time step
-#    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
-#    po=np.reshape(po,(-1,1))
-#    po=np.tile(po,N_s)
-#
-#    # Loop through time steps
-#    #rn=np.random.random((N_t,N_s))
-#
-#    # Populate occurrence
-#    ind=np.where(rn<po)
-#    oc[ind[0],ind[1]]=1
-#
-#    return oc
-#
-##%% Generate disturbance ensembles with AAO models
-#
-#def GenerateIBMEnsembleFromAAO(meta,rn,par,id_bgcz):
-#
-#    # Import IBM stats
-#    ibmss=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
-#    tv_scn=np.arange(-2000,2201,1)
-#
-#    # Prepare mortality probability coefficients
-#    beta_obs=np.cumsum([meta['Param']['BE']['Taz']['IBM']['p_Trace_obs'],
-#                       meta['Param']['BE']['Taz']['IBM']['p_Low_obs'],
-#                       meta['Param']['BE']['Taz']['IBM']['p_Medium_obs'],
-#                       meta['Param']['BE']['Taz']['IBM']['p_Severe_obs'],
-#                       meta['Param']['BE']['Taz']['IBM']['p_VerySevere_obs']])
-#
-#    ibm_sim={}
-#
-#    #--------------------------------------------------------------------------
-#    # Occurrence
-#    #--------------------------------------------------------------------------
-#
-#    # Initialize annual probability of occurrence
-#    ibm_sim['Occurrence']=np.zeros((meta[pNam]['Year'].size,meta[pNam]['Project']['N Stand']),dtype='int16')
-#
-#    uZone=np.unique(id_bgcz)
-#
-#    for iZone in range(uZone.size):
-#
-#        indZone=np.where(id_bgcz==uZone[iZone])[0]
-#
-#        namZone=cbu.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],uZone[iZone])[0]
-#
-#        # Alternative model
-#        b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
-#        for iT in range(meta[pNam]['Year'].size):
-#            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])
-#
-#    # Exclude inventory period
-#    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during modern period']=='On':
-#        ind=np.where( (meta[pNam]['Year']>=1951) & (meta[pNam]['Year']<=meta[pNam]['Project']['Year Project']) )[0]
-#        ibm_sim['Occurrence'][ind,:]=0
-#
-#    # Exclude historical period
-#    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during historical period']=='On':
-#        ind=np.where( (meta[pNam]['Year']<=meta[pNam]['Project']['Year Project']) )[0]
-#        ibm_sim['Occurrence'][ind,:]=0
-#
-#    # Exclude future period
-#    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during future period']=='On':
-#        ind=np.where( (meta[pNam]['Year']>meta[pNam]['Project']['Year Project']) )[0]
-#        ibm_sim['Occurrence'][ind,:]=0
-#
-#    #--------------------------------------------------------------------------
-#    # Severity / mortality
-#    #--------------------------------------------------------------------------
-#
-#    # Get mortality from probability of burn severity rating
-#    ibm_sim['Mortality']=np.zeros((meta[pNam]['Year'].size,meta[pNam]['Project']['N Stand']),dtype='int16')
-#    ind=np.where( (ibm_sim['Occurrence']>0) )
-#
-#    # Add pre-inventory severity
-#    Mort=np.zeros((meta[pNam]['Year'].size,meta[pNam]['Project']['N Stand']),dtype='int16')
-#    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
-#    it=np.where(meta[pNam]['Year']<1920)[0]
-#    ibm_sim['Mortality'][it,:]=Mort[it,:]
-#
-#    # Add post-inventory severity
-#    Mort=np.zeros((meta[pNam]['Year'].size,meta[pNam]['Project']['N Stand']),dtype='int16')
-#    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
-#    it=np.where(meta[pNam]['Year']>meta[pNam]['Project']['Year Project'])[0]
-#    ibm_sim['Mortality'][it,:]=Mort[it,:]
-#
-#    return ibm_sim
-
 #%% Mortality from burn severity rating
 # Mortality numbers come from DisturbanceBySeverityClass spreadsheet
 
@@ -505,35 +405,36 @@ def GetMortalityFromIBMSeverity(rn,beta):
 
 def PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 
-    beta=[-0.05,400]
-
     # Plot function:
     flg=0
     if flg==1:
+        beta=[-0.025,250]
         Age=np.arange(1,500)
         Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
-
         fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
         ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
         ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Age, years',ylabel='Annual probability of breakup')
         ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
         ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
 
-    Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
-
-    #rn=np.random.random(Age.size)
+    Po=1/(1+np.exp(meta['Param']['BE']['On The Fly']['Pa Breakup Saturation']*(Age-meta['Param']['BE']['On The Fly']['Pa Breakup Inflection'])))
     rn=meta[pNam]['Project']['On the Fly']['Random Numbers']['Breakup'][iT,:]
 
-    indS=np.where(rn<Po)[0]
-    if indS.size>0:
-        for i in range(indS.size):
-            iAvailable=np.where(vi['EC']['ID Event Type'][iT,indS[i],:]==0)[0]
+    indAffected=np.where(rn<Po)[0]
+    if indAffected.size>0:
+        for iA in indAffected:
+            iAvailable=np.where(vi['EC']['ID Event Type'][iT,iA,:]==0)[0]
             if iAvailable.size>0:
                 iE=iAvailable[0]+0
-                #iE=-1
-                vi['EC']['ID Event Type'][iT,indS[i],iE]=meta['LUT']['Event']['Mechanical']
-                vi['EC']['Mortality Factor'][iT,indS[i],iE]=1.0
-                vi['EC']['ID Growth Curve'][iT,indS[i],iE]=1
+                if rn[iA]<0.6*Po[iA]:
+                    Type=meta['LUT']['Event']['Disease Root']
+                else:
+                    Type=meta['LUT']['Event']['Wind']
+                vi['EC']['ID Event Type'][iT,iA,iE]=Type
+                vi['EC']['Mortality Factor'][iT,iA,iE]=1.0
+                vi['EC']['ID Growth Curve'][iT,iA,iE]=1
+            else:
+                print('No space left in event chronology for on-the-fly breakup!')
 
     return vi
 
@@ -558,7 +459,7 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 
         # Historical period
 
-        bH=[0.00055,4.9,0.32,1967]
+        bH=[0.00085,4.85,0.32,1968]
         f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
         f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
         Pa_H_Sat=f1*f2
@@ -570,25 +471,15 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
             f1=bH[0]*np.maximum(0,(t-1800)/100)**bH[1]
             f2=(1/(1+np.exp(bH[2]*(t-bH[3]))))
             Pa_H_Sat=f1*f2
-            plt.plot(t,Pa_H_Sat,'c--',lw=1.5)
+            plt.plot(t,Pa_H_Sat,'g--',lw=1.5)
 
     else:
 
         # Future period
-
         if 'Pa Harvest Sat' in meta[pNam]['Scenario'][iScn]:
-
-            # Default has been overriden with scenario-specific value
-            Pa_H_Sat=meta[pNam]['Scenario'][iScn]['Pa Harvest Sat']
-
+            Pa_H_Sat=meta[pNam]['Scenario'][iScn]['Pa Harvest Sat']*vi['Inv']['Harvest Index']
         else:
-
-            # Use default
-            #Pa_H_Sat=meta['Param']['BE']['On The Fly']['Pa_Harvest_Sat']
-
-            # Use historical map of annual probably of harvest
-            # *** This will ensure low/no harvesting in remote/inoperable areas ***
-            Pa_H_Sat=meta['Param']['BE']['On The Fly']['Pa_Harvest_Sat']*vi['Inv']['P Harvest Weight']
+            Pa_H_Sat=meta['Param']['BE']['On The Fly']['Pa_Harvest_Sat']*vi['Inv']['Harvest Index']
 
     # Inflection point
     if 'Pa Harvest Inf' in meta[pNam]['Scenario'][iScn]:

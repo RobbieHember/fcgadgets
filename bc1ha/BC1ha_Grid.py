@@ -6,33 +6,31 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 import geopandas as gpd
-from rasterio.transform import from_origin
 import pandas as pd
+import pyproj
 import scipy.io as spio
 import fiona
 import rasterio
 from rasterio import features
-from shapely.geometry import Point,Polygon
 from shapely import geometry
 from scipy.interpolate import griddata
 import cv2
-import fcgadgets.macgyver.utilities_general as gu
-import fcgadgets.macgyver.utilities_gis as gis
-import fcgadgets.macgyver.utilities_query_gdb as qgdb
-import fcgadgets.bc1ha.bc1ha_utilities as u1ha
+#from rasterio.transform import from_origin
+#from shapely.geometry import Point,Polygon
+import fcgadgets.macgyver.util_general as gu
+import fcgadgets.macgyver.util_gis as gis
+import fcgadgets.macgyver.util_query_gdb as qgdb
+import fcgadgets.bc1ha.bc1ha_util as u1ha
 
 #%% Import paths and look-up-tables
 
-# Initialize
 meta=u1ha.Init()
+gp=gu.SetGraphics('Manuscript')
 
 # Build look up tables (only do this once a year, takes 8 hours)
 flg=0
 if flg==1:
     u1ha.BuildLUTsFromSourceDBs(meta)
-
-# Import graphics settings
-gp=gu.SetGraphics('Manuscript')
 
 #%% Define reference grid
 
@@ -91,7 +89,7 @@ def DigitizeTSABoundaries():
     return
 
 #%% Rasterize variables from source
-
+# *** VRI and Forest Cover Inventory area too big - crash ***
 # prp=u1ha.GetVariablesFromGDB(meta,'BC_MAJOR_WATERSHEDS')
 
 u1ha.RasterizeFromSource(meta,zRef,'BC_MAJOR_WATERSHEDS','MAJOR_WATERSHED_CODE')
@@ -104,67 +102,21 @@ u1ha.RasterizeFromSource(meta,zRef,'FWA_WETLANDS_POLY','WATERBODY_TYPE')
 u1ha.RasterizeFromSource(meta,zRef,'OGSR_TAP_PRIORITY_DEF_AREA_SP','OGSR_TPDA_SYSID')
 u1ha.RasterizeFromSource(meta,zRef,'OGSR_TAP_PRIORITY_DEF_AREA_SP','PRIORITY_DEFERRAL_ID')
 u1ha.RasterizeFromSource(meta,zRef,'RMP_OGMA_LEGAL_ALL_SVW','LEGAL_OGMA_PROVID')
+u1ha.RasterizeFromSource(meta,zRef,'RSLT_OPENING_SVW','OPENING_ID')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_ACTIVITY_TREATMENT_SVW','OPENING_ID')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_RESERVE_SVW','SILV_RESERVE_CODE')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','SILV_RESERVE_CODE')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','SILV_RESERVE_OBJECTIVE_CODE')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','STOCKING_TYPE_CODE') # takes 100 min
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','TREE_COVER_PATTERN_CODE')
+u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','I_TOTAL_STEMS_PER_HA')
+u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','I_TOTAL_WELL_SPACED_STEMS_HA')
+u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','I_CROWN_CLOSURE_PERCENT')
+u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','REFERENCE_YEAR')
 u1ha.RasterizeFromSource(meta,zRef,'TA_REGIONAL_DISTRICTS_SVW','REGIONAL_DISTRICT_NAME')
 u1ha.RasterizeFromSource(meta,zRef,'TA_PROTECTED_LANDS_SV','PROTECTED_LANDS_DESIGNATION')
 u1ha.RasterizeFromSource(meta,zRef,'VEG_BURN_SEVERITY_SP','FIRE_YEAR')
 u1ha.RasterizeFromSource(meta,zRef,'VEG_BURN_SEVERITY_SP','BURN_SEVERITY_RATING')
-
-#%% Recent wildfire
-# Current year + preveous year (sometimes missing)
-
-zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-
-# Current year
-pthin=r'C:\Users\rhember\Documents\Data\Wildfire\Current\prot_current_fire_polys.shp'
-df=gpd.read_file(pthin)
-df=df[df.geometry!=None]
-df=df.reset_index()
-shapes=((geom,value) for geom, value in zip(df['geometry'],df['FIRE_YEAR']))
-z0=np.zeros(zRef['Data'].shape,dtype=float)
-burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
-
-z1=zRef.copy()
-z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-ind=np.where(burned>0); z1['Data'][ind]=1
-plt.close(); plt.matshow(z1['Data'])
-print(np.sum(z1['Data']))
-gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\prot_current_fire_polys\prot_current_fire_polys.tif')
-gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_2023.tif')
-
-# Previous year when missing
-import geotable
-import pyproj
-srs=gis.ImportSRSs()
-crs=pyproj.CRS(srs['String']['Geographic'])
-
-a=geotable.load(r'C:\Users\rhember\Documents\Data\Wildfire\BC Fire Perimeters 2020-2022.kmz')
-df=gpd.GeoDataFrame(data=a.Name,geometry=a.geometry_object)
-df['ID']=np.ones(len(df))
-df.crs=pyproj.CRS(srs['String']['Geographic'])
-df=df.to_crs({'init':'epsg:3005'})
-
-shapes=((geom,value) for geom, value in zip(df['geometry'],df['ID']))
-z0=np.zeros(zRef['Data'].shape,dtype=float)
-burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
-
-# Fix by removing other years
-tv=np.arange(2020,2021+1,1)
-for iT in range(tv.size):
-    zF0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(tv[iT]) + '.tif')
-    ind=np.where(zF0['Data']>0)
-    burned[ind]=0
-
-z1=zRef.copy()
-z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-ind=np.where(burned>0); z1['Data'][ind]=1
-print(np.sum(z1['Data']))
-gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_2022.tif')
 
 #%%
 
@@ -625,8 +577,8 @@ for iY in range(N_Year):
         else:
             z0[k][iY+1]=np.zeros(zRef['Data'].shape,dtype='int16')
 
-#vNam='PL_All'
-vNam='PL_FirstOnly'
+vNam='PL_All'
+#vNam='PL_FirstOnly'
 
 # Initialize counter (to deal with repeat planting)
 zCounter=np.zeros(zRef['Data'].shape,dtype=float)
@@ -743,6 +695,8 @@ pl['crs']=meta['Geos']['crs']
 pl['Keep Geom']='Off'
 pl['Select Openings']=np.array([])
 pl['SBC']=np.array([])
+pl['STC']=np.array([])
+pl['SMC']=np.array([])
 pl['FSC']=np.array([])
 pl['SOC1']=np.array([])
 pl['ROI']=[]
@@ -851,7 +805,7 @@ for iU in range(uAT.size):
 # Populate packed layers
 N_Year=6
 lNam='RSLT_ACTIVITY_TREATMENT_SVW'
-vNam='PL_FirstOnly'
+vNam='PL_All'
 
 for iY in range(N_Year):
     t0=time.time()
@@ -1338,35 +1292,49 @@ plt.plot(tv1,N,'-bo')
 
 zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 meta['Graphics']['Map']['RGSF']=1
+
+# Mask
+zMask=zRef.copy()
+zMask['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+for iEY in range(6):
+    zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_ALL_' + str(iEY+1) + '_SILV_FUND_SOURCE_CODE.tif')
+    ind=np.where( (np.isin(zFSC['Data'],meta['Param']['BE']['FSC']['NO List ID'])==True) )
+    zMask['Data'][ind]=1
+gis.SaveGeoTiff(zMask,meta['Paths']['bc1ha'] + '\\Management\\PL_NonOb_MaskAll.tif')
+
+th_Fill=15
+yr_th=8
+tv=np.arange(1960,2023,1)
 zD=u1ha.Import_Raster(meta,[],['ibm_yr','fire_yr','harv_yr_con1','kd_yr'])
 
-# First and last instances
-zPL_First=zRef.copy(); zPL_First['Data']=3000*np.ones(zRef['Data'].shape,dtype='int16')
-zPL_Last=zRef.copy(); zPL_Last['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+# First and last instances of planting, plus compacted indices to each year
+zPL_First=zRef.copy()
+zPL_First['Data']=3000*np.ones(zRef['Data'].shape,dtype='int16')
+zPL_Last=zRef.copy()
+zPL_Last['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+idxPL={}
+for iT in range(tv.size):
+    idxPL[tv[iT]]=(np.array([],dtype=int),np.array([],dtype=int))
 for iEY in range(6):
+    print(iEY)
     zYr=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_ALL_' + str(iEY+1) + '_Year.tif')
     zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_ALL_' + str(iEY+1) + '_SILV_FUND_SOURCE_CODE.tif')
     ind=np.where( (np.isin(zFSC['Data'],meta['Param']['BE']['FSC']['NO List ID'])==True) ) # (zSPH['Data']>750)
     zPL_First['Data'][ind]=np.minimum(zPL_First['Data'][ind],zYr['Data'][ind])
     zPL_Last['Data'][ind]=np.maximum(zPL_Last['Data'][ind],zYr['Data'][ind])
-# np.unique(zPL_Last['Data']-zPL_First['Data'])
+    for iT in range(tv.size):
+        ind=np.where( (zYr['Data']==tv[iT]) & (np.isin(zFSC['Data'],meta['Param']['BE']['FSC']['NO List ID'])==True) )
+        idxPL[tv[iT]]=( np.append(idxPL[tv[iT]][0],ind[0]),np.append(idxPL[tv[iT]][1],ind[1]) )
 
-th_Fill=15
-yr_th=8
-
-tv=np.arange(1990,2023,1)
 for iT in range(tv.size):
     print(tv[iT])
+
     zPL=zRef.copy()
     zPL['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    for iEY in range(6):
-        zYr=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_ALL_' + str(iEY+1) + '_Year.tif')
-        zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_ALL_' + str(iEY+1) + '_SILV_FUND_SOURCE_CODE.tif')
-        ind=np.where( (zYr['Data']==tv[iT]) & (np.isin(zFSC['Data'],meta['Param']['BE']['FSC']['NO List ID'])==True) ) # (zSPH['Data']>750)
-        zPL['Data'][ind]=1
+    zPL['Data'][ (idxPL[tv[iT]][0].astype(int),idxPL[tv[iT]][1].astype(int)) ]=1
 
     # Determine what is planting vs. fill-planting
-    ind_First=np.where( (zPL['Data']==1) & (tv[iT]-zPL_First['Data']==0) | (zPL['Data']==1) & (tv[iT]-zPL_First['Data']>=th_Fill) )
+    ind_First=np.where( (zPL['Data']==1) & (zPL_First['Data']==tv[iT]) | (zPL['Data']==1) & (tv[iT]-zPL_First['Data']>=th_Fill) )
     zPL_First1=zRef.copy()
     zPL_First1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
     zPL_First1['Data'][ind_First]=1
@@ -1408,21 +1376,22 @@ for iT in range(tv.size):
     ind=np.where( (zPL_First1['Data']==1) & (zPE['Data']==0) )
     zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Unknown']
     # NSR backlock
-    ind=np.where( (zPE['Data']==meta['LUT']['Derived']['RegenTypeNO']['Unknown']) & (zD['harv_yr_con1']['Data']>0) & (zD['harv_yr_con1']['Data']<=1987) )
+    ind=np.where( (zPE['Data']==meta['LUT']['Derived']['RegenTypeNO']['Unknown']) & (zD['harv_yr_con1']['Data']>0) & (zD['harv_yr_con1']['Data']<=1987) | \
+                (zPL_Fill1['Data']==1) & (zD['harv_yr_con1']['Data']>0) & (zD['harv_yr_con1']['Data']<=1987) )
     zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
     # Road
     ind=np.where( (zPE['Data']==meta['LUT']['Derived']['RegenTypeNO']['Unknown']) )
     zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Road Planting']
     # Fill-planting
-    ind=np.where( (zPL_Fill1['Data']==1) )
+    ind=np.where( (zPL_Fill1['Data']==1) & (zPE['Data']!=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']) )
     zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Fill Planting']
 
-    ind_All=np.where(zPE['Data']>0)
-    d=meta['LUT']['Derived']['RegenTypeNO'].copy()
-    for k in meta['LUT']['Derived']['RegenTypeNO'].keys():
-        ind=np.where(zPE['Data']==meta['LUT']['Derived']['RegenTypeNO'][k])
-        d[k]=ind[0].size/ind_All[0].size
-    d
+    # ind_All=np.where(zPE['Data']>0)
+    # d=meta['LUT']['Derived']['RegenTypeNO'].copy()
+    # for k in meta['LUT']['Derived']['RegenTypeNO'].keys():
+    #     ind=np.where(zPE['Data']==meta['LUT']['Derived']['RegenTypeNO'][k])
+    #     d[k]=ind[0].size/ind_All[0].size
+    # d
     gis.SaveGeoTiff(zPE,meta['Paths']['bc1ha'] + '\\Management\\PL_NonOb_Type_' + str(tv[iT]) + '.tif')
 
 
@@ -2108,6 +2077,80 @@ for iT in range(tv.size):
 
 plt.plot(tv,(yH-yHP)/yH,'ob-')
 
+#%% Recent wildfire
+# Current year + preveous year (sometimes missing)
+
+zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+# Current year
+pthin=r'C:\Users\rhember\Documents\Data\Wildfire\Current\prot_current_fire_polys.shp'
+df=gpd.read_file(pthin)
+df=df[df.geometry!=None]
+df=df.reset_index()
+shapes=((geom,value) for geom, value in zip(df['geometry'],df['FIRE_YEAR']))
+z0=np.zeros(zRef['Data'].shape,dtype=float)
+burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
+
+z1=zRef.copy()
+z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+ind=np.where(burned>0); z1['Data'][ind]=1
+plt.close(); plt.matshow(z1['Data'])
+print(np.sum(z1['Data']))
+gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\prot_current_fire_polys\prot_current_fire_polys.tif')
+gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_2023.tif')
+
+# Previous year when missing
+import geotable
+import pyproj
+srs=gis.ImportSRSs()
+crs=pyproj.CRS(srs['String']['Geographic'])
+
+a=geotable.load(r'C:\Users\rhember\Documents\Data\Wildfire\BC Fire Perimeters 2020-2022.kmz')
+df=gpd.GeoDataFrame(data=a.Name,geometry=a.geometry_object)
+df['ID']=np.ones(len(df))
+df.crs=pyproj.CRS(srs['String']['Geographic'])
+df=df.to_crs({'init':'epsg:3005'})
+
+shapes=((geom,value) for geom, value in zip(df['geometry'],df['ID']))
+z0=np.zeros(zRef['Data'].shape,dtype=float)
+burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
+
+# Fix by removing other years
+tv=np.arange(2020,2021+1,1)
+for iT in range(tv.size):
+    zF0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(tv[iT]) + '.tif')
+    ind=np.where(zF0['Data']>0)
+    burned[ind]=0
+
+z1=zRef.copy()
+z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+ind=np.where(burned>0); z1['Data'][ind]=1
+print(np.sum(z1['Data']))
+gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_2022.tif')
+
+#%% Ecozones of Canada
+
+zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+srs=gis.ImportSRSs()
+crs=pyproj.CRS(srs['String']['Geographic'])
+
+pthin=r'C:\Users\rhember\Documents\Data\Ecozones\nef_ca_ter_ecozone_v2_2.geojson'
+df=gpd.read_file(pthin)
+df=df[df.geometry!=None]
+df=df.reset_index()
+df.crs=pyproj.CRS(srs['String']['Geographic'])
+df=df.to_crs({'init':'epsg:3005'})
+# Used to create LUT: df.drop(columns='geometry').to_excel(r'C:\Users\rhember\Documents\Data\Ecozones\table.xlsx')
+
+shapes=((geom,value) for geom, value in zip(df['geometry'],df['ECOZONE_ID']))
+z0=np.zeros(zRef['Data'].shape,dtype=float)
+burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
+z1=zRef.copy()
+z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+ind=np.where( (burned>0) &(zRef['Data']==1) ); z1['Data'][ind]=burned[ind]
+plt.close('all'); plt.matshow(z1['Data'],clim=[0,15])
+gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\Ecozones_Canada\\Ecozones_Canada.tif')
 
 #%% Rasterize aerial spray treatment
 
