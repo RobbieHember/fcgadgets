@@ -1,19 +1,10 @@
 # bc1ha
 ## INTRODUCTION
-The **bc1ha** repository supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector.
+The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at.. you guessed it.. 1 hectare spatial resolution.
 <br>
 <br>
-The repository was developed to: 
-* Consolidate source code used by BC's Forest Carbon Initiative (FCI)
-* Share knowledge, methods and limitations
-* Automate and streamline project design with BC information systems
-* Benefit from the diverse ecosystem of existing and new modelling approaches
-* Support complex policy decisions in land resource management
-<br>
-fcgadgets is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
-geographical information systems, data analytics, and application deployment (Downey, 2017). 
-
 ## WORKFLOW
+The scripts are focused on streamlining an annual update cycle.
 
 
 ## License

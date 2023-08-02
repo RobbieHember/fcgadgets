@@ -476,6 +476,12 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
     meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype=int)
 
     for iStand in range(meta[pNam]['Project']['N Stand']):
+
+        # Define open spaces if an event needs to be added
+        iOpen=np.where(dmec0[iStand]['Year']==9999)[0]
+        if iOpen.size>1:
+            iOpen=iOpen[0]
+
         # Status
         StatusNO=np.isin(dmec0[iStand]['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List ID'])
 
@@ -483,20 +489,21 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
         iEstab=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatusNO==True) )[0]
         if iEstab.size==0:
             continue
-
-        # If multiple planting events, focus on...
-        iEstab=iEstab[0]
+        elif iEstab.size>1:
+            # If multiple planting events, change planting to fill-planting, and
+            # focus on the first instance
+            for j in range(1,iEstab.size):
+                dmec0[iStand]['ID Event Type'][iEstab[j]]=meta['LUT']['Event']['Fill Planting']
+            iEstab=iEstab[0]
+        else:
+            # Only one non-obligation planting event
+            pass
 
         # Define a lead-up period
         iLeadUp=np.where( (dmec0[iStand]['Year']>=dmec0[iStand]['Year'][iEstab]-LeadUpPeriod) & (dmec0[iStand]['Year']<=dmec0[iStand]['Year'][iEstab]) )[0]
         Year_LeadUp=dmec0[iStand]['Year'][iLeadUp]
         ID_LeadUp=dmec0[iStand]['ID Event Type'][iLeadUp]
         Mort_LeadUp=dmec0[iStand]['Mortality Factor'][iLeadUp]
-
-        # Define open spaces if an event needs to be added
-        iOpen=np.where(dmec0[iStand]['Year']==9999)[0]
-        if iOpen.size>1:
-            iOpen=iOpen[0]
 
         # Index to inciting event types in the lead up period
         iH=np.where( (ID_LeadUp==meta['LUT']['Event']['Harvest']) |  (ID_LeadUp==meta['LUT']['Event']['Harvest Salvage']) )[0]
@@ -544,15 +551,8 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
                 if Mort_LeadUp[iMaxMort]<75:
                     # Unrealistically low, fix
                     dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=80
-                try:
                     dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
-                except:
-                    print(iEstab)
-                    print(iLeadUp)
-                    print(iWF)
-                    print(iMaxMort)
-                    print(iStand)
-                    break
+
             elif (iWF.size==0) & (iI.size>0):
                 # Insects only
                 iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
@@ -593,15 +593,16 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
             # non-ob stand establishment event. Assume trace beetles
             #----------------------------------------------------------------------
             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
-            ID_GapFill=meta['LUT']['Event']['Regen Failure']
-            Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]+0.1
-            Mort_GapFill=100
-            dmec0[iStand]['Year'][iOpen]=Year_GapFill
-            dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
-            dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
-            iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
-            if iIncite.size>1:
-                iIncite=iIncite[0]
+            #ID_GapFill=meta['LUT']['Event']['Regen Failure']
+            #Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]+2
+            #Mort_GapFill=100
+            #dmec0[iStand]['Year'][iOpen]=Year_GapFill
+            #dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
+            #dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
+            #iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
+            iIncite=iLeadUp[iH[-1]]
+            #if iIncite.size>1:
+            #    iIncite=iIncite[0]
             dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iIncite
 
         elif (iKD.size>0) & (np.max(iKDa)>=np.max(iHa)) & (np.max(iKDa)>=np.max(iWFa)):
@@ -1075,6 +1076,10 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                             elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenTypeNO']['Knockdown']:
                                 gc[iScn][iStand]['init_density'][cnt_gc]=1400
                                 gc[iScn][iStand]['regen_delay'][cnt_gc]=0
+                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']:
+                                gc[iScn][iStand]['init_density'][cnt_gc]=750
+                                gc[iScn][iStand]['regen_delay'][cnt_gc]=10
+
                             gc[iScn][iStand]['s1'][cnt_gc]=inv['Spc1_ID'][iStand]
                             gc[iScn][iStand]['p1'][cnt_gc]=inv['Spc1_P'][iStand]
                             gc[iScn][iStand]['s2'][cnt_gc]=inv['Spc2_ID'][iStand]

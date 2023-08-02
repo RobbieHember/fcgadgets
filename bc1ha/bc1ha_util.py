@@ -13,6 +13,7 @@ from shapely.geometry import Polygon,Point,box,shape
 from rasterio import features
 import fiona
 import time
+import cv2
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.macgyver.util_query_gdb as qgdb
@@ -227,7 +228,7 @@ def ImportLUTs(meta):
 #fiona.listlayers(r'C:\\Users\\rhember\\Documents\\Data\\Geodatabases\\LandUse\\20230501\\LandUse.gdb')
 #fiona.listlayers(r'C:\Users\rhember\Documents\Data\Geodatabases\VRI\20230401\VRI.gdb')
 
-def BuildLUTsFromSourceDBs(meta):
+def BuildLUTsFromSourceGDBs(meta):
 
     # Unique layers
     uL=np.unique(meta['Geos']['Variable Info']['Layer Name'])
@@ -1125,6 +1126,16 @@ def NALCMS_Compress(lut_in,zRef,zCEC10,zCEC20):
 
 def ClipToBC1ha(meta):
 
+    # Forest Cover ID
+    fin=r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_FOREST_COVER_INV_SVW\fcid.tif'
+    fout=r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_FOREST_COVER_INV_SVW\fcid.tif'
+    gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
+
+    # VRI Feature ID
+    fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI 2023\vri_feaid.tif'
+    fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI 2023\vri_feaid.tif'
+    gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
+
     # DEM
     fin=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\elevation.tif'
     fout=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\elevation.tif'
@@ -1148,16 +1159,6 @@ def ClipToBC1ha(meta):
     # BGC zone
     fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz.tif'
     fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becz.tif'
-    gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
-
-    # BGC subzone
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\becsz.tif'
-    gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
-
-    # VRI age
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\proj_age_1.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI\proj_age_1.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
 
     # Radiation
@@ -1198,6 +1199,43 @@ def GetRasterListFromSpreadsheet(path):
         if d['Included'][i]==1:
             vList.append(d['Name'][i])
     return vList
+
+#%% Digitize the boundary of TSAs (the original is organized at the sub-TSA level)
+
+def DigitizeTSABoundaries(meta):
+    zTSA=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\FADM_TSA\\TSA_NUMBER_DESCRIPTION.tif')
+    u=np.unique(zTSA['Data'])
+    u=u[u>0]
+    gdf=gpd.GeoDataFrame(data=[],columns=['Value','Name','geometry'])
+    cnt=0
+    for iU in range(u.size):
+        ind=np.where(zTSA['Data']==u[iU])
+        #z=np.zeros((zTSA['m'],zTSA['n'],3),dtype=np.uint8)
+        z=np.zeros(zTSA['Data'].shape,dtype=np.uint8)
+        z[ind]=255
+        z=np.dstack([z]*3)
+        z=cv2.cvtColor(z,cv2.COLOR_BGR2GRAY) # Convert to grey scale
+        cont=cv2.findContours(image=z,mode=cv2.RETR_LIST,method=cv2.CHAIN_APPROX_SIMPLE)
+        for j in range(len(cont[0])):
+            cont_inner=cont[0][j].squeeze()
+            if cont_inner.size==2:
+                continue
+            if cont_inner.shape[0]<3:
+                continue
+            pointList=[]
+            for k in range(len(cont_inner)):
+                c=cont_inner[k][0]
+                r=cont_inner[k][1]
+                x=int(zTSA['X'][0,c])
+                y=int(zTSA['Y'][r,0])
+                pointList.append(geometry.Point(x,y))
+            gdf.loc[cnt,'Value']=int(u[iU])
+            gdf.loc[cnt,'Name']=u1ha.lut_n2s(meta['LUT']['FADM_TSA']['TSA_NUMBER_DESCRIPTION'],u[iU])[0]
+            gdf.loc[cnt,'geometry']=geometry.Polygon([[p.x,p.y] for p in pointList])
+            cnt=cnt+1
+    gdf.to_file(r'C:\Users\rhember\Documents\Data\Geodatabases\LandUse\tsa.geojson',driver='GeoJSON')
+
+    return
 
 #%%
 

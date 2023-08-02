@@ -30,7 +30,7 @@ gp=gu.SetGraphics('Manuscript')
 # Build look up tables (only do this once a year, takes 8 hours)
 flg=0
 if flg==1:
-    u1ha.BuildLUTsFromSourceDBs(meta)
+    u1ha.BuildLUTsFromSourceGDBs(meta)
 
 #%% Define reference grid
 
@@ -52,41 +52,7 @@ zOut['Data']=zOut['Data'].astype('int8')
 gis.SaveGeoTiff(zOut,meta['Paths']['bc1ha'] + '\\LandCoverUse\LandMask.tif')
 
 #%% Digitize the boundary of TSAs (the original is organized at the sub-TSA level)
-
-def DigitizeTSABoundaries():
-    zTSA=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\FADM_TSA\\TSA_NUMBER_DESCRIPTION.tif')
-    u=np.unique(zTSA['Data'])
-    u=u[u>0]
-    gdf=gpd.GeoDataFrame(data=[],columns=['Value','Name','geometry'])
-    cnt=0
-    for iU in range(u.size):
-        ind=np.where(zTSA['Data']==u[iU])
-        #z=np.zeros((zTSA['m'],zTSA['n'],3),dtype=np.uint8)
-        z=np.zeros(zTSA['Data'].shape,dtype=np.uint8)
-        z[ind]=255
-        z=np.dstack([z]*3)
-        z=cv2.cvtColor(z,cv2.COLOR_BGR2GRAY) # Convert to grey scale
-        cont=cv2.findContours(image=z,mode=cv2.RETR_LIST,method=cv2.CHAIN_APPROX_SIMPLE)
-        for j in range(len(cont[0])):
-            cont_inner=cont[0][j].squeeze()
-            if cont_inner.size==2:
-                continue
-            if cont_inner.shape[0]<3:
-                continue
-            pointList=[]
-            for k in range(len(cont_inner)):
-                c=cont_inner[k][0]
-                r=cont_inner[k][1]
-                x=int(zTSA['X'][0,c])
-                y=int(zTSA['Y'][r,0])
-                pointList.append(geometry.Point(x,y))
-            gdf.loc[cnt,'Value']=int(u[iU])
-            gdf.loc[cnt,'Name']=u1ha.lut_n2s(meta['LUT']['FADM_TSA']['TSA_NUMBER_DESCRIPTION'],u[iU])[0]
-            gdf.loc[cnt,'geometry']=geometry.Polygon([[p.x,p.y] for p in pointList])
-            cnt=cnt+1
-    gdf.to_file(r'C:\Users\rhember\Documents\Data\Geodatabases\LandUse\tsa.geojson',driver='GeoJSON')
-
-    return
+u1ha.DigitizeTSABoundaries(meta)
 
 #%% Rasterize variables from source
 # *** VRI and Forest Cover Inventory area too big - crash ***
