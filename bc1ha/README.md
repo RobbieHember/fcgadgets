@@ -1,11 +1,8 @@
 # bc1ha
-## INTRODUCTION
-The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at 100m spatial resolution.
-<br>
-<br>
-## WORKFLOW
-The scripts are focused on streamlining an annual update cycle. The bc1ha_grid.py is a script that runs the annual update steps. The bc1ha_util.py stores supporting functions.
+## PURPOSE
+The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at 100m spatial resolution. The repository has two goals: 1) streamline an annual update cycle to download and rasterize information that is made available through BC Data Catalogue; 2) produce derived variables through cleaning, consolidating, statistical modelling, etc. in support of modelling and analysis. The bc1ha_grid.py is a script that runs the annual update steps. The bc1ha_util.py stores supporting functions.
 
+## WORKFLOW
 Step 1: Download required layers and store as geodatabases for land use, land cover, disturbances, RESULTS, and VRI. The layers that are included should be listed in the Data Sources spreadsheet in the fcgadgets.cbrunner.parameters repository. (8+ hours).
 
 Step 2: Update look-up-tables (LUTs). (7+ hours). 
