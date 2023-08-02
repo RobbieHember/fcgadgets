@@ -4,13 +4,13 @@ The **bc1ha** repository supports geospatial analysis in British Columbia’s fo
 <br>
 <br>
 ## WORKFLOW
-The scripts are focused on streamlining an annual update cycle. The bc1ha_grid.py is a script that runs the annual update steps. The bc1ha_util stores supporting functions.
+The scripts are focused on streamlining an annual update cycle. The bc1ha_grid.py is a script that runs the annual update steps. The bc1ha_util.py stores supporting functions.
 
-Step 1: Download required layers and store as geodatabases for land use, land cover, disturbances, RESULTS, and VRI. (8+ hours).
+Step 1: Download required layers and store as geodatabases for land use, land cover, disturbances, RESULTS, and VRI. The layers that are included should be listed in the Data Sources spreadsheet in the fcgadgets.cbrunner.parameters repository. (8+ hours).
 
 Step 2: Update look-up-tables (LUTs). (7+ hours). 
 
-Step 3: VRI and Forest Cover variables are too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. Use ClipToRaster_ByFile to standardize grid extent.
+Step 3: VRI and Forest Cover variables are too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. Use ClipToRaster_ByFile to standardize grid extent. Use custom functions from bc1ha_util.py, with the feature ID as input, to rasterize the necessary variables.
 
 Step 4: Digitize Timber Supply Area (TSA) boundaries if they have changed.
 
