@@ -13,25 +13,30 @@ bc1ha_util.py: Supporting functions
 bc1ha_map_roi: Graphics by region of interest
 
 ## ANNUAL UPDATE STEPS
-Step 1: Download required layers and store as geodatabases for land use, land cover, disturbances, RESULTS, and VRI. The layers that are included should be listed in the Data Sources spreadsheet in the **fcgadgets.cbrunner.parameters** repository. (8+ hours)
+- Download required layers and store as geodatabases for land use, land cover, disturbances, RESULTS, and VRI. The layers that are included should be listed in the Data Sources spreadsheet in the **fcgadgets.cbrunner.parameters** repository. (8+ hours)
 
-Step 2: Update look-up-tables (LUTs). (7+ hours)
+- Update look-up-tables (LUTs). (7+ hours)
 
-Step 3: Rasterize variables.
+- Rasterize VRI. VRI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. 
+Use ClipToRaster_ByFile to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize VRI, using the feature ID as input. (10 hours)
 
-Step 3a: VRI and Forest Cover Inventory variables are too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. 
-Use ClipToRaster_ByFile to standardize grid extent. Use custom functions from bc1ha_util.py specifically designed to rasterize VRI and Forest Cover Inventory variables, using the feature ID as input. (10 hours)
+- Rasterize Forest Cover Inventory (FCI). FCI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. 
+Use ClipToRaster_ByFile to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize FCI, using the feature ID as input. (1 hours)
 
-Step 3b: Other time-independent variables (that are not too big for Python), use RasterizeFromSource function to rasterize variables. (20 min)
+- Other time-independent variables (that are not too big for Python), use RasterizeFromSource function to rasterize variables. (20 min)
 
-Step 3c: Rasterize time-dependent variables, including wildfire, beetles, defoliators, harvest, mechanical site prep, knockdown, planting (1 hour)
+- Rasterize time-dependent variables, including wildfire, beetles, defoliators, harvest, mechanical site prep, knockdown, planting (1 hour)
 
-Step 4: Digitize Timber Supply Area (TSA) boundaries if they have changed. (1 min)
+- Digitize Timber Supply Area (TSA) boundaries if they have changed. (1 min)
 
-Step 5: Run scripts that generate derived variables. (~1 hour)
+- Run scripts that generate derived variables. (~1 hour)
 
 ## LIST OF DERIVED VARIABLES
+Additions forthcoming.
 
+## SPARSE SUBSAMPLES
+Prepare sparse inputs at common spatial subsampling resolutions, including 1km, 5km, 10km and 20km. When models are run at these resolutions, **fcgadgets** will automatically draw on these sparse inputs, which will 
+lower computing time during project development.
 
 ## License
 

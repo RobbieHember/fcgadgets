@@ -98,22 +98,23 @@ with fiona.open(meta['Paths']['GDB']['LandUse'],layer='FTEN_SPEC_USE_PERMIT_POLY
 
 #%% Gap-fill BGC Zone
 
-zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-z=u1ha.Import_Raster(meta,[],['lcc1_c','bgcz'])
+def GapFill_BGCZ(meta):
+    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+    z=u1ha.Import_Raster(meta,[],['lcc1_c','bgcz'])
 
-ivl=5
-iGap=np.where( (zRef['Data']==1) & (z['bgcz']['Data']==0) )
-iCal=np.where( (zRef['Data'][0::ivl,0::ivl]==1) & (z['bgcz']['Data'][0::ivl,0::ivl]>0) )
-xy=np.column_stack([zRef['X'][0::ivl,0::ivl][iCal],zRef['Y'][0::ivl,0::ivl][iCal]])
-vals=z['bgcz']['Data'][0::ivl,0::ivl][iCal]
-zFill=griddata(xy,vals,(zRef['X'][iGap],zRef['Y'][iGap]),method='nearest')
+    ivl=5
+    iGap=np.where( (zRef['Data']==1) & (z['bgcz']['Data']==0) )
+    iCal=np.where( (zRef['Data'][0::ivl,0::ivl]==1) & (z['bgcz']['Data'][0::ivl,0::ivl]>0) )
+    xy=np.column_stack([zRef['X'][0::ivl,0::ivl][iCal],zRef['Y'][0::ivl,0::ivl][iCal]])
+    vals=z['bgcz']['Data'][0::ivl,0::ivl][iCal]
+    zFill=griddata(xy,vals,(zRef['X'][iGap],zRef['Y'][iGap]),method='nearest')
 
-z1=zRef.copy()
-z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-z1['Data']=z['bgcz']['Data']
-z1['Data'][iGap]=zFill
-plt.close('all'); plt.matshow(z1['Data'])
-gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\BEC_BIOGEOCLIMATIC_POLY\\ZONE_GapFilled.tif')
+    z1=zRef.copy()
+    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+    z1['Data']=z['bgcz']['Data']
+    z1['Data'][iGap]=zFill
+    plt.close('all'); plt.matshow(z1['Data'])
+    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\BEC_BIOGEOCLIMATIC_POLY\\ZONE_GapFilled.tif')
 
 #%% Rasterize wildfire
 
