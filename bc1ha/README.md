@@ -1,6 +1,8 @@
 # bc1ha
 ## PURPOSE
-The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at 100m spatial resolution. The repository has two goals: 1) streamline an annual update cycle to download and rasterize information that is made available through BC Data Catalogue; 2) produce derived variables through cleaning, consolidating, smoothing, massaging, "moving forward, not backward; upward, not forward; and always twirling, twirling, twirling towards" preparation of high-quality model input variables. 
+The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at 100m spatial resolution. The repository has two goals: 1) streamline an annual update cycle to download and 
+rasterize information that is made available through BC Data Catalogue and 2) generate derived variables, where varying degrees of manipulation (e.g. gap-filling, consolidation of multiple source data sources) 
+have been applied to create the input variables used to drive simulation models. 
 <br><br>
 Derived variables are often a work in progress and should be used with caution.
 <br><br>
@@ -15,13 +17,20 @@ Step 1: Download required layers and store as geodatabases for land use, land co
 
 Step 2: Update look-up-tables (LUTs). (7+ hours)
 
-Step 3: VRI and Forest Cover variables are too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. Use ClipToRaster_ByFile to standardize grid extent. Use custom functions from bc1ha_util.py, with the feature ID as input, to rasterize the necessary variables. (10 hours)
+Step 3: Rasterize variables.
+
+Step 3a: VRI and Forest Cover Inventory variables are too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. 
+Use ClipToRaster_ByFile to standardize grid extent. Use custom functions from bc1ha_util.py specifically designed to rasterize VRI and Forest Cover Inventory variables, using the feature ID as input. (10 hours)
+
+Step 3b: Other time-independent variables (that are not too big for Python), use RasterizeFromSource function to rasterize variables. (20 min)
+
+Step 3c: Rasterize time-dependent variables, including wildfire, beetles, defoliators, harvest, mechanical site prep, knockdown, planting (1 hour)
 
 Step 4: Digitize Timber Supply Area (TSA) boundaries if they have changed. (1 min)
 
 Step 5: Run scripts that generate derived variables. (~1 hour)
 
-## DERIVED VARIABLES
+## LIST OF DERIVED VARIABLES
 
 
 ## License
