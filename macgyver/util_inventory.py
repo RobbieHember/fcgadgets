@@ -14,10 +14,10 @@ import copy
 import gc as garc
 import matplotlib.pyplot as plt
 import scipy.io as spio
-from fcgadgets.macgyver import util_gis as gis
-from fcgadgets.macgyver import util_general as gu
-from fcgadgets.cbrunner import cbrun_util as cbu
-from fcgadgets.taz import aspatial_stat_models as asm
+import fcgadgets.macgyver.util_gis as gis
+import fcgadgets.macgyver.util_general as gu
+import fcgadgets.cbrunner.cbrun_util as cbu
+import fcgadgets.taz.aspatial_stat_models as asm
 
 #%% Import variables
 
@@ -185,103 +185,255 @@ def Process1_ImportVariables(meta,pNam):
         # Events are taken from historical record (with or w/o gap-filling of age)
         #----------------------------------------------------------------------
 
-        # Add wildfire observations
-        for iY in range(6):
-            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(iY+1) + '_Year.tif')
-            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where(zY>0)[0]
-            for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
-                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Wildfire']
-                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=58
-                cnt_e[iStand]=cnt_e[iStand]+1
+        rgsf=str(meta['Geos']['RGSF'])
 
+        # Add wildfire observations
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PROT_HISTORICAL_FIRE_POLYS_SP_Year.pkl')
+        zS=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PROT_HISTORICAL_FIRE_POLYS_SP_SevClass.pkl')
+        for iY in range(6):
+            iAffected=np.where(zY[iY]>0)[0]                        
+            UseBurnSev='Off'
+            #mort_wo_bs=58
+            mort_wo_bs=100
+            if UseBurnSev=='Off':
+                for iS in iAffected:                
+                    dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                    dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Wildfire']
+                    dmec0[iS]['Mortality Factor'][cnt_e[iS]]=mort_wo_bs
+                    cnt_e[iS]=cnt_e[iS]+1
+            else:
+                for iS in iAffected:
+                    if zS[iS]==meta['LUT']['Derived']['burnsev_comp1']['Low']:
+                        dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                        dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Wildfire']
+                        dmec0[iS]['Mortality Factor'][cnt_e[iS]]=25
+                    elif zS[iS]==meta['LUT']['Derived']['burnsev_comp1']['Medium']:
+                        dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                        dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Wildfire']
+                        dmec0[iS]['Mortality Factor'][cnt_e[iS]]=50
+                    elif zS[iS]==meta['LUT']['Derived']['burnsev_comp1']['High']:
+                        dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                        dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Wildfire']
+                        dmec0[iS]['Mortality Factor'][cnt_e[iS]]=100
+                    else:
+                        dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                        dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Wildfire']
+                        dmec0[iS]['Mortality Factor'][cnt_e[iS]]=mort_wo_bs
+                    cnt_e[iS]=cnt_e[iS]+1                    
+        
         # Add IBM observations
-        for iY in range(10):
-            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Year.tif')
-            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            zS=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Severity.tif')
-            zS=gis.UpdateGridCellsize(zS,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where( (zY>0) & (zS==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['S']) )[0]
-            for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
-                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['IBM']
-                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=65
-                cnt_e[iStand]=cnt_e[iStand]+1
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PEST_SEVERITY_CODE_IBM_Year.pkl')
+        zS=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PEST_SEVERITY_CODE_IBM_SevClass.pkl')
+        for iY in range(10):            
+            iAffected=np.where( (zY[iY]>0) )[0]
+            for iS in iAffected:
+                if zS[iY][iS]==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['L']:
+                    continue
+                    #Mort=10
+                elif zS[iY][iS]==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['M']:
+                    continue
+                    #Mort=25
+                elif zS[iY][iS]==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['S']:
+                    Mort=75
+                elif zS[iY][iS]==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['V']:
+                    Mort=100
+                else: 
+                    continue
+                dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['IBM']
+                dmec0[iS]['Mortality Factor'][cnt_e[iS]]=Mort
+                cnt_e[iS]=cnt_e[iS]+1
 
         # Add harvest observations
-        for iY in range(3):
-            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_' + str(iY+1) + '_Year.tif')
-            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where(zY>0)[0]
-            for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
-                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Harvest']
-                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
-                cnt_e[iStand]=cnt_e[iStand]+1
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_VEG_CONSOLIDATED_CUT_BLOCKS_SP_Year.pkl')
+        for iY in range(3):            
+            iAffected=np.where(zY[iY]>0)[0]
+            for iS in iAffected:
+                dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Harvest']
+                dmec0[iS]['Mortality Factor'][cnt_e[iS]]=100
+                cnt_e[iS]=cnt_e[iS]+1
 
                 # Pile burning
-                if np.random.random(1)<inv['Pile Burn Rate'][iStand].astype(float)/100:
-                    dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]+1
-                    dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Slashpile Burn']
-                    dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
-                    cnt_e[iStand]=cnt_e[iStand]+1
+                if np.random.random(1)<inv['Pile Burn Rate'][iS].astype(float)/100:
+                    dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]+1
+                    dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Slashpile Burn']
+                    dmec0[iS]['Mortality Factor'][cnt_e[iS]]=100
+                    cnt_e[iS]=cnt_e[iS]+1
 
         # Add planting observations
-        for iY in range(6):
-            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_Year.tif')
-            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SILV_FUND_SOURCE_CODE.tif')
-            zFSC=gis.UpdateGridCellsize(zFSC,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            zSPH=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SPH_Planted.tif')
-            zSPH=gis.UpdateGridCellsize(zSPH,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            cd={}; pct={}; gw={}
-            for iSpc in range(6):
-                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_CD' + str(iSpc+1) + '.tif')
-                cd[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_PCT' + str(iSpc+1) + '.tif')
-                pct[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-                z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_GW' + str(iSpc+1) + '.tif')
-                gw[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_All_Year.pkl')
+        zFSC=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_All_SILV_FUND_SOURCE_CODE.pkl')
+        zSPH=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_All_SPH_Planted.pkl')
+        cd={}; pct={}; gw={}
+        for iSpc in range(6):
+            cd[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_SPECIES_CD' + str(iSpc+1) + '.pkl')
+            pct[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_SPECIES_PCT' + str(iSpc+1) + '.pkl')
+            gw[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_SPECIES_GW' + str(iSpc+1) + '.pkl')
+            for iY in range(6):
                 # Remove zeros
-                ind=np.where(cd[iSpc+1]==0)[0]
-                cd[iSpc+1][ind]=9999
-
-            ind=np.where(zY>0)[0]
-            for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
-                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Planting']
-                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
-                dmec0[iStand]['SILV_FUND_SOURCE_CODE'][cnt_e[iStand]]=zFSC[iStand]
-                dmec0[iStand]['Planted SPH'][cnt_e[iStand]]=zSPH[iStand]
+                iAffected=np.where(cd[iSpc+1][iY]==0)[0]
+                cd[iSpc+1][iY][iAffected]=9999
+            
+        for iY in range(6):
+            iAffected=np.where(zY[iY]>0)[0]
+            for iS in iAffected:
+                dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Planting']
+                dmec0[iS]['Mortality Factor'][cnt_e[iS]]=0
+                dmec0[iS]['SILV_FUND_SOURCE_CODE'][cnt_e[iS]]=zFSC[iY][iS]
+                dmec0[iS]['Planted SPH'][cnt_e[iS]]=zSPH[iY][iS]
                 for iSpc in range(6):
-                    dmec0[iStand]['PL_SPECIES_CD' + str(iSpc+1)][cnt_e[iStand]]=cd[iSpc+1][iStand]
-                    dmec0[iStand]['PL_SPECIES_PCT' + str(iSpc+1)][cnt_e[iStand]]=pct[iSpc+1][iStand]
-                    dmec0[iStand]['PL_SPECIES_GW' + str(iSpc+1)][cnt_e[iStand]]=gw[iSpc+1][iStand]
-                cnt_e[iStand]=cnt_e[iStand]+1
+                    dmec0[iS]['PL_SPECIES_CD' + str(iSpc+1)][cnt_e[iS]]=cd[iSpc+1][iY][iS]
+                    dmec0[iS]['PL_SPECIES_PCT' + str(iSpc+1)][cnt_e[iS]]=pct[iSpc+1][iY][iS]
+                    dmec0[iS]['PL_SPECIES_GW' + str(iSpc+1)][cnt_e[iS]]=gw[iSpc+1][iY][iS]
+                cnt_e[iS]=cnt_e[iS]+1
 
         # Add aerial fertilization observations
-        for iY in range(3):
-            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_' + str(iY+1) + '_Year.tif')
-            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where(zY>0)[0]
-            for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
-                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Fertilization Aerial']
-                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
-                cnt_e[iStand]=cnt_e[iStand]+1
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_FECA_Year.pkl')
+        for iY in range(3):            
+            iAffected=np.where(zY[iY]>0)[0]
+            for iS in iAffected:
+                dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Fertilization Aerial']
+                dmec0[iS]['Mortality Factor'][cnt_e[iS]]=0
+                cnt_e[iS]=cnt_e[iS]+1
 
         # Add knockdown
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_SP_KD_Year.pkl')
         for iY in range(3):
-            zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP_KD_' + str(iY+1) + '_Year.tif')
-            zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
-            ind=np.where(zY>0)[0]
-            for iStand in ind:
-                dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
-                dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Knockdown']
-                dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
-                cnt_e[iStand]=cnt_e[iStand]+1
+            iAffected=np.where(zY[iY]>0)[0]
+            for iS in iAffected:
+                dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
+                dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Knockdown']
+                dmec0[iS]['Mortality Factor'][cnt_e[iS]]=0
+                cnt_e[iS]=cnt_e[iS]+1
+        
+        # Old code that doesn't run on sparse files
+        # # Add wildfire observations
+        # zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\PROT_HISTORICAL_FIRE_POLYS_SP_Year.pkl')
+        # for iY in range(6):
+        #     zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(iY+1) + '_Year.tif')
+        #     zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]            
+        #     ind=np.where(zY>0)[0]        #     
+                        
+        #     UseBurnSev='Off'
+        #     #mort_wo_bs=58
+        #     mort_wo_bs=100
+        #     if UseBurnSev=='Off':
+        #         for iStand in ind:                
+        #             dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #             dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Wildfire']
+        #             dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=mort_wo_bs
+        #             cnt_e[iStand]=cnt_e[iStand]+1
+        #     else:
+        #         zBS=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(iY+1) + '_SevClass.tif')
+        #         zBS=gis.UpdateGridCellsize(zBS,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]                  
+        #         for iStand in ind:
+        #             if zBS[iStand]==meta['LUT']['Derived']['burnsev_comp1']['Low']:
+        #                 dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Wildfire']
+        #                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=25
+        #             elif zBS[iStand]==meta['LUT']['Derived']['burnsev_comp1']['Medium']:
+        #                 dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Wildfire']
+        #                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=50
+        #             elif zBS[iStand]==meta['LUT']['Derived']['burnsev_comp1']['High']:
+        #                 dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Wildfire']
+        #                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
+        #             else:
+        #                 dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #                 dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Wildfire']
+        #                 dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=mort_wo_bs
+        #             cnt_e[iStand]=cnt_e[iStand]+1                    
+        
+        # # Add IBM observations
+        # for iY in range(10):
+        #     zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Year.tif')
+        #     zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     zS=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Severity.tif')
+        #     zS=gis.UpdateGridCellsize(zS,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     ind=np.where( (zY>0) & (zS==meta['LUT']['PEST_INFESTATION_POLY']['PEST_SEVERITY_CODE']['S']) )[0]
+        #     for iStand in ind:
+        #         dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #         dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['IBM']
+        #         dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
+        #         cnt_e[iStand]=cnt_e[iStand]+1
+    
+        # # Add harvest observations
+        # for iY in range(3):
+        #     zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_' + str(iY+1) + '_Year.tif')
+        #     zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     ind=np.where(zY>0)[0]
+        #     for iStand in ind:
+        #         dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #         dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Harvest']
+        #         dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
+        #         cnt_e[iStand]=cnt_e[iStand]+1
+    
+        #         # Pile burning
+        #         if np.random.random(1)<inv['Pile Burn Rate'][iStand].astype(float)/100:
+        #             dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]+1
+        #             dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Slashpile Burn']
+        #             dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=100
+        #             cnt_e[iStand]=cnt_e[iStand]+1
+    
+        # # Add planting observations
+        # for iY in range(6):
+        #     zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_Year.tif')
+        #     zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SILV_FUND_SOURCE_CODE.tif')
+        #     zFSC=gis.UpdateGridCellsize(zFSC,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     zSPH=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SPH_Planted.tif')
+        #     zSPH=gis.UpdateGridCellsize(zSPH,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     cd={}; pct={}; gw={}
+        #     for iSpc in range(6):
+        #         z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_CD' + str(iSpc+1) + '.tif')
+        #         cd[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #         z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_PCT' + str(iSpc+1) + '.tif')
+        #         pct[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #         z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_GW' + str(iSpc+1) + '.tif')
+        #         gw[iSpc+1]=gis.UpdateGridCellsize(z,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+    
+        #         # Remove zeros
+        #         ind=np.where(cd[iSpc+1]==0)[0]
+        #         cd[iSpc+1][ind]=9999
+    
+        #     ind=np.where(zY>0)[0]
+        #     for iStand in ind:
+        #         dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #         dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Planting']
+        #         dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
+        #         dmec0[iStand]['SILV_FUND_SOURCE_CODE'][cnt_e[iStand]]=zFSC[iStand]
+        #         dmec0[iStand]['Planted SPH'][cnt_e[iStand]]=zSPH[iStand]
+        #         for iSpc in range(6):
+        #             dmec0[iStand]['PL_SPECIES_CD' + str(iSpc+1)][cnt_e[iStand]]=cd[iSpc+1][iStand]
+        #             dmec0[iStand]['PL_SPECIES_PCT' + str(iSpc+1)][cnt_e[iStand]]=pct[iSpc+1][iStand]
+        #             dmec0[iStand]['PL_SPECIES_GW' + str(iSpc+1)][cnt_e[iStand]]=gw[iSpc+1][iStand]
+        #         cnt_e[iStand]=cnt_e[iStand]+1
+    
+        # # Add aerial fertilization observations
+        # for iY in range(3):
+        #     zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_' + str(iY+1) + '_Year.tif')
+        #     zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     ind=np.where(zY>0)[0]
+        #     for iStand in ind:
+        #         dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #         dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Fertilization Aerial']
+        #         dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
+        #         cnt_e[iStand]=cnt_e[iStand]+1
+    
+        # # Add knockdown
+        # for iY in range(3):
+        #     zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP_KD_' + str(iY+1) + '_Year.tif')
+        #     zY=gis.UpdateGridCellsize(zY,meta['Geos']['RGSF'])['Data'][ meta['Geos']['iMask'] ]
+        #     ind=np.where(zY>0)[0]
+        #     for iStand in ind:
+        #         dmec0[iStand]['Year'][cnt_e[iStand]]=zY[iStand]
+        #         dmec0[iStand]['ID Event Type'][cnt_e[iStand]]=meta['LUT']['Event']['Knockdown']
+        #         dmec0[iStand]['Mortality Factor'][cnt_e[iStand]]=0
+        #         cnt_e[iStand]=cnt_e[iStand]+1
 
     elif meta[pNam]['Project']['DMEC Method']=='From Inventory Age':
 
@@ -473,7 +625,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
     LeadUpPeriod=20
 
     # Initialize project type
-    meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype=int)
+    meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int16')
 
     for iStand in range(meta[pNam]['Project']['N Stand']):
 

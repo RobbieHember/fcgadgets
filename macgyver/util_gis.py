@@ -208,7 +208,6 @@ def OpenGeoTiff(pthin):
     return z
 
 #%% Save geotiff
-
 def SaveGeoTiff(z,fout):
 
     driver=gdal.GetDriverByName("GTiff")
@@ -327,7 +326,6 @@ def ClipToRaster_ByFile(fin,fout,fref):
     return
 
 #%% Reproject and clip raster
-
 def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
 
     # Grid to reproject
@@ -367,9 +365,7 @@ def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
     return z
 
 #%% Reproject geotiff
-
 def ReprojectGeoTiff(pthin,pthout,crs_dst):
-
     cmp='lzw'
 
     with rasterio.open(pthin) as src:

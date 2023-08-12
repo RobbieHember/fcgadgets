@@ -5226,10 +5226,10 @@ def ImportParameters(meta):
     # Other stuff
     #--------------------------------------------------------------------------
 
-    meta['Param']['BE']['Comparison_With_NIR']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_Comparison_With_NIR.xlsx')
-    meta['Param']['BE']['Reporting_Version_Comparison']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_Reporting_Version_Comparison.xlsx')
-    meta['Param']['BE']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_ForcingCategories.xlsx')
-    meta['Param']['BE']['Level_4_Categories_Status']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_Level_4_Categories_Status.xlsx')
+    meta['Param']['BE']['Comparison_With_NIR']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_ComparisonWithNIR.xlsx')
+    meta['Param']['BE']['Reporting_Version_Comparison']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_BoundaryDefinition.xlsx')
+    meta['Param']['BE']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_ForcingCategories.xlsx')
+    meta['Param']['BE']['Level_4_Categories_Status']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_Level4CategoriesStatus.xlsx')
 
     return meta
 
@@ -5403,17 +5403,17 @@ def UnpackEnsembleStatsFromMos(meta,pNam,mos):
 
 #%% Combine completed and future
 # projects must have the same time period saved
-def CombineProjectMOSs(meta,mos,pNamL):
-    mosCF=copy.deepcopy(mos[pNamL[0]])
+def CombineProjectMOSs(meta,mos,pNamNew,pNamL):
+    mos[pNamNew]=copy.deepcopy(mos[pNamL[0]])
     for iScn in range(meta[pNamL[0]]['Project']['N Scenario']):
-        for k1 in mosCF['Scenarios'][iScn]['Sum'].keys():
-            for k2 in mosCF['Scenarios'][iScn]['Sum'][k1].keys():
-                mosCF['Scenarios'][iScn]['Sum'][k1][k2]=mosCF['Scenarios'][iScn]['Sum'][k1][k2]*meta[pNamL[0]]['Project']['AEF']+mos[pNamL[1]]['Scenarios'][iScn]['Sum'][k1][k2]*meta[pNamL[1]]['Project']['AEF']
-                mosCF['Scenarios'][iScn]['Mean'][k1][k2]=mosCF['Scenarios'][iScn]['Mean'][k1][k2]+mos[pNamL[1]]['Scenarios'][iScn]['Mean'][k1][k2]
-    for cNam in mosCF['Delta'].keys():
-        for k1 in mosCF['Delta'][cNam]['ByStrata']['Sum'].keys():
-            for k2 in mosCF['Delta'][cNam]['ByStrata']['Sum'][k1].keys():
-                mosCF['Delta'][cNam]['ByStrata']['Sum'][k1][k2]=mosCF['Delta'][cNam]['ByStrata']['Sum'][k1][k2]*meta[pNamL[0]]['Project']['AEF']+mos[pNamL[1]]['Delta'][cNam]['ByStrata']['Sum'][k1][k2]*meta[pNamL[1]]['Project']['AEF']
-                mosCF['Delta'][cNam]['ByStrata']['Mean'][k1][k2]=mosCF['Delta'][cNam]['ByStrata']['Mean'][k1][k2]+mos[pNamL[1]]['Delta'][cNam]['ByStrata']['Mean'][k1][k2]
-    return mosCF
+        for k1 in mos[pNamNew]['Scenarios'][iScn]['Sum'].keys():
+            for k2 in mos[pNamNew]['Scenarios'][iScn]['Sum'][k1].keys():
+                mos[pNamNew]['Scenarios'][iScn]['Sum'][k1][k2]=mos[pNamNew]['Scenarios'][iScn]['Sum'][k1][k2]*meta[pNamL[0]]['Project']['AEF']+mos[pNamL[1]]['Scenarios'][iScn]['Sum'][k1][k2]*meta[pNamL[1]]['Project']['AEF']
+                mos[pNamNew]['Scenarios'][iScn]['Mean'][k1][k2]=mos[pNamNew]['Scenarios'][iScn]['Mean'][k1][k2]+mos[pNamL[1]]['Scenarios'][iScn]['Mean'][k1][k2]
+    for cNam in mos[pNamNew]['Delta'].keys():
+        for k1 in mos[pNamNew]['Delta'][cNam]['ByStrata']['Sum'].keys():
+            for k2 in mos[pNamNew]['Delta'][cNam]['ByStrata']['Sum'][k1].keys():
+                mos[pNamNew]['Delta'][cNam]['ByStrata']['Sum'][k1][k2]=mos[pNamNew]['Delta'][cNam]['ByStrata']['Sum'][k1][k2]*meta[pNamL[0]]['Project']['AEF']+mos[pNamL[1]]['Delta'][cNam]['ByStrata']['Sum'][k1][k2]*meta[pNamL[1]]['Project']['AEF']
+                mos[pNamNew]['Delta'][cNam]['ByStrata']['Mean'][k1][k2]=mos[pNamNew]['Delta'][cNam]['ByStrata']['Mean'][k1][k2]+mos[pNamL[1]]['Delta'][cNam]['ByStrata']['Mean'][k1][k2]
+    return mos
 

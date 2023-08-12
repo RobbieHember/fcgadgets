@@ -44,7 +44,7 @@ def Table(x):
     try:
         df=pd.read_excel(x)
     except:
-        df=x
+        df=pd.DataFrame(x)
     df=df.fillna("")
     df=df.style.set_table_styles([dict(selector='th',props=[('text-align','left')])])
     df.set_properties(**{'text-align':'left'},**{'width': '300px'}).hide()
@@ -663,8 +663,8 @@ def PlotComparisonWithPIR(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
     ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='FCS')
     ax[0,0].plot(dPIR['Year'],dPIR['Forest Growth Minus Decay']/1e3,'rs-',mfc=[1,1,1],ms=2,mew=0.5,lw=meta['Graphics']['gp']['lw1'],label='PIR')
     ax[0,0].set(xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-120,300,20),
-           ylabel='Growth - Decay (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-120,60])
-    ax[0,0].legend(loc='lower left',frameon=False,facecolor='w',edgecolor='w')
+           ylabel='Growth - Decay (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-140,60])
+    ax[0,0].legend(loc='best',frameon=False,facecolor='w',edgecolor='w')
     ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 
     ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='Net ecosystem exchange')
@@ -730,6 +730,7 @@ def PlotAreaDisturbed(meta,pNam,mos,tv,ivlT,iScn,iT,iPS,iSS,iYS):
         nams_d[i]=A['Nat Dist'][i]['Name']
     ax[0].legend(pl_d,nams_d,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False,ncols=2);
     ax[0].set(yscale='linear',xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,xtivl),ylabel='Area affected (Mha)',xlim=[yr_start,np.max(A['tv'])]);
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
     #ax[0].text((2020+1920)/2,1050,'Observation Period',ha='center',fontsize=6,style='normal',weight='normal',color=[0,0,0])
 
     #ax[1].fill_between([1920,2020],[0,0],[1100,1100],color=[0.9,0.9,0.9],lw=0)
@@ -745,6 +746,7 @@ def PlotAreaDisturbed(meta,pNam,mos,tv,ivlT,iScn,iT,iPS,iSS,iYS):
     ax[1].legend(pl_m,nams_m,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False,ncols=2)
     ax[1].set(yscale='linear',xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,xtivl),xlabel='Time, years',ylabel='Area affected (Mha)',xlim=[yr_start,np.max(A['tv'])]);
     ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
+    ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
     gu.axletters(ax,plt,0.01,0.91)
     plt.tight_layout()
     nam_ps=meta[pNam]['Project']['Strata']['Project Type']['Unique CD'][iPS]
@@ -1243,7 +1245,7 @@ def Plot_WildfireRecord(meta,pNam,iScn):
 
 #%% AGE CLASS DISTRIBUTION
 
-def Plot_AgeClassDist(meta,pNam,iScn,iPS,iSS):
+def Plot_AgeClassDist(meta,pNam,iScn,iPS,iSS,iYS):
 
     # Import data
     acd=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_AgeClassDist_Scn' + str(iScn+1) + '.pkl')
@@ -1411,7 +1413,7 @@ def Plot_HarvestAreaTimeSeries(meta,tlim):
 
     rat=d['Area Harv Cruise']/d['Area Harv CC']
     ind=np.where( (rat>0) & (rat<2) )[0]
-    print(np.mean(rat[ind]))
+    #print(np.mean(rat[ind])) 0.71
 
     ms=1.5; cl=np.array([[0.1,0.3,0.6],[0.5,0.85,0],[1,0.5,0],[0.65,0.35,1],[0.6,1,0],[0,0,0]])
     plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(10,6));
@@ -1420,7 +1422,7 @@ def Plot_HarvestAreaTimeSeries(meta,tlim):
     ax.plot(d['tv'][iT],d['Area Harv Cruise'][iT]/1e3,'--kd',mfc=cl[2,:],mec=cl[2,:],color=cl[2,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='Cruise compilation')
     ax.plot(d['tv'][iT],d['Area Harv NTEM'][iT]/1e3,'-.k^',mfc=cl[3,:],mec=cl[3,:],color=cl[3,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='NTEMS 2020')
     #ax.plot(d['tv'][iT],d['Area Planted RESULTS']/1e3,'-ks',mfc=cl[3,:],mec=cl[3,:],color=cl[3,:],lw=meta['Graphics']['gp']['lw1'],ms=3,label='Area planted (RESULTS)')
-    ax.set(xticks=np.arange(1800,2120,5),yticks=np.arange(0,400,25),ylabel='Area harvested (Kha yr${^-1}$)',xlabel='Time, years',ylim=[0,275],xlim=[tlim[0]-0.5,tlim[1]+0.5])
+    ax.set(xticks=np.arange(1800,2120,5),yticks=np.arange(0,400,25),ylabel='Area harvested (Kha yr$^{-1}$)',xlabel='Time, years',ylim=[0,275],xlim=[tlim[0]-0.5,tlim[1]+0.5])
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=1.5)
     ax.legend(loc='lower left',facecolor=[1,1,1],frameon=False)
     plt.tight_layout()
@@ -1523,49 +1525,49 @@ def Plot_FelledFate_Scenarios(meta,scn,reg):
     aw=0.26;
     plt.close('all');
     fig,ax=plt.subplots(3,3,figsize=gu.cm2inch(16.5,10));
-    ax[0,0].plot(d['Year'],d['BaseCase'][reg]['BiomassMerch_Removed'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[0,0].plot(d['Year'],d[scn][reg]['BiomassMerch_Removed'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[0,0].plot(d['Year'],d['BaseCase'][reg]['StemwoodMerchRemoved'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[0,0].plot(d['Year'],d[scn][reg]['StemwoodMerchRemoved'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[0,0].set(position=[0.065,0.69,aw,0.29],ylabel='Removal (%)',xticks=np.arange(1500,2200,20),xticklabels='',xlabel='',xlim=[2000,2100]);
     ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=1.5);
     ax[0,0].legend(loc='lower right',facecolor=[1,1,1],frameon=False);
 
-    ax[0,1].plot(d['Year'],d['BaseCase'][reg]['BiomassMerch_Piled'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[0,1].plot(d['Year'],d[scn][reg]['BiomassMerch_Piled'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[0,1].plot(d['Year'],d['BaseCase'][reg]['StemwoodMerchPiled'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[0,1].plot(d['Year'],d[scn][reg]['StemwoodMerchPiled'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[0,1].set(position=[0.395,0.69,aw,0.29],ylabel='Piled (%)',xticks=np.arange(1500,2200,20),xticklabels='',xlabel='',xlim=[2000,2100]);
     ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=1.5);
 
-    ax[0,2].plot(d['Year'],d['BaseCase'][reg]['BiomassMerch_LeftOnSite'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[0,2].plot(d['Year'],d[scn][reg]['BiomassMerch_LeftOnSite'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[0,2].plot(d['Year'],d['BaseCase'][reg]['StemwoodMerchLeftOnSite'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[0,2].plot(d['Year'],d[scn][reg]['StemwoodMerchLeftOnSite'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[0,2].set(position=[0.73,0.69,aw,0.29],ylabel='Left on site (%)',xticks=np.arange(1500,2200,20),xticklabels='',xlabel='',xlim=[2000,2100]);
     ax[0,2].yaxis.set_ticks_position('both'); ax[0,2].xaxis.set_ticks_position('both'); ax[0,2].tick_params(length=1.5);
 
-    ax[1,0].plot(d['Year'],d['BaseCase'][reg]['BiomassNonMerch_Removed'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[1,0].plot(d['Year'],d[scn][reg]['BiomassNonMerch_Removed'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[1,0].plot(d['Year'],d['BaseCase'][reg]['StemwoodNonMerchRemoved'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[1,0].plot(d['Year'],d[scn][reg]['StemwoodNonMerchRemoved'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[1,0].set(position=[0.065,0.385,aw,0.29],ylabel='Removal (%)',xticks=np.arange(1500,2200,20),xticklabels='',xlabel='',xlim=[2000,2100]);
     ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=1.5);
 
-    ax[1,1].plot(d['Year'],d['BaseCase'][reg]['BiomassNonMerch_Piled'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[1,1].plot(d['Year'],d[scn][reg]['BiomassNonMerch_Piled'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[1,1].plot(d['Year'],d['BaseCase'][reg]['StemwoodNonMerchPiled'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[1,1].plot(d['Year'],d[scn][reg]['StemwoodNonMerchPiled'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[1,1].set(position=[0.395,0.385,aw,0.29],ylabel='Piled (%)',xticks=np.arange(1500,2200,20),xticklabels='',xlabel='',xlim=[2000,2100]);
     ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=1.5);
 
-    ax[1,2].plot(d['Year'],d['BaseCase'][reg]['BiomassNonMerch_LeftOnSite'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[1,2].plot(d['Year'],d[scn][reg]['BiomassNonMerch_LeftOnSite'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[1,2].plot(d['Year'],d['BaseCase'][reg]['StemwoodNonMerchLeftOnSite'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[1,2].plot(d['Year'],d[scn][reg]['StemwoodNonMerchLeftOnSite'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[1,2].set(position=[0.73,0.385,aw,0.29],ylabel='Left on site (%)',xticks=np.arange(1500,2200,20),xticklabels='',xlabel='',xlim=[2000,2100]);
     ax[1,2].yaxis.set_ticks_position('both'); ax[1,2].xaxis.set_ticks_position('both'); ax[1,2].tick_params(length=1.5);
 
-    ax[2,0].plot(d['Year'],d['BaseCase'][reg]['Snags_Removed'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[2,0].plot(d['Year'],d[scn][reg]['Snags_Removed'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[2,0].plot(d['Year'],d['BaseCase'][reg]['SnagStemRemoved'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[2,0].plot(d['Year'],d[scn][reg]['SnagStemRemoved'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[2,0].set(position=[0.065,0.08,aw,0.29],ylabel='Removal (%)',xticks=np.arange(1500,2200,20),xlabel='Time, years',xlim=[2000,2100]);
     ax[2,0].yaxis.set_ticks_position('both'); ax[2,0].xaxis.set_ticks_position('both'); ax[2,0].tick_params(length=1.5);
 
-    ax[2,1].plot(d['Year'],d['BaseCase'][reg]['Snags_Piled'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[2,1].plot(d['Year'],d[scn][reg]['Snags_Piled'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[2,1].plot(d['Year'],d['BaseCase'][reg]['SnagStemPiled'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[2,1].plot(d['Year'],d[scn][reg]['SnagStemPiled'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[2,1].set(position=[0.395,0.08,aw,0.29],ylabel='Piled (%)',xticks=np.arange(1500,2200,20),xlabel='Time, years',xlim=[2000,2100]);
     ax[2,1].yaxis.set_ticks_position('both'); ax[2,1].xaxis.set_ticks_position('both'); ax[2,1].tick_params(length=1.5);
 
-    ax[2,2].plot(d['Year'],d['BaseCase'][reg]['Snags_LeftOnSite'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
-    ax[2,2].plot(d['Year'],d[scn][reg]['Snags_LeftOnSite'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
+    ax[2,2].plot(d['Year'],d['BaseCase'][reg]['SnagStemLeftOnSite'],'b-',label='BaseCase',lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl1']);
+    ax[2,2].plot(d['Year'],d[scn][reg]['SnagStemLeftOnSite'],'g--',label=scn,lw=meta['Graphics']['gp']['lw3'],color=meta['Graphics']['gp']['cl2']);
     ax[2,2].set(position=[0.73,0.08,aw,0.29],ylabel='Left on site (%)',xticks=np.arange(1500,2200,20),xlabel='Time, years',xlim=[2000,2100]);
     ax[2,2].yaxis.set_ticks_position('both'); ax[2,2].xaxis.set_ticks_position('both'); ax[2,2].tick_params(length=1.5);
     lab=['Merchantable','Merchantable','Merchantable','Residuals','Residuals','Residuals','Snags','Snags','Snags'];
@@ -1756,4 +1758,50 @@ def Plot_MitigationValue(meta,mos,pNam,cNam,iPS,iSS,iYS):
     if meta['Graphics']['Print Figures']=='On':
         gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + nam_ps + '_' + nam_ss + '_DeltaGHGOnly_' + cNam,'png',900);
 
+    return
+
+#%%
+def Plot_AIL_TS_NOSE(meta,mos,pNamC,tv):
+    pNam='CF'
+    #pNam=pNamC
+    nSS='All';
+    nYS='All'; 
+    iScn=1
+    iT=np.where( (tv>=1960) & (tv<=2050) )[0]
+    cl=np.array([[0.6,0.75,1],[0,0,0.5],[0.6,1,0],[0.15,0.75,0],[1,0.5,0],[0.9,0.87,0.84],[0.8,0.75,0.9],[0.25,0.25,0.25]])
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(20,7.5));
+    A_cumu=np.zeros(tv.size)
+    cnt=0
+    for nPS in meta['LUT']['Derived']['RegenTypeNO'].keys():
+        iPS=np.where(meta[pNamC]['Project']['Strata']['Project Type']['Unique CD']==nPS)[0][0]
+        iSS=np.where(meta[pNamC]['Project']['Strata']['Spatial']['Unique CD']==nSS)[0][0]
+        iYS=np.where(meta[pNamC]['Project']['Strata']['Year']['Unique CD']==nYS)[0][0]
+        if nPS=='Fill Planting':
+            A=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Fill Planting']['Ensemble Mean'][:,0,iSS,iYS]/1000#*meta[pNam]['Project']['AEF']
+        else:
+            A=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Planting']['Ensemble Mean'][:,iPS,iSS,iYS]/1000#*meta[pNam]['Project']['AEF']
+        plt.bar(tv,A,0.8,bottom=A_cumu,facecolor=cl[cnt,:],label=nPS)
+        A_cumu=A_cumu+A; cnt=cnt+1
+    ax.set(xticks=np.arange(1950,2225+1,10),ylabel='Implementation level (Kha yr$^{-1}$)',
+           xlabel='Time, years',yticks=np.arange(0,300,20),xlim=[tv[iT][0]-0.75,tv[iT][-1]+0+.75],ylim=[0,250]) #
+    plt.legend(frameon=False,loc='upper right',facecolor=[1,1,1],labelspacing=0.25,ncol=2)
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=1.5)
+    plt.tight_layout()
+    #gu.PrintFig(meta['Paths'][pNamC]['Figures'] + '\\PL_NO_AIL_ByProjectType','png',900)
+    return
+
+#%% Export strata
+
+def ExportMOSSTrata(meta):
+    vL=['E_CO2e_AGHGB_WOSub','E_CO2e_AGHGB_WSub','Cost Total', 'Cost Silviculture Total','Revenue Gross', 'Revenue Net']
+    vStat='Ensemble Mean'
+    oper='Sum'
+    for v in vL:
+        d=np.zeros((tv.size,meta[pNam]['Project']['Strata']['Project']['Unique CD'].size+1),dtype='int32')
+        d[:,0]=tv
+        for iStrat in range(meta[pNam]['Project']['Strata']['Project']['Unique CD'].size):
+            d[:,iStrat+1]=mos[pNam]['Delta'][cNam]['ByStrata'][oper][v][vStat][:,iStrat,iSS]*meta[pNam]['Project']['AEF']
+        df=pd.DataFrame(data=d,columns=np.append('Year',meta[pNam]['Project']['Strata']['Project']['Unique CD']))
+        df.set_index('Year')
+        df.to_excel(r'C:\Users\rhember\Documents\Data\BCFCS Database' + '\\Data\\2023\\' + pNam + '_' + cNam + '_' + v + '_' + oper + '_' + vStat + '.xlsx')
     return

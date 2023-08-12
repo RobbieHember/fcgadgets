@@ -16,10 +16,6 @@ warnings.filterwarnings("ignore")
 
 def SimulateWildfireFromAAO(meta,pNam,inv):
 
-    # Ensure BGC zone has the right key name
-    if 'ID_BECZ' in inv:
-        inv['ID_BGCZ']=inv['ID_BECZ']
-
     # Import wildfire stats (by BGC zone)
     wfss=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
     tv_wfss=np.arange(-2000,2201,1)
@@ -83,6 +79,10 @@ def SimulateWildfireFromAAO(meta,pNam,inv):
                     # Draw of annual area burned from Pareto distribution
                     N_t=1
                     P_oc[iWF][iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+                    
+                    # *** Introduce fire ***
+                    #if meta[pNam]['Year'][iT]==1900:
+                    #    P_oc[iWF][iT,indZone]=0.15
 
         #----------------------------------------------------------------------
         # Populate for scenarios
@@ -296,28 +296,32 @@ def SimulateIBMFromAAO(meta,pNam,inv):
         # Generate probability of occurrence (the same among scenarios, different by ensemble)
         #----------------------------------------------------------------------
 
-        P_oc=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']))
+        # *** I busted this - thinking about whether the AAO model is worth it
+        # hard wired a constant for now. ***
+        P_oc=0.0015*np.ones((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']))
 
-        uZone=np.unique(inv['ID_BGCZ'])
+        # P_oc=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']))
 
-        for iZone in range(uZone.size):
+        # uZone=np.unique(inv['ID_BGCZ'])
 
-            indZone=np.where(inv['ID_BGCZ']==uZone[iZone])[0]
+        # for iZone in range(uZone.size):
 
-            namZone=cbu.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],uZone[iZone])[0]
+        #     indZone=np.where(inv['ID_BGCZ']==uZone[iZone])[0]
 
-            # Alternative model
-            beta=ibmss[namZone]['Beta_Pareto_Alt'].copy()
+        #     namZone=cbu.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],uZone[iZone])[0]
 
-            for iT in range(meta[pNam]['Year'].size):
-                N_t=1
-                P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+        #     # Alternative model
+        #     beta=ibmss[namZone]['Beta_Pareto_Alt'].copy()
 
-        # # *** Add historical Mountain Pine Beetle outbreaks ***
-        # yrL=[1835,1865,1875,1905,1915,1945,1955]
-        # for iY in yrL:
-        #     iT=np.where(meta[pNam]['Year']==iY)[0]
-        #     P_oc[iT,:]=0.1
+        #     for iT in range(meta[pNam]['Year'].size):
+        #         N_t=1
+        #         P_oc[iT,indZone]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+
+        # *** Add historical Mountain Pine Beetle outbreaks ***
+        yrL=[1835,1865,1875,1905,1915,1945,1955]
+        for iY in yrL:
+            iT=np.where(meta[pNam]['Year']==iY)[0]
+            P_oc[iT,:]=0.01
 
         #--------------------------------------------------------------------------
         # Loop through scenarios
@@ -330,7 +334,7 @@ def SimulateIBMFromAAO(meta,pNam,inv):
             ibm_sim['Occurrence']=np.zeros((meta[pNam]['Year'].size,meta[pNam]['Project']['N Stand']),dtype='int16')
             ibm_sim['Mortality']=np.zeros((meta[pNam]['Year'].size,meta[pNam]['Project']['N Stand']),dtype='int16')
 
-            # Populate occurrence
+            # Populate occurrence            
             iOc=np.where(rn_oc<P_oc)
             ibm_sim['Occurrence'][iOc]=1
 
@@ -459,7 +463,7 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 
         # Historical period
 
-        bH=[0.00085,4.85,0.32,1968]
+        bH=[0.00085,4.9,0.32,1970]
         f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
         f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
         Pa_H_Sat=f1*f2
@@ -543,3 +547,125 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
                 vi['EC']['ID Growth Curve'][iT,indS[i],iE]=2
 
     return vi
+
+#%% Generate disturbances from Pareto distribution
+
+def GenerateDisturbancesFromPareto(N_t,N_s,beta,rn):
+
+    # Initialize occurrence array
+    oc=np.zeros((N_t,N_s),dtype='int8')
+    
+    # Draw a probability of area disturbed per time step
+    po=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+    po=np.reshape(po,(-1,1))
+    po=np.tile(po,N_s)
+    
+    # Loop through time steps
+    #rn=np.random.random((N_t,N_s))
+    
+    # Populate occurrence
+    ind=np.where(rn<po)    
+    oc[ind[0],ind[1]]=1
+    
+    return oc
+
+#%% Generate disturbance ensembles with AAO models
+
+def GenerateIBMEnsembleFromAAO(meta,rn,par,id_bgcz):
+    
+    # Import IBM stats    
+    ibmss=gu.ipickle(meta['Paths']['Taz Datasets'] + '\\Beetle Stats and Scenarios\\IBM_Stats_Scenarios_By_BGCZ.pkl')
+    tv_scn=np.arange(-2000,2201,1)
+    
+    # Prepare mortality probability coefficients
+    beta_obs=np.cumsum([meta['Param']['BE']['Taz']['IBM']['p_Trace_obs'],
+                      meta['Param']['BE']['Taz']['IBM']['p_Low_obs'],
+                      meta['Param']['BE']['Taz']['IBM']['p_Medium_obs'],
+                      meta['Param']['BE']['Taz']['IBM']['p_Severe_obs'],
+                      meta['Param']['BE']['Taz']['IBM']['p_VerySevere_obs']])
+    
+    ibm_sim={}
+    
+    #--------------------------------------------------------------------------
+    # Occurrence
+    #--------------------------------------------------------------------------
+
+    # Initialize annual probability of occurrence 
+    ibm_sim['Occurrence']=np.zeros((meta['Year'].size,meta['Project']['N Stand']),dtype='int16')
+
+    uZone=np.unique(id_bgcz)
+    
+    for iZone in range(uZone.size):
+        
+        indZone=np.where(id_bgcz==uZone[iZone])[0]
+            
+        namZone=cbu.lut_n2s(meta['LUT']['VRI']['BEC_ZONE_CODE'],uZone[iZone])[0]
+            
+        # Alternative model
+        b0=ibmss[namZone]['Beta_Pareto_Alt'].copy()
+        for iT in range(meta['Year'].size):
+            ibm_sim['Occurrence'][iT,indZone]=GenerateDisturbancesFromPareto(1,indZone.size,b0,rn[iT])
+        
+    # Exclude inventory period
+    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during modern period']=='On':
+        ind=np.where( (meta['Year']>=1951) & (meta['Year']<=meta['Project']['Year Project']) )[0]
+        ibm_sim['Occurrence'][ind,:]=0 
+        
+    # Exclude historical period
+    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during historical period']=='On':
+        ind=np.where( (meta['Year']<=meta['Project']['Year Project']) )[0]
+        ibm_sim['Occurrence'][ind,:]=0
+    
+    # Exclude future period
+    if meta['Param']['BE']['Taz']['IBM']['Exclude simulations during future period']=='On':
+        ind=np.where( (meta['Year']>meta['Project']['Year Project']) )[0]
+        ibm_sim['Occurrence'][ind,:]=0       
+        
+    #--------------------------------------------------------------------------
+    # Severity / mortality
+    #--------------------------------------------------------------------------
+        
+    # Get mortality from probability of burn severity rating
+    ibm_sim['Mortality']=np.zeros((meta['Year'].size,meta['Project']['N Stand']),dtype='int16')
+    ind=np.where( (ibm_sim['Occurrence']>0) )
+    
+    # Add pre-inventory severity
+    Mort=np.zeros((meta['Year'].size,meta['Project']['N Stand']),dtype='int16')    
+    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
+    it=np.where(meta['Year']<1920)[0]
+    ibm_sim['Mortality'][it,:]=Mort[it,:]
+    
+    # Add post-inventory severity
+    Mort=np.zeros((meta['Year'].size,meta['Project']['N Stand']),dtype='int16')    
+    Mort[ind[0],ind[1]]=GetMortalityFromIBMSeverity(ind[0].size,beta_obs)
+    it=np.where(meta['Year']>meta['Project']['Year Project'])[0]
+    ibm_sim['Mortality'][it,:]=Mort[it,:]
+    
+    return ibm_sim
+
+#%% Mortality from burn severity rating
+# Mortality numbers come from DisturbanceBySeverityClass spreadsheet
+
+def GetMortalityFromIBMSeverity(rn,beta):
+    
+    y=np.zeros(rn.size)
+    
+    for i in range(rn.size):
+        
+        if rn[i]<beta[0]:
+            # Trace
+            y[i]=1
+        elif (rn[i]>=beta[0]) & (rn[i]<beta[1]):
+            # Low
+            y[i]=5
+        elif (rn[i]>=beta[1]) & (rn[i]<beta[2]): 
+            # Medium
+            y[i]=25
+        elif (rn[i]>=beta[2]) & (rn[i]<beta[3]): 
+            # Severe
+            y[i]=50
+        elif (rn[i]>=beta[3]): 
+            # Severe
+            y[i]=75
+        
+    return y

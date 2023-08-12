@@ -6,10 +6,10 @@ import copy
 import gc as garc
 import time
 import datetime
-from fcgadgets.macgyver import util_general as gu
-from fcgadgets.cbrunner import cbrun_util as cbu
-from fcgadgets.cbrunner import cbrun_annproc as annproc
-from fcgadgets.hardhat import geological as geologic
+import fcgadgets.macgyver.util_general as gu
+import fcgadgets.cbrunner.cbrun_util as cbu
+import fcgadgets.cbrunner.cbrun_annproc as annproc
+import fcgadgets.hardhat.geological as geologic
 
 #%% Run simulation
 
@@ -28,6 +28,9 @@ def MeepMeep(meta,pNam):
     for iBat in range(meta[pNam]['Project']['N Batch']):
 
         flag_WorkingOnBatch=0
+
+        # Index to batch
+        meta[pNam]['Project']['indBat']=cbu.IndexToBatch(meta[pNam],iBat)
 
         # Loop through scenarios
         for iScn in ScenariosToRun:
@@ -577,7 +580,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     meta['Param']['BEV']=copy.deepcopy(meta['Param']['BE'])
 
     # Index to batch
-    indBat=cbu.IndexToBatch(meta[pNam],iBat)
+    #indBat=cbu.IndexToBatch(meta[pNam],iBat)
 
     #--------------------------------------------------------------------------
     # Add error variance to parameters
@@ -653,10 +656,10 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     if meta[pNam]['Project']['Scenario Source']=='Portfolio':
 
         # Isolate felled fate scenario names within this batch
-        Scenario=meta[pNam]['Project']['Portfolio']['Felled Fate Scenario'][indBat]
+        Scenario=meta[pNam]['Project']['Portfolio']['Felled Fate Scenario'][meta[pNam]['Project']['indBat']]
 
         # Isolate region
-        Region=meta[pNam]['Project']['Portfolio']['Region Code'][indBat]
+        Region=meta[pNam]['Project']['Portfolio']['Region Code'][meta[pNam]['Project']['indBat']]
 
         # Unique scenario and region (must be converted to string)
         SR=np.column_stack((Scenario,Region))
@@ -703,7 +706,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
             for k in meta['Param']['BE']['Felled Fate'][ChangeScenario][HistoricalRegime].keys():
                 x=meta['Param']['BE']['Felled Fate'][ChangeScenario][HistoricalRegime][k]
-                for i in range(indBat.size):
+                for i in range(meta[pNam]['Project']['indBat'].size):
                     meta['Param']['BEV']['Felled Fate'][k][:,i]=x
 
         # Override historical regime parameters for stands that have land use = energy production
@@ -726,10 +729,10 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     if meta[pNam]['Project']['Scenario Source']=='Portfolio':
 
         # Isolate Removal Fate scenario names within this batch
-        Scenario=meta[pNam]['Project']['Portfolio']['Removed Fate Change Scenario'][indBat]
+        Scenario=meta[pNam]['Project']['Portfolio']['Removed Fate Change Scenario'][meta[pNam]['Project']['indBat']]
 
         # Isolate region
-        Region=meta[pNam]['Project']['Portfolio']['Region Code'][indBat]
+        Region=meta[pNam]['Project']['Portfolio']['Region Code'][meta[pNam]['Project']['indBat']]
 
         # Unique scenario and region (must be converted to string)
         SR=np.column_stack( (Scenario,Region) )
@@ -777,7 +780,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
             for k in meta['Param']['BE']['Removed Fate'][ChangeScenario][HistoricalRegime].keys():
                 x=meta['Param']['BE']['Removed Fate'][ChangeScenario][HistoricalRegime][k]
-                for i in range(indBat.size):
+                for i in range(meta[pNam]['Project']['indBat'].size):
                     meta['Param']['BEV']['Removed Fate'][k][:,i]=x
 
         # Override historical regime parameters for stands that have land use = energy production
@@ -835,10 +838,10 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     if meta[pNam]['Project']['Scenario Source']=='Portfolio':
 
         # Isolate scenario names within this batch
-        Scenario=meta[pNam]['Project']['Portfolio']['HWP End Use Scenario'][indBat]
+        Scenario=meta[pNam]['Project']['Portfolio']['HWP End Use Scenario'][meta[pNam]['Project']['indBat']]
 
         # Isolate region
-        Region=meta[pNam]['Project']['Portfolio']['Region Code'][indBat]
+        Region=meta[pNam]['Project']['Portfolio']['Region Code'][meta[pNam]['Project']['indBat']]
 
         # Unique scenario and region (must be converted to string)
         SR=np.column_stack( (Scenario,Region) )
@@ -887,7 +890,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
             for k in meta['Param']['BE']['HWP End Use'][ChangeScenario][HistoricalRegime].keys():
                 x=meta['Param']['BE']['HWP End Use'][ChangeScenario][HistoricalRegime][k]
-                for i in range(indBat.size):
+                for i in range(meta[pNam]['Project']['indBat'].size):
                     meta['Param']['BEV']['HWP End Use'][k][:,i]=x
 
     #--------------------------------------------------------------------------
@@ -898,7 +901,7 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
         if meta[pNam]['Scenario'][iScn]['Growth Enhancement Status']=='On':
 
             tv=meta[pNam]['Year'].copy()
-            meta[pNam]['Project']['Growth Enhancement']=np.zeros((tv.size,indBat.size))
+            meta[pNam]['Project']['Growth Enhancement']=np.zeros((tv.size,meta[pNam]['Project']['indBat'].size))
             bgcz=vi['Inv']['ID_BGCZ'].flatten()
             u=np.unique(bgcz)
             for iU in range(u.size):

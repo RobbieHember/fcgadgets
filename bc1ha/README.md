@@ -1,7 +1,7 @@
 # bc1ha
 ## PURPOSE
 The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at 100m spatial resolution. The repository has two goals: 1) streamline an annual update cycle to download and 
-rasterize information that is made available through BC Data Catalogue and 2) generate derived variables, where varying degrees of manipulation (e.g. gap-filling, consolidation of multiple source data sources) 
+rasterize information that is made available through BC Data Catalogue and 2) generate derived variables, where varying degrees of manipulation (e.g. gap-filling, consolidation of multiple data sources) 
 have been applied to create the input variables used to drive simulation models. 
 <br><br>
 Derived variables are often a work in progress and should be used with caution.
@@ -23,7 +23,9 @@ Use ClipToRaster_ByFile to standardize grid extent. Use custom function from bc1
 - Rasterize Forest Cover Inventory (FCI). FCI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. 
 Use ClipToRaster_ByFile to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize FCI, using the feature ID as input. (1 hours)
 
-- Other time-independent variables (that are not too big for Python), use RasterizeFromSource function to rasterize variables. (20 min)
+- Other time-independent variables (that are not too big for Python), use RasterizeFromSource function to rasterize most variables. One exception includes
+rasterization of a second OPENING_ID from the RSLT_OPENING_SVW layer, which has overlapping openings. There is seperate function for rasterizing
+OPENING_ID_2 from the opening lyaer. (0.5 hours)
 
 - Rasterize time-dependent variables, including wildfire, beetles, defoliators, harvest, mechanical site prep, knockdown, planting (1 hour)
 
@@ -31,11 +33,18 @@ Use ClipToRaster_ByFile to standardize grid extent. Use custom function from bc1
 
 - Run scripts that generate derived variables. (~1 hour)
 
-## LIST OF DERIVED VARIABLES
-Additions forthcoming.
+## DERIVED VARIABLES
+### Planting Compilation
+While it is mandatory to report the spatial geometry of planting for governnment-funded planting post 2017, the spatial geometry for other planting is not necessarily tracked explicitly. To reconstruct planting spatial,
+we sequentially compiled it from 1) spatial geometry when reported in the activity layer of RESULTS; 2) the area within the opening that is classified as "Artificial" in the Stocking Type Class" of the Forest Cover Inventory 
+layer (when the area classified as Artificial is within 10% of the planting area listed in the RESULTS activity layer); 3) a random draw of areas from the spatial geometry for the opening from the OPENING_SVW layer.
+
+Over 1960-2022, there were two entries in the activity layer of results where the area planted was not reported. These are excluded from analysis.
+
+###
 
 ## SPARSE SUBSAMPLES
-Prepare sparse inputs at common spatial subsampling resolutions, including 1km, 5km, 10km and 20km. When models are run at these resolutions, **fcgadgets** will automatically draw on these sparse inputs, which will 
+Prepare sparse inputs at commonly-used spatial subsampling resolutions, including 1km, 5km, 10km and 20km. When models are run at these resolutions, **fcgadgets** will automatically draw on these sparse inputs, which will 
 lower computing time during project development.
 
 ## License

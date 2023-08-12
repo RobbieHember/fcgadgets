@@ -1,17 +1,16 @@
 
 #%% Import python modules
-
 import numpy as np
-from fcgadgets.macgyver import util_general as gu
-from fcgadgets.cbrunner import cbrun_util as cbu
-from fcgadgets.hardhat import nutrient_application as napp
-from fcgadgets.taz import aspatial_stat_models as asm
+import fcgadgets.macgyver.util_general as gu
+import fcgadgets.cbrunner.cbrun_util as cbu
+import fcgadgets.hardhat.nutrient_application as napp
+import fcgadgets.hardhat.trenchfoot as tft
+import fcgadgets.taz.aspatial_stat_models as asm
 import warnings
 import time
 from scipy import stats
 
 #%% Biomass dynamics
-
 def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
     # Update stand age
@@ -282,7 +281,6 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     return vo
 
 #%% Annual tree biomass dynamics from Sawtooth
-
 def BiomassFromSawtooth(meta,pNam,iScn,iS,vi,vo,iEP):
 
     t0=time.time()
@@ -953,7 +951,6 @@ def BiomassFromSawtooth(meta,pNam,iScn,iS,vi,vo,iEP):
     return vo
 
 #%% Dead organic matter and soil organic matter dynamics
-
 def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
     # Extract parameters
@@ -1148,7 +1145,6 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
     return vo
 
 #%% Disturbance and management events
-
 def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
     # Update total (live+dead) stemwood merchantable volume
@@ -1182,6 +1178,11 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     if meta[pNam]['Scenario'][iScn]['Nutrient Application Status']=='On':
         if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:
             vi=napp.ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat)
+    
+    # Predict future non-obligation stand establishment (on the fly)
+    if meta[pNam]['Scenario'][iScn]['NOSE Status']=='On':
+        if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:
+            vi=tft.PredictNOSE_OnTheFly(meta,pNam,iScn,iBat,vi,iT)
 
     # Initialize indicator of aerial nutrient application
     flag_nutrient_application=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
@@ -1539,12 +1540,18 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         # Impose regen failure
         #----------------------------------------------------------------------
 
-        # Only applies to BatchTIPSY
         if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
+            
             iFailure=np.where(ID_Type==meta['LUT']['Event']['Regen Failure'])[0]
             if iFailure.size>0:
                 vi['GC']['Active'][:,iFailure,:]=0
                 vi['GC'][1][:,iFailure,:]=0
+            
+            if meta[pNam]['Scenario'][iScn]['NOSE Status']=='On':
+                iPoorGrowth=np.where(ID_Type==meta['LUT']['Event']['Regen at 25% Growth'])[0]
+                if iPoorGrowth.size>0:
+                    vi['GC']['Active'][:,iPoorGrowth,:]=0.25*vi['GC']['Active'][:,iPoorGrowth,:]
+                    vi['GC'][1][:,iPoorGrowth,:]=0.25*vi['GC'][1][:,iPoorGrowth,:]
 
         #------------------------------------------------------------------
         # Update net growth (in response to lethal events)
@@ -1621,7 +1628,7 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
             indAdj=np.where( (GrowthFactor!=9999) & (GrowthFactor!=0) )[0]
 
-            if (indAdj.size>0):
+            if indAdj.size>0:
 
                 Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
@@ -1674,7 +1681,6 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     return vo,vi
 
 #%% Harvested wood products sector
-
 def HWP_Update21(meta,pNam,iT,iBat,vi,vo):
 
     #--------------------------------------------------------------------------
@@ -2525,7 +2531,6 @@ def HWP_Update21(meta,pNam,iT,iBat,vi,vo):
     return vo
 
 #%% Grassland module
-
 def Biomass_FromGrasses(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
     # Aboveground biomass (foliage)
@@ -2549,5 +2554,3 @@ def Biomass_FromGrasses(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]=vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]+G_net
 
     return vo
-
-

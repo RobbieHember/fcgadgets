@@ -157,6 +157,12 @@ roi=u1ha.DefineROI(meta,roi,gdf)
 t1=time.time()
 print((t1-t0)/60)
 
+#%% Simplify
+
+gdf['road']['gdf'].to_file(r'C:\Users\rhember\Documents\Data\Geodatabases\test1.geojson', driver="GeoJSON")  
+a=gdf['road']['gdf'].simplify(100)
+a.to_file(r'C:\Users\rhember\Documents\Data\Geodatabases\test2.geojson', driver="GeoJSON")  
+
 #%% Import rasters over ROI
 
 vList=u1ha.GetRasterListFromSpreadsheet(r'C:\Users\rhember\Documents\Data\BC1ha\RasterInclusion.xlsx')
