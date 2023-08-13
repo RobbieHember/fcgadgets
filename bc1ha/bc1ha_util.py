@@ -219,8 +219,8 @@ def ImportLUTs(meta):
     for i in range(d['ID'].size):
         meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
 
-    d=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\LUTs\\LUT_regentype_no.xlsx')
-    vNam='RegenTypeNO'
+    d=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\LUTs\\LUT_regentype.xlsx')
+    vNam='RegenType'
     meta['LUT']['Raw'][vNam]=d
     meta['LUT'][lNam][vNam]={}
     for i in range(d['ID'].size):
@@ -3810,5 +3810,124 @@ def RasterizeOpeningID(meta):
     zOP2['Data']=np.zeros(zRef['Data'].shape,dtype='int32')
     zOP2['Data'][ind]=zOP0[ind]#.astype('int32')
     gis.SaveGeoTiff(zOP2,meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\OPENING_ID_2.tif')    
+    
+    return
+
+#%% Derive Regen Type (used for non-ob stand establishment)
+
+def DeriveRegenTypeCompilation(meta):
+    meta=cbu.Load_LUTs_Modelling(meta)
+    
+    d={}
+    d['tv']=np.arange(1960,2023,1)
+    ptNam=np.array(list(meta['LUT']['Derived']['RegenType'].keys()))
+    ptID=np.array(list(meta['LUT']['Derived']['RegenType'].values()))
+    zD=u1ha.Import_Raster(meta,[],['harv_yr_con1','kd_yr'])
+    
+    zP={}
+    for iP in range(6):
+        zP[iP]={}
+        zP[iP]['Type']=np.zeros(zRef['Data'].shape,dtype='int8')
+        zP[iP]['Year']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iP+1) + '_Year.tif')['Data']
+        zP[iP]['STC']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iP+1) + '_SILV_TECHNIQUE_CODE.tif')['Data']
+        zP[iP]['FSC']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iP+1) + '_SILV_FUND_SOURCE_CODE.tif')['Data']
+    
+    # Summarize frequency of each Stocking Type Code (All and NOSE)
+    d['STC Summary']={}
+    d['STC Summary']['stc']=['PL','RP','FP','CG','RO','RR','SE','SL']
+    d['STC Summary']['N']=np.zeros((len(d['STC Summary']['stc']),2))
+    for v in d['STC Summary']['stc']:
+        for iP in range(6):
+            ind=np.where( (zP[iP]['STC']==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE'][v]) )
+            d['STC Summary']['N'][cnt,0]=d['STC Summary']['N'][cnt,0]+ind[0].size
+            ind=np.where( (zP[iP]['STC']==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE'][v]) & (np.isin(zP[iP]['FSC'],meta['Param']['BE']['FSC']['NO List ID'])==True) )
+            d['STC Summary']['N'][cnt,1]=d['STC Summary']['N'][cnt,1]+ind[0].size
+    
+    cd=meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']
+    stcInclude=[cd['PL'],cd['RP'],cd['FP'],cd['RR']]
+    
+    d['A Tot']=np.zeros(d['tv'].size)
+    d['A']=np.zeros((d['tv'].size,ptNam.size))
+    DL=np.zeros(zRef['Data'].shape,dtype='int8')
+    for iT in range(d['tv'].size):
+        print(d['tv'][iT])
+        zWF=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(d['tv'][iT]-1) + '.tif')['Data']
+        zIBM=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(d['tv'][iT]-1) + '.tif')['Data']
+        ind=np.where(zIBM>=3); DL[ind]=meta['LUT']['Event']['IBM'] # Severity greater than light
+        ind=np.where(zD['harv_yr_con1']['Data']==d['tv'][iT]-1); DL[ind]=meta['LUT']['Event']['Harvest']; #H_Yr[ind]=zD['harv_yr_con1']['Data'][ind]
+        ind=np.where(zD['kd_yr']['Data']==d['tv'][iT]-1); DL[ind]=meta['LUT']['Event']['Knockdown']
+        ind=np.where(zWF>0); DL[ind]=meta['LUT']['Event']['Wildfire']
+        
+        pl_oc=np.zeros(zRef['Data'].shape,dtype='int8')
+        pl_stc=np.zeros(zRef['Data'].shape,dtype='int16')
+        pl_fsc=np.zeros(zRef['Data'].shape,dtype='int16')
+        for iP in range(6):
+            ind=np.where( (zP[iP]['Year']==d['tv'][iT]) & (np.isin(zP[iP]['STC'],stcInclude)==True) )
+            #ind=np.where( (zP[iP]['Year']==d['tv'][iT]) & (np.isin(zP[iP]['FSC'],meta['Param']['BE']['FSC']['NO List ID'])==True) & (np.isin(zP[iP]['STC'],stcInclude)==True) )
+            pl_oc[ind]=1
+            pl_stc[ind]=zP[iP]['STC'][ind]
+            pl_fsc[ind]=zP[iP]['FSC'][ind]
+        
+        ind=np.where( (pl_oc==1) )
+        d['A Tot'][iT]=ind[0].size
+        
+        zType0=np.zeros(zRef['Data'].shape,dtype='int8')
+        
+        # Replanting
+        ind=np.where( (pl_oc==1) & (pl_stc==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']['RP']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Replanting']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Replanting']-1]=ind[0].size
+        # Fill Planting
+        ind=np.where( (pl_oc==1) & (pl_stc==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']['FP']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Fill Planting']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Fill Planting']-1]=ind[0].size
+        # Road rehab
+        ind=np.where( (pl_oc==1) & (pl_stc==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']['RR']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Road Rehabilitation']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Road Rehabilitation']-1]=ind[0].size
+        # Back to back planting
+        ind=np.where( (pl_oc==1) & (zType0==0) & (DL==meta['LUT']['Event']['Planting']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Back-to-back Planting']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Back-to-back Planting']-1]=ind[0].size    
+        # Salvage
+        ind=np.where( (pl_oc==1) & (d['tv'][iT]>=2004) & (zD['harv_yr_con1']['Data']>1987) & (zType0==0) & (DL==meta['LUT']['Event']['Harvest']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Salvage and Planting']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Salvage and Planting']-1]=ind[0].size
+        # Knockdown
+        ind=np.where( (pl_oc==1) & (zType0==0) & (DL==meta['LUT']['Event']['Knockdown']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Knockdown and Planting']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Knockdown and Planting']-1]=ind[0].size
+        # Straight fire
+        ind=np.where( (pl_oc==1) & (zType0==0) & (DL==meta['LUT']['Event']['Wildfire']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']-1]=ind[0].size
+        # Straight insect
+        ind=np.where( (pl_oc==1) & (zType0==0) & (DL==meta['LUT']['Event']['IBM']) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Insect Outbreak']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Insect Outbreak']-1]=ind[0].size
+        # NSR backlog
+        ind=np.where( (pl_oc==1) & (DL==meta['LUT']['Event']['Harvest']) & (zD['harv_yr_con1']['Data']<=1987) & (zType0==0) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['NSR Backlog']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['NSR Backlog']-1]=ind[0].size        
+        # Unknown
+        ind=np.where( (pl_oc==1) & (zType0==0) )
+        zType0[ind]=meta['LUT']['Derived']['RegenType']['Unknown']
+        d['A'][iT,meta['LUT']['Derived']['RegenType']['Unknown']-1]=ind[0].size
+        
+        DL[(pl_oc==1)]=meta['LUT']['Event']['Planting']
+        
+        # Pack
+        for iP in range(6):
+            ind=np.where( (zP[iP]['Year']==d['tv'][iT]) )
+            zP[iP]['Type'][ind]=zType0[ind]
+    
+    # Save summary
+    gu.opickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\RegenTypeSummary_All',d)
+    
+    # Save packed regen type
+    for i in range(6):
+        z1=zRef.copy()
+        z1['Data']=zP[i]['Type']
+        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_RegenType.tif')
     
     return
