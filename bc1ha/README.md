@@ -17,10 +17,11 @@ bc1ha_map_roi: Graphics by region of interest
 
 - Update look-up-tables (LUTs) using **BuildLUTsFromSourceGDBs**. (7+ hours)
 
-- Rasterize VRI. VRI is too big to be rasterized in Python (wtih 32 GB RAM). 
-       - In ArcGIS, rasterize the feature ID. Convert to TIFF. 
-       - Export to local machine. Use **ClipToRaster_ByFile** to standardize grid extent. 
-       - Use custom function from bc1ha_util.py specifically designed to rasterize VRI, using the feature ID as input. The **CreateIdForCategoricalVariable** function generates numberical IDs for a categorical variable in GDBs using the LUTs. (10 hours)
+- Rasterize VRI. VRI is too big (32GB RAM) to be rasterized in Python. (10 hours)
+    - In ArcGIS, rasterize the feature ID. Convert to TIFF. 
+    - Export to local machine. Use **ClipToRaster_ByFile** to standardize grid extent.
+    - Use custom function from bc1ha_util.py specifically designed to rasterize VRI, using the feature ID as input. 
+    - The **CreateIdForCategoricalVariable** function generates numerical IDs for a categorical variable in GDBs using the LUTs. 
 
 - Rasterize Forest Cover Inventory (FCI). FCI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize Forest Cover ID. Convert to TIFF. Export to local machine. Use **ClipToRaster_ByFile** to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize FCI, using the feature ID as input. (1 hours)
 
