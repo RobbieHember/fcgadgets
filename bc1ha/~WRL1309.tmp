@@ -15,16 +15,17 @@ bc1ha_map_roi: Graphics by region of interest
 ## ANNUAL UPDATE STEPS
 - Download required layers and store as geodatabases for land use, land cover, disturbances, RESULTS, and VRI. The layers that are included should be listed in the Data Sources spreadsheet in the **fcgadgets.cbrunner.parameters** repository. (8+ hours)
 
-- Update look-up-tables (LUTs) using **BuildLUTsFromSourceGDBs**. (7+ hours)
+- Update look-up-tables (LUTs). (7+ hours)
 
-- Rasterize VRI. VRI is too big to be rasterized in Python (wtih 32 GB RAM). 
-       - In ArcGIS, rasterize the feature ID. Convert to TIFF. 
-       - Export to local machine. Use **ClipToRaster_ByFile** to standardize grid extent. 
-       - Use custom function from bc1ha_util.py specifically designed to rasterize VRI, using the feature ID as input. The **CreateIdForCategoricalVariable** function generates numberical IDs for a categorical variable in GDBs using the LUTs. (10 hours)
+- Rasterize VRI. VRI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. 
+Use ClipToRaster_ByFile to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize VRI, using the feature ID as input. (10 hours)
 
-- Rasterize Forest Cover Inventory (FCI). FCI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize Forest Cover ID. Convert to TIFF. Export to local machine. Use **ClipToRaster_ByFile** to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize FCI, using the feature ID as input. (1 hours)
+- Rasterize Forest Cover Inventory (FCI). FCI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize the feature ID or the Forest Cover ID. Convert to TIFF. Export to local machine. 
+Use ClipToRaster_ByFile to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize FCI, using the feature ID as input. (1 hours)
 
-- Other time-independent variables (that are not too big for Python), use **RasterizeFromSource** function to rasterize most variables. One exception includes rasterization of a second OPENING_ID from the RSLT_OPENING_SVW layer, which has overlapping openings. There is separate function for rasterizing OPENING_ID_2 from the opening layer. (0.5 hours)
+- Other time-independent variables (that are not too big for Python), use RasterizeFromSource function to rasterize most variables. One exception includes
+rasterization of a second OPENING_ID from the RSLT_OPENING_SVW layer, which has overlapping openings. There is seperate function for rasterizing
+OPENING_ID_2 from the opening lyaer. (0.5 hours)
 
 - Rasterize time-dependent variables, including wildfire, beetles, defoliators, harvest, mechanical site prep, knockdown, planting (1 hour)
 

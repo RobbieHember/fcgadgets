@@ -80,6 +80,7 @@ u1ha.DigitizeTSABoundaries(meta)
 #%% Rasterize variables from source
 # *** VRI and Forest Cover Inventory area too big - crash ***
 # prp=u1ha.GetVariablesFromGDB(meta,'BC_MAJOR_WATERSHEDS')
+# prp=u1ha.GetVariablesFromGDB(meta,'VEG_COMP_LYR_R1_POLY')
 
 u1ha.RasterizeFromSource(meta,zRef,'BC_MAJOR_WATERSHEDS','MAJOR_WATERSHED_CODE')
 u1ha.RasterizeFromSource(meta,zRef,'BEC_BIOGEOCLIMATIC_POLY','ZONE')
@@ -114,7 +115,9 @@ u1ha.RasterizeOpeningID_2(meta)
 
 #%% Generate sparse inputs
 # This should speed import by an order of magnitude
-u1ha.GenerateSparseInputs(meta,100)
+rgsf=100
+mask='All'
+u1ha.GenerateSparseInputs(meta,rgsf,mask)
 
 #%% Gap-fill BGC Zone
 u1ha.GapFill_BGCZ(meta)
@@ -144,42 +147,43 @@ if flg==1:
     tv,N=u1ha.TimeSeriesOccurrenceFromPackedEvents(meta,lNam,vNam,6)
     plt.plot(tv,N,'-bo')
 
-#%% Planting layer (species and genetic worth)
-u1ha.RasterizePlantingLayer(meta)
-
-#%% Rasterize fertilization and knockdown
-u1ha.RasterizeActivities(meta)
-
-#%% Planting non-obligation Mask
-# Dabbled in doing it this way and then went back to doing it on the fly
-u1ha.Planting_NonOb_Mask(meta,zRef)
-
-#%% Planting non-obligation data
-# Dabbled in doing it this way and then went back to doing it on the fly
+#%% Derive planting Type
 
 import fcgadgets.cbrunner.cbrun_util as cbu
 meta=cbu.Load_LUTs_Modelling(meta)
 
-tv=np.arange(1950,2023,1)
+tv=np.arange(1960,2023,1)
 ptNam=np.array(list(meta['LUT']['Derived']['RegenTypeNO'].keys()))
 ptID=np.array(list(meta['LUT']['Derived']['RegenTypeNO'].values()))
-zD=u1ha.Import_Raster(meta,[],['ibm_yr','harv_yr_con1','kd_yr'])
+zD=u1ha.Import_Raster(meta,[],['harv_yr_con1','kd_yr'])
 
 zP={}
 for i in range(6):
     zP[i]={}
+    zP[i]['Type']=np.zeros(zRef['Data'].shape,dtype='int8')
     zP[i]['Year']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_Year.tif')['Data']
     zP[i]['STC']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SILV_TECHNIQUE_CODE.tif')['Data']
     zP[i]['FSC']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SILV_FUND_SOURCE_CODE.tif')['Data']
 
+# vL=['PL','RP','FP','CG','RO','RR','SE','SL']
+# stcN={}
+# for v in vL:
+#     stcN[v]=0
+#     for iP in range(6):
+#         ind=np.where( (zP[iP]['STC']==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE'][v]) & (np.isin(zP[iP]['FSC'],meta['Param']['BE']['FSC']['NO List ID'])==True) )
+#         stcN[v]=stcN[v]+ind[0].size
+
+cd=meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']
+stcInclude=[cd['PL'],cd['RP'],cd['FP'],cd['RR']]
+
 A_Tot=np.zeros(tv.size)
 A=np.zeros((tv.size,ptNam.size))
 DL=np.zeros(zRef['Data'].shape,dtype='int8')
-#H_Yr=np.zeros(zRef['Data'].shape,dtype='int16')
 for iT in range(tv.size):
     print(tv[iT])
     zWF=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(tv[iT]-1) + '.tif')['Data']
-    ind=np.where(zD['ibm_yr']['Data']==tv[iT]-1); DL[ind]=meta['LUT']['Event']['IBM']    
+    zIBM=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(tv[iT]-1) + '.tif')['Data']
+    ind=np.where(zIBM>=3); DL[ind]=meta['LUT']['Event']['IBM'] # Severity greater than light
     ind=np.where(zD['harv_yr_con1']['Data']==tv[iT]-1); DL[ind]=meta['LUT']['Event']['Harvest']; #H_Yr[ind]=zD['harv_yr_con1']['Data'][ind]
     ind=np.where(zD['kd_yr']['Data']==tv[iT]-1); DL[ind]=meta['LUT']['Event']['Knockdown']
     ind=np.where(zWF>0); DL[ind]=meta['LUT']['Event']['Wildfire']
@@ -188,15 +192,16 @@ for iT in range(tv.size):
     pl_stc=np.zeros(zRef['Data'].shape,dtype='int16')
     pl_fsc=np.zeros(zRef['Data'].shape,dtype='int16')
     for iP in range(6):
-        ind=np.where( (zP[iP]['Year']==tv[iT]) & (np.isin(zP[iP]['FSC'],meta['Param']['BE']['FSC']['NO List ID'])==True) )
+        ind=np.where( (zP[iP]['Year']==tv[iT]) & (np.isin(zP[iP]['STC'],stcInclude)==True) )
+        #ind=np.where( (zP[iP]['Year']==tv[iT]) & (np.isin(zP[iP]['FSC'],meta['Param']['BE']['FSC']['NO List ID'])==True) & (np.isin(zP[iP]['STC'],stcInclude)==True) )
         pl_oc[ind]=1
-        pl_stc[ind]=zP[i]['STC'][ind]
-        pl_fsc[ind]=zP[i]['FSC'][ind]
+        pl_stc[ind]=zP[iP]['STC'][ind]
+        pl_fsc[ind]=zP[iP]['FSC'][ind]
     
     ind=np.where( (pl_oc==1) )
     A_Tot[iT]=ind[0].size
     
-    z0=np.zeros(zRef['Data'].shape,dtype='int16')
+    z0=np.zeros(zRef['Data'].shape,dtype='int8')
     
     # Replanting
     ind=np.where( (pl_oc==1) & (pl_stc==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']['RP']) )
@@ -206,12 +211,16 @@ for iT in range(tv.size):
     ind=np.where( (pl_oc==1) & (pl_stc==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']['FP']) )
     z0[ind]=meta['LUT']['Derived']['RegenTypeNO']['Fill Planting']
     A[iT,meta['LUT']['Derived']['RegenTypeNO']['Fill Planting']-1]=ind[0].size
+    # Road rehab
+    ind=np.where( (pl_oc==1) & (pl_stc==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_TECHNIQUE_CODE']['RR']) )
+    z0[ind]=meta['LUT']['Derived']['RegenTypeNO']['Road Rehabilitation']
+    A[iT,meta['LUT']['Derived']['RegenTypeNO']['Road Rehabilitation']-1]=ind[0].size
     # Back to back planting
     ind=np.where( (pl_oc==1) & (z0==0) & (DL==meta['LUT']['Event']['Planting']) )
     z0[ind]=meta['LUT']['Derived']['RegenTypeNO']['Back-to-back Planting']
     A[iT,meta['LUT']['Derived']['RegenTypeNO']['Back-to-back Planting']-1]=ind[0].size    
     # Salvage
-    ind=np.where( (pl_oc==1) & (z0==0) & (DL==meta['LUT']['Event']['Harvest']) )
+    ind=np.where( (pl_oc==1) & (tv[iT]>=2004) & (zD['harv_yr_con1']['Data']>1987) & (z0==0) & (DL==meta['LUT']['Event']['Harvest']) )
     z0[ind]=meta['LUT']['Derived']['RegenTypeNO']['Salvage and Planting']
     A[iT,meta['LUT']['Derived']['RegenTypeNO']['Salvage and Planting']-1]=ind[0].size
     # Knockdown
@@ -227,7 +236,7 @@ for iT in range(tv.size):
     z0[ind]=meta['LUT']['Derived']['RegenTypeNO']['Straight-to-planting Post Insect Outbreak']
     A[iT,meta['LUT']['Derived']['RegenTypeNO']['Straight-to-planting Post Insect Outbreak']-1]=ind[0].size
     # NSR backlog
-    ind=np.where( (pl_oc==1) & (DL==meta['LUT']['Event']['Harvest']) & (zD['harv_yr_con1']['Data']<1987) & (z0!=meta['LUT']['Derived']['RegenTypeNO']['Replanting']) & (z0!=meta['LUT']['Derived']['RegenTypeNO']['Fill Planting']) & (z0!=meta['LUT']['Derived']['RegenTypeNO']['Back-to-back Planting']) )
+    ind=np.where( (pl_oc==1) & (DL==meta['LUT']['Event']['Harvest']) & (zD['harv_yr_con1']['Data']<=1987) & (z0==0) )
     z0[ind]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
     A[iT,meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']-1]=ind[0].size        
     # Unknown
@@ -236,156 +245,94 @@ for iT in range(tv.size):
     A[iT,meta['LUT']['Derived']['RegenTypeNO']['Unknown']-1]=ind[0].size
     
     DL[(pl_oc==1)]=meta['LUT']['Event']['Planting']
+    
+    # Pack
+    for i in range(6):
+        ind=np.where( (zP[i]['Year']==tv[iT]) & (zP[i]['Type']!=0) )
+        zP[i]['Type'][ind]=z0[ind]
 
-def Plot_AIL_TS_NOSE(meta,mos,pNamC,tv):
+gu.opickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\AreaSummary_All',A)
+
+# Save packed regen type
+for i in range(6):
+    z1=zRef.copy()
+    z1['Data']=zP[i]['Type']
+    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_RegenType.tif')
+
+#%%
+
+def Plot_AIL_TS_NOSE(meta,tv):
     
     iT=np.where( (tv>=1960) & (tv<=2050) )[0]
-    cl=np.array([[0.6,0.75,1],[0,0,0.5],[0.6,1,0],[0.15,0.75,0],[1,0.5,0],[0.9,0.87,0.84],[0,1,1],[0.75,0,0],[0.7,0.65,0.9],[0.25,0.25,0.25]])
+    cl=np.array([[0.6,0.75,1],[0,0,0.5],[0.6,1,0],[0.15,0.75,0],[1,1,0],[0.9,0.87,0.84],[1,0.75,0.25],[0.75,0,0],[0.7,0.65,0.9],[0.25,0.25,0.25]])
     
-    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(20,7.5));
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(20,9));
     A_cumu=np.zeros(tv.size)
     cnt=0
     for k in meta['LUT']['Derived']['RegenTypeNO'].keys():        
         plt.bar(tv,A[:,cnt]/1e3,0.8,bottom=A_cumu,facecolor=cl[cnt,:],label=k)
         A_cumu=A_cumu+A[:,cnt]/1e3; 
         cnt=cnt+1
+    #plt.plot(tv,A_Tot/1e3,'ks',ms=2.5,mec='k',mfc='w',mew=0.5)
     ax.set(xticks=np.arange(1950,2225+1,10),ylabel='Implementation level (Kha yr$^{-1}$)',
-           xlabel='Time, years',yticks=np.arange(0,300,20),xlim=[tv[iT][0]-0.75,tv[iT][-1]+0+.75],ylim=[0,250]) #
-    plt.plot(tv,A_Tot/1e3,'ks',ms=2.5,mec='k',mfc='w',mew=0.5)
+           xlabel='Time, years',yticks=np.arange(0,300,20),xlim=[tv[iT][0]-0.75,tv[iT][-1]+0+.75],ylim=[0,140]) #
     plt.legend(frameon=False,loc='upper right',facecolor=[1,1,1],labelspacing=0.25,ncol=2)
     ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=1.5)
     plt.tight_layout()
+        
+    flg=0
+    if flg==0:
+        at={}
+        at['Path']=meta['Paths']['GDB']['Results']
+        at['Layer']='RSLT_ACTIVITY_TREATMENT_SVW'; # fiona.listlayers(at['Path'])
+        at['crs']=meta['Geos']['crs']
+        at['Keep Geom']='Off'
+        at['Select Openings']=np.array([])
+        at['SBC']=np.array(['PL'])
+        at['STC']=np.array([])
+        at['SMC']=np.array([])
+        at['FSC']=np.array([])
+        at['SOC1']=np.array([])
+        at['ROI']=[]
+        at['gdf']=qgdb.Query_Openings(at,[])
+    else:
+        at=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at.pkl')
+    
+    #ikp=np.where(  (at['gdf']['RESULTS_IND']=='Y') & (at['gdf']['SILV_METHOD_CODE']!='LAYOT') & (np.isin(at['gdf']['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List Name'])==True) )[0]
+    ikp=np.where(  (at['gdf']['RESULTS_IND']=='Y') & (at['gdf']['SILV_METHOD_CODE']!='LAYOT') )[0]
+    for k in at['gdf'].keys():
+        at['gdf'][k]=at['gdf'][k][ikp]
+    at['gdf']['Year']=np.zeros(at['gdf']['ACTIVITY_TREATMENT_UNIT_ID'].size)
+    for i in range(at['gdf']['Year'].size):
+        at['gdf']['Year'][i]=int(at['gdf']['ATU_COMPLETION_DATE'][i][0:4])    
+    A_Tot2=np.zeros(tv.size)
+    A_Tot2b=np.zeros(tv.size)
+    for iT in range(tv.size):
+        ind=np.where( (at['gdf']['Year']==tv[iT]) )[0]
+        A_Tot2[iT]=np.sum(at['gdf']['ACTUAL_TREATMENT_AREA'][ind])
+        A_Tot2b[iT]=np.sum(at['gdf']['GEOMETRY_Area'][ind]/1e4)
+    plt.plot(tv,A_Tot2/1e3,'k^',ms=3,mec='k',mfc='w',mew=0.5)    
+    plt.plot(tv,A_Tot2b/1e3,'ks',ms=3,mec='k',mfc='w',mew=0.5)
     #gu.PrintFig(meta['Paths'][pNamC]['Figures'] + '\\PL_NO_AIL_ByProjectType','png',900)
+    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS_NOSEC\PL_NO_AIL_ByProjectType','png',900)
     return
 
-flg=0
-if flg==0:
-    at={}
-    at['Path']=meta['Paths']['GDB']['Results']
-    at['Layer']='RSLT_ACTIVITY_TREATMENT_SVW'; # fiona.listlayers(at['Path'])
-    at['crs']=meta['Geos']['crs']
-    at['Keep Geom']='Off'
-    at['Select Openings']=np.array([])
-    at['SBC']=np.array(['PL'])
-    at['STC']=np.array([])
-    at['SMC']=np.array([])
-    at['FSC']=np.array([])
-    at['SOC1']=np.array([])
-    at['ROI']=[]
-    at['gdf']=qgdb.Query_Openings(at,[])
-else:
-    at=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at.pkl')
+Plot_AIL_TS_NOSE(meta,mos,pNamC,tv)
 
-ikp=np.where(  (at['gdf']['RESULTS_IND']=='Y') & (at['gdf']['SILV_METHOD_CODE']!='LAYOT') & (np.isin(at['gdf']['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List Name'])==True) )[0]
-for k in at['gdf'].keys():
-    at['gdf'][k]=at['gdf'][k][ikp]
-at['gdf']['Year']=np.zeros(at['gdf']['ACTIVITY_TREATMENT_UNIT_ID'].size)
-for i in range(at['gdf']['Year'].size):
-    at['gdf']['Year'][i]=int(at['gdf']['ATU_COMPLETION_DATE'][i][0:4])    
-A_Tot2=np.zeros(tv.size)
-for iT in range(tv.size):
-    ind=np.where(at['gdf']['Year']==tv[iT])[0]
-    A_Tot2[iT]=np.sum(at['gdf']['ACTUAL_TREATMENT_AREA'][ind])
-plt.plot(tv,A_Tot2/1e3,'k^',ms=2.5,mec='r',mfc='w',mew=0.5)
+#%% Planting non-obligation Mask
+# Dabbled in doing it this way and then went back to doing it on the fly
+u1ha.Planting_NonOb_Mask(meta,zRef)
 
-#%%
+#%% Generate sparse inputs for NOSE project
+rgsf=10
+mask='NOSE'
+u1ha.GenerateSparseInputs(meta,rgsf,mask)
 
-th_Fill=15
-yr_th=8    
+#%% Planting layer (species and genetic worth)
+u1ha.RasterizePlantingLayer(meta)
 
-# First and last instances of planting, plus compacted indices to each year
-zPL_First=zRef.copy()
-zPL_First['Data']=3000*np.ones(zRef['Data'].shape,dtype='int16')
-zPL_Last=zRef.copy()
-zPL_Last['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-idxPL={}
-for iT in range(tv.size):
-    idxPL[tv[iT]]=(np.array([],dtype=int),np.array([],dtype=int))
-for iEY in range(6):
-    print(iEY)
-    zYr=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_ALL_' + str(iEY+1) + '_Year.tif')
-    zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_ALL_' + str(iEY+1) + '_SILV_FUND_SOURCE_CODE.tif')
-    ind=np.where( (np.isin(zFSC['Data'],meta['Param']['BE']['FSC']['NO List ID'])==True) ) # (zSPH['Data']>750)
-    zPL_First['Data'][ind]=np.minimum(zPL_First['Data'][ind],zYr['Data'][ind])
-    zPL_Last['Data'][ind]=np.maximum(zPL_Last['Data'][ind],zYr['Data'][ind])
-    for iT in range(tv.size):
-        ind=np.where( (zYr['Data']==tv[iT]) & (np.isin(zFSC['Data'],meta['Param']['BE']['FSC']['NO List ID'])==True) )
-        idxPL[tv[iT]]=( np.append(idxPL[tv[iT]][0],ind[0]),np.append(idxPL[tv[iT]][1],ind[1]) )
-
-for iT in range(tv.size):
-    print(tv[iT])
-
-    zPL=zRef.copy()
-    zPL['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    zPL['Data'][ (idxPL[tv[iT]][0].astype(int),idxPL[tv[iT]][1].astype(int)) ]=1
-
-    # Determine what is planting vs. fill-planting
-    ind_First=np.where( (zPL['Data']==1) & (zPL_First['Data']==tv[iT]) | (zPL['Data']==1) & (tv[iT]-zPL_First['Data']>=th_Fill) )
-    zPL_First1=zRef.copy()
-    zPL_First1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    zPL_First1['Data'][ind_First]=1
-
-    ind_Fill=np.where( (zPL['Data']==1) & (tv[iT]-zPL_First['Data']>0) & (tv[iT]-zPL_First['Data']<th_Fill) )
-    zPL_Fill1=zRef.copy()
-    zPL_Fill1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    zPL_Fill1['Data'][ind_Fill]=1
-    # plt.close('all'); plt.hist(tv[iT]-zPL_First['Data'][ind],np.arange(0,51,1))
-    #plt.close('all'); plt.hist(zPL_First['Data'][ind],np.arange(1950,2024,1))
-
-    # Time since harvest
-    tsh=tv[iT]-zD['harv_yr_con1']['Data']
-
-    # Time since knockdown
-    tsk=tv[iT]-zD['kd_yr']['Data']
-
-    # Time since fire
-    tsf=tv[iT]-zD['fire_yr']['Data']
-
-    # Time since beetle
-    tsb=tv[iT]-zD['ibm_yr']['Data']
-
-    zPE=zRef.copy()
-    zPE['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    # Salvage
-    ind=np.where( (zPL_First1['Data']==1) & (tsh<yr_th) & (tsh<tsf) & (tsh<tsb) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Salvage']
-    # Knockdown
-    ind=np.where( (zPL_First1['Data']==1) & (tsk<yr_th) & (tsh>yr_th) & (tsk<tsf) & (tsk<tsb) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Knockdown']
-    # Straight planting fire
-    ind=np.where( (zPL_First1['Data']==1) & (tsh>2) & (tsf<yr_th) & (tsf<tsh) & (tsf<tsb) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Straight Fire']
-    # Straight planting beetle
-    ind=np.where( (zPL_First1['Data']==1) & (tsh>2) & (tsb<yr_th) & (tsb<tsh) & (tsb<tsf) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Straight Insect']
-    # Unknown
-    ind=np.where( (zPL_First1['Data']==1) & (zPE['Data']==0) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Unknown']
-    # NSR backlock
-    ind=np.where( (zPE['Data']==meta['LUT']['Derived']['RegenTypeNO']['Unknown']) & (zD['harv_yr_con1']['Data']>0) & (zD['harv_yr_con1']['Data']<=1987) | \
-                (zPL_Fill1['Data']==1) & (zD['harv_yr_con1']['Data']>0) & (zD['harv_yr_con1']['Data']<=1987) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
-    # Road
-    ind=np.where( (zPE['Data']==meta['LUT']['Derived']['RegenTypeNO']['Unknown']) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Road Planting']
-    # Fill-planting
-    ind=np.where( (zPL_Fill1['Data']==1) & (zPE['Data']!=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']) )
-    zPE['Data'][ind]=meta['LUT']['Derived']['RegenTypeNO']['Fill Planting']
-
-    # ind_All=np.where(zPE['Data']>0)
-    # d=meta['LUT']['Derived']['RegenTypeNO'].copy()
-    # for k in meta['LUT']['Derived']['RegenTypeNO'].keys():
-    #     ind=np.where(zPE['Data']==meta['LUT']['Derived']['RegenTypeNO'][k])
-    #     d[k]=ind[0].size/ind_All[0].size
-    # d
-    gis.SaveGeoTiff(zPE,meta['Paths']['bc1ha'] + '\\Management\\PL_NonOb_Type_' + str(tv[iT]) + '.tif')
-
-
-# z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Management\\PL_NonOb_Type_2022.tif')
-# d=meta['LUT']['Derived']['RegenTypeNO'].copy()
-# for k in meta['LUT']['Derived']['RegenTypeNO'].keys():
-#     ind=np.where(z['Data']==meta['LUT']['Derived']['RegenTypeNO'][k])
-#     d[k]=ind[0].size
+#%% Rasterize fertilization and knockdown
+u1ha.RasterizeActivities(meta)
 
 #%% Rasterize consolidated cutblocks
 u1ha.RasterizeConsolidatedCutblocks(meta,zRef)

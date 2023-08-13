@@ -682,7 +682,7 @@ def ImportProjectConfig(meta,pNam,**kwargs):
             # Nutrient management
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_MaskAll.tif')
 
-        elif meta[pNam]['Project']['ROI Source']=='BCFCS_SPLC':
+        elif meta[pNam]['Project']['ROI Source']=='BCFCS_NOSEC':
             # Non-obligation stand establishment
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Management\\PL_NonOb_MaskAll.tif')
 

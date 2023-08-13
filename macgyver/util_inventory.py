@@ -171,6 +171,7 @@ def Process1_ImportVariables(meta,pNam):
         dmec0[iStand]['Mortality Factor']=9999*np.ones(N_Events_Init,dtype='int16')
         dmec0[iStand]['Growth Factor']=9999*np.ones(N_Events_Init,dtype='int16')
         dmec0[iStand]['SILV_FUND_SOURCE_CODE']=9999*np.ones(N_Events_Init,dtype='int16')
+        dmec0[iStand]['RegenType']=9999*np.ones(N_Events_Init,dtype='int16')
         dmec0[iStand]['Planted SPH']=9999*np.ones(N_Events_Init,dtype='int16')
         for iSpc in range(6):
             dmec0[iStand]['PL_SPECIES_CD' + str(iSpc+1)]=9999*np.ones(N_Events_Init,dtype='int16')
@@ -186,10 +187,14 @@ def Process1_ImportVariables(meta,pNam):
         #----------------------------------------------------------------------
 
         rgsf=str(meta['Geos']['RGSF'])
+        
+        mask='All'
+        if meta[pNam]['Project']['Name Project']=='BCFCS_NOSEC':
+            mask='NOSE'
 
         # Add wildfire observations
-        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PROT_HISTORICAL_FIRE_POLYS_SP_Year.pkl')
-        zS=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PROT_HISTORICAL_FIRE_POLYS_SP_SevClass.pkl')
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PROT_HISTORICAL_FIRE_POLYS_SP_Year.pkl')
+        zS=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PROT_HISTORICAL_FIRE_POLYS_SP_SevClass.pkl')
         for iY in range(6):
             iAffected=np.where(zY[iY]>0)[0]                        
             UseBurnSev='Off'
@@ -222,8 +227,8 @@ def Process1_ImportVariables(meta,pNam):
                     cnt_e[iS]=cnt_e[iS]+1                    
         
         # Add IBM observations
-        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PEST_SEVERITY_CODE_IBM_Year.pkl')
-        zS=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PEST_SEVERITY_CODE_IBM_SevClass.pkl')
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PEST_SEVERITY_CODE_IBM_Year.pkl')
+        zS=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PEST_SEVERITY_CODE_IBM_SevClass.pkl')
         for iY in range(10):            
             iAffected=np.where( (zY[iY]>0) )[0]
             for iS in iAffected:
@@ -245,7 +250,7 @@ def Process1_ImportVariables(meta,pNam):
                 cnt_e[iS]=cnt_e[iS]+1
 
         # Add harvest observations
-        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_VEG_CONSOLIDATED_CUT_BLOCKS_SP_Year.pkl')
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_VEG_CONSOLIDATED_CUT_BLOCKS_SP_Year.pkl')
         for iY in range(3):            
             iAffected=np.where(zY[iY]>0)[0]
             for iS in iAffected:
@@ -262,26 +267,27 @@ def Process1_ImportVariables(meta,pNam):
                     cnt_e[iS]=cnt_e[iS]+1
 
         # Add planting observations
-        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_All_Year.pkl')
-        zFSC=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_All_SILV_FUND_SOURCE_CODE.pkl')
-        zSPH=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_All_SPH_Planted.pkl')
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PL_All_Year.pkl')
+        zFSC=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PL_All_SILV_FUND_SOURCE_CODE.pkl')
+        zSPH=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PL_All_SPH_Planted.pkl')
+        zRT=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PL_All_RegenType.pkl')
         cd={}; pct={}; gw={}
         for iSpc in range(6):
-            cd[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_SPECIES_CD' + str(iSpc+1) + '.pkl')
-            pct[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_SPECIES_PCT' + str(iSpc+1) + '.pkl')
-            gw[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_PL_SPECIES_GW' + str(iSpc+1) + '.pkl')
+            cd[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PL_SPECIES_CD' + str(iSpc+1) + '.pkl')
+            pct[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PL_SPECIES_PCT' + str(iSpc+1) + '.pkl')
+            gw[iSpc+1]=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_PL_SPECIES_GW' + str(iSpc+1) + '.pkl')
             for iY in range(6):
                 # Remove zeros
                 iAffected=np.where(cd[iSpc+1][iY]==0)[0]
-                cd[iSpc+1][iY][iAffected]=9999
-            
+                cd[iSpc+1][iY][iAffected]=9999            
         for iY in range(6):
-            iAffected=np.where(zY[iY]>0)[0]
+            iAffected=np.where( (zY[iY]>0) & (zRT!=meta['LUT']['Derived']['RegenTypeNO']['Back-to-back Planting']) )[0]
             for iS in iAffected:
                 dmec0[iS]['Year'][cnt_e[iS]]=zY[iY][iS]
                 dmec0[iS]['ID Event Type'][cnt_e[iS]]=meta['LUT']['Event']['Planting']
                 dmec0[iS]['Mortality Factor'][cnt_e[iS]]=0
                 dmec0[iS]['SILV_FUND_SOURCE_CODE'][cnt_e[iS]]=zFSC[iY][iS]
+                dmec0[iS]['RegenType'][cnt_e[iS]]=zRT[iY][iS]
                 dmec0[iS]['Planted SPH'][cnt_e[iS]]=zSPH[iY][iS]
                 for iSpc in range(6):
                     dmec0[iS]['PL_SPECIES_CD' + str(iSpc+1)][cnt_e[iS]]=cd[iSpc+1][iY][iS]
@@ -290,7 +296,7 @@ def Process1_ImportVariables(meta,pNam):
                 cnt_e[iS]=cnt_e[iS]+1
 
         # Add aerial fertilization observations
-        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_FECA_Year.pkl')
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_FE-CA_Year.pkl')
         for iY in range(3):            
             iAffected=np.where(zY[iY]>0)[0]
             for iS in iAffected:
@@ -300,7 +306,7 @@ def Process1_ImportVariables(meta,pNam):
                 cnt_e[iS]=cnt_e[iS]+1
 
         # Add knockdown
-        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_SP_KD_Year.pkl')
+        zY=gu.ipickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + rgsf + '_Mask' + mask + '_SP_KD_Year.pkl')
         for iY in range(3):
             iAffected=np.where(zY[iY]>0)[0]
             for iS in iAffected:
@@ -622,218 +628,292 @@ def Process1_ImportVariables(meta,pNam):
 def Define_NOSE_ProjectType(meta,pNam,dmec0):
 
     # Threshold search period for disturbances prior to stand establishment
-    LeadUpPeriod=20
+    LeadUpPeriod=50
 
     # Initialize project type
     meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int16')
 
     for iStand in range(meta[pNam]['Project']['N Stand']):
 
-        # Define open spaces if an event needs to be added
-        iOpen=np.where(dmec0[iStand]['Year']==9999)[0]
-        if iOpen.size>1:
-            iOpen=iOpen[0]
-
-        # Status
-        StatusNO=np.isin(dmec0[iStand]['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List ID'])
-
         # Index to stand establishment events (exclude direct seeding)
-        iEstab=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatusNO==True) )[0]
-        if iEstab.size==0:
+        iNOSE=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (np.isin(dmec0[iStand]['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List ID'])==True) )[0]
+        if iNOSE.size==0:
             continue
-        elif iEstab.size>1:
-            # If multiple planting events, change planting to fill-planting, and
-            # focus on the first instance
-            for j in range(1,iEstab.size):
-                dmec0[iStand]['ID Event Type'][iEstab[j]]=meta['LUT']['Event']['Fill Planting']
-            iEstab=iEstab[0]
-        else:
-            # Only one non-obligation planting event
-            pass
-
-        # Define a lead-up period
-        iLeadUp=np.where( (dmec0[iStand]['Year']>=dmec0[iStand]['Year'][iEstab]-LeadUpPeriod) & (dmec0[iStand]['Year']<=dmec0[iStand]['Year'][iEstab]) )[0]
-        Year_LeadUp=dmec0[iStand]['Year'][iLeadUp]
-        ID_LeadUp=dmec0[iStand]['ID Event Type'][iLeadUp]
-        Mort_LeadUp=dmec0[iStand]['Mortality Factor'][iLeadUp]
-
-        # Index to inciting event types in the lead up period
-        iH=np.where( (ID_LeadUp==meta['LUT']['Event']['Harvest']) |  (ID_LeadUp==meta['LUT']['Event']['Harvest Salvage']) )[0]
-        iH_All=iH.copy()
-
-        # There can be multiple harvests - try choosing the last one
-        if iH.size>1:
-            iH=iH[-1]
-
-        # Index to planting
-        #iPL=np.where(ID_LeadUp==meta['LUT']['Event']['Planting'])[0]
-
-        # Index to knockdown
-        iKD=np.where(ID_LeadUp==meta['LUT']['Event']['Knockdown'])[0]
-
-        # Index to wildfire
-        iWF=np.where(ID_LeadUp==meta['LUT']['Event']['Wildfire'])[0]
-
-        # Index to insects
-        iI=np.where( (ID_LeadUp==meta['LUT']['Event']['IBM']) | (ID_LeadUp==meta['LUT']['Event']['IBD']) | (ID_LeadUp==meta['LUT']['Event']['IBB']) | (ID_LeadUp==meta['LUT']['Event']['IBS']) )[0]
-
-        # Index to wildfire and insects
-        iWF_and_I=np.where( (ID_LeadUp==meta['LUT']['Event']['Wildfire']) | (ID_LeadUp==meta['LUT']['Event']['IBM']) | (ID_LeadUp==meta['LUT']['Event']['IBD']) | (ID_LeadUp==meta['LUT']['Event']['IBB']) | (ID_LeadUp==meta['LUT']['Event']['IBS']) )[0]
-
-        # Add a negative one so that it is never empty
-        iHa=np.append(-1,iH)
-        iKDa=np.append(-1,iKD)
-        iWFa=np.append(-1,iWF)
-        iIa=np.append(-1,iI)
-
-        if (iH.size>0) & (Year_LeadUp[iH]>=1987) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
-            #----------------------------------------------------------------------
-            # Salvage logging
-            #----------------------------------------------------------------------
-            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Salvage']
-            # Find the event that incited the funded stand establishment
-            # If the event has more than 75% mortality, use it. If it is less than
-            # 75%, assume disturbance databases have underestimated mortality and
-            # change mortality to 80%.
-            if (iWF.size>0) & (iI.size==0):
-                # Wildfire only
-                iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
-                if iMaxMort.size>1:
-                    iMaxMort=iMaxMort[0]
-                if Mort_LeadUp[iMaxMort]<75:
-                    # Unrealistically low, fix
-                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=80
-                    dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
-
-            elif (iWF.size==0) & (iI.size>0):
-                # Insects only
-                iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
-                if iMaxMort.size>1:
-                    iMaxMort=iMaxMort[0]
-                if Mort_LeadUp[iI[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=80
-                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
-            elif (iWF_and_I.size>0):
-                # Wildfire and insects
-                iMaxMort=np.where(Mort_LeadUp[iWF_and_I]==np.max(Mort_LeadUp[iWF_and_I]))[0]
-                if iMaxMort.size>1:
-                    iMaxMort=iMaxMort[0]
-                if Mort_LeadUp[iWF_and_I[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=80
-                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
-            elif (iWF.size==0) & (iI.size==0):
-                # Disturbance databases presumably misses the inciting event
-                # (eg fireguards), create an event five years before the harvest
-                ID_GapFill=meta['LUT']['Event']['Wildfire']
-                Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]-5
-                Mort_GapFill=85
-                dmec0[iStand]['Year'][iOpen]=Year_GapFill
-                dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
-                dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
-                iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
-                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iIncite
-            # Change harvest to salvage so that more dead trees are taken
-            dmec0[iStand]['ID Event Type'][iLeadUp[iH_All]]=meta['LUT']['Event']['Harvest Salvage']
-
-        elif (iH.size>0) & (Year_LeadUp[iH]<1987) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
-            #----------------------------------------------------------------------
-            # NSR backlog
-            # There is no inciting event - it is regen failure or poor effort that leads
-            # to the decision to plant by gov programs. Add dummy event just before the
-            # non-ob stand establishment event. Assume trace beetles
-            #----------------------------------------------------------------------
-            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
-            #ID_GapFill=meta['LUT']['Event']['Regen Failure']
-            #Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]+2
-            #Mort_GapFill=100
-            #dmec0[iStand]['Year'][iOpen]=Year_GapFill
-            #dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
-            #dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
-            #iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
-            iIncite=iLeadUp[iH[-1]]
-            #if iIncite.size>1:
-            #    iIncite=iIncite[0]
-            dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iIncite
-
-        elif (iKD.size>0) & (np.max(iKDa)>=np.max(iHa)) & (np.max(iKDa)>=np.max(iWFa)):
-            #----------------------------------------------------------------------
-            # Knockdown
-            #----------------------------------------------------------------------
-            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Knockdown']
-
-            # Find the event that incited the funded stand establishment
-            # If the event has more than 75% mortality, use it. If it is less than
-            # 75%, assume disturbance databases have underestimated mortality and
-            # change mortality to 90%.
-            if (iWF.size>0) & (iI.size==0):
-                # Wildfire only
-                iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
-                if iMaxMort.size>0:
-                    iMaxMort=iMaxMort[0]
-                if Mort_LeadUp[iWF[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=90
-                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
-            elif (iWF.size==0) & (iI.size>0):
-                # Insects only
-                iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
-                if iMaxMort.size>0:
-                    iMaxMort=iMaxMort[0]
-                if Mort_LeadUp[iI[iMaxMort]]<75:
-                    dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=90
-                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
-            elif (iWF_and_I.size>0):
-                # Wildfire and insects
-                iMaxMort=np.where(Mort_LeadUp[iWF_and_I]==np.max(Mort_LeadUp[iWF_and_I]))[0]
-                if iMaxMort.size>0:
-                    iMaxMort=iMaxMort[0]
-                if Mort_LeadUp[iWF_and_I[iMaxMort]]<75:
-                    # Unrealistically low, fix
-                    dmec0[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=90
-                dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
-
-        elif (iWF.size>0) & (np.max(iWFa)>=np.max(iHa)) & (np.max(iWFa)>=np.max(iKDa)):
-            #----------------------------------------------------------------------
-            # Straight planting (fire)
-            #----------------------------------------------------------------------
-            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight Fire']
-
-            # Find the event that incited the funded stand establishment
-            # If the event has more than 75% mortality, use it. If it is less than
-            # 90%, assume disturbance databases have underestimated mortality and
-            # change mortality to 100%.
-            iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
-            if iMaxMort.size>1:
-                iMaxMort=iMaxMort[0]
-            if Mort_LeadUp[iWF[iMaxMort]]<90:
-                # Unrealistically low, fix
-                dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=95
-            dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
-
-        elif (iI.size>0) & (np.max(iIa)>=np.max(iHa)) & (np.max(iIa)>=np.max(iKDa)) & (np.max(iIa)>=np.max(iWFa)):
-            #----------------------------------------------------------------------
-            # Straight planting (beetle)
-            #----------------------------------------------------------------------
-            meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight Insect']
-
-            # Find the event that incited the funded stand establishment
-            # If the event has more than 75% mortality, use it. If it is less than
-            # 90%, assume disturbance databases have underestimated mortality and
-            # change mortality to 100%.
-            iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
-            if iMaxMort.size>1:
-                iMaxMort=iMaxMort[0]
-            if Mort_LeadUp[iI[iMaxMort]]<90:
-                # Unrealistically low, fix
-                dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=75
-            dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
-        else:
-            #print('Not working')
-            pass
+        
+        for i in iNOSE:
+            
+            # Define open spaces if an event needs to be added
+            iOpen=np.where(dmec0[iStand]['Year']==9999)[0]
+            if iOpen.size>1:
+                iOpen=iOpen[0]
+            
+            yr0=dmec0[iStand]['Year'][i]
+            if dmec0[iStand][i]['RegenType']==meta['LUT']['Derived']['RegenTypeNO']['Salvage and Planting']:
+                # For non-ob salvage, assume high mortality in the natural disturbance inciting salvage
+                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Salvage and Planting']
+                iH=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) |  (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest Salvage']) & (dmec0[iStand]['Year']<yr0) )[0]
+                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Wildfire']) & (dmec0[iStand]['Year']<dmec0[iStand]['Year'][iH]) |  (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['IBM']) & (dmec0[iStand]['Year']<dmec0[iStand]['Year'][iH]) )[0]
+                if iInc.size>1:
+                    iInc=iInc[-1]
+                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                if dmec0[iStand]['Mortality Factor'][iInc]<75:
+                    dmec0[iStand]['Mortality Factor'][iInc]=90
+            elif dmec0[iStand][i]['RegenType']==meta['LUT']['Derived']['RegenTypeNO']['Straight-to-planting Post Wildfire']:
+                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight-to-planting Post Wildfire']
+                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Wildfire']) & (dmec0[iStand]['Year']<yr0) )[0]
+                if iInc.size>1:
+                    iInc=iInc[-1]
+                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                if dmec0[iStand]['Mortality Factor'][iInc]<100:
+                    dmec0[iStand]['Mortality Factor'][iInc]=100
+            elif dmec0[iStand][i]['RegenType']==meta['LUT']['Derived']['RegenTypeNO']['Straight-to-planting Post Insect Outbreak']:
+                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight-to-planting Post Insect Outbreak']
+                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['IBM']) & (dmec0[iStand]['Year']<yr0) )[0]
+                if iInc.size>1:
+                    iInc=iInc[-1]
+                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                if dmec0[iStand]['Mortality Factor'][iInc]<100:
+                    dmec0[iStand]['Mortality Factor'][iInc]=100
+            elif dmec0[iStand][i]['RegenType']==meta['LUT']['Derived']['RegenTypeNO']['Knockdown and Planting']:
+                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Knockdown and Planting']
+                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Knockdown']) & (dmec0[iStand]['Year']<yr0) )[0]
+                if iInc.size>1:
+                    iInc=iInc[-1]
+                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                if dmec0[iStand]['Mortality Factor'][iInc]<100:
+                    dmec0[iStand]['Mortality Factor'][iInc]=100
+            elif dmec0[iStand][i]['RegenType']==meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']:
+                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
+                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) )[0]
+                if iInc.size>1:
+                    iInc=iInc[-1]
+                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                #dmec0[iStand]['Mortality Factor'][iInc]=80
+            elif dmec0[iStand][i]['RegenType']==meta['LUT']['Derived']['RegenTypeNO']['Replanting']:
+                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Replanting']
+                dmec0[iStand]['Year'][iOpen]=yr0-1+0.9
+                dmec0[iStand]['ID Event Type'][iOpen]=meta['LUT']['Event']['IBM']
+                dmec0[iStand]['Mortality Factor'][iOpen]=100
+                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iOpen
 
     return dmec0
+
+# def Define_NOSE_ProjectType(meta,pNam,dmec0):
+
+#     # Threshold search period for disturbances prior to stand establishment
+#     LeadUpPeriod=50
+
+#     # Initialize project type
+#     meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int16')
+
+#     for iStand in range(meta[pNam]['Project']['N Stand']):
+
+#         # Define open spaces if an event needs to be added
+#         iOpen=np.where(dmec0[iStand]['Year']==9999)[0]
+#         if iOpen.size>1:
+#             iOpen=iOpen[0]
+
+#         # Status
+#         StatusNO=np.isin(dmec0[iStand]['SILV_FUND_SOURCE_CODE'],meta['Param']['BE']['FSC']['NO List ID'])
+
+#         # Index to stand establishment events (exclude direct seeding)
+#         iEstab=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Planting']) & (StatusNO==True) )[0]
+#         if iEstab.size==0:
+#             continue
+#         elif iEstab.size>1:
+#             # If multiple planting events, change planting to fill-planting, and
+#             # focus on the first instance
+#             for j in range(1,iEstab.size):
+#                 dmec0[iStand]['ID Event Type'][iEstab[j]]=meta['LUT']['Event']['Fill Planting']
+#             iEstab=iEstab[0]
+#         else:
+#             # Only one non-obligation planting event
+#             pass
+
+#         # Define a lead-up period
+#         iLeadUp=np.where( (dmec0[iStand]['Year']>=dmec0[iStand]['Year'][iEstab]-LeadUpPeriod) & (dmec0[iStand]['Year']<=dmec0[iStand]['Year'][iEstab]) )[0]
+#         Year_LeadUp=dmec0[iStand]['Year'][iLeadUp]
+#         ID_LeadUp=dmec0[iStand]['ID Event Type'][iLeadUp]
+#         Mort_LeadUp=dmec0[iStand]['Mortality Factor'][iLeadUp]
+
+#         # Index to inciting event types in the lead up period
+#         iH=np.where( (ID_LeadUp==meta['LUT']['Event']['Harvest']) |  (ID_LeadUp==meta['LUT']['Event']['Harvest Salvage']) )[0]
+#         iH_All=iH.copy()
+
+#         # There can be multiple harvests - try choosing the last one
+#         if iH.size>1:
+#             iH=iH[-1]
+
+#         # Index to planting
+#         iPL=np.where(ID_LeadUp==meta['LUT']['Event']['Planting'])[0]
+
+#         # Index to knockdown
+#         iKD=np.where(ID_LeadUp==meta['LUT']['Event']['Knockdown'])[0]
+
+#         # Index to wildfire
+#         iWF=np.where(ID_LeadUp==meta['LUT']['Event']['Wildfire'])[0]
+
+#         # Index to insects
+#         iI=np.where( (ID_LeadUp==meta['LUT']['Event']['IBM']) | (ID_LeadUp==meta['LUT']['Event']['IBD']) | (ID_LeadUp==meta['LUT']['Event']['IBB']) | (ID_LeadUp==meta['LUT']['Event']['IBS']) )[0]
+
+#         # Index to wildfire and insects
+#         iWF_and_I=np.where( (ID_LeadUp==meta['LUT']['Event']['Wildfire']) | (ID_LeadUp==meta['LUT']['Event']['IBM']) | (ID_LeadUp==meta['LUT']['Event']['IBD']) | (ID_LeadUp==meta['LUT']['Event']['IBB']) | (ID_LeadUp==meta['LUT']['Event']['IBS']) )[0]
+
+#         # Add a negative one so that it is never empty
+#         iPl=np.append(-1,iPl)
+#         iHa=np.append(-1,iH)
+#         iKDa=np.append(-1,iKD)
+#         iWFa=np.append(-1,iWF)
+#         iIa=np.append(-1,iI)
+
+#         if (iH.size>0) & (Year_LeadUp[iH]>=2004) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
+#             #----------------------------------------------------------------------
+#             # Salvage logging
+#             #----------------------------------------------------------------------
+#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Salvage and Planting']
+#             # Find the event that incited the funded stand establishment
+#             # If the event has more than 75% mortality, use it. If it is less than
+#             # 75%, assume disturbance databases have underestimated mortality and
+#             # change mortality to 80%.
+#             if (iWF.size>0) & (iI.size==0):
+#                 # Wildfire only
+#                 iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
+#                 if iMaxMort.size>1:
+#                     iMaxMort=iMaxMort[0]
+#                 if Mort_LeadUp[iMaxMort]<75:
+#                     # Unrealistically low, fix
+#                     dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=80
+#                     dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
+
+#             elif (iWF.size==0) & (iI.size>0):
+#                 # Insects only
+#                 iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
+#                 if iMaxMort.size>1:
+#                     iMaxMort=iMaxMort[0]
+#                 if Mort_LeadUp[iI[iMaxMort]]<75:
+#                     # Unrealistically low, fix
+#                     dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=80
+#                 dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
+#             elif (iWF_and_I.size>0):
+#                 # Wildfire and insects
+#                 iMaxMort=np.where(Mort_LeadUp[iWF_and_I]==np.max(Mort_LeadUp[iWF_and_I]))[0]
+#                 if iMaxMort.size>1:
+#                     iMaxMort=iMaxMort[0]
+#                 if Mort_LeadUp[iWF_and_I[iMaxMort]]<75:
+#                     # Unrealistically low, fix
+#                     dmec0[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=80
+#                 dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
+#             elif (iWF.size==0) & (iI.size==0):
+#                 # Disturbance databases presumably misses the inciting event
+#                 # (eg fireguards), create an event five years before the harvest
+#                 ID_GapFill=meta['LUT']['Event']['Wildfire']
+#                 Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]-5
+#                 Mort_GapFill=85
+#                 dmec0[iStand]['Year'][iOpen]=Year_GapFill
+#                 dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
+#                 dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
+#                 iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
+#                 dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iIncite
+#             # Change harvest to salvage so that more dead trees are taken
+#             dmec0[iStand]['ID Event Type'][iLeadUp[iH_All]]=meta['LUT']['Event']['Harvest Salvage']
+
+#         elif (iH.size>0) & (Year_LeadUp[iH]<1987) & (np.max(iHa)>=np.max(iKDa)) & (np.max(iHa)>=np.max(iWFa)):
+#             #----------------------------------------------------------------------
+#             # NSR backlog
+#             # There is no inciting event - it is regen failure or poor effort that leads
+#             # to the decision to plant by gov programs. Add dummy event just before the
+#             # non-ob stand establishment event. Assume trace beetles
+#             #----------------------------------------------------------------------
+#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['NSR Backlog']
+#             #ID_GapFill=meta['LUT']['Event']['Regen Failure']
+#             #Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]+2
+#             #Mort_GapFill=100
+#             #dmec0[iStand]['Year'][iOpen]=Year_GapFill
+#             #dmec0[iStand]['ID Event Type'][iOpen]=ID_GapFill
+#             #dmec0[iStand]['Mortality Factor'][iOpen]=Mort_GapFill
+#             #iIncite=np.where( (dmec0[iStand]['ID Event Type']==ID_GapFill) & (dmec0[iStand]['Year']==Year_GapFill) )[0]
+#             iIncite=iLeadUp[iH[-1]]
+#             #if iIncite.size>1:
+#             #    iIncite=iIncite[0]
+#             dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iIncite
+
+#         elif (iKD.size>0) & (np.max(iKDa)>=np.max(iHa)) & (np.max(iKDa)>=np.max(iWFa)):
+#             #----------------------------------------------------------------------
+#             # Knockdown
+#             #----------------------------------------------------------------------
+#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Knockdown']
+
+#             # Find the event that incited the funded stand establishment
+#             # If the event has more than 75% mortality, use it. If it is less than
+#             # 75%, assume disturbance databases have underestimated mortality and
+#             # change mortality to 90%.
+#             if (iWF.size>0) & (iI.size==0):
+#                 # Wildfire only
+#                 iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
+#                 if iMaxMort.size>0:
+#                     iMaxMort=iMaxMort[0]
+#                 if Mort_LeadUp[iWF[iMaxMort]]<75:
+#                     # Unrealistically low, fix
+#                     dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=90
+#                 dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
+#             elif (iWF.size==0) & (iI.size>0):
+#                 # Insects only
+#                 iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
+#                 if iMaxMort.size>0:
+#                     iMaxMort=iMaxMort[0]
+#                 if Mort_LeadUp[iI[iMaxMort]]<75:
+#                     dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=90
+#                 dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
+#             elif (iWF_and_I.size>0):
+#                 # Wildfire and insects
+#                 iMaxMort=np.where(Mort_LeadUp[iWF_and_I]==np.max(Mort_LeadUp[iWF_and_I]))[0]
+#                 if iMaxMort.size>0:
+#                     iMaxMort=iMaxMort[0]
+#                 if Mort_LeadUp[iWF_and_I[iMaxMort]]<75:
+#                     # Unrealistically low, fix
+#                     dmec0[iStand]['Mortality Factor'][iLeadUp[iWF_and_I[iMaxMort]]]=90
+#                 dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF_and_I[iMaxMort]]
+
+#         elif (iWF.size>0) & (np.max(iWFa)>=np.max(iHa)) & (np.max(iWFa)>=np.max(iKDa)):
+#             #----------------------------------------------------------------------
+#             # Straight planting (fire)
+#             #----------------------------------------------------------------------
+#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight Fire']
+
+#             # Find the event that incited the funded stand establishment
+#             # If the event has more than 75% mortality, use it. If it is less than
+#             # 90%, assume disturbance databases have underestimated mortality and
+#             # change mortality to 100%.
+#             iMaxMort=np.where(Mort_LeadUp[iWF]==np.max(Mort_LeadUp[iWF]))[0]
+#             if iMaxMort.size>1:
+#                 iMaxMort=iMaxMort[0]
+#             if Mort_LeadUp[iWF[iMaxMort]]<90:
+#                 # Unrealistically low, fix
+#                 dmec0[iStand]['Mortality Factor'][iLeadUp[iWF[iMaxMort]]]=95
+#             dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iWF[iMaxMort]]
+
+#         elif (iI.size>0) & (np.max(iIa)>=np.max(iHa)) & (np.max(iIa)>=np.max(iKDa)) & (np.max(iIa)>=np.max(iWFa)):
+#             #----------------------------------------------------------------------
+#             # Straight planting (beetle)
+#             #----------------------------------------------------------------------
+#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenTypeNO']['Straight Insect']
+
+#             # Find the event that incited the funded stand establishment
+#             # If the event has more than 75% mortality, use it. If it is less than
+#             # 90%, assume disturbance databases have underestimated mortality and
+#             # change mortality to 100%.
+#             iMaxMort=np.where(Mort_LeadUp[iI]==np.max(Mort_LeadUp[iI]))[0]
+#             if iMaxMort.size>1:
+#                 iMaxMort=iMaxMort[0]
+#             if Mort_LeadUp[iI[iMaxMort]]<90:
+#                 # Unrealistically low, fix
+#                 dmec0[iStand]['Mortality Factor'][iLeadUp[iI[iMaxMort]]]=75
+#             dmec0[iStand]['Index to Event Inciting NOSE'][iEstab]=iLeadUp[iI[iMaxMort]]
+#         else:
+#             #print('Not working')
+#             pass
+
+#     return dmec0
 
 # Trouble shooting
 # u,N=gu.CountByCategories(meta[pNam]['Project']['RegTypeNO'])
