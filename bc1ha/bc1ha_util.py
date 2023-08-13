@@ -2161,7 +2161,7 @@ def ClimateStatsByBGCZone(meta):
     return
 
 #%%
-def RasterizeForestCover(meta):
+def RasterizeForestCoverInventory(meta):
     t0=time.time()
 
     zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
@@ -3668,7 +3668,7 @@ def GenerateSparseInputs(meta,rgsf,mask):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_' + str(iY+1) + '_SevClass.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_' + lNam + '_SevClass.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + lNam + '_SevClass.pkl',d)
     
     # Beetles
     N_Year=10
@@ -3677,13 +3677,13 @@ def GenerateSparseInputs(meta,rgsf,mask):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Year.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PEST_SEVERITY_CODE_IBM_Year.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PEST_SEVERITY_CODE_IBM_Year.pkl',d)
     d=[None]*N_Year
     for iY in range(N_Year):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(iY+1) + '_Severity.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PEST_SEVERITY_CODE_IBM_SevClass.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PEST_SEVERITY_CODE_IBM_SevClass.pkl',d)
     
     # Harvest
     N_Year=3
@@ -3692,7 +3692,7 @@ def GenerateSparseInputs(meta,rgsf,mask):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_' + str(iY+1) + '_Year.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_VEG_CONSOLIDATED_CUT_BLOCKS_SP_Year.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_VEG_CONSOLIDATED_CUT_BLOCKS_SP_Year.pkl',d)
     
     # Planting       
     N_Year=6
@@ -3701,44 +3701,44 @@ def GenerateSparseInputs(meta,rgsf,mask):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_Year.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PL_All_Year.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PL_All_Year.pkl',d)
     d=[None]*N_Year
     for iY in range(N_Year):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SILV_FUND_SOURCE_CODE.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PL_All_SILV_FUND_SOURCE_CODE.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PL_All_SILV_FUND_SOURCE_CODE.pkl',d)
     d=[None]*N_Year
     for iY in range(N_Year):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_SPH_Planted.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PL_All_SPH_Planted.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PL_All_SPH_Planted.pkl',d)
     d=[None]*N_Year
     for iY in range(N_Year):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_RegenType.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PL_All_RegenType.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PL_All_RegenType.pkl',d)
     for iSpc in range(6):
         d=[None]*N_Year
         for iY in range(N_Year):
             z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_CD' + str(iSpc+1) + '.tif')
             z0=gis.UpdateGridCellsize(z0,rgsf)
             d[iY]=z0['Data'][iMask]
-        gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PL_SPECIES_CD' + str(iSpc+1) + '.pkl',d)
+        gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PL_SPECIES_CD' + str(iSpc+1) + '.pkl',d)
         d=[None]*N_Year
         for iY in range(N_Year):
             z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_PCT' + str(iSpc+1) + '.tif')
             z0=gis.UpdateGridCellsize(z0,rgsf)
             d[iY]=z0['Data'][iMask]
-        gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PL_SPECIES_PCT' + str(iSpc+1) + '.pkl',d)
+        gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PL_SPECIES_PCT' + str(iSpc+1) + '.pkl',d)
         d=[None]*N_Year
         for iY in range(N_Year):
             z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iY+1) + '_PL_SPECIES_GW' + str(iSpc+1) + '.tif')
             z0=gis.UpdateGridCellsize(z0,rgsf)
             d[iY]=z0['Data'][iMask]
-        gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_PL_SPECIES_GW' + str(iSpc+1) + '.pkl',d)
+        gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_PL_SPECIES_GW' + str(iSpc+1) + '.pkl',d)
     
     # Fertilization
     N_Year=3
@@ -3747,7 +3747,7 @@ def GenerateSparseInputs(meta,rgsf,mask):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FE-CA_' + str(iY+1) + '_Year.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_FE-CA_Year.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_FE-CA_Year.pkl',d)
     
     # Knockdown
     N_Year=3
@@ -3756,14 +3756,19 @@ def GenerateSparseInputs(meta,rgsf,mask):
         z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP_KD_' + str(iY+1) + '_Year.tif')
         z0=gis.UpdateGridCellsize(z0,rgsf)
         d[iY]=z0['Data'][iMask]
-    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_' + '_SP_KD_Year.pkl',d)
+    gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_SP_KD_Year.pkl',d)
     
     return
 
 #%% Rasterize OPENING ID from OPENING LAYER (1 hour)
 
-def RasterizeOpeningID_2(meta):
-    # Import opening ID with spatial   
+def RasterizeOpeningID(meta):
+    
+    # Import opening ID with spatial
+    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+    RasterizeFromSource(meta,zRef,'RSLT_OPENING_SVW','OPENING_ID')
+    
+    # Open Opening ID 1
     zOP1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\OPENING_ID.tif')['Data']
     iOP1=np.where(zOP1!=0)
     zOP2=zOP1[iOP1]

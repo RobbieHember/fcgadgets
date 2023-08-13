@@ -23,14 +23,26 @@ bc1ha_map_roi: Graphics by region of interest
     - Use custom function from bc1ha_util.py specifically designed to rasterize VRI, using the feature ID as input. 
     - The **CreateIdForCategoricalVariable** function generates numerical IDs for a categorical variable in GDBs using the LUTs. 
 
-- Rasterize Forest Cover Inventory (FCI). FCI is too big to be rasterized in Python (wtih 32 GB RAM). In ArcGIS, rasterize Forest Cover ID. Convert to TIFF. Export to local machine. Use **ClipToRaster_ByFile** to standardize grid extent. Use custom function from bc1ha_util.py specifically designed to rasterize FCI, using the feature ID as input. (1 hours)
+- Rasterize variables from the Forest Cover Inventory (FCI) layer. FCI is too big (32GB RAM) to be rasterized in Python. 
+    - In ArcGIS, rasterize Forest Cover ID. 
+    - Convert to TIFF. 
+    - Export to local machine. 
+    - Use **ClipToRaster_ByFile** to standardize grid extent. 
+    - Use **RasterizeForestCoverInventory** to rasterize attributes using the raster feature ID as key. (1 hours)
 
-- Other time-independent variables (that are not too big for Python), use **RasterizeFromSource** function to rasterize most variables. One exception includes rasterization of a second OPENING_ID from the RSLT_OPENING_SVW layer, which has overlapping openings. There is separate function for rasterizing OPENING_ID_2 from the opening layer. (0.5 hours)
+- Rasterize other time-independent variables (that are not too big for Python) use **RasterizeFromSource** function to rasterize most variables.(0.5 hours)
 
-- Rasterize time-dependent variables, including wildfire, beetles, defoliators, harvest, mechanical site prep, knockdown, planting (1 hour)
+- Rasterize opening ID from RESULTS OPENING layer. There is spatial overlap of openings going back in time so **RasterizeOpeningID** will generate two raster variables OPENING_ID_1 and OPENING_ID_2.
 
+- Rasterize wildfire occurrence (PROT_HISTORICAL_FIRE_POLYS_SP) (0.1 hour)
+- Rasterize insect occurrence from Aerial Overview Survey (PEST_INFESTATION_POLY) (0.1 hour)
+- Rasterize harvest occurrence
+    - 
+
+
+
+ mechanical site prep, knockdown, planting (1 hour)
 - Digitize Timber Supply Area (TSA) boundaries if they have changed. (1 min)
-
 - Run scripts that generate derived variables. (~1 hour)
 
 ## DERIVED VARIABLES

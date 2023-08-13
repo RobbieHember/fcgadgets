@@ -30,7 +30,7 @@ zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
 #%% Rasterize Forest Cover Attributes
 # Use FC ID created in ArcGIS to connect with attributes
-u1ha.RasterizeForestCover(meta)
+u1ha.RasterizeForestCoverInventory(meta)
 
 #%%
 
@@ -111,7 +111,7 @@ u1ha.RasterizeFromSource(meta,zRef,'VEG_BURN_SEVERITY_SP','FIRE_YEAR')
 u1ha.RasterizeFromSource(meta,zRef,'VEG_BURN_SEVERITY_SP','BURN_SEVERITY_RATING')
 
 #%% Rasterize OPENING ID FROM OPENING LAYER (1 hour)
-u1ha.RasterizeOpeningID_2(meta)
+u1ha.RasterizeOpeningID(meta)
 
 #%% Generate sparse inputs
 # This should speed import by an order of magnitude
