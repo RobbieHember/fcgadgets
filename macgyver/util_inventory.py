@@ -557,7 +557,12 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
                 iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) )[0]
                 if iInc.size>1:
                     iInc=iInc[-1]
-                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                try:
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                except:
+                    print(i)
+                    print(iInc)
+                    print(dmec0[iStand]['Index to Event Inciting NOSE'])
                 #dmec0[iStand]['Mortality Factor'][iInc]=80
             elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Replanting']:
                 meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Replanting']

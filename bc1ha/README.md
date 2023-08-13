@@ -17,6 +17,12 @@ bc1ha_map_roi: Graphics by region of interest
 
 - Update look-up-tables (LUTs) using **BuildLUTsFromSourceGDBs**. (7+ hours)
 
+- Simplify some basemaps used for graphing with **SimplifyProvincialGDBs**. (<0.1 hour)
+
+- Mask land area within political border of BC with **GenerateLandMaskBC**. (<0.1 hour)
+
+- Digitize Timber Supply Area (TSA) boundaries if they have changed using **DigitizeTSABoundaries**. (< 0.1 hours)
+
 - Rasterize VRI. VRI is too big (32GB RAM) to be rasterized in Python. (10 hours)
     - In ArcGIS, rasterize the feature ID. Convert to TIFF. 
     - Export to local machine. Use **ClipToRaster_ByFile** to standardize grid extent.
@@ -34,11 +40,11 @@ bc1ha_map_roi: Graphics by region of interest
 
 - Rasterize opening ID from RESULTS OPENING layer. There is spatial overlap of openings going back in time so **RasterizeOpeningID** will generate two raster variables OPENING_ID_1 and OPENING_ID_2.
 
-- Rasterize wildfire occurrence (PROT_HISTORICAL_FIRE_POLYS_SP) (0.1 hour)
+- Rasterize wildfire occurrence (PROT_HISTORICAL_FIRE_POLYS_SP). If needed, rasterize current year fires with **RasterizeWildfireCurrentYear** (0.1 hour)
 
 - Rasterize insect occurrence from Aerial Overview Survey (PEST_INFESTATION_POLY) (0.5 hour)
 
-- Rasterize harvest occurrence
+- Rasterize harvest occurrence:
     - VEG_CONSOLIDATED_CUT_BLOCKS_SP
     - NTEMS: In ArcGIS resample NTEMS variables to 100m and clip to BC. Then run **ReprojectDataFromNTEMS**.
 
@@ -48,12 +54,13 @@ bc1ha_map_roi: Graphics by region of interest
 
 - Rasterize planting layer using **RasterizePlantingLayer** (0.5 hours). This generates rasters for species codes, percents and genetic worths.
 
-- Digitize Timber Supply Area (TSA) boundaries if they have changed. (< 0.1 hours)
-
 - Run scripts that generate derived variables. (~1 hour)
 
 ## DERIVED VARIABLES
-### Regeneration Type Compilation: Representing artificial stand establishment, including planting and direct seeding, is aided by the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. The Regeneration Type Compilation 1 (RTC1) re-classifies stand establishment events into regeneration types to facilitate use in models. (0.5 hours)
+### Biogeoclimatic Zone (Gap-filled)
+Gap-fill biogeoclimatic zone for areas not classified as treed.
+### Regeneration Type Compilation
+Representing artificial stand establishment, including planting and direct seeding, is aided by the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. The Regeneration Type Compilation 1 (RTC1) re-classifies stand establishment events into regeneration types to facilitate use in models. (0.5 hours)
 - Back-to-back planting: Sometimes planting projects span multiple years, yet the precise spatial location is sometimes only approximated (aspatially) within the opening (see section on rasterizing planting events). By include a class for back-to-back planting, models can exclude the excessive number of events, focusing on the first or last instance.
 - 
 
