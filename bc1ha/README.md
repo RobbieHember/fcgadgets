@@ -56,7 +56,7 @@ bc1ha_map_roi: Graphics by region of interest
 - Run scripts that generate derived variables. (~1 hour)
 
 ## DERIVED VARIABLES
-### Biogeoclimatic Zone (Gap-filled)
+### Biogeoclimatic Zone (Gap-Filled)
 Gap-fill biogeoclimatic zone for areas not classified as treed.
 ### Artificial Regeneration Type Compilation 1
 Artificial stand establishment consists of mostly planting and a small amount of direct seeding. To understand how planting events affect the carbon balance, events are classified into regeneration types in the Artificial Regeneration Type Compilation 1 (ART-C1). The regeneration types help to understand the context of the planting. The strategy uses information from the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. It also relies on other variables that describe what preceded each planting event, whether it be a harvest, wildfire, beetles, or a previous planting event. (0.5 hours)
@@ -70,8 +70,14 @@ Artificial stand establishment consists of mostly planting and a small amount of
 - Harvest and Planting: Planting in response to obligation to reforest following commercial harvesting.
 - Direct Seeding: Direct seeding indicates that the stand was established by seeding. These events are classified strictly based on SBC = “DS”.
 
-### Non-obligation stand establishment:
+### Non-obligation stand establishment Mask
 - Mask non-obligation stand establishment with **Planting_NonOb_Mask**. (<0.1 hours)
+
+### Biogeoclimatic Zone (Gap-Filled)-Natural Disturbance Type Combination
+- A combination of BGC zone (using the gap-filled version) and natural disturbance type. Based on **DeriveBGCZoneNDTCombo**. (<0.1 hours)
+
+### Tree Density Class Consolidated 1
+- Generation of a consolidated variable describing tree density class. This dataset is a revised version of the Level 5 BC Land Surface Classification Scheme from VRI. It is created using **ConsolidateTreeDensityClass**.
 
 ## SPARSE SUBSAMPLES
 Prepare sparse inputs at commonly-used spatial subsampling resolutions, including 1km, 5km, 10km and 20km. When models are run at these resolutions, **fcgadgets** will automatically draw on these sparse inputs, which will 
