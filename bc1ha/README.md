@@ -45,15 +45,14 @@ bc1ha_map_roi: Graphics by region of interest
 - Rasterize insect occurrence from Aerial Overview Survey (PEST_INFESTATION_POLY) (0.5 hour)
 
 - Rasterize harvest occurrence:
-    - VEG_CONSOLIDATED_CUT_BLOCKS_SP
-    - NTEMS: In ArcGIS resample NTEMS variables to 100m and clip to BC. Then run **ReprojectDataFromNTEMS**.
-
+    - Rasterize harvest year from VEG_CONSOLIDATED_CUT_BLOCKS_SP. (0.2 hours)
+    - Rasterize harvest year from NTEMS: In ArcGIS resample NTEMS variables to 100m and clip to BC. Then run **ReprojectDataFromNTEMS**. (0.1 hours)
 - Rasterize planting using **RasterizePlanting** (1 hour)
     - Observations of area planted come from the ACTUAL_AREA_PLANTED variable (A_pl), where RESULTS_IND is “Y” and SILV_METHOD_CODE is not “LAYOT”. Over 1960-2022, there were two entries in the activity layer of results where A_pl was not reported. These are excluded from analysis.
     - Where possible, use geometry from RSLT_ACTIVITY_TREATMENT_SVW. For planting with no reported geometry, sequentially estimate it from the area within the opening with STOCKING_TYPE_CLASS  = “Artificial" from the Forest Cover Inventory layer (when the artificial area is within 2% of the planting area listed in the RESULTS activity layer (A_pl). When that fails, find the spatial geometry for the opening from the OPENING_SVW layer and randomly assign a proportion of the opening consistent with A_pl. This is first done with the first opening ID and then the second opening ID variable (OPENING_ID_2). When that fails, find the spatial geometry of the opening from VRI and randomly assign a proportion that is planted consistent with A_pl. 
-
 - Rasterize planting layer using **RasterizePlantingLayer** (0.5 hours). This generates rasters for species codes, percents and genetic worths.
-
+- Rasterize variables from Timber Cruise Compilation:
+    - Rasterize percent dead from timber cruise data using **RasterizeCruisePercentDead** (<0.1 hour)
 - Run scripts that generate derived variables. (~1 hour)
 
 ## DERIVED VARIABLES
@@ -62,9 +61,14 @@ Gap-fill biogeoclimatic zone for areas not classified as treed.
 ### Regeneration Type Compilation
 Representing artificial stand establishment, including planting and direct seeding, is aided by the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. The Regeneration Type Compilation 1 (RTC1) re-classifies stand establishment events into regeneration types to facilitate use in models. (0.5 hours)
 - Back-to-back planting: Sometimes planting projects span multiple years, yet the precise spatial location is sometimes only approximated (aspatially) within the opening (see section on rasterizing planting events). By include a class for back-to-back planting, models can exclude the excessive number of events, focusing on the first or last instance.
-- 
+- Salvage and Planting: Planting events preceded by harvest. This type is only relevant to government-funded planting. Salvage by licensees is 
+- Straight-to-planting Post Wildfire: 
+- Straight-to-planting Post Wildfire: 
+- Salvage and Planting: 
+- Salvage and Planting: 
 
-###
+### Non-obligation stand establishment:
+- Mask non-obligation stand establishment with **Planting_NonOb_Mask**. (<0.1 hours)
 
 ## SPARSE SUBSAMPLES
 Prepare sparse inputs at commonly-used spatial subsampling resolutions, including 1km, 5km, 10km and 20km. When models are run at these resolutions, **fcgadgets** will automatically draw on these sparse inputs, which will 

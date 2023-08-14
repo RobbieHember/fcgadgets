@@ -518,7 +518,6 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
             
             yr0=dmec0[iStand]['Year'][i]
             if dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Salvage and Planting']:
-                print('Working')
                 # For non-ob salvage, assume high mortality in the natural disturbance inciting salvage
                 meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Salvage and Planting']
                 iH=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) |  (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest Salvage']) & (dmec0[iStand]['Year']<yr0) )[0]
@@ -554,16 +553,14 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
                     dmec0[iStand]['Mortality Factor'][iInc]=100
             elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['NSR Backlog']:
                 meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['NSR Backlog']
-                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) )[0]
+                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) | (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest Salvage']) & (dmec0[iStand]['Year']<yr0) )[0]
                 if iInc.size>1:
                     iInc=iInc[-1]
-                try:
-                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
-                except:
-                    print(i)
-                    print(iInc)
-                    print(dmec0[iStand]['Index to Event Inciting NOSE'])
-                #dmec0[iStand]['Mortality Factor'][iInc]=80
+                if iInc.size==0:                    
+                    dmec0[iStand]['Year'][iOpen]=yr0-10
+                    dmec0[iStand]['ID Event Type'][iOpen]=meta['LUT']['Event']['Harvest']
+                    dmec0[iStand]['Mortality Factor'][iOpen]=100
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iOpen   
             elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Replanting']:
                 meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Replanting']
                 dmec0[iStand]['Year'][iOpen]=yr0-1+0.9
