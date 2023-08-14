@@ -58,14 +58,17 @@ bc1ha_map_roi: Graphics by region of interest
 ## DERIVED VARIABLES
 ### Biogeoclimatic Zone (Gap-filled)
 Gap-fill biogeoclimatic zone for areas not classified as treed.
-### Regeneration Type Compilation 1
-Artificial stand establishment consists of mostly planting and a small amount of direct seeding. To understand how planting events affect the carbon balance, events are classified into regeneration types in the Regeneration Type Compilation 1 (RTC1). The regeneration types help to understand the context of the planting. The strategy uses information from the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. It also relies on other variables that describe what preceded a planting event, whether it be a harvest, wildfire, beetles, or a previous planting event. (0.5 hours)
-- Back-to-back planting: Sometimes planting projects span multiple years, yet the precise spatial location is sometimes only approximated (aspatially) within the opening (see section on rasterizing planting events). By include a class for back-to-back planting, models can exclude the excessive number of events, focusing on the first or last instance.
-- Salvage and Planting: Planting events preceded by harvest. This type is only relevant to government-funded planting. Salvage by licensees is 
-- Straight-to-planting Post Wildfire: 
-- Straight-to-planting Post Wildfire: 
-- Salvage and Planting: 
-- Salvage and Planting: 
+### Artificial Regeneration Type Compilation 1
+Artificial stand establishment consists of mostly planting and a small amount of direct seeding. To understand how planting events affect the carbon balance, events are classified into regeneration types in the Artificial Regeneration Type Compilation 1 (ART-C1). The regeneration types help to understand the context of the planting. The strategy uses information from the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. It also relies on other variables that describe what preceded each planting event, whether it be a harvest, wildfire, beetles, or a previous planting event. (0.5 hours)
+- Back-to-back planting: Sometimes planting projects span multiple years, yet the precise spatial location is sometimes only approximated (aspatially) within the opening (see section on rasterizing planting events). It is also possible that some Fill Planting or Replanting are mistakenly reported as planting, which would be captured in back-to-back planting. The back-to-back planting type is generally excluded from models, which will focus on the first instance.
+- Salvage and Planting: Planting events preceded by harvest, which itself was preceded by a catastrophic natural disturbance. For non-obligation planting (as indicated by government-funded funding source codes), a planting event preceded by harvest is always salvage. For licensee planting, the regeneration type is only classified as Salvage and Planting if the percent dead volume (as indicated by Timber Cruise Compilation) exceeds a specified threshold. As we only have access to timber cruises for 2015 on, the ART-C1 likely underestimates the abundance of licensee salvage logging prior to 2015. 
+- Straight-to-planting Post Wildfire: Planting events preceded by wildfire. This type is likely mostly “underplanting.”
+- Straight-to-planting Post Beetles: Planting events preceded by beetle outbreak with more than light severity. This type may include a high level of mis-classification if beetles happen to be recorded between harvest and planting, or between wildfire and planting.
+- Replanting: Replanting indicates that the previously-planted stand failed. These events are classified strictly based on STC = “RP”. 
+- Fill Planting: Fill planting indicates efforts to fill-in any areas not meeting a specific regeneration standard. These events are classified strictly based on STC = “FP”. 
+- Harvest and Planting NSR Backlog: Planting by government programs in areas harvested prior to 1987.
+- Harvest and Planting: Planting in response to obligation to reforest following commercial harvesting.
+- Direct Seeding: Direct seeding indicates that the stand was established by seeding. These events are classified strictly based on SBC = “DS”.
 
 ### Non-obligation stand establishment:
 - Mask non-obligation stand establishment with **Planting_NonOb_Mask**. (<0.1 hours)
