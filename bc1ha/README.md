@@ -1,6 +1,6 @@
 # bc1ha
 ## PURPOSE
-The **bc1ha** repository supports geospatial analysis in British Columbiaâ€™s forest sector at 100m spatial resolution. The repository has two goals: 1) streamline an annual update cycle to download and 
+The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at 100m spatial resolution. The repository has two goals: 1) streamline an annual update cycle to download and 
 rasterize information that is made available through BC Data Catalogue and 2) generate derived variables, where varying degrees of manipulation (e.g. gap-filling, consolidation of multiple data sources) 
 have been applied to create the input variables used to drive simulation models. 
 <br><br>
