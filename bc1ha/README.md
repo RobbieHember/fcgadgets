@@ -2,10 +2,8 @@
 ## PURPOSE
 The **bc1ha** repository supports geospatial analysis in British Columbia’s forest sector at 100m spatial resolution. The repository has two goals: 1) streamline an annual update cycle to download and 
 rasterize information that is made available through BC Data Catalogue and 2) generate derived variables, where varying degrees of manipulation (e.g. gap-filling, consolidation of multiple data sources) 
-have been applied to create the input variables used to drive simulation models. 
-<br><br>
-Derived variables are often a work in progress and should be used with caution.
-<br><br>
+have been applied to create the input variables used to drive simulation models. Derived variables are often a work in progress and should be used with caution.
+<br>
 - Command annual updates with ** bc1ha_grid.py**.
 - Perform individual processing steps with functions in ** bc1ha_util.py**
 - Visualize results with functions in ** bc1ha_map_roi**
