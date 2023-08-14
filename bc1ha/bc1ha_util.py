@@ -1938,219 +1938,328 @@ def Planting_NonOb_Mask(meta,zRef):
     return
 
 #%%
-def RasterizeActivities(meta):
-    lNam='RSLT_ACTIVITY_TREATMENT_SVW'
-    if os.path.exists(meta['Paths']['bc1ha'] + '\\' + lNam)==False:
-        os.mkdir(meta['Paths']['bc1ha'] + '\\' + lNam)
-    tv=np.arange(1970,2024,1)
 
+# For knockdown: ats['SMC']=np.array(['CABLE','GUARD','HARV','MDOWN','PUSH'])
+#sbc='FE'; stc='CA'
+sbc='SP'; stc='BU'; smc=None; vNam='SP-BU'
+
+def RasterizeActivities(meta,sbc,stc,smc,vNam):
+    
+    tv=np.arange(1960,2024,1)
+    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+    
     # Start with planting with spatial from RESULTS (takes 15 min)
-    t0=time.time()
-    ats={}
-    ats['Path']=meta['Paths']['GDB']['Results']
-    ats['Layer']=lNam; # fiona.listlayers(ats['Path'])
-    ats['crs']=meta['Geos']['crs']
-    ats['Keep Geom']='On'
-    ats['Select Openings']=np.array([])
-    ats['SBC']=np.array([])
-    ats['STC']=np.array([])
-    ats['SMC']=np.array([])
-    ats['FSC']=np.array([])
-    ats['SOC1']=np.array([])
-    ats['ROI']=[]
-    ats['gdf']=qgdb.Query_Openings(ats,[])
-    ats['gdf']=ats['gdf'][ats['gdf'].geometry!=None]
-    ats['gdf']=ats['gdf'].reset_index()    
-    ats['gdf']=ats['gdf'][ (ats['gdf']['RESULTS_IND']=='Y') & (ats['gdf']['ATU_COMPLETION_DATE']!=None) ]
-    ats['gdf']=ats['gdf'].reset_index()
-    ats['gdf']['Year']=np.zeros(len(ats['gdf']))
-    for i in range(ats['gdf']['Year'].size):
-        ats['gdf']['Year'][i]=int(ats['gdf']['ATU_COMPLETION_DATE'][i][0:4])
-    ats['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_FUND_SOURCE_CODE',ats['gdf'])
-    ats['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_TECHNIQUE_CODE',ats['gdf'])
-    print( (time.time()-t0)/60 )
-
-    zATS=np.zeros(zRef['Data'].shape,dtype=float)
-    shapes=((geom,value) for geom, value in zip(ats['gdf']['geometry'],ats['gdf']['ID_SILV_TECHNIQUE_CODE']))
-    zATS=features.rasterize(shapes=shapes,fill=0,out=zATS,transform=zRef['Transform'])    
+    flg=1
+    if flg==1:
+        t0=time.time()
+        ats={}
+        ats['Path']=meta['Paths']['GDB']['Results']
+        ats['Layer']='RSLT_ACTIVITY_TREATMENT_SVW'; # fiona.listlayers(ats['Path'])
+        ats['crs']=meta['Geos']['crs']
+        ats['Keep Geom']='On'
+        ats['Select Openings']=np.array([])
+        ats['SBC']=np.array([sbc])
+        ats['STC']=np.array([stc])
+        ats['SMC']=np.array([smc])
+        ats['FSC']=np.array([])
+        ats['SOC1']=np.array([])
+        ats['ROI']=[]
+        ats['gdf']=qgdb.Query_Openings(ats,[])
+        ats['gdf']=ats['gdf'][ats['gdf'].geometry!=None]
+        ats['gdf']=ats['gdf'].reset_index()    
+        ats['gdf']['Year']=np.zeros(len(ats['gdf']))
+        for i in range(ats['gdf']['Year'].size):
+            ats['gdf']['Year'][i]=int(ats['gdf']['ATU_COMPLETION_DATE'][i][0:4])
+        AreaPlanted=ats['gdf']['ACTUAL_TREATMENT_AREA']
+        NumTreesPlanted=ats['gdf']['ACTUAL_PLANTED_NUMBER']
+        ats['gdf']['SPH_Planted']=NumTreesPlanted/AreaPlanted
+        ats['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_FUND_SOURCE_CODE',ats['gdf'])
+        ats['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_TECHNIQUE_CODE',ats['gdf'])
+        ats['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_METHOD_CODE',ats['gdf'])
+        ats['gdf']=ats['gdf'][ (ats['gdf']['RESULTS_IND']=='Y') & (ats['gdf']['SILV_METHOD_CODE']!='LAYOT') ].copy()
+        ats['gdf']=ats['gdf'][ats['gdf'].geometry!=None]
+        ats['gdf']=ats['gdf'].reset_index()
+        ats['gdf'].to_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats' + vNam + '.geojson',driver="GeoJSON")
+    else:
+        ats={}
+        ats['gdf']=gpd.read_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats' + vNam + '.geojson')
 
     # Add areas where FC is artificial
-    at={}
-    at['Path']=meta['Paths']['GDB']['Results']
-    at['Layer']='RSLT_ACTIVITY_TREATMENT_SVW'; # fiona.listlayers(at['Path'])
-    at['crs']=meta['Geos']['crs']
-    at['Keep Geom']='Off'
-    at['Select Openings']=np.array([])
-    at['SBC']=np.array([])
-    at['STC']=np.array([])
-    at['SMC']=np.array([])
-    at['FSC']=np.array([])
-    at['SOC1']=np.array([])
-    at['ROI']=[]
-    at['gdf']=qgdb.Query_Openings(at,[])
-    at['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_FUND_SOURCE_CODE',at['gdf'])
-    at['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_TECHNIQUE_CODE',at['gdf'])
-    
-    # Import all openings from opening layer
+    flg=1
+    if flg==1:
+        at={}
+        at['Path']=meta['Paths']['GDB']['Results']
+        at['Layer']='RSLT_ACTIVITY_TREATMENT_SVW'; # fiona.listlayers(at['Path'])
+        at['crs']=meta['Geos']['crs']
+        at['Keep Geom']='Off'
+        at['Select Openings']=np.array([])
+        at['SBC']=np.array([sbc])
+        at['STC']=np.array([stc])
+        at['SMC']=np.array([smc])
+        at['FSC']=np.array([])
+        at['SOC1']=np.array([])
+        at['ROI']=[]
+        at['gdf']=qgdb.Query_Openings(at,[])
+        at['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_FUND_SOURCE_CODE',at['gdf'])
+        at['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_TECHNIQUE_CODE',at['gdf'])
+        at['gdf']=CreateIdForCategoricalVariable(meta,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_METHOD_CODE',at['gdf'])
+        # Make sure to remove entries that we know did not occur (planned or layout)
+        ikp=np.where(  (at['gdf']['RESULTS_IND']=='Y') & (at['gdf']['SILV_METHOD_CODE']!='LAYOT') )[0]
+        for k in at['gdf'].keys():
+            at['gdf'][k]=at['gdf'][k][ikp]
+        at['gdf']['Year']=np.zeros(at['gdf']['ACTIVITY_TREATMENT_UNIT_ID'].size)
+        for i in range(at['gdf']['Year'].size):
+            at['gdf']['Year'][i]=int(at['gdf']['ATU_COMPLETION_DATE'][i][0:4])
+        gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at_' + vNam + '.pkl',at)
+    else:
+        at=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at' + vNam + '.pkl')
+       
+    # Import opening ID with spatial   
     zOP1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\OPENING_ID.tif')['Data']
-    
+    zOP2=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\OPENING_ID_2.tif')['Data']
+
+    zFC_OID=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_FOREST_COVER_INV_SVW\\OPENING_ID.tif')['Data']
+    zFC_STC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_FOREST_COVER_INV_SVW\\ID_STOCKING_TYPE_CODE.tif')['Data']
+   
+    zVRI_OID=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\OPENING_ID.tif')['Data'] 
+   
     # Reduce the size of rasters
-    indZ1=np.where( (zOP1!=0) & (zATS==0) )
-    zOP2=zOP1[indZ1]
-
-    # Loop through opening layer spatial    
-    uOP=gu.IndicesFromUniqueArrayValues(zOP2)
-
-    # For knockdown: ats['SMC']=np.array(['CABLE','GUARD','HARV','MDOWN','PUSH'])
-
-    #sbc='FE'; stc='CA'
-    sbc='SP'; stc='BU'
-    smc=''
+    indOP1=np.where( (zOP1!=0) )
+    zOP1s=zOP1[indOP1]
+    indOP2=np.where( (zOP2!=0) )
+    zOP2s=zOP2[indOP2]
     
-    at0=at['gdf'].copy()
-    ikp=np.where(  (at['gdf']['SILV_BASE_CODE']==sbc) & (at['gdf']['SILV_TECHNIQUE_CODE']==stc) )[0]
-    for k in at0.keys():
-        at0[k]=at0[k][ikp]
-
+    indFC=np.where( (zFC_OID!=0) )
+    zFC_OIDs=zFC_OID[indFC]
+    zFC_STCs=zFC_STC[indFC]
+    
+    indVRI=np.where( (zVRI_OID!=0) )
+    zVRI_OIDs=zVRI_OID[indVRI]    
+    
+    # Unique indices to Opening ID
+    uOP1s=gu.IndicesFromUniqueArrayValues(zOP1s)
+    uOP2s=gu.IndicesFromUniqueArrayValues(zOP2s)
+    uFCs=gu.IndicesFromUniqueArrayValues(zFC_OIDs)
+    uVRIs=gu.IndicesFromUniqueArrayValues(zVRI_OIDs)
+    
     # Index to planting and year
     dP={}
     for iT in range(tv.size):
-        dP[tv[iT]]={'IndexToGrid':np.array([]),                   
-                   'SILV_FUND_SOURCE_CODE':np.array([]),
-                   'ACTIVITY_TREATMENT_UNIT_ID':np.array([]),
-                   'SILV_TECHNIQUE_CODE':np.array([])}
-    for iOP in uOP.keys():
-        print(iOP)
-        indZ2=uOP[iOP]        
-        indAT=np.where( (at0['OPENING_ID']==iOP) & (at0['SILV_BASE_CODE']==sbc) & (at0['SILV_TECHNIQUE_CODE']==stc) )[0]
-        if indAT.size==0:
+        dP[tv[iT]]={}
+        for iS in range(4):
+            dP[tv[iT]][iS]={}
+            dP[tv[iT]][iS]={'IndexToGrid':np.array([],dtype=int),
+                       'Source FC':np.array([]),                       
+                       'ID_SILV_FUND_SOURCE_CODE':np.array([]),
+                       'ACTIVITY_TREATMENT_UNIT_ID':np.array([]),
+                       'ID_SILV_TECHNIQUE_CODE':np.array([]),
+                       'ID_SILV_METHOD_CODE':np.array([])}
+    
+    N_MissingArea=0 # 2 entries with missing area
+    for iAT in range(at['gdf']['Year'].size):
+        print(iAT)
+        Year=at['gdf']['Year'][iAT].astype(int)
+        if (Year<tv[0]) | (Year>tv[-1]):
             continue
-        Year=at0['Year'][indAT]
-        FSC=at0['ID_SILV_FUND_SOURCE_CODE'][indAT]
-        ATUID=at0['ACTIVITY_TREATMENT_UNIT_ID'][indAT]
-        STC=at0['ID_SILV_TECHNIQUE_CODE'][indAT]
-        for iY in range(Year.size):            
-            if (Year[iY]<tv[0]) | (Year[iY]>tv[-1]):
+        ID=at['gdf']['OPENING_ID'][iAT]        
+        FSC=at['gdf']['ID_SILV_FUND_SOURCE_CODE'][iAT]
+        ATUID=at['gdf']['ACTIVITY_TREATMENT_UNIT_ID'][iAT]
+        STC=at['gdf']['ID_SILV_TECHNIQUE_CODE'][iAT]
+        SMC=at['gdf']['ID_SILV_METHOD_CODE'][iAT]
+        A_Planted=at['gdf']['ACTUAL_TREATMENT_AREA'][iAT]
+        NumTreesPlanted=at['gdf']['ACTUAL_PLANTED_NUMBER'][iAT]
+        SPH_Planted=NumTreesPlanted/A_Planted
+        if np.isnan(A_Planted)==True:
+            N_MissingArea=N_MissingArea+1
+            continue
+    
+        iS=0
+        flg=1
+        try:
+            indArt=np.where(zFC_STCs[uFCs[ID]]==meta['LUT']['RSLT_FOREST_COVER_INV_SVW']['STOCKING_TYPE_CODE']['ART'])[0]
+        except:
+            flg=0
+        if flg==1:
+            A_Art=indArt.size
+            if A_Art>0:
+                fA_fc=np.sum(A_Planted)/A_Art               
+                if (np.abs(fA_fc-1.0)<0.02):
+                    ind=uFCs[ID][indArt]
+                    dP[Year][iS]['IndexToGrid']=np.append(dP[Year][iS]['IndexToGrid'],ind)
+                    dP[Year][iS]['Source FC']=np.append(dP[Year][iS]['Source FC'],1*np.ones(ind.size))                    
+                    dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE']=np.append(dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE'],FSC*np.ones(ind.size))
+                    dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID']=np.append(dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID'],ATUID*np.ones(ind.size))
+                    dP[Year][iS]['ID_SILV_TECHNIQUE_CODE']=np.append(dP[Year][iS]['ID_SILV_TECHNIQUE_CODE'],STC*np.ones(ind.size))
+                    dP[Year][iS]['ID_SILV_METHOD_CODE']=np.append(dP[Year][iS]['ID_SILV_METHOD_CODE'],STC*np.ones(ind.size))
+                    #print('1')
+                    continue
+        
+        iS=1
+        flg=1
+        try:            
+            ind=uOP1s[ID]
+        except:
+            flg=0
+        if flg==1:
+            ind2=ind[0:int(np.minimum(ind.size,np.round(A_Planted)))]
+            dP[Year][iS]['IndexToGrid']=np.append(dP[Year][iS]['IndexToGrid'],ind2)
+            dP[Year][iS]['Source FC']=np.append(dP[Year][iS]['Source FC'],2*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE']=np.append(dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE'],FSC*np.ones(ind2.size))
+            dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID']=np.append(dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID'],ATUID*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_TECHNIQUE_CODE']=np.append(dP[Year][iS]['ID_SILV_TECHNIQUE_CODE'],STC*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_METHOD_CODE']=np.append(dP[Year][iS]['ID_SILV_METHOD_CODE'],STC*np.ones(ind2.size))
+            #print('2')
+            continue
+        
+        iS=2
+        flg=1
+        try:            
+            ind=uOP2s[ID]
+        except:
+            flg=0
+        if flg==1:
+            ind2=ind[0:int(np.minimum(ind.size,np.round(A_Planted)))]
+            dP[Year][iS]['IndexToGrid']=np.append(dP[Year][iS]['IndexToGrid'],ind2)
+            dP[Year][iS]['Source FC']=np.append(dP[Year][iS]['Source FC'],3*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE']=np.append(dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE'],FSC*np.ones(ind2.size))
+            dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID']=np.append(dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID'],ATUID*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_TECHNIQUE_CODE']=np.append(dP[Year][iS]['ID_SILV_TECHNIQUE_CODE'],STC*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_METHOD_CODE']=np.append(dP[Year][iS]['ID_SILV_METHOD_CODE'],STC*np.ones(ind2.size))
+            #print('3')
+            continue
+        iS=3
+        flg=1
+        try:            
+            ind=uVRIs[ID]
+            if ind.size==1:
                 continue
-            dP[Year[iY]]['IndexToGrid']=np.append(dP[Year[iY]]['IndexToGrid'],indZ2)            
-            dP[Year[iY]]['SILV_FUND_SOURCE_CODE']=np.append(dP[Year[iY]]['SILV_FUND_SOURCE_CODE'],FSC[iY]*np.ones(indZ2.size))
-            dP[Year[iY]]['ACTIVITY_TREATMENT_UNIT_ID']=np.append(dP[Year[iY]]['ACTIVITY_TREATMENT_UNIT_ID'],ATUID[iY]*np.ones(indZ2.size))
-            dP[Year[iY]]['SILV_TECHNIQUE_CODE']=np.append(dP[Year[iY]]['SILV_TECHNIQUE_CODE'],STC[iY]*np.ones(indZ2.size))
-            #print('working 2')
+        except:
+            flg=0
+        if flg==1:
+            ind2=ind[0:int(np.minimum(ind.size,np.round(A_Planted)))]
+            dP[Year][iS]['IndexToGrid']=np.append(dP[Year][iS]['IndexToGrid'],ind2)
+            dP[Year][iS]['Source FC']=np.append(dP[Year][iS]['Source FC'],4*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE']=np.append(dP[Year][iS]['ID_SILV_FUND_SOURCE_CODE'],FSC*np.ones(ind2.size))
+            dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID']=np.append(dP[Year][iS]['ACTIVITY_TREATMENT_UNIT_ID'],ATUID*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_TECHNIQUE_CODE']=np.append(dP[Year][iS]['ID_SILV_TECHNIQUE_CODE'],STC*np.ones(ind2.size))
+            dP[Year][iS]['ID_SILV_METHOD_CODE']=np.append(dP[Year][iS]['ID_SILV_METHOD_CODE'],STC*np.ones(ind2.size))
+            print('From VRI')
+     
+        #print('Missing')
+    #gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl',dP)
+    #dP=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl')
 
     # Pack
 
     # Initialize rasters
-
     N_Year=6
-
-    z0={'Year':{},'ACTIVITY_TREATMENT_UNIT_ID':{},'SILV_FUND_SOURCE_CODE':{}}
+    vL=['ACTIVITY_TREATMENT_UNIT_ID','ID_SILV_FUND_SOURCE_CODE','ID_SILV_TECHNIQUE_CODE','ID_SILV_METHOD_CODE']
+    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])    
+    zPac={'Year':{},'ACTIVITY_TREATMENT_UNIT_ID':{},'ID_SILV_FUND_SOURCE_CODE':{},'ID_SILV_TECHNIQUE_CODE':{},'ID_SILV_METHOD_CODE':{}}
     for iY in range(N_Year):
-        for k in z0.keys():
+        for k in zPac.keys():
             if k=='ACTIVITY_TREATMENT_UNIT_ID':
-                z0[k][iY+1]=np.zeros(zRef['Data'].shape,dtype='int32')
+                zPac[k][iY+1]=np.zeros(zRef['Data'].shape,dtype='int32')
             else:
-                z0[k][iY+1]=np.zeros(zRef['Data'].shape,dtype='int16')
-
-    vNam=sbc + '-' + stc
+                zPac[k][iY+1]=np.zeros(zRef['Data'].shape,dtype='int16')
 
     for iT in range(tv.size):
         print(tv[iT])
-
-        # Activity layer with spatial
-        df0=ats['gdf'][ (ats['gdf']['Year']==tv[iT]) & (ats['gdf']['SILV_BASE_CODE']==sbc) & (ats['gdf']['SILV_TECHNIQUE_CODE']==stc) ].copy()
-        df0=df0[df0.geometry!=None]
-        #df0=df0.reset_index()
-
-        z1={}
-        for k in z0.keys():
-            z1[k]=np.zeros(zRef['Data'].shape,dtype=float)
-
-        if len(df0)>0:
-            shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['ACTIVITY_TREATMENT_UNIT_ID']))
-            burnedATUID=features.rasterize(shapes=shapes,fill=0,out=z1['ACTIVITY_TREATMENT_UNIT_ID'],transform=zRef['Transform'])
-
-            shapes=((geom,value) for geom, value in zip(df0['geometry'],df0['ID_SILV_FUND_SOURCE_CODE']))
-            burnedFSC=features.rasterize(shapes=shapes,fill=0,out=z1['SILV_FUND_SOURCE_CODE'],transform=zRef['Transform'])
+        
+        zYr={}
+        for k in zPac.keys():
+            zYr[k]=np.zeros(zRef['Data'].shape,dtype=float)
 
         # Add activities without spatial
-        for iD in range(len(dP[tv[iT]]['IndexToGrid'])):
-            ind2=dP[tv[iT]]['IndexToGrid'][iD].astype(int)
-            z1['ACTIVITY_TREATMENT_UNIT_ID'][ indZ1[0][ind2],indZ1[1][ind2]  ]=dP[tv[iT]]['ACTIVITY_TREATMENT_UNIT_ID'][iD]
-            z1['SILV_FUND_SOURCE_CODE'][ indZ1[0][ind2],indZ1[1][ind2]  ]=dP[tv[iT]]['SILV_FUND_SOURCE_CODE'][iD]
+        iS=0
+        iA=indFC[0][dP[tv[iT]][iS]['IndexToGrid']]
+        iB=indFC[1][dP[tv[iT]][iS]['IndexToGrid']]
+        zYr['ACTIVITY_TREATMENT_UNIT_ID'][ iA,iB  ]=dP[tv[iT]][iS]['ACTIVITY_TREATMENT_UNIT_ID']
+        zYr['ID_SILV_FUND_SOURCE_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_FUND_SOURCE_CODE']
+        zYr['ID_SILV_TECHNIQUE_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_TECHNIQUE_CODE']
+        zYr['ID_SILV_METHOD_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_METHOD_CODE']
+        
+        iS=1
+        iA=indOP1[0][dP[tv[iT]][iS]['IndexToGrid']]
+        iB=indOP1[1][dP[tv[iT]][iS]['IndexToGrid']]
+        zYr['ACTIVITY_TREATMENT_UNIT_ID'][ iA,iB  ]=dP[tv[iT]][iS]['ACTIVITY_TREATMENT_UNIT_ID']
+        zYr['ID_SILV_FUND_SOURCE_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_FUND_SOURCE_CODE']
+        zYr['ID_SILV_TECHNIQUE_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_TECHNIQUE_CODE']
+        zYr['ID_SILV_METHOD_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_METHOD_CODE']
+        
+        iS=2
+        iA=indOP2[0][dP[tv[iT]][iS]['IndexToGrid']]
+        iB=indOP2[1][dP[tv[iT]][iS]['IndexToGrid']]
+        zYr['ACTIVITY_TREATMENT_UNIT_ID'][ iA,iB  ]=dP[tv[iT]][iS]['ACTIVITY_TREATMENT_UNIT_ID']
+        zYr['ID_SILV_FUND_SOURCE_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_FUND_SOURCE_CODE']
+        zYr['ID_SILV_TECHNIQUE_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_TECHNIQUE_CODE']
+        zYr['ID_SILV_METHOD_CODE'][ iA,iB  ]=dP[tv[iT]][iS]['ID_SILV_METHOD_CODE']
+        
+        # Add activity layer with spatial
+        ats0=ats['gdf'][ (ats['gdf']['Year']==tv[iT]) ].copy()
+        ats0=ats0[ats0.geometry!=None]; #ats0=ats0.reset_index()
+        if len(ats0)>0:            
+            for v in vL:
+                shapes=((geom,value) for geom, value in zip(ats0['geometry'],ats0[v]))
+                burned=features.rasterize(shapes=shapes,fill=0,out=zYr[v],transform=zRef['Transform'])
 
-        # Populate final grids
-
-        ind=np.where( (z0['Year'][1]==0) & (z1['SILV_FUND_SOURCE_CODE']!=0) )
-        z0['Year'][1][ind]=tv[iT]
-        for k in z1.keys():
+        # Populate packed grids
+        ind=np.where( (zPac['Year'][1]==0) & (zYr['ID_SILV_FUND_SOURCE_CODE']!=0) ) # (zCounter<=1) & 
+        zPac['Year'][1][ind]=tv[iT]
+        for k in zYr.keys():
             if k=='Year':
                 continue
-            z0[k][1][ind]=z1[k][ind]
+            zPac[k][1][ind]=zYr[k][ind]
 
-        ind=np.where( (z0['Year'][1]!=0) & (z0['Year'][1]!=tv[iT]) & (z0['Year'][2]==0) & (z1['SILV_FUND_SOURCE_CODE']!=0) )
-        z0['Year'][2][ind]=tv[iT]
-        for k in z1.keys():
+        ind=np.where( (zPac['Year'][1]!=0) & (zPac['Year'][1]!=tv[iT]) & (zPac['Year'][2]==0) & (zYr['ID_SILV_FUND_SOURCE_CODE']!=0) )
+        zPac['Year'][2][ind]=tv[iT]
+        for k in zYr.keys():
             if k=='Year':
                 continue
-            z0[k][2][ind]=z1[k][ind]
+            zPac[k][2][ind]=zYr[k][ind]
 
-        ind=np.where( (z0['Year'][2]!=0) & (z0['Year'][2]!=tv[iT]) & (z0['Year'][3]==0) & (z1['SILV_FUND_SOURCE_CODE']!=0) )
-        z0['Year'][3][ind]=tv[iT]
-        for k in z1.keys():
+        ind=np.where( (zPac['Year'][2]!=0) & (zPac['Year'][2]!=tv[iT]) & (zPac['Year'][3]==0) & (zYr['ID_SILV_FUND_SOURCE_CODE']!=0) )
+        zPac['Year'][3][ind]=tv[iT]
+        for k in zYr.keys():
             if k=='Year':
                 continue
-            z0[k][3][ind]=z1[k][ind]
+            zPac[k][3][ind]=zYr[k][ind]
 
-        ind=np.where( (z0['Year'][3]!=0) & (z0['Year'][3]!=tv[iT]) & (z0['Year'][4]==0) & (z1['SILV_FUND_SOURCE_CODE']!=0) )
-        z0['Year'][4][ind]=tv[iT]
-        for k in z1.keys():
+        ind=np.where( (zPac['Year'][3]!=0) & (zPac['Year'][3]!=tv[iT]) & (zPac['Year'][4]==0) & (zYr['ID_SILV_FUND_SOURCE_CODE']!=0) )
+        zPac['Year'][4][ind]=tv[iT]
+        for k in zYr.keys():
             if k=='Year':
                 continue
-            z0[k][4][ind]=z1[k][ind]
+            zPac[k][4][ind]=zYr[k][ind]
 
-        ind=np.where( (z0['Year'][4]!=0) & (z0['Year'][4]!=tv[iT]) & (z0['Year'][5]==0) & (z1['SILV_FUND_SOURCE_CODE']!=0) )
-        z0['Year'][5][ind]=tv[iT]
-        for k in z1.keys():
+        ind=np.where( (zPac['Year'][4]!=0) & (zPac['Year'][4]!=tv[iT]) & (zPac['Year'][5]==0) & (zYr['ID_SILV_FUND_SOURCE_CODE']!=0) )
+        zPac['Year'][5][ind]=tv[iT]
+        for k in zYr.keys():
             if k=='Year':
                 continue
-            z0[k][5][ind]=z1[k][ind]
+            zPac[k][5][ind]=zYr[k][ind]
 
-        ind=np.where( (z0['Year'][5]!=0) & (z0['Year'][5]!=tv[iT]) & (z1['SILV_FUND_SOURCE_CODE']!=0) )
-        z0['Year'][6][ind]=tv[iT]
-        for k in z1.keys():
+        ind=np.where( (zPac['Year'][5]!=0) & (zPac['Year'][5]!=tv[iT]) & (zYr['ID_SILV_FUND_SOURCE_CODE']!=0) )
+        zPac['Year'][6][ind]=tv[iT]
+        for k in zYr.keys():
             if k=='Year':
                 continue
-            z0[k][6][ind]=z1[k][ind]
+            zPac[k][6][ind]=zYr[k][ind]
 
+    # Save to file
     for iY in range(N_Year):
         z1=zRef.copy()
-        z1['Data']=z0['Year'][iY+1].astype('int16')
-        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_' + str(iY+1) + '_Year.tif')
+        z1['Data']=zPac['Year'][iY+1].astype('int16')
+        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_' + str(iY+1) + '_Year.tif')
         z1=zRef.copy()
-        z1['Data']=z0['ACTIVITY_TREATMENT_UNIT_ID'][iY+1].astype('int32')
-        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_' + str(iY+1) + '_ACTIVITY_TREATMENT_UNIT_ID.tif')
+        z1['Data']=zPac['ACTIVITY_TREATMENT_UNIT_ID'][iY+1].astype('int32')
+        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_' + str(iY+1) + '_ACTIVITY_TREATMENT_UNIT_ID.tif')
         z1=zRef.copy()
-        z1['Data']=z0['SILV_FUND_SOURCE_CODE'][iY+1].astype('int16')
-        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_' + str(iY+1) + '_SILV_FUND_SOURCE_CODE.tif')
-
-    # Mask all
-    z1=zRef.copy()
-    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int8')
-    for iY in range(N_Year):
-        z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_' + str(iY+1) + '_Year.tif')
-        ind=np.where(z0['Data']>0)
-        z1['Data'][ind]=1
-    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_MaskAll.tif')
-
-    # Year last
-    z1=zRef.copy()
-    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    for iY in range(N_Year):
-        z0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_' + str(iY+1) + '_Year.tif')
-        ind=np.where(z0['Data']>0)
-        z1['Data'][ind]=z0['Data'][ind]
-    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_YearLast.tif')
+        z1['Data']=zPac['ID_SILV_FUND_SOURCE_CODE'][iY+1].astype('int16')
+        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_' + str(iY+1) + '_SILV_FUND_SOURCE_CODE.tif')        
+        z1=zRef.copy()
+        z1['Data']=zPac['ID_SILV_TECHNIQUE_CODE'][iY+1].astype('int16')
+        gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_' + str(iY+1) + '_SILV_TECHNIQUE_CODE.tif')
 
     return
 

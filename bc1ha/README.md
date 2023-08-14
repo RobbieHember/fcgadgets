@@ -68,6 +68,7 @@ Artificial stand establishment consists of mostly planting and a small amount of
 - Fill Planting: Fill planting indicates efforts to fill-in any areas not meeting a specific regeneration standard. These events are classified strictly based on STC = “FP”. 
 - Harvest and Planting NSR Backlog: Planting by government programs in areas harvested prior to 1987.
 - Harvest and Planting: Planting in response to obligation to reforest following commercial harvesting.
+- Road Rehabilitation: Planting with STC = “RR”.
 - Direct Seeding: Direct seeding indicates that the stand was established by seeding. These events are classified strictly based on SBC = “DS”.
 
 ### Non-obligation stand establishment Mask
