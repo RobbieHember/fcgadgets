@@ -6,11 +6,9 @@ have been applied to create the input variables used to drive simulation models.
 <br><br>
 Derived variables are often a work in progress and should be used with caution.
 <br><br>
-bc1ha_grid.py: Command script that runs the annual update steps.
-<br>
-bc1ha_util.py: Supporting functions
-<br>
-bc1ha_map_roi: Graphics by region of interest
+- Command annual updates with ** bc1ha_grid.py**.
+- Perform individual processing steps with functions in ** bc1ha_util.py**
+- Visualize results with functions in ** bc1ha_map_roi**
 
 ## ANNUAL UPDATE STEPS
 - Download required layers and store as geodatabases for land use, land cover, disturbances, RESULTS, and VRI. The layers that are included should be listed in the Data Sources spreadsheet in the **fcgadgets.cbrunner.parameters** repository. (8+ hours)
