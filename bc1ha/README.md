@@ -58,8 +58,8 @@ bc1ha_map_roi: Graphics by region of interest
 ## DERIVED VARIABLES
 ### Biogeoclimatic Zone (Gap-filled)
 Gap-fill biogeoclimatic zone for areas not classified as treed.
-### Regeneration Type Compilation
-Representing artificial stand establishment, including planting and direct seeding, is aided by the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. The Regeneration Type Compilation 1 (RTC1) re-classifies stand establishment events into regeneration types to facilitate use in models. (0.5 hours)
+### Regeneration Type Compilation 1
+Artificial stand establishment consists of mostly planting and a small amount of direct seeding. To understand how planting events affect the carbon balance, events are classified into regeneration types in the Regeneration Type Compilation 1 (RTC1). The regeneration types help to understand the context of the planting. The strategy uses information from the silviculture base code (SBC), silviculture technique code (STC), and silviculture method code (SMC) provided in the RESULTS activity layer. It also relies on other variables that describe what preceded a planting event, whether it be a harvest, wildfire, beetles, or a previous planting event. (0.5 hours)
 - Back-to-back planting: Sometimes planting projects span multiple years, yet the precise spatial location is sometimes only approximated (aspatially) within the opening (see section on rasterizing planting events). By include a class for back-to-back planting, models can exclude the excessive number of events, focusing on the first or last instance.
 - Salvage and Planting: Planting events preceded by harvest. This type is only relevant to government-funded planting. Salvage by licensees is 
 - Straight-to-planting Post Wildfire: 

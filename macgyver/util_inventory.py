@@ -500,7 +500,7 @@ def Process1_ImportVariables(meta,pNam):
 def Define_NOSE_ProjectType(meta,pNam,dmec0):
 
     # Initialize project type
-    meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int8')
+    meta[pNam]['Project']['RegenType']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int8')
 
     for iStand in range(meta[pNam]['Project']['N Stand']):
 
@@ -517,42 +517,75 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
                 iOpen=iOpen[0]
             
             yr0=dmec0[iStand]['Year'][i]
-            if dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Salvage and Planting']:
+            if dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Salvage and Planting']:                
                 # For non-ob salvage, assume high mortality in the natural disturbance inciting salvage
-                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Salvage and Planting']
-                iH=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) |  (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest Salvage']) & (dmec0[iStand]['Year']<yr0) )[0]
-                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Wildfire']) & (dmec0[iStand]['Year']<dmec0[iStand]['Year'][iH]) |  (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['IBM']) & (dmec0[iStand]['Year']<dmec0[iStand]['Year'][iH]) )[0]
-                if iInc.size>1:
-                    iInc=iInc[-1]
-                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
-                if dmec0[iStand]['Mortality Factor'][iInc]<75:
-                    dmec0[iStand]['Mortality Factor'][iInc]=90
+                meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Salvage and Planting']
+                iH=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<=yr0) | (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest Salvage']) & (dmec0[iStand]['Year']<=yr0) )[0]
+                if iH.size==0:
+                    # Small number of instances
+                    # I think this is happing because NTEMS was considered in the RegenType classification
+                    # but it is not being pulled into the model. Can be fixed.
+                    yr_lag=yr0-3
+                    dmec0[iStand]['Year'][iOpen]=yr_lag
+                    dmec0[iStand]['ID Event Type'][iOpen]=meta['LUT']['Event']['Harvest Salvage']
+                    dmec0[iStand]['Mortality Factor'][iOpen]=100                    
+                    iH=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest Salvage']) & (dmec0[iStand]['Year']==yr_lag) )[0]
+                    iOpen=iOpen+1
+                if iH.size>1:
+                    iH=iH[-1]
+                iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Wildfire']) & (dmec0[iStand]['Year']<dmec0[iStand]['Year'][iH]) | \
+                              (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['IBM']) & (dmec0[iStand]['Year']<dmec0[iStand]['Year'][iH]) )[0]                
+                if iInc.size==0:
+                    dmec0[iStand]['Year'][iOpen]=dmec0[iStand]['Year'][iH]-3
+                    dmec0[iStand]['ID Event Type'][iOpen]=meta['LUT']['Event']['IBM']
+                    dmec0[iStand]['Mortality Factor'][iOpen]=100
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iOpen
+                else:
+                    if iInc.size>1:
+                        iInc=iInc[-1]
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                    if dmec0[iStand]['Mortality Factor'][iInc]<75:
+                        dmec0[iStand]['Mortality Factor'][iInc]=90
             elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']:
-                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']
+                meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']
                 iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Wildfire']) & (dmec0[iStand]['Year']<yr0) )[0]
-                if iInc.size>1:
-                    iInc=iInc[-1]
-                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
-                if dmec0[iStand]['Mortality Factor'][iInc]<100:
-                    dmec0[iStand]['Mortality Factor'][iInc]=100
-            elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Insect Outbreak']:
-                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Insect Outbreak']
+                if iInc.size==0:                    
+                    dmec0[iStand]['Year'][iOpen]=yr0-1
+                    dmec0[iStand]['ID Event Type'][iOpen]=meta['LUT']['Event']['Wildfire']
+                    dmec0[iStand]['Mortality Factor'][iOpen]=100
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iOpen
+                else:
+                    if iInc.size>1:
+                        iInc=iInc[-1]
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                    if dmec0[iStand]['Mortality Factor'][iInc]<100:
+                        dmec0[iStand]['Mortality Factor'][iInc]=100
+            elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Beetles']:
+                meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Beetles']
                 iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['IBM']) & (dmec0[iStand]['Year']<yr0) )[0]
-                if iInc.size>1:
-                    iInc=iInc[-1]
-                dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
-                if dmec0[iStand]['Mortality Factor'][iInc]<100:
-                    dmec0[iStand]['Mortality Factor'][iInc]=100
+                if iInc.size==0:                    
+                    dmec0[iStand]['Year'][iOpen]=yr0-1
+                    dmec0[iStand]['ID Event Type'][iOpen]=meta['LUT']['Event']['IBM']
+                    dmec0[iStand]['Mortality Factor'][iOpen]=100
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iOpen
+                else:
+                    if iInc.size>1:
+                        iInc=iInc[-1]
+                    dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
+                    if dmec0[iStand]['Mortality Factor'][iInc]<100:
+                        dmec0[iStand]['Mortality Factor'][iInc]=100
             elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Knockdown and Planting']:
-                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Knockdown and Planting']
+                meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Knockdown and Planting']
                 iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Knockdown']) & (dmec0[iStand]['Year']<yr0) )[0]
+                if iInc.size==0:
+                    continue
                 if iInc.size>1:
                     iInc=iInc[-1]
                 dmec0[iStand]['Index to Event Inciting NOSE'][i]=iInc
                 if dmec0[iStand]['Mortality Factor'][iInc]<100:
                     dmec0[iStand]['Mortality Factor'][iInc]=100
-            elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['NSR Backlog']:
-                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['NSR Backlog']
+            elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Harvest and Planting NSR Backlog']:
+                meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Harvest and Planting NSR Backlog']
                 iInc=np.where( (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest']) & (dmec0[iStand]['Year']<yr0) | (dmec0[iStand]['ID Event Type']==meta['LUT']['Event']['Harvest Salvage']) & (dmec0[iStand]['Year']<yr0) )[0]
                 if iInc.size>1:
                     iInc=iInc[-1]
@@ -562,7 +595,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
                     dmec0[iStand]['Mortality Factor'][iOpen]=100
                     dmec0[iStand]['Index to Event Inciting NOSE'][i]=iOpen   
             elif dmec0[iStand]['RegenType'][i]==meta['LUT']['Derived']['RegenType']['Replanting']:
-                meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Replanting']
+                meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Replanting']
                 dmec0[iStand]['Year'][iOpen]=yr0-1+0.9
                 dmec0[iStand]['ID Event Type'][iOpen]=meta['LUT']['Event']['IBM']
                 dmec0[iStand]['Mortality Factor'][iOpen]=100
@@ -576,7 +609,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
 #     LeadUpPeriod=50
 
 #     # Initialize project type
-#     meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int16')
+#     meta[pNam]['Project']['RegenType']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int16')
 
 #     for iStand in range(meta[pNam]['Project']['N Stand']):
 
@@ -642,7 +675,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
 #             #----------------------------------------------------------------------
 #             # Salvage logging
 #             #----------------------------------------------------------------------
-#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Salvage and Planting']
+#             meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Salvage and Planting']
 #             # Find the event that incited the funded stand establishment
 #             # If the event has more than 75% mortality, use it. If it is less than
 #             # 75%, assume disturbance databases have underestimated mortality and
@@ -696,7 +729,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
 #             # to the decision to plant by gov programs. Add dummy event just before the
 #             # non-ob stand establishment event. Assume trace beetles
 #             #----------------------------------------------------------------------
-#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['NSR Backlog']
+#             meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['NSR Backlog']
 #             #ID_GapFill=meta['LUT']['Event']['Regen Failure']
 #             #Year_GapFill=dmec0[iStand]['Year'][iLeadUp[iH]]+2
 #             #Mort_GapFill=100
@@ -713,7 +746,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
 #             #----------------------------------------------------------------------
 #             # Knockdown
 #             #----------------------------------------------------------------------
-#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Knockdown']
+#             meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Knockdown']
 
 #             # Find the event that incited the funded stand establishment
 #             # If the event has more than 75% mortality, use it. If it is less than
@@ -750,7 +783,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
 #             #----------------------------------------------------------------------
 #             # Straight planting (fire)
 #             #----------------------------------------------------------------------
-#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Straight Fire']
+#             meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Straight Fire']
 
 #             # Find the event that incited the funded stand establishment
 #             # If the event has more than 75% mortality, use it. If it is less than
@@ -768,7 +801,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
 #             #----------------------------------------------------------------------
 #             # Straight planting (beetle)
 #             #----------------------------------------------------------------------
-#             meta[pNam]['Project']['RegTypeNO'][iStand]=meta['LUT']['Derived']['RegenType']['Straight Insect']
+#             meta[pNam]['Project']['RegenType'][iStand]=meta['LUT']['Derived']['RegenType']['Straight Insect']
 
 #             # Find the event that incited the funded stand establishment
 #             # If the event has more than 75% mortality, use it. If it is less than
@@ -788,7 +821,7 @@ def Define_NOSE_ProjectType(meta,pNam,dmec0):
 #     return dmec0
 
 # Trouble shooting
-# u,N=gu.CountByCategories(meta[pNam]['Project']['RegTypeNO'])
+# u,N=gu.CountByCategories(meta[pNam]['Project']['RegenType'])
 
 # for iStand in range(1000):
 #    print(np.min(dmec0[iStand]['Index to Event Inciting NOSE']))
@@ -1168,19 +1201,19 @@ def Process2_PrepareGrowthCurves(meta,pNam,inv,dmec):
                             gc[iScn][iStand]['ID_GC'][cnt_gc]=dmec[iScn][iStand]['ID_GC'][iYr]
 
                             gc[iScn][iStand]['regeneration_method'][cnt_gc]=meta['LUT']['TIPSY']['regeneration_method']['N']
-                            if meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenType']['Straight Fire']:
+                            if meta[pNam]['Project']['RegenType'][iStand]==meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']:
                                 gc[iScn][iStand]['init_density'][cnt_gc]=200
                                 gc[iScn][iStand]['regen_delay'][cnt_gc]=5
-                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenType']['Straight Insect']:
+                            elif meta[pNam]['Project']['RegenType'][iStand]==meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Beetles']:
                                 gc[iScn][iStand]['init_density'][cnt_gc]=200
                                 gc[iScn][iStand]['regen_delay'][cnt_gc]=5
-                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenType']['Salvage']:
+                            elif meta[pNam]['Project']['RegenType'][iStand]==meta['LUT']['Derived']['RegenType']['Salvage and Planting']:
                                 gc[iScn][iStand]['init_density'][cnt_gc]=1400
                                 gc[iScn][iStand]['regen_delay'][cnt_gc]=0
-                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenType']['Knockdown']:
+                            elif meta[pNam]['Project']['RegenType'][iStand]==meta['LUT']['Derived']['RegenType']['Knockdown and Planting']:
                                 gc[iScn][iStand]['init_density'][cnt_gc]=1400
                                 gc[iScn][iStand]['regen_delay'][cnt_gc]=0
-                            elif meta[pNam]['Project']['RegTypeNO'][iStand]==meta['LUT']['Derived']['RegenType']['NSR Backlog']:
+                            elif meta[pNam]['Project']['RegenType'][iStand]==meta['LUT']['Derived']['RegenType']['Harvest and Planting NSR Backlog']:
                                 gc[iScn][iStand]['init_density'][cnt_gc]=750
                                 gc[iScn][iStand]['regen_delay'][cnt_gc]=10
 
