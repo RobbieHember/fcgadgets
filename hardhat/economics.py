@@ -106,7 +106,10 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
         for k in range(meta['Core']['Max Events Per Year']):
 
-            ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Fertilization Aerial']) )[0]
+            try:
+                ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Fertilization Aerial']) )[0]
+            except:
+                print(list(ec.keys()))
 
             for i in ind:
                 Year=tv_full[i]

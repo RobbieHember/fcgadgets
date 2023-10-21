@@ -92,9 +92,9 @@ def Query_Openings(meta,roi):
                     prop['Year']=int(prop['ATU_COMPLETION_DATE'][0:4])
 
                     # Planting (isolate real planting)
-                    if meta['SBC']=='PL':
-                        if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
-                            continue
+                    #if meta['SBC']=='PL':
+                    #    if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
+                    #        continue
 
                 if cnt==0:
 
@@ -159,10 +159,10 @@ def Query_Openings(meta,roi):
                     if np.isin(prop['SILV_BASE_CODE'],meta['SBC'])==False:
                         continue
 
-                    # Planting (isolate real planting)
-                    if meta['SBC']=='PL':
-                        if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
-                            continue
+                    ## Planting (isolate real planting)
+                    #if meta['SBC']=='PL':
+                    #    if (prop['SILV_TECHNIQUE_CODE']=='SE') | (prop['SILV_TECHNIQUE_CODE']=='CG') | (prop['SILV_METHOD_CODE']=='LAYOT'):
+                    #        continue
 
                 if meta['STC'].size!=0:
                     if np.isin(prop['SILV_TECHNIQUE_CODE'],meta['STC'])==False:

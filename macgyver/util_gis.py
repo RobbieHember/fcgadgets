@@ -10,6 +10,7 @@ from matplotlib import path
 import copy
 from shapely.geometry import Polygon,Point
 import pyproj
+from scipy import ndimage
 import rasterio
 from rasterio.features import shapes
 from rasterio.enums import Resampling
@@ -20,13 +21,13 @@ from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.transform import from_origin
 from fcgadgets.macgyver import util_general as gu
 
-#%% IMPORT SPATIAL REFERENCE SYSTEMS
-
+#%% Import common spatial reference systems
+# srs=gis.ImportSRSs()
 def ImportSRSs():
 
     # Example:
     #    srs=gis.ImportSRSs()
-    #    x,y=srs['Proj']['BC1ha'](ll[:,1],ll[:,0])
+    #    x,y=srs['Proj']['BC1ha'](lon[:,1],lat[:,0])
     #    lon,lat=srs['Proj']['Geographic'](x,y)
 
     srs={}
@@ -48,7 +49,6 @@ def ImportSRSs():
     return srs
 
 #%% Resample raster
-
 def ResampleRaster(fin,sf):
 
     with rasterio.open(fin) as dataset:
@@ -122,22 +122,14 @@ def ResampleRaster(fin,sf):
 
     return
 
-
 #%%
-
+# srs=gis.ImportSRSs()
+# gis.ReprojectCoordinates(srs['Proj']['Geographic'],srs['Proj']['NACID'],x_in,y_in)
 def ReprojectCoordinates(proj_in,proj_out,x_in,y_in):
     x_out,y_out=pyproj.transform(proj_in,proj_out,x_in,y_in)
     return x_out,y_out
 
-#%% BUNCH VARIABLES FROM DICTIONARY
-
-class Bunch(dict):
-    def __init__(self, *args, **kwds):
-        super(Bunch, self).__init__(*args, **kwds)
-        self.__dict__ = self
-
 #%% Open Geotiff
-
 def OpenGeoTiff(pthin):
 
     ds=gdal.Open(pthin)
@@ -236,14 +228,10 @@ def SaveGeoTiff(z,fout):
 
 #%% CLIP RASTER
 #The raster input structure must be from the OpenGdal function from this module.
-
 def ClipRasterByXYLimits(z_in,xlim,ylim):
-
     z=z_in.copy()
-
     ix=np.where((z['X'][0,:]>=xlim[0]) & (z['X'][0,:]<=xlim[1]))[0]
     iy=np.where((z['Y'][:,0]>=ylim[0]) & (z['Y'][:,0]<=ylim[1]))[0]
-
     ind=np.ix_(iy,ix)
     z['Data']=z['Data'][ind]
     z['X']=z['X'][ind]
@@ -259,11 +247,9 @@ def ClipRasterByXYLimits(z_in,xlim,ylim):
     z['xlim']=[np.min(z['X']),np.max(z['X'])]
     z['ylim']=[np.min(z['Y']),np.max(z['Y'])]
     z['Transform']=from_origin(z['xmin'],z['ymax'],z['Cellsize'],z['Cellsize'])
-
     return z
 
 #%% Clip raster based on extent of other raster
-
 def ClipToRaster(z_in0,z_ref0):
 
     z_in=z_in0.copy()
@@ -311,7 +297,6 @@ def ClipToRaster(z_in0,z_ref0):
     return z
 
 #%% Clip raster based on extent of other raster (from files)
-
 def ClipToRaster_ByFile(fin,fout,fref):
 
     z_in=OpenGeoTiff(fin)
@@ -388,13 +373,11 @@ def ReprojectGeoTiff(pthin,pthout,crs_dst):
 
     return
 
-#%% POLYGON AREA
-
+#%% Polygon area
 def PolyArea(x,y):
     return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
-#%% INPOLYGON
-
+#%% Inside polygon
 def InPolygon(xg,yg,xv,yv):
 
     l=[]
@@ -421,7 +404,6 @@ def InPolygon(xg,yg,xv,yv):
     return InPol
 
 #%% Get extent from gdal
-
 def GetExtentFromGDAL(gt,cols,rows):
     ''' Return list of corner coordinates from a geotransform
 
@@ -448,7 +430,6 @@ def GetExtentFromGDAL(gt,cols,rows):
 
 #%% COMPRESS CATEGORIES IN RASTER DATASET
 # z1,lab1,cl1=gis.CompressCats(z0,id0,lab0,cl0)
-
 def CompressCats(z0,id0,lab0,cl0):
     uc=np.unique(z0)
     z1=0*np.ones(z0.shape)
@@ -468,7 +449,6 @@ def CompressCats(z0,id0,lab0,cl0):
     return z1,lab1,cl1
 
 #%% Digitize raster binary mask
-
 def DigitizeBinaryMask(zIn):
 
     # Create binary image
@@ -505,35 +485,33 @@ def DigitizeBinaryMask(zIn):
 
     return gdf
 
-#%% OLD digitize:
+# #%% OLD digitize:
+# def Digitize(BinaryMask,xv,yv):
 
-def Digitize(BinaryMask,xv,yv):
+#     #xv=xv.flatten()
+#     #yv=yv.flatten()
 
-    #xv=xv.flatten()
-    #yv=yv.flatten()
+#     s=shapes(BinaryMask.astype('int16'),mask=None,connectivity=4)
 
-    s=shapes(BinaryMask.astype('int16'),mask=None,connectivity=4)
-
-    xy=[]
-    for i in range(10000):
-        try:
-            a=next(s)
-            b=a[0]['coordinates'][0]
-            d={}
-            d['x']=np.array([])
-            d['y']=np.array([])
-            for j in range(len(b)):
-                col=int(b[j][0])
-                row=int(b[j][1])
-                d['x']=np.append(d['x'],xv[col-1])
-                d['y']=np.append(d['y'],yv[row-1])
-            xy.append(d)
-        except:
-            break
-    return xy
+#     xy=[]
+#     for i in range(10000):
+#         try:
+#             a=next(s)
+#             b=a[0]['coordinates'][0]
+#             d={}
+#             d['x']=np.array([])
+#             d['y']=np.array([])
+#             for j in range(len(b)):
+#                 col=int(b[j][0])
+#                 row=int(b[j][1])
+#                 d['x']=np.append(d['x'],xv[col-1])
+#                 d['y']=np.append(d['y'],yv[row-1])
+#             xy.append(d)
+#         except:
+#             break
+#     return xy
 
 #%% Clip geodataframe to user-specified x and y limits
-
 def ClipGDF(gdf_in,xlim,ylim):
 
     gdf=gdf_in.cx[xlim[0]:xlim[1],ylim[0]:ylim[1]]
@@ -565,7 +543,6 @@ def UpdateGridCellsize(z_in,scale_factor):
     return z
 
 #%% Get grid index of points from x and y
-
 def GetGridIndexToPoints(z,x,y):
     Xg=z['X'][0,:]
     Yg=z['Y'][:,0]
@@ -588,7 +565,6 @@ def GetGridIndexToPoints(z,x,y):
     return ind
 
 #%% Import Cities
-
 def ImportCities(pthin,output_type):
 
     Cities=gu.ReadExcel(pthin)
@@ -606,14 +582,12 @@ def ImportCities(pthin,output_type):
         points=[]
         for i in range(Cities['X'].size):
             points.append(Point(Cities['X'][i],Cities['Y'][i]))
-        out=gpd.GeoDataFrame({'geometry':points,'Name':Cities['Name'],'Territory':Cities['Territory'],'Lat':Cities['Lat'],'Lon':Cities['Lon']})
+        out=gpd.GeoDataFrame({'geometry':points,'City Name':Cities['City Name'],'Territory':Cities['Territory'],'Lat':Cities['Lat'],'Lon':Cities['Lon']})
 
     return out
 
 #%% Shift input matrix by dx,dy
-
 def imshift(In,dx,dy):
-
     m,n=In.shape
     Out=-999*np.ones(In.shape)
     if (dx<0) & (dy<0):
@@ -634,21 +608,63 @@ def imshift(In,dx,dy):
       Out[0:m,0:n-np.abs(dx)]=In[0:m,abs(dx):n]
     elif (dx>0) & (dy==0):
       Out[0:m,dx:n]=In[0:m,0:n-dx]
-
     return Out
 
-#%% Buffer raster mask
+#%% Buffer raster mask (buffer radius around binary mask)
+# *** Don't use this - use cv2.dilate - super easy and fast ***
+def BufferRasterMask(MaskIn,r):    
+    # Create circular kernel
+    def CreateKernel(radius):
+        kernel=np.zeros((2*radius+1, 2*radius+1))
+        y,x=np.ogrid[-radius:radius+1, -radius:radius+1]
+        mask=x**2 + y**2 <= radius**2
+        kernel[mask]=1
+        return kernel    
+    MaskOut=ndimage.morphology.binary_dilation(MaskIn==1,structure=CreateKernel(r))    
+    
+    # Test
+    flg=0
+    if flg==1:
+        A=np.zeros((120,320))
+        A[60,40]=1
+        A[2,140]=1    
+        r=10
+        B=ndimage.morphology.binary_dilation(A==1,structure=CreateKernel(r))    
+        plt.close('all'); plt.matshow(B)
+    
+    return MaskOut
 
-def BufferRasterMask(Mask,bw):
-    id0=1
-    id1=2
-    MaskB=Mask.copy()
-    bin_x=np.arange(-bw,bw+bw,bw)
-    bin_y=np.arange(-bw,bw+bw,bw)
+# def BufferRasterMask_OLD(MaskIn,wShuf):
+#     id0=1
+#     id1=2
+#     MaskOut=MaskIn.copy()
+#     bin_x=np.arange(-wShuf,wShuf+1,1)
+#     bin_y=np.arange(-wShuf,wShuf+1,1)    
+#     bin_x=bin_x[bin_x!=0]
+#     bin_y=bin_y[bin_y!=0]
+#     bin_x=bin_x[np.flip(np.argsort(np.abs(bin_x)))]
+#     bin_y=bin_y[np.flip(np.argsort(np.abs(bin_y)))]
+#     for i in range(bin_y.size):
+#         for j in range(bin_x.size):
+#             MaskShuf=imshift(MaskIn,bin_x[j],bin_y[i])
+#             ind=np.where( (MaskIn!=id0) & (MaskShuf==id0) )
+#             MaskOut[ind]=id1
+#     return MaskOut
+
+#%% Fill raster missing values with shuffle
+def ShuffleFill(zIn,wShuf,idMissing):
+    zOut=idMissing*np.ones(zIn.shape,dtype=zIn.dtype)
+    bin_x=np.arange(-wShuf,wShuf+1,1)
+    bin_y=np.arange(-wShuf,wShuf+1,1)    
+    bin_x=bin_x[bin_x!=0]
+    bin_y=bin_y[bin_y!=0]
+    bin_x=bin_x[np.flip(np.argsort(np.abs(bin_x)))]
+    bin_y=bin_y[np.flip(np.argsort(np.abs(bin_y)))]    
     for i in range(bin_y.size):
         for j in range(bin_x.size):
-            MaskS=imshift(Mask,bin_x[j],bin_y[i])
-            ind=np.where( (Mask!=id0) & (MaskS==id0) )
-            MaskB[ind]=id1
-
-    return MaskB
+            zShuf=imshift(zIn,bin_x[j],bin_y[i])
+            ind=np.where( (zIn==idMissing) & (zShuf!=idMissing) )
+            zOut[ind]=zShuf[ind]
+    ind=np.where(zIn!=idMissing)
+    zOut[ind]=zIn[ind]
+    return zOut

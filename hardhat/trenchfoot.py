@@ -9,19 +9,20 @@ def PredictNOSE_OnTheFly(meta,pNam,iScn,iBat,vi,iT):
     if meta[pNam]['Year'][iT]<meta[pNam]['Project']['Year End']-3:
         
         # Initialize project type
-        if 'RegTypeNO' not in meta[pNam]['Project'].keys():
-            meta[pNam]['Project']['RegTypeNO']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int16')
+        if 'RegType' not in meta[pNam]['Project'].keys():
+            meta[pNam]['Project']['RegType']=np.zeros(meta[pNam]['Project']['N Stand'],dtype='int16')
     
-        flg=np.zeros((meta[pNam]['Project']['Batch Size'][iBat],meta['Core']['Max Events Per Year']))
+        # Identify wildfire occurrence
+        flg_wf=np.zeros((meta[pNam]['Project']['Batch Size'][iBat],meta['Core']['Max Events Per Year']))
         ind=np.where(vi['EC']['ID Event Type'][iT-2,:,:]==meta['LUT']['Event']['Wildfire'])
-        flg[ind]=1
-        flg=np.max(flg,axis=1)
-        #print(flg.shape)
+        flg_wf[ind]=1
+        flg_wf=np.max(flg_wf,axis=1)
+        #print(flg_wf.shape)
     
-        Po=0.03 #meta[pNam]['Scenario'][iScn]['NOSE Prob']
-        rn=np.random.random(flg.size)   
+        Po=meta[pNam]['Scenario'][iScn]['NOSE Prob']
+        rn=np.random.random(flg_wf.size)   
     
-        indAffected=np.where( (rn<Po) & (flg==1) )[0]
+        indAffected=np.where( (rn<Po) & (flg_wf==1) )[0]
         #print(indAffected.size)
         if indAffected.size>0:
             for iA in indAffected:
@@ -39,8 +40,8 @@ def PredictNOSE_OnTheFly(meta,pNam,iScn,iBat,vi,iT):
                 iAvailable=np.where(vi['EC']['ID Event Type'][iT2,iA,:]==0)[0]
                 if iAvailable.size>0:
                     iE=iAvailable[0]
-                    meta[pNam]['Project']['RegTypeNO'][ meta[pNam]['Project']['indBat'][iA] ]=meta['LUT']['Derived']['RegenTypeNO']['Straight Fire']
-                    meta[pNam]['Project']['Strata']['Project Type']['ID'][ meta[pNam]['Project']['indBat'][iA] ]=meta['LUT']['Derived']['RegenTypeNO']['Straight Fire']
+                    meta[pNam]['Project']['RegType'][ meta[pNam]['Project']['indBat'][iA] ]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']
+                    meta[pNam]['Project']['Strata']['Project Type']['ID'][ meta[pNam]['Project']['indBat'][iA] ]=meta['LUT']['Derived']['RegenType']['Straight-to-planting Post Wildfire']
                     if np.isin(iScn,meta[pNam]['Project']['Baseline Indices'])==True:                  
                         vi['EC']['ID Event Type'][iT2,iA,iE]=meta['LUT']['Event']['Regen at 25% Growth']
                         vi['EC']['Mortality Factor'][iT2,iA,iE]=0

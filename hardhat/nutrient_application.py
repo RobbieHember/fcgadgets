@@ -299,9 +299,9 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
     # Create a random number
     rn=np.random.random(meta[pNam]['Project']['Batch Size'][iBat])
 
-    # Regional probabilities
-    Po_Sat_Coast=0.00775
-    Po_Sat_Interior=0.00375
+    # Regional probabilities (hoping to yield 35Kha/yr)
+    Po_Sat_Coast=0.00654
+    Po_Sat_Interior=0.0032
 
     flg=0
     if flg==1:

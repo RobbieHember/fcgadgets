@@ -67,7 +67,7 @@ Artificial stand establishment consists of mostly planting and a small amount of
 - Road Rehabilitation: Planting with STC = “RR”.
 - Direct Seeding: Direct seeding indicates that the stand was established by seeding. These events are classified strictly based on SBC = “DS”.
 
-### Non-obligation stand establishment Mask
+### Non-obligation Stand Establishment Mask
 - Mask non-obligation stand establishment with **Planting_NonOb_Mask**. (<0.1 hours)
 
 ### Biogeoclimatic Zone (Gap-Filled)-Natural Disturbance Type Combination

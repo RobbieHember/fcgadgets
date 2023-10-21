@@ -1,6 +1,7 @@
 
 #%% Import python modules
 import numpy as np
+import matplotlib.pyplot as plt
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.cbrunner.cbrun_util as cbu
 import fcgadgets.hardhat.nutrient_application as napp
@@ -32,49 +33,61 @@ def Biomass_FromGYM(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
     for iS in range(meta[pNam]['Project']['Batch Size'][iBat]):
         NetGrowth[iS,:]=vi['GC']['Active'][iAge[iS],iS,:].copy()
 
-    # # Growth enhancement
-    # if 'Growth Enhancement Status' in meta[pNam]['Scenario'][iScn]:
-    #     if meta[pNam]['Scenario'][iScn]['Growth Enhancement Status']=='On':
-
-    #         # if 'Growth Enhancement' not in meta[pNam]['Project']:
-    #         #     #tv=np.arange(1800,2151,1)
-    #         #     tv=meta[pNam]['Year'].copy()
-    #         #     fG_PreI=0.5
-    #         #     fG_PosI=1.0
-    #         #     fG=fG_PreI*np.ones(tv.size)
-    #         #     it1=np.where(tv==1860)[0]
-    #         #     it2=np.where(tv==2010)[0]
-    #         #     ind=np.arange(it1,it2+1,dtype='int16')
-
-    #         #     fG[ind]=np.linspace(fG_PreI,fG_PosI,ind.size)
-    #         #     fG[it2[0]:]=fG_PosI
-    #         #     #plt.plot(tv,fG,'b-')
-    #         #     meta[pNam]['Project']['Growth Enhancement']=fG
-
-    #         NetGrowth=np.tile(meta[pNam]['Project']['Growth Enhancement'][iT,:],(NetGrowth.shape[1],1)).T*NetGrowth
-
-    # # *** Special EvalAtPlots With GaiaSL Modifier***
-    # t0=1950
-    # t1=2020
-    # m0=0.5
-    # m1_young=2.0
-    # m1_old=0.6
-    # Age0=75
-    # Age1=25
-    # m1=gu.Clamp(m0+(Age1-Age0)/(Age1-Age0)*(vo['A'][iT,:]-Age0),m1_old,m1_young)
-    # fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(meta[pNam]['Year'][iT]-t0),m0,m1)
-    # NetGrowth=np.tile(fG,(NetGrowth.shape[1],1)).T*NetGrowth
-    # # *** Special ***
-
-    # # *** Special EvalAtPlots With Age Modifier***
-    # b=-0.1
-    # ymn=0.45
-    # ymx=1.7
-    # A_inf=50
-    # #xhat=np.arange(1,301,1)
-    # fG=ymn+(ymx-ymn)*1/(1+np.exp(-b*(vo['A'][iT,:]-A_inf)))
-    # NetGrowth=np.tile(fG,(NetGrowth.shape[1],1)).T*NetGrowth
-    # # *** Special ***
+    # Modify GY module estimates to represent variability in tree growth  
+    if meta[pNam]['Scenario'][iScn]['Gaia Status']=='On':        
+        # t0=1900
+        # t1=2020
+        # m0=0.75
+        # m1_young=2.25*m0
+        # m1_old=1.1*m0
+        # Age_young=25
+        # Age_old=100
+        if 'Opt' in meta[pNam].keys():
+            #n=np.ones(meta[pNam]['Project']['indBat'].size)
+            t0=meta[pNam]['Opt']['Growth Modifier']['t0']
+            t1=meta[pNam]['Opt']['Growth Modifier']['t1']
+            m0=meta[pNam]['Opt']['Growth Modifier']['m0']
+            m1_young=meta[pNam]['Opt']['Growth Modifier']['m1_y']*m0
+            m1_old=meta[pNam]['Opt']['Growth Modifier']['m1_o']*m0
+            Age_young=meta[pNam]['Opt']['Growth Modifier']['Age_y']
+            Age_old=meta[pNam]['Opt']['Growth Modifier']['Age_o']
+            #mH=meta[pNam]['Opt']['Growth Modifier']['mH']
+        else:
+            t0=meta['Param']['BEV']['Growth Modifier']['t0']
+            t1=meta['Param']['BEV']['Growth Modifier']['t1']
+            m0=meta['Param']['BEV']['Growth Modifier']['m0']
+            m1_young=meta['Param']['BEV']['Growth Modifier']['m1_y']*m0
+            m1_old=meta['Param']['BEV']['Growth Modifier']['m1_o']*m0
+            Age_young=meta['Param']['BEV']['Growth Modifier']['Age_y']
+            Age_old=meta['Param']['BEV']['Growth Modifier']['Age_o']
+            mH=meta['Param']['BEV']['Growth Modifier']['mH']
+        
+        # t=np.arange(1850,2050,1)
+        # #A=np.arange(1,150,1)
+        # #plt.close('all')
+        # #m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-A)/(Age_young-Age_old),m1_old,m1_young)
+        # #plt.plot(A,m1,'g-')    
+        
+        # plt.close('all')
+        # A=15    
+        # m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-A)/(Age_young-Age_old),m1_old,m1_young)
+        # fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(t-t0),m0,m1)    
+        # plt.plot(t,fG,'g-')
+        # A=150
+        # m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-A)/(Age_young-Age_old),m1_old,m1_young)
+        # fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(t-t0),m0,m1)
+        # plt.plot(t,fG,'b--')
+        
+        m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-vo['A'][iT,:])/(Age_young-Age_old),m1_old,m1_young)
+        fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(meta[pNam]['Year'][iT]-t0),m0,m1)
+        fG=fG*np.array(vo['A'][iT,:]>10).astype('float')
+        NetGrowth=np.tile(fG,(NetGrowth.shape[1],1)).T*NetGrowth
+        
+        # Higher growth on harvested stands        
+        mH=np.tile(mH,(NetGrowth.shape[1],1)).T
+        NetGrowth=mH*NetGrowth
+        
+    # *** Special ***
 
     # Net growth of total stemwood
     Gnet_Stem=NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['StemMerch']]+NetGrowth[:,meta['Modules']['GYM']['GC Input Indices']['StemNonMerch']]
@@ -329,17 +342,17 @@ def BiomassFromSawtooth(meta,pNam,iScn,iS,vi,vo,iEP):
     rp=np.random.permutation(N_tree).astype(int)
 
     # Species 1
-    n1=np.ceil(vi['Inv']['SRS1_PCT'][0,iS]/100*N_tree).astype(int)
-    tl['ID_SRS'][:,rp[0:n1]]=vi['Inv']['SRS1_ID'][0,iS]
+    n1=np.ceil(vi['lsat']['SRS1_PCT'][0,iS]/100*N_tree).astype(int)
+    tl['ID_SRS'][:,rp[0:n1]]=vi['lsat']['SRS1_ID'][0,iS]
 
     # Species 2
-    if vi['Inv']['SRS2_PCT'][0,iS]>0:
-        n2=np.ceil(vi['Inv']['SRS2_Pct'][0,iS]/100*N_tree).astype(int)
-        tl['ID_SRS'][:,rp[n1:n2]]=vi['Inv']['SRS2_ID'][0,iS]
+    if vi['lsat']['SRS2_PCT'][0,iS]>0:
+        n2=np.ceil(vi['lsat']['SRS2_Pct'][0,iS]/100*N_tree).astype(int)
+        tl['ID_SRS'][:,rp[n1:n2]]=vi['lsat']['SRS2_ID'][0,iS]
 
     # Species 3
-    if vi['Inv']['SRS3_PCT'][0,iS]>0:
-        tl['ID_SRS'][:,rp[n2:]]=vi['Inv']['SRS3_ID'][0,iS]
+    if vi['lsat']['SRS3_PCT'][0,iS]>0:
+        tl['ID_SRS'][:,rp[n2:]]=vi['lsat']['SRS3_ID'][0,iS]
 
     #--------------------------------------------------------------------------
     # Initialize parameter vectors
@@ -752,7 +765,7 @@ def BiomassFromSawtooth(meta,pNam,iScn,iS,vi,vo,iEP):
                     tl['Csw_M_Har'][iT,iLive[iKill]]=tl['Csw'][iT,iLive[iKill]].copy()
                     tl['N_M_Har'][iT,iLive[iKill]]=1
 
-                elif (ID_Type==meta['LUT']['Event']['Beetles']) | (ID_Type==meta['LUT']['Event']['IBM']) | (ID_Type==meta['LUT']['Event']['Defoliators']):
+                elif (ID_Type==meta['LUT']['Event']['Beetles']) | (ID_Type==meta['LUT']['Event']['Mountain Pine Beetle']) | (ID_Type==meta['LUT']['Event']['Defoliators']):
                     # Insects--------------------------------------------------
 
                     iKill=np.arange(0,nKill)
@@ -992,7 +1005,7 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
         bIPF['StemNonMerchMorToSnagStem']*vo['C_M_Reg'][iT,:,iEP['StemNonMerch']]
 
     # Transfer mortality from live merch volume to dead merch volume
-    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT,:]+vi['Inv']['Biomass to Volume CF']*bIPF['StemMerchMorToSnagStem']*vo['C_M_Reg'][iT,:,iEP['StemMerch']]
+    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT,:]+vi['lsat']['Biomass to Volume CF']*bIPF['StemMerchMorToSnagStem']*vo['C_M_Reg'][iT,:,iEP['StemMerch']]
 
     # Transfer biomass turnover to snag branch pool
     vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT-1,:,iEP['SnagBranch']]+ \
@@ -1037,7 +1050,7 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
 
     # Prepare air temperature for respiration calculation
     Tref=10
-    fT=(vi['Inv']['MAT']-Tref)/10
+    fT=(vi['lsat']['MAT']-Tref)/10
 
     # Respiration rate - Note that these terms do not equal the
     # atmosphere-bound efflux from heterotrophic respiration as a fraction is
@@ -1128,7 +1141,7 @@ def DOM_LikeKurzetal2009(meta,pNam,iT,iBat,vi,vo,iEP):
     vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]=vo['C_Eco_Pools'][iT,:,iEP['SnagBranch']]-PT_SnagBranch
 
     # Remove volume that is physically transferred from snags to litter
-    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT,:]-vi['Inv']['Biomass to Volume CF']*PT_SnagStem
+    vo['V_MerchDead'][iT,:]=vo['V_MerchDead'][iT,:]-vi['lsat']['Biomass to Volume CF']*PT_SnagStem
 
     # Add decomposed carbon to more decomposed DOM pools
     vo['C_Eco_Pools'][iT,:,iEP['SoilS']]=vo['C_Eco_Pools'][iT,:,iEP['SoilS']]+PT_LitterS
@@ -1150,29 +1163,59 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     # Update total (live+dead) stemwood merchantable volume
     vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
 
-    # Predict stand breakup (on the fly)
-    if (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') & (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
-        vi=asm.PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
-    elif (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') & (meta[pNam]['Scenario'][iScn]['Breakup Status Future']!='On'):
+    # Predict wind (on the fly)
+    if (meta[pNam]['Scenario'][iScn]['Wind Status Historical']=='On') & (meta[pNam]['Scenario'][iScn]['Wind Status Future']=='On'):
+        vi=asm.PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+    if (meta[pNam]['Scenario'][iScn]['Wind Status Historical']=='On') & (meta[pNam]['Scenario'][iScn]['Wind Status Future']!='On'):
         if (vi['tv'][iT]<meta[pNam]['Project']['Year Project']):
-            vi=asm.PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
-    elif (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']!='On') & (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
+            vi=asm.PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+    if (meta[pNam]['Scenario'][iScn]['Wind Status Historical']!='On') & (meta[pNam]['Scenario'][iScn]['Wind Status Future']=='On'):
         if (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
-            vi=asm.PredictStandBreakup_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
-    else:
-        pass
+            vi=asm.PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+            
+    # Predict disease (on the fly)
+    if (meta[pNam]['Scenario'][iScn]['Disease Status Historical']=='On') & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']):
+        vi=asm.PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+    if (meta[pNam]['Scenario'][iScn]['Disease Status Future']=='On') & (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
+        vi=asm.PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
 
-    # Predict historical harvesting (on the fly)
+    # Predict wildfire (on the fly)
+    if meta[pNam]['Scenario'][iScn]['Wildfire Scn Pre-obs']!=-9999:
+        if vi['tv'][iT]<1920:            
+            vi=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+    if meta[pNam]['Scenario'][iScn]['Wildfire Scn Obs Period']!=-9999:
+        if (vi['tv'][iT]>=1920) & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']): 
+            vi=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+    if meta[pNam]['Scenario'][iScn]['Wildfire Scn Future']!=-9999:
+        if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:            
+            vi=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+
+    # Predict beetles (on the fly)
+    if meta[pNam]['Scenario'][iScn]['Beetle Scn Pre-obs']!=-9999:
+        if vi['tv'][iT]<1950:            
+            vi=asm.PredictBeetles_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+    if meta[pNam]['Scenario'][iScn]['Beetle Scn Obs Period']!=-9999:
+        if (vi['tv'][iT]>=1950) & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']): 
+            vi=asm.PredictBeetles_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+    if meta[pNam]['Scenario'][iScn]['Beetle Scn Future']!=-9999:
+        if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:            
+            vi=asm.PredictBeetles_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+
+    # Predict harvesting (on the fly)
     if meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On':
         if vi['tv'][iT]<meta[pNam]['Scenario'][iScn]['Harvest Year Transition']:
             Period='Historical'
             vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
-
-    # Predict future harvesting (on the fly)
     if meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On':
         if vi['tv'][iT]>=meta[pNam]['Scenario'][iScn]['Harvest Year Transition']:
             Period='Future'
             vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
+
+    # Predict frost (on the fly)
+    if (meta[pNam]['Scenario'][iScn]['Frost Status Historical']=='On') & (vi['tv'][iT]<1950):
+        vi=asm.PredictFrost_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+    if (meta[pNam]['Scenario'][iScn]['Frost Status Future']=='On') & (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
+        vi=asm.PredictFrost_OnTheFly(meta,pNam,vi,iT,iScn,iEns)    
 
     # Predict future nutrient application (on the fly)
     if meta[pNam]['Scenario'][iScn]['Nutrient Application Status']=='On':
@@ -1184,53 +1227,69 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:
             vi=tft.PredictNOSE_OnTheFly(meta,pNam,iScn,iBat,vi,iT)
 
-    # Initialize indicator of aerial nutrient application
-    flag_nutrient_application=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
-
     # Check to see how many events occur in this time step (don't do more than necessary)
     NumEventsInTimeStep=np.sum(np.sum(vi['EC']['ID Event Type'][iT,:,:]>0,axis=0)>0)
+    
+    # Initialize indicator of aerial nutrient application
+    flag_nutrient_app=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
 
     # Keep track of total tree biomass at the start of each annual time step
     C_Biomass_t0=np.sum(vo['C_Eco_Pools'][iT,:,iEP['BiomassTotal']],axis=0)
 
     # Loop through events in year
-    for iE in range(NumEventsInTimeStep): # meta['Core']['Max Events Per Year']
+    for iE in range(NumEventsInTimeStep):
 
         # Event type IDs for the iE'th event of the year
         ID_Type=vi['EC']['ID Event Type'][iT,:,iE].copy()
 
+        # Indexes to each unique event type
+        idx_Type=gu.IndicesFromUniqueArrayValues(ID_Type)
+
         # Total affected biomass carbon
         MortalityFactor=vi['EC']['Mortality Factor'][iT,:,iE].copy()
-
-        # Record stands with aerial nutrient application
-        iApp=np.where( (ID_Type==meta['LUT']['Event']['Fertilization Aerial']) )[0]
-        flag_nutrient_application[iApp]=1
 
         #----------------------------------------------------------------------
         # Get event-specific parameters
         #----------------------------------------------------------------------
-
-        u,idx,inver=np.unique(ID_Type,return_index=True,return_inverse=True)
         b={}
-        for k in meta['Param']['BEV']['Event'][1].keys():
-            bU=np.zeros(u.size)
-            for iU in range(u.size):
-                if u[iU]==0:
+        for k1 in meta['Param']['BEV']['Event'][1].keys():
+            b[k1]=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
+            for k2 in idx_Type.keys():
+                if k2==0:
                     continue
-                bU[iU]=meta['Param']['BEV']['Event'][u[iU]][k]
-            b[k]=bU[inver]
+                b[k1][idx_Type[k2]]=meta['Param']['BEV']['Event'][k2][k1]
+        
+        #----------------------------------------------------------------------
+        # Change in land cover / land use
+        #----------------------------------------------------------------------
+        for k in meta['Param']['Raw']['LUC']['LC Final'].keys():
+            if meta['LUT']['Event'][k] in idx_Type:
+                cd=meta['Param']['Raw']['LUC']['LC Final'][k]
+                vo['LandCover'][iT:,idx_Type[meta['LUT']['Event'][k]]]=meta['LUT']['Derived']['lc_comp1'][cd]
+                cd=meta['Param']['Raw']['LUC']['LU Final'][k]
+                vo['LandUse'][iT:,idx_Type[meta['LUT']['Event'][k]]]=meta['LUT']['Derived']['lu_comp1'][cd]
+            
+        #----------------------------------------------------------------------
+        # Record stands with aerial nutrient application
+        #----------------------------------------------------------------------
+        #iApp=np.where( (ID_Type==meta['LUT']['Event']['Fertilization Aerial']) )[0]
+        #flag_nutrient_app[iApp]=1
+        if meta['LUT']['Event']['Fertilization Aerial'] in idx_Type:
+            flag_nutrient_app[idx_Type[meta['LUT']['Event']['Fertilization Aerial']]]=1      
 
         #----------------------------------------------------------------------
         # Adjust event-specific parameters to reflect time- and region-specific
         # fate of felled material
         #----------------------------------------------------------------------
-
         # Index to harvesting
-        iHarvest=np.where( (ID_Type==meta['LUT']['Event']['Harvest']) | (ID_Type==meta['LUT']['Event']['Harvest Salvage']) )[0]
-
+        #iHarvest=np.where( (ID_Type==meta['LUT']['Event']['Harvest']) | (ID_Type==meta['LUT']['Event']['Harvest Salvage']) )[0]
+        
         # Adjust fate of felled material parameters
-        if iHarvest.size>0:
-
+        #if iHarvest.size>0:
+        if meta['LUT']['Event']['Harvest'] in idx_Type:
+            
+            iHarvest=idx_Type[meta['LUT']['Event']['Harvest']]
+            
             # Index to time-dependent fate of felled materials
             iT_P=np.where(meta['Param']['BE']['Felled Fate']['Year']==meta[pNam]['Year'][iT])[0]
 
@@ -1241,16 +1300,24 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
             for k in meta['Param']['BEV']['Felled Fate'].keys():
                 b[k][iHarvest]=meta['Param']['BEV']['Felled Fate'][k][iT_P,iHarvest]
+            
+            # Also update age at harvest
+            vo['A_Harvest'][iT,iHarvest]=vo['A'][iT,iHarvest]            
 
+        #----------------------------------------------------------------------
+        # Net-down insect mortality to reflect the proportion of host species
+        #----------------------------------------------------------------------
+        if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
+            for nam in meta['Param']['BE']['DisturbanceSpeciesAffected']['Insect Name']:
+                id=meta['LUT']['Event'][nam]
+                if id in idx_Type.keys():
+                    ndf=vi['lsat']['Insect Mortality Percent Tree Species Affected'][nam].astype('float')/100
+                    ind=idx_Type[id]
+                    MortalityFactor[ind]=MortalityFactor[ind]*ndf[ind]
+        
         #----------------------------------------------------------------------
         # Define the amount of each pool that is affected by the event
         #----------------------------------------------------------------------
-
-        # Fractions
-        #FracBiomassMerchAffected=b['BiomassMerch_Affected']*MortalityFactor
-        #FracBiomassNonMerchAffected=b['BiomassNonMerch_Affected']*MortalityFactor
-        #FracSnagsAffected=b['Snags_Affected']*MortalityFactor
-
         # Affected biomass carbon
         if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
             Affected_StemwoodMerch=vo['C_M_Tot'][iT,:,iEP['StemMerch']]
@@ -1292,23 +1359,19 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         #----------------------------------------------------------------------
         # Calculate mortality
         #----------------------------------------------------------------------
-
         # Total mortality
         vo['C_M_Dist'][iT,:]=vo['C_M_Dist'][iT,:]+Affected_BiomassTotal
 
         # Mortality by category (lumping stands together)
-        uType=np.unique(ID_Type)
-        for iType in range(len(uType)):
-            if uType[iType]==0:
+        for k in idx_Type.keys():
+            if k==0:
                 continue
-            ind=np.where(ID_Type==uType[iType])[0]
-            Type=cbu.lut_n2s(meta['LUT']['Event'],uType[iType])[0]
-            vo['C_M_ByAgent'][Type][iT,ind]=vo['C_M_ByAgent'][Type][iT,ind]+Affected_BiomassTotal[ind]
+            ind=idx_Type[k]
+            vo['C_M_ByAgent'][k][iT,ind]=vo['C_M_ByAgent'][k][iT,ind]+Affected_BiomassTotal[ind]
 
         #----------------------------------------------------------------------
         # Remove affected amount from each pool
         #----------------------------------------------------------------------
-
         if meta[pNam]['Project']['Biomass Module']!='Sawtooth':
 
             # Remove carbon from affected biomass pools
@@ -1333,7 +1396,6 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         # non merch, but these categories may be removed in different degrees
         # Move a proportion of snag stemwood to non-merch biomass
         #----------------------------------------------------------------------
-
         Transfer_SnagStemToNonMerch=meta['Param']['BEV']['Inter Pool Fluxes']['FractionSnagStemThatIsNonMerch']*Affected_SnagStem
         Affected_SnagStem=Affected_SnagStem-Transfer_SnagStemToNonMerch
         Affected_TotNonMerch=Affected_TotNonMerch+Transfer_SnagStemToNonMerch
@@ -1365,14 +1427,14 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
             vo['V_ToMillMerchLive'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+b['StemwoodMerchRemoved']*Affected_VolumeStemMerchLive
             vo['V_ToMillMerchDead'][iT,:]=vo['V_ToMillMerchDead'][iT,:]+b['SnagStemRemoved']*Affected_VolumeStemMerchDead
         else:
-            vo['V_ToMillMerchLive'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillMerch'][iT,:]
-            vo['V_ToMillMerchDead'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillSnagStem'][iT,:]
+            vo['V_ToMillMerchLive'][iT,:]=vi['lsat']['Biomass to Volume CF']*vo['C_ToMillMerch'][iT,:]
+            vo['V_ToMillMerchDead'][iT,:]=vi['lsat']['Biomass to Volume CF']*vo['C_ToMillSnagStem'][iT,:]
 
         # Total merch stemwood volume removed
         vo['V_ToMillMerchTotal'][iT,:]=vo['V_ToMillMerchLive'][iT,:]+vo['V_ToMillMerchDead'][iT,:]
 
         # Non-mech volume removed
-        vo['V_ToMillNonMerch'][iT,:]=vi['Inv']['Biomass to Volume CF']*vo['C_ToMillNonMerch'][iT,:]
+        vo['V_ToMillNonMerch'][iT,:]=vi['lsat']['Biomass to Volume CF']*vo['C_ToMillNonMerch'][iT,:]
 
         #----------------------------------------------------------------------
         # Carbon that is left dispersed on site (after felling or wind storms)
@@ -1511,20 +1573,15 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         vo['A'][iT,(MortalityFactor==1)]=0
 
         # Ensure planting resets to age 0
-        vo['A'][iT,(ID_Type==meta['LUT']['Event']['Planting']) | (ID_Type==meta['LUT']['Event']['Direct Seeding'])]=0
+        #vo['A'][iT,(ID_Type==meta['LUT']['Event']['Planting']) | (ID_Type==meta['LUT']['Event']['Direct Seeding'])]=0
+        if meta['LUT']['Event']['Planting'] in idx_Type.keys():
+            vo['A'][iT,idx_Type[meta['LUT']['Event']['Planting']]]=0
 
         #----------------------------------------------------------------------
         # Transition to new growth curve
         #----------------------------------------------------------------------
-
-        # Initialize a flag that indicates whether the growth curve changes
-        #flg_gc_change=0
-        #if vi['EH'][iS]['ID_GrowthCurveM'][indDist[iDist]]!=vi['ID_GCA'][iS]:
-        #    flg_gc_change=1
-
         # Only applies to BatchTIPSY
         if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
-
             for iGC in range(meta['Modules']['GYM']['N Growth Curves']):
 
                 # Don't alter growth curve for fertilization - index to non-fertilization events
@@ -1539,17 +1596,17 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
         #----------------------------------------------------------------------
         # Impose regen failure
         #----------------------------------------------------------------------
-
-        if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
-            
-            iFailure=np.where(ID_Type==meta['LUT']['Event']['Regen Failure'])[0]
-            if iFailure.size>0:
+        if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':            
+            #iFailure=np.where(ID_Type==meta['LUT']['Event']['Regen Failure'])[0]
+            if meta['LUT']['Event']['Regen Failure'] in idx_Type.keys():
+                iFailure=idx_Type[meta['LUT']['Event']['Regen Failure']]
                 vi['GC']['Active'][:,iFailure,:]=0
                 vi['GC'][1][:,iFailure,:]=0
             
             if meta[pNam]['Scenario'][iScn]['NOSE Status']=='On':
-                iPoorGrowth=np.where(ID_Type==meta['LUT']['Event']['Regen at 25% Growth'])[0]
-                if iPoorGrowth.size>0:
+                #iPoorGrowth=np.where(ID_Type==meta['LUT']['Event']['Regen at 25% Growth'])[0]
+                if meta['LUT']['Event']['Regen at 25% Growth'] in idx_Type.keys():
+                    iPoorGrowth=idx_Type[meta['LUT']['Event']['Regen at 25% Growth']]
                     vi['GC']['Active'][:,iPoorGrowth,:]=0.25*vi['GC']['Active'][:,iPoorGrowth,:]
                     vi['GC'][1][:,iPoorGrowth,:]=0.25*vi['GC'][1][:,iPoorGrowth,:]
 
@@ -1661,14 +1718,15 @@ def Events_FromTaz(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
     #--------------------------------------------------------------------------
 
     for k in meta['LUT']['Event'].keys():
-        vo['C_M_Pct_ByAgent'][k][iT,:]=vo['C_M_ByAgent'][k][iT,:]/C_Biomass_t0*100
+        id=meta['LUT']['Event'][k]
+        vo['C_M_Pct_ByAgent'][id][iT,:]=vo['C_M_ByAgent'][id][iT,:]/C_Biomass_t0*100
 
     #--------------------------------------------------------------------------
     # Aerial nutrient application events
     #--------------------------------------------------------------------------
 
     # Generate index to stands that were fertilized
-    meta['Modules']['Nutrient Management']['iApplication']=np.where(flag_nutrient_application==1)[0]
+    meta['Modules']['Nutrient Management']['iApplication']=np.where(flag_nutrient_app==1)[0]
 
     if meta['Modules']['Nutrient Management']['iApplication'].size>0:
 

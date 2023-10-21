@@ -10,6 +10,7 @@ import copy
 import gc as garc
 import time
 from shapely.geometry import Point
+import scipy.stats as stats
 from fcgadgets.macgyver import util_general as gu
 from fcgadgets.macgyver import util_gis as gis
 from fcgadgets.macgyver import util_inventory as invu
@@ -135,43 +136,43 @@ def BuildEventChronologyFromSpreadsheet(meta,pNam):
     # Import inventory to get BGC zone
     iScn=0
     iBat=0
-    inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+    lsat=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
-    # Simulate wildfires
-    if (meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On'):
-        asm.SimulateWildfireFromAAO(meta,inv)
+    # # Simulate wildfires
+    # if (meta[pNam]['Scenario'][iScn]['Wildfire Scn Pre-obs']!=-9999) | (meta[pNam]['Scenario'][iScn]['Wildfire Scn Obs Period']!=-9999) | (meta[pNam]['Scenario'][iScn]['Wildfire Scn Future']!=-9999):
+    #     asm.SimulateWildfireFromAAO(meta,lsat)
 
-    # Simulate MPB
-    if (meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On'):
-        asm.SimulateIBMFromAAO(meta,inv)
+    # # Simulate MPB
+    # if (meta[pNam]['Scenario'][iScn]['Beetle Scn Pre-obs']!=-9999) | (meta[pNam]['Scenario'][iScn]['Beetle Scn Obs Period']!=-9999) | (meta[pNam]['Scenario'][iScn]['Beetle Scn Future']!=-9999):
+    #     asm.SimulateIBMFromAAO(meta,lsat)
 
     for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         for iEns in range(meta[pNam]['Project']['N Ensemble']):
 
-            # Import wildfire simulations from Taz
-            if (meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On'):
+            # # Import wildfire simulations from Taz
+            # if (meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On'):
 
-                wf_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
-                if 'idx' in wf_sim:
-                    idx=wf_sim['idx']
-                    tmp=wf_sim.copy()
-                    for v in ['Occurrence','Mortality']:
-                        wf_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
-                        wf_sim[v][idx[0],idx[1]]=tmp[v]
-                    del tmp
+            #     wf_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+            #     if 'idx' in wf_sim:
+            #         idx=wf_sim['idx']
+            #         tmp=wf_sim.copy()
+            #         for v in ['Occurrence','Mortality']:
+            #             wf_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
+            #             wf_sim[v][idx[0],idx[1]]=tmp[v]
+            #         del tmp
 
-            # Import IBM
-            if (meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On'):
+            # # Import IBM
+            # if (meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On'):
 
-                ibm_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
-                if 'idx' in ibm_sim:
-                    idx=ibm_sim['idx']
-                    tmp=ibm_sim.copy()
-                    for v in ['Occurrence','Mortality']:
-                        ibm_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
-                        ibm_sim[v][idx[0],idx[1]]=tmp[v]
-                    del tmp
+            #     ibm_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+            #     if 'idx' in ibm_sim:
+            #         idx=ibm_sim['idx']
+            #         tmp=ibm_sim.copy()
+            #         for v in ['Occurrence','Mortality']:
+            #             ibm_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
+            #             ibm_sim[v][idx[0],idx[1]]=tmp[v]
+            #         del tmp
 
             for iBat in range(meta[pNam]['Project']['N Batch']):
 
@@ -270,65 +271,65 @@ def BuildEventChronologyFromSpreadsheet(meta,pNam):
                     ec['Growth Factor'][iT,:,iE[0]]=GF
                     ec['ID Growth Curve'][iT,:,iE[0]]=meta[pNam]['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
 
-                #----------------------------------------------------------
-                # Add simulated wildfire from Taz
-                #----------------------------------------------------------
+                # #----------------------------------------------------------
+                # # Add simulated wildfire from Taz
+                # #----------------------------------------------------------
 
-                ind=np.array([],dtype=int)
-                if meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':
-                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
-                    ind=np.append(ind,ind0)
-                if meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On':
-                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
-                    ind=np.append(ind,ind0)
-                if meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On':
-                    ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
-                    ind=np.append(ind,ind0)
+                # ind=np.array([],dtype=int)
+                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':
+                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
+                #     ind=np.append(ind,ind0)
+                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On':
+                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
+                #     ind=np.append(ind,ind0)
+                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On':
+                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
+                #     ind=np.append(ind,ind0)
 
-                if ind.size>0:
+                # if ind.size>0:
 
-                    ID_Type=meta['LUT']['Event']['Wildfire']*np.ones(ind.size)
-                    Year=tv[ind]
-                    MortF=wf_sim['Mortality'][ind,iS]
-                    GrowthF=9999*np.ones(ind.size)
-                    ID_GrowthCurve=1*np.ones(ind.size)
+                #     ID_Type=meta['LUT']['Event']['Wildfire']*np.ones(ind.size)
+                #     Year=tv[ind]
+                #     MortF=wf_sim['Mortality'][ind,iS]
+                #     GrowthF=9999*np.ones(ind.size)
+                #     ID_GrowthCurve=1*np.ones(ind.size)
 
-                    for iYr in range(Year.size):
-                        iT=np.where(tv==Year[iYr])[0]
-                        ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
-                        ec['Mortality Factor'][iT,:,0]=MortF[iYr]
-                        ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
-                        ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
+                #     for iYr in range(Year.size):
+                #         iT=np.where(tv==Year[iYr])[0]
+                #         ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
+                #         ec['Mortality Factor'][iT,:,0]=MortF[iYr]
+                #         ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
+                #         ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
 
-                    #----------------------------------------------------------
-                    # Add simulated MPB from Taz
-                    #----------------------------------------------------------
+                #     #----------------------------------------------------------
+                #     # Add simulated MPB from Taz
+                #     #----------------------------------------------------------
 
-                    ind=np.array([],dtype=int)
-                    if meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On':
-                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
-                        ind=np.append(ind,ind0)
-                    if meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On':
-                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
-                        ind=np.append(ind,ind0)
-                    if meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On':
-                        ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
-                        ind=np.append(ind,ind0)
+                #     ind=np.array([],dtype=int)
+                #     if meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On':
+                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
+                #         ind=np.append(ind,ind0)
+                #     if meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On':
+                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
+                #         ind=np.append(ind,ind0)
+                #     if meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On':
+                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
+                #         ind=np.append(ind,ind0)
 
-                    if ind.size>0:
+                #     if ind.size>0:
 
-                        ID_Type=meta['LUT']['Event']['IBM']*np.ones(ind.size)
-                        Year=tv[ind]
-                        MortF=ibm_sim['Mortality'][ind,iS]
-                        GrowthF=9999*np.ones(ind.size)
-                        ID_GrowthCurve=1*np.ones(ind.size)
+                #         ID_Type=meta['LUT']['Event']['Mountain Pine Beetle']*np.ones(ind.size)
+                #         Year=tv[ind]
+                #         MortF=ibm_sim['Mortality'][ind,iS]
+                #         GrowthF=9999*np.ones(ind.size)
+                #         ID_GrowthCurve=1*np.ones(ind.size)
 
-                        for iYr in range(Year.size):
-                            iT=np.where(tv==Year[iYr])[0]
-                            ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
-                            ec['Mortality Factor'][iT,:,0]=MortF[iYr]
-                            ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
-                            ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
+                #         for iYr in range(Year.size):
+                #             iT=np.where(tv==Year[iYr])[0]
+                #             ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
+                #             ec['Mortality Factor'][iT,:,0]=MortF[iYr]
+                #             ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
+                #             ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
 
                 #--------------------------------------------------------------
                 # Save to file
@@ -435,7 +436,10 @@ def ImportProjectConfig(meta,pNam,**kwargs):
 
     # List of output variables
     meta['Core']['Output Variable List']=[
+        'LandCover',
+        'LandUse',
         'A',
+        'A_Harvest',
         'V_MerchLive',
         'V_MerchDead',
         'V_MerchTotal',
@@ -659,18 +663,21 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
 
     if meta[pNam]['Project']['Scenario Source']=='Script':
+        
         # Import land cover class
-        zLCC1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1_Current.tif')
+        zLCC1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCover_Comp1_2019.tif')
 
         #gdf_tsa=gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\LandUse\\tsa.geojson')
         gdf_bcb=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='NRC_POLITICAL_BOUNDARIES_1M_SP')
 
         # Import mask (0=excluded, 1=included)
         if meta[pNam]['Project']['ROI Source']=='Province':
+            
             # Land mask for BC
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
         elif meta[pNam]['Project']['ROI Source']=='Regional District':
+            
             # Mask from regional district
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\TA_REGIONAL_DISTRICTS_SVW\\REGIONAL_DISTRICT_NAME.tif')
             ind=np.where( (zMask['Data']!=meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta[pNam]['Project']['ROI Elements']]) )
@@ -678,15 +685,28 @@ def ImportProjectConfig(meta,pNam,**kwargs):
             ind=np.where( (zMask['Data']==meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'][meta[pNam]['Project']['ROI Elements']]) )
             zMask['Data'][ind]=1
 
+        elif meta[pNam]['Project']['ROI Source']=='BCFCS_LUC':
+            
+            # Land use change
+            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\LandCover_Comp1_DeforestationMaskAll.tif')
+        
         elif meta[pNam]['Project']['ROI Source']=='BCFCS_NMC':
+            
             # Nutrient management
-            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_MaskAll.tif')
+            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FE-CA_MaskAll.tif')
 
         elif meta[pNam]['Project']['ROI Source']=='BCFCS_NOSEC':
+            
             # Non-obligation stand establishment
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Management\\PL_NonOb_MaskAll.tif')
+        
+        elif meta[pNam]['Project']['ROI Source']=='BCFCS_NMC':
+            
+            # Nutrient management
+            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FE-CA_MaskAll.tif')
 
         elif meta[pNam]['Project']['ROI Source']=='EvalAtPlots':
+            
             gplts=gu.ipickle(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2\Processed\L2\L2_BC.pkl')
             soils=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
             x=np.append(gplts['sobs']['X'],soils['x'])
@@ -696,6 +716,70 @@ def ImportProjectConfig(meta,pNam,**kwargs):
             zMask['Data']=np.zeros(zLCC1['Data'].shape,dtype='int16')
             ind=gis.GetGridIndexToPoints(zLCC1,xy[:,0],xy[:,1])
             zMask['Data'][ind]=1
+        
+        elif meta[pNam]['Project']['ROI Source']=='EvalAtCN':
+            
+            gplts=gu.ipickle(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2\Processed\L2\L2_BC.pkl')
+            ind=np.where(gplts['sobs']['PTF CN']==1)[0]
+            x=gplts['sobs']['X'][ind]
+            y=gplts['sobs']['Y'][ind]
+            xy=np.unique(np.column_stack((x,y)),axis=0)
+            zMask=zLCC1.copy()
+            zMask['Data']=np.zeros(zLCC1['Data'].shape,dtype='int16')
+            ind=gis.GetGridIndexToPoints(zLCC1,xy[:,0],xy[:,1])
+            zMask['Data'][ind]=1
+        
+        elif meta[pNam]['Project']['ROI Source']=='EvalCoast':
+            
+            gplts=gu.ipickle(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2\Processed\L2\L2_BC.pkl')
+            ind=np.where( (gplts['sobs']['PTF CN']==1) & (gplts['sobs']['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1']['CWH']) | \
+                         (gplts['sobs']['PTF CN']==1) & (gplts['sobs']['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1']['MH']) )[0]
+            x=gplts['sobs']['X'][ind]
+            y=gplts['sobs']['Y'][ind]
+            xy=np.unique(np.column_stack((x,y)),axis=0)
+            zMask=zLCC1.copy()
+            zMask['Data']=np.zeros(zLCC1['Data'].shape,dtype='int16')
+            ind=gis.GetGridIndexToPoints(zLCC1,xy[:,0],xy[:,1])
+            zMask['Data'][ind]=1
+        
+        elif meta[pNam]['Project']['ROI Source']=='EvalInterior':
+            
+            gplts=gu.ipickle(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2\Processed\L2\L2_BC.pkl')
+            ind=np.where( (gplts['sobs']['PTF CN']==1) & (gplts['sobs']['Ecozone BC L1']!=meta['LUT']['GP']['Ecozone BC L1']['CWH']) & (gplts['sobs']['Ecozone BC L1']!=meta['LUT']['GP']['Ecozone BC L1']['MH']) )[0]
+            x=gplts['sobs']['X'][ind]
+            y=gplts['sobs']['Y'][ind]
+            xy=np.unique(np.column_stack((x,y)),axis=0)
+            zMask=zLCC1.copy()
+            zMask['Data']=np.zeros(zLCC1['Data'].shape,dtype='int16')
+            ind=gis.GetGridIndexToPoints(zLCC1,xy[:,0],xy[:,1])
+            zMask['Data'][ind]=1
+        
+        elif meta[pNam]['Project']['ROI Source']=='BCFCS_Eval':
+            
+            # Add grid
+            zMask0=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])            
+            zMask0['Data'][0::200,0::200]=zMask0['Data'][0::200,0::200]+1                        
+            zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+            zMask['Data']=0*zMask['Data']
+            ind=np.where(zMask0['Data']==2)
+            zMask['Data'][ind]=1
+            
+            # Add plots
+            gpt=gu.ipickle(r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2\Processed\L2\L2_BC.pkl')['sobs']
+            ikp=np.where(gpt['PTF CN']==1)[0]
+            x=gpt['X'][ikp]
+            y=gpt['Y'][ikp]
+            #soc=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
+            #x=np.append(gpt['X'],soc['x'])
+            #y=np.append(gpt['Y'],soc['y'])
+            xy=np.unique(np.column_stack((x,y)),axis=0)            
+            ind=gis.GetGridIndexToPoints(zMask,xy[:,0],xy[:,1])
+            zMask['Data'][ind]=1
+            MaskGP=np.zeros(zMask['Data'].shape,dtype='int8')
+            MaskGP[ind]=1
+            
+            zLCC1['Data'][ind]=meta['LUT']['Derived']['lc_comp1']['Forest']
+            
         else:
             print('ROI Source not recognized.')
             pass
@@ -718,13 +802,13 @@ def ImportProjectConfig(meta,pNam,**kwargs):
         # Define additional sampling criteria
         if meta[pNam]['Project']['Land Cover Scope']=='Forest':
 
-            iMask_Full=np.where( (zMask['Data']==1) & (zLCC1['Data']==meta['LUT']['Derived']['lcc1']['Forest']) )
-            meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLCC1_r['Data']==meta['LUT']['Derived']['lcc1']['Forest']) )
+            iMask_Full=np.where( (zMask['Data']==1) & (zLCC1['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) )
+            meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLCC1_r['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) )
 
         elif meta[pNam]['Project']['Land Cover Scope']=='All Land':
 
-            iMask_Full=np.where( (zMask['Data']==1) & (zLCC1['Data']>0) & (zLCC1['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
-            meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLCC1_r['Data']>0) & (zLCC1_r['Data']!=meta['LUT']['Derived']['lcc1']['Water']) )
+            iMask_Full=np.where( (zMask['Data']==1) & (zLCC1['Data']>0) & (zLCC1['Data']!=meta['LUT']['Derived']['lc_comp1']['Water']) )
+            meta['Geos']['iMask']=np.where( (zMask_r['Data']==1) & (zLCC1_r['Data']>0) & (zLCC1_r['Data']!=meta['LUT']['Derived']['lc_comp1']['Water']) )
 
         else:
             print('Land Cover Scope not recognized.')
@@ -742,6 +826,8 @@ def ImportProjectConfig(meta,pNam,**kwargs):
         meta['Geos']['Sparse']['X']=meta['Geos']['Grid']['X'][meta['Geos']['iMask']]
         meta['Geos']['Sparse']['Y']=meta['Geos']['Grid']['Y'][meta['Geos']['iMask']]
         meta['Geos']['Sparse']['ID_Admin']=zMask_r['Data'][meta['Geos']['iMask']]
+        if meta[pNam]['Project']['ROI Source']=='BCFCS_Eval':
+            meta['Geos']['Sparse']['GP']=MaskGP[meta['Geos']['iMask']]
 
         # Save to pickle file
         # Flatten coordinate matrices first to save space
@@ -766,7 +852,7 @@ def ImportProjectConfig(meta,pNam,**kwargs):
             gdf_sxy.to_file(meta['Paths'][pNam]['Data'] + '\\geos.geojson',driver='GeoJSON')
 
         # Plot map
-        if meta['Geos']['Sparse']['X'].size<25000:
+        if meta['Geos']['Sparse']['X'].size<50000:
             plt.close('all')
             fig,ax=plt.subplots(figsize=gu.cm2inch(14,14)); ms=2
             #mngr=plt.get_current_fig_manager()
@@ -820,13 +906,11 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
     # Import model parameters
     #--------------------------------------------------------------------------
-
     meta=ImportParameters(meta)
 
     #--------------------------------------------------------------------------
     # Define scenario parameters
     #--------------------------------------------------------------------------
-
     if meta[pNam]['Project']['Scenario Source']!='Portfolio':
 
         df=pd.read_excel(meta['Paths'][pNam]['Data'] + '\\Inputs\\ProjectConfig.xlsx',sheet_name='Scenarios') # ,usecols='A:OM'
@@ -846,17 +930,16 @@ def ImportProjectConfig(meta,pNam,**kwargs):
         # Number of scenarios
         meta[pNam]['Project']['N Scenario']=np.sum([i['Scenario Status']=='On' for i in meta[pNam]['Scenario']])
 
-    #--------------------------------------------------------------------------
-    # Number of Land Surface Scenarios
-    #--------------------------------------------------------------------------
-
-    meta[pNam]['Project']['LSC']={}
-    if meta[pNam]['Project']['Scenario Source']=='Script':
-        meta[pNam]['Project']['LSC']['Scenario Names Unique']=np.unique(np.array([meta[pNam]['Scenario'][i]['Land Surface Scenario'] for i in range(len(meta[pNam]['Scenario']))],dtype=object))
-        meta[pNam]['Project']['LSC']['N Scenario']=meta[pNam]['Project']['LSC']['Scenario Names Unique'].size
-    else:
-        meta[pNam]['Project']['LSC']['Scenario Names Unique']=0
-        meta[pNam]['Project']['LSC']['N Scenario']=0
+    # #--------------------------------------------------------------------------
+    # # Number of Land Surface Scenarios
+    # #--------------------------------------------------------------------------
+    # meta[pNam]['Project']['LSC']={}
+    # if meta[pNam]['Project']['Scenario Source']=='Script':
+    #     meta[pNam]['Project']['LSC']['Scenario Names Unique']=np.unique(np.array([meta[pNam]['Scenario'][i]['Land Surface Scenario'] for i in range(len(meta[pNam]['Scenario']))],dtype=object))
+    #     meta[pNam]['Project']['LSC']['N Scenario']=meta[pNam]['Project']['LSC']['Scenario Names Unique'].size
+    # else:
+    #     meta[pNam]['Project']['LSC']['Scenario Names Unique']=0
+    #     meta[pNam]['Project']['LSC']['N Scenario']=0
 
     #--------------------------------------------------------------------------
     # Define strata for analyzing results (optional)
@@ -878,7 +961,6 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
     # Initialize project folders if they do not exist
     #--------------------------------------------------------------------------
-
     meta['Paths'][pNam]['Input Scenario']=[]
     meta['Paths'][pNam]['Output Scenario']=[]
     for iScn in range(0,meta[pNam]['Project']['N Scenario']):
@@ -892,7 +974,6 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
     # Scale factors
     #--------------------------------------------------------------------------
-
     # *** Scale factor for saving results (this needs to be 100, 10 does not
     # capture carbon fluxes and it will affect GHG benefit estimates) ***
     # One variable ('CO2e_E_Products') requires the big one
@@ -903,7 +984,6 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
     # Define strings that frequently need to be populated with zeros
     #--------------------------------------------------------------------------
-
     meta['Core']['StringsToFill']=['Month','Day','SILV_FUND_SOURCE_CODE','FIA_PROJECT_ID','OPENING_ID','ACTUAL_TREATMENT_AREA','ACTUAL_PLANTED_NUMBER', \
                'PL_SPECIES_CD1','PL_SPECIES_PCT1','PL_SPECIES_GW1','PL_SPECIES_CD2','PL_SPECIES_PCT2','PL_SPECIES_GW2', \
                'PL_SPECIES_CD3','PL_SPECIES_PCT3','PL_SPECIES_GW3','PL_SPECIES_CD4','PL_SPECIES_PCT4','PL_SPECIES_GW4', \
@@ -912,7 +992,6 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
     # Growth curve information
     #--------------------------------------------------------------------------
-
     meta['Modules']['GYM']={}
     meta['Modules']['GYM']['N Growth Curves']=5
     meta['Modules']['GYM']['ID GC Unique']=np.array([1,2,3,4,5])
@@ -937,6 +1016,36 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     # Operational adjustment factors (see TIPSY documentation)
     meta['Modules']['GYM']['OAF1 Default']=0.85
     meta['Modules']['GYM']['OAF2 Default']=0.95
+
+    #--------------------------------------------------------------------------
+    # Taz
+    #--------------------------------------------------------------------------
+    meta['Modules']['Taz']={}
+    
+    # Wildfire from Pareto distribution
+    meta['Modules']['Taz']['wfss']={}
+    meta['Modules']['Taz']['wfss']['By BGC Zone']=gu.ipickle(meta['Paths']['Model']['Taz Datasets'] + '\\Wildfire Stats and Scenarios\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
+    meta['Modules']['Taz']['wfss']['tv']=np.arange(-2000,2201,1)
+
+    # Mountain pine beetle from Pareto distribution
+    meta['Modules']['Taz']['IBM Pareto']={}
+    beta=np.array([meta['Param']['BE']['On The Fly']['IBM Pareto Shape'],
+                   meta['Param']['BE']['On The Fly']['IBM Pareto Loc'],
+                   meta['Param']['BE']['On The Fly']['IBM Pareto Scale']])
+    meta['Modules']['Taz']['IBM Pareto']['Mortality Fraction']=meta['Param']['BE']['On The Fly']['IBM Pareto Mort']
+    meta['Modules']['Taz']['IBM Pareto']['Po']=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Ensemble']))
+    for i in range(meta[pNam]['Project']['N Ensemble']):
+        meta['Modules']['Taz']['IBM Pareto']['Po'][:,i]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=meta[pNam]['Project']['N Time'])
+        
+    # Frost from Pareto distribution
+    meta['Modules']['Taz']['Frost Pareto']={}
+    beta=np.array([meta['Param']['BE']['On The Fly']['Frost Pareto Shape'],
+                   meta['Param']['BE']['On The Fly']['Frost Pareto Loc'],
+                   meta['Param']['BE']['On The Fly']['Frost Pareto Scale']])
+    meta['Modules']['Taz']['Frost Pareto']['Mortality Fraction']=meta['Param']['BE']['On The Fly']['Frost Pareto Mort']
+    meta['Modules']['Taz']['Frost Pareto']['Po']=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Ensemble']))
+    for i in range(meta[pNam]['Project']['N Ensemble']):
+        meta['Modules']['Taz']['Frost Pareto']['Po'][:,i]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=meta[pNam]['Project']['N Time'])
 
     #--------------------------------------------------------------------------
     # Growth factor information
@@ -988,48 +1097,48 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     # The annual numbers will be the same among scenarios, but vary by ensemble
     #--------------------------------------------------------------------------
 
-    # *** If you assign completely random numbers, random variation will occur among
-    # scenarios, which can add considerable noise and demands many ensembles.
-    # Conversely if you assign these pre-set sequeences, the random component will
-    # vary among ensembles, but not among scenarios.
-    meta[pNam]['Project']['On the Fly']={}
-    meta[pNam]['Project']['On the Fly']['Random Numbers']={}
-    meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']=0.0001
+    # # *** If you assign completely random numbers, random variation will occur among
+    # # scenarios, which can add considerable noise and demands many ensembles.
+    # # Conversely if you assign these pre-set sequeences, the random component will
+    # # vary among ensembles, but not among scenarios.
+    # meta[pNam]['Project']['On the Fly']={}
+    # meta[pNam]['Project']['On the Fly']['Random Numbers']={}
+    # meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']=0.0001
 
     # Only create these files if they will be used
 
     # Not needed for portfolio projects
 
-    if meta[pNam]['Project']['Scenario Source']!='Portfolio':
+    # if meta[pNam]['Project']['Scenario Source']!='Portfolio':
 
-        flg_h=0
-        for iScn in range(meta[pNam]['Project']['N Scenario']):
-            if (meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On'):
-                flg_h=1
-                break
+    #     flg_h=0
+    #     for iScn in range(meta[pNam]['Project']['N Scenario']):
+    #         if (meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On'):
+    #             flg_h=1
+    #             break
 
-        flg_b=0
-        for iScn in range(meta[pNam]['Project']['N Scenario']):
-            if (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
-                flg_b=1
-                break
+    #     flg_b=0
+    #     for iScn in range(meta[pNam]['Project']['N Scenario']):
+    #         if (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
+    #             flg_b=1
+    #             break
 
-        # Create random numbers and save them
-        if meta[pNam]['Project']['Frozen Ensembles Status']=='Off':
-            for iEns in range(meta[pNam]['Project']['N Ensemble']):
-                for iBat in range(meta[pNam]['Project']['N Batch']):
+        # # Create random numbers and save them
+        # if meta[pNam]['Project']['Frozen Ensembles Status']=='Off':
+        #     for iEns in range(meta[pNam]['Project']['N Ensemble']):
+        #         for iBat in range(meta[pNam]['Project']['N Batch']):
 
-                    if flg_h==1:
-                        rn=np.random.random( (meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat]) )
-                        rn=rn/meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
-                        rn=rn.astype('int16')
-                        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+        #             if flg_h==1:
+        #                 rn=np.random.random( (meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat]) )
+        #                 rn=rn/meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
+        #                 rn=rn.astype('int16')
+        #                 gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
 
-                    if flg_b==1:
-                        rn=np.random.random( (meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat]) )
-                        rn=rn/meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
-                        rn=rn.astype('int16')
-                        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
+        #             if flg_b==1:
+        #                 rn=np.random.random( (meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat]) )
+        #                 rn=rn/meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
+        #                 rn=rn.astype('int16')
+        #                 gu.opickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',rn)
 
     #--------------------------------------------------------------------------
     # Parameter uncertainty by ensemble
@@ -1119,13 +1228,13 @@ def ImportProjectConfig(meta,pNam,**kwargs):
                 #--------------------------------------------------------------
 
                 # Removed fraction
-                mu=meta['Param']['BE']['Event'][ID_Type]['BiomassMerch_Removed']
+                mu=meta['Param']['BE']['Event'][ID_Type]['StemwoodMerch_Removed']
                 sig=np.array([0.1])
                 bl=np.array([0.0])
                 bu=np.array([1.0])
                 r_Removed=np.random.normal(loc=mu,scale=mu*sig)
                 r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Removed']=r_Removed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['StemwoodMerch_Removed']=r_Removed
 
                 # Total fraction that is piled and dispersed
                 r_PiledAndDispersed=1.0-r_Removed
@@ -1139,13 +1248,13 @@ def ImportProjectConfig(meta,pNam,**kwargs):
                 rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
 
                 # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['StemwoodMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
 
                 # Specific dispersed fraction
                 rSpecific_Dispersed=1.0-rSpecific_Piled
 
                 # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['StemwoodMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
 
                 #print(meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassMerch_LeftOnSite'])
 
@@ -1154,13 +1263,13 @@ def ImportProjectConfig(meta,pNam,**kwargs):
                 #--------------------------------------------------------------
 
                 # Removed fraction
-                mu=meta['Param']['BE']['Event'][ID_Type]['BiomassNonMerch_Removed']
+                mu=meta['Param']['BE']['Event'][ID_Type]['StemwoodNonMerch_Removed']
                 sig=np.array([0.1])
                 bl=np.array([0.0])
                 bu=np.array([1.0])
                 r_Removed=np.random.normal(loc=mu,scale=mu*sig)
                 r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Removed']=r_Removed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['StemwoodNonMerch_Removed']=r_Removed
 
                 # Total fraction that is piled and dispersed
                 r_PiledAndDispersed=1.0-r_Removed
@@ -1174,13 +1283,13 @@ def ImportProjectConfig(meta,pNam,**kwargs):
                 rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
 
                 # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['StemwoodNonMerch_Piled']=r_PiledAndDispersed*rSpecific_Piled
 
                 # Specific dispersed fraction
                 rSpecific_Dispersed=1.0-rSpecific_Piled
 
                 # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['StemwoodNonMerch_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
 
                 #print(meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Removed']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_Piled']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['BiomassNonMerch_LeftOnSite'])
 
@@ -1189,13 +1298,13 @@ def ImportProjectConfig(meta,pNam,**kwargs):
                 #--------------------------------------------------------------
 
                 # Removed fraction
-                mu=meta['Param']['BE']['Event'][ID_Type]['Snags_Removed']
+                mu=meta['Param']['BE']['Event'][ID_Type]['SnagStemRemoved']
                 sig=np.array([0.1])
                 bl=np.array([0.0])
                 bu=np.array([1.0])
                 r_Removed=np.random.normal(loc=mu,scale=mu*sig)
                 r_Removed=gu.Clamp(r_Removed,bl,bu)
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Removed']=r_Removed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['SnagStemRemoved']=r_Removed
 
                 # Total fraction that is piled and dispersed
                 r_PiledAndDispersed=1.0-r_Removed
@@ -1209,13 +1318,13 @@ def ImportProjectConfig(meta,pNam,**kwargs):
                 rSpecific_Piled=gu.Clamp(rSpecific_Piled,bl,bu)
 
                 # Piled fraction
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Piled']=r_PiledAndDispersed*rSpecific_Piled
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['SnagStemPiled']=r_PiledAndDispersed*rSpecific_Piled
 
                 # Specific dispersed fraction
                 rSpecific_Dispersed=1.0-rSpecific_Piled
 
                 # Dispersed fraction
-                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_LeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
+                meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['SnagStemLeftOnSite']=r_PiledAndDispersed*rSpecific_Dispersed
 
                 #print(meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Removed']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_Piled']+meta['Param']['By Ensemble'][iEns]['Event'][ID_Type]['Snags_LeftOnSite'])
 
@@ -1437,6 +1546,9 @@ def ImportProjectConfig(meta,pNam,**kwargs):
     #--------------------------------------------------------------------------
 
     meta[pNam]['Project']['Run Time Summary']={}
+    vL=['Stand initialization','Set location-specific parameters','Running biomass dynamics from sawtooth','Biomass from GY model','DOM','Events','HWP','Full annual loop','Run geological','Export results to file','Collect garbage']
+    for v in vL:
+        meta[pNam]['Project']['Run Time Summary'][v]=0.0
 
     return meta
 
@@ -1449,7 +1561,7 @@ def Load_LUTs_Modelling(meta):
         meta['LUT']={}
 
     # Import distubance type
-    p=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\' + 'Parameters_Disturbances.xlsx')
+    p=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\' + 'Parameters_Events.xlsx')
     meta['LUT']['Event']={}
     for i in range(p['Name'].size):
         meta['LUT']['Event'][p['Name'][i]]=p['ID'][i]
@@ -1487,16 +1599,16 @@ def Load_LUTs_Modelling(meta):
     meta['LUT']['TIPSY']['FIZ']={'C':np.array(1,dtype=int),'I':np.array(2,dtype=int)}
     meta['LUT']['TIPSY']['regeneration_method']={'C':np.array(1,dtype=int),'N':np.array(2,dtype=int),'P':np.array(3,dtype=int)}
 
-    # Land surface classification
-    meta['LUT']['LSC']={}
-    meta['LUT']['LSC']['Cover']={}
-    data=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_LSC_Cover.xlsx')
-    for i in range(data['ID'].size):
-        meta['LUT']['LSC']['Cover'][data['Name'][i]]=data['ID'][i]
-    meta['LUT']['LSC']['Use']={}
-    data=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_LSC_Use.xlsx')
-    for i in range(data['ID'].size):
-        meta['LUT']['LSC']['Use'][data['Name'][i]]=data['ID'][i]
+    # # Land surface classification
+    # meta['LUT']['LSC']={}
+    # meta['LUT']['LSC']['Cover']={}
+    # data=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_LSC_Cover.xlsx')
+    # for i in range(data['ID'].size):
+    #     meta['LUT']['LSC']['Cover'][data['Name'][i]]=data['ID'][i]
+    # meta['LUT']['LSC']['Use']={}
+    # data=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_LSC_Use.xlsx')
+    # for i in range(data['ID'].size):
+    #     meta['LUT']['LSC']['Use'][data['Name'][i]]=data['ID'][i]
 
     # Species (for Sawtooth)
     #meta['LUT']['SRS']={}
@@ -1526,6 +1638,10 @@ def LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat):
 
         # Skip mortality summary by agent
         if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
+            continue
+
+        # Skip integers (e.g. land cover)
+        if v0[k].dtype=='int8':
             continue
 
         v0[k]=v0[k].astype(float)
@@ -1762,11 +1878,11 @@ def LoadScenarioResults(meta):
                 # Uncompress event chronology if it has been compressed
                 ec=EventChronologyDecompress(meta,ec,iScn,iEns,iBat)
 
-                # Inventory
+                # Land surface attribues
                 inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
                 # Cashflow
-                econ=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,inv,ec,data_batch)
+                econ=econo.CalculateNetRevenue(meta,iScn,iEns,iBat,lsat,ec,data_batch)
 
                 data_batch.update(econ)
 
@@ -1912,13 +2028,21 @@ def Calc_MOS_FromPoints_GHG(meta,pNam,**kwargs):
                 Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size,uYS_size) ,dtype='float64')
                 Data1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size,uYS_size) ,dtype='float64')
 
-        # Initialize age class distribution data
+        # Age class distribution data
         acd={}
         acd['bwT']=10
         acd['binT']=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End'],acd['bwT'])
         acd['bwA']=5
         acd['binA']=np.arange(0,400,acd['bwA'])
         acd['Data']=np.zeros( (acd['binT'].size,acd['binA'].size,uPS_size,uSS_size,uYS_size) )
+
+        # Land cover / land use
+        lc1={}
+        for k in meta['LUT']['Derived']['lc_comp1'].keys():
+            lc1[k]=np.zeros(tv_saving.size,dtype='float64')        
+        lu1={}
+        for k in meta['LUT']['Derived']['lu_comp1'].keys():
+            lu1[k]=np.zeros(tv_saving.size,dtype='float64')        
 
         # Loop through ensembles
         for iEns in range(meta[pNam]['Project']['N Ensemble']):
@@ -1946,11 +2070,37 @@ def Calc_MOS_FromPoints_GHG(meta,pNam,**kwargs):
 
                 d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
+                # Populate GHGs
                 for k in v2include:
                     if (d1[k].ndim>2):
                         # Skip C pools with more than 2 dims
                         continue
                     Data0[k][:,indBat[iKeepStands]]=d1[k][:,iKeepStands].copy()
+
+                # Populate land cover / land use area
+                if iEns==0:
+                    for k in meta['LUT']['Derived']['lc_comp1'].keys():                    
+                        ind=np.where(d1['LandCover']==meta['LUT']['Derived']['lc_comp1'][k])
+                        a=np.zeros(d1['LandCover'].shape,dtype='int16')
+                        tv0=np.tile(tv_saving,(a.shape[1],1)).T                        
+                        a[ind]=tv0[ind]
+                        idx=gu.IndicesFromUniqueArrayValues(a.flatten())
+                        for yr in idx:
+                            if yr==0:
+                                continue
+                            iT=np.where(tv_saving==yr)[0]
+                            lc1[k][iT]=lc1[k][iT]+idx[yr].size
+                    for k in meta['LUT']['Derived']['lu_comp1'].keys():                    
+                        ind=np.where(d1['LandUse']==meta['LUT']['Derived']['lu_comp1'][k])
+                        a=np.zeros(d1['LandUse'].shape)
+                        tv0=np.tile(tv_saving,(a.shape[1],1)).T
+                        a[ind]=tv0[ind]
+                        idx=gu.IndicesFromUniqueArrayValues(a.flatten())
+                        for yr in idx:
+                            if yr==0:
+                                continue
+                            iT=np.where(tv_saving==yr)[0]
+                            lu1[k][iT]=lu1[k][iT]+idx[yr].size
 
                 # Populate age class distribution
                 for iT_acd in range(acd['binT'].size):
@@ -1998,7 +2148,12 @@ def Calc_MOS_FromPoints_GHG(meta,pNam,**kwargs):
                             continue
 
                         for k in v2include:
-                            Data1['Mean'][k][:,iEns,iPS,iSS,iYS]=np.mean(Data0[k][:,ind1],axis=1)
+                            if k=='A_Harvest':
+                                ind=np.where(Data0[k]<=0)
+                                Data0[k][ind]=np.nan
+                                Data1['Mean'][k][:,iEns,iPS,iSS,iYS]=np.nanmean(Data0[k][:,ind1],axis=1)
+                            else:
+                                Data1['Mean'][k][:,iEns,iPS,iSS,iYS]=np.mean(Data0[k][:,ind1],axis=1)
                             Data1['Sum'][k][:,iEns,iPS,iSS,iYS]=np.sum(Data0[k][:,ind1],axis=1)
 
                         # Add ensemble to age class distribution
@@ -2006,9 +2161,13 @@ def Calc_MOS_FromPoints_GHG(meta,pNam,**kwargs):
                             for iA_acd in range(acd['binA'].size):
                                 ind_acd=np.where( np.abs(Age0[iT_acd,ind1]-acd['binA'][iA_acd])<=acd['bwA']/2 )[0]
                                 acd['Data'][iT_acd,iA_acd,iPS,iSS]=acd['Data'][iT_acd,iA_acd,iPS,iSS,iYS]+ind_acd.size
-
+            
         # Save GHGs
         gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl',Data1)
+        
+        # Save land cover / land use areas (only for first ensembe because no stochasticity represented and not accommodating query functionality)
+        lclu={'LC':lc1,'LU':lu1}
+        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_LandCoverAndUse_Scn' + str(iScn+1) + '.pkl',lclu)
 
         # Save age class distribution
         acd['Data']=acd['Data']/meta[pNam]['Project']['N Ensemble']
@@ -2093,24 +2252,24 @@ def Calc_MOS_FromPoints_Econ(meta,pNam,**kwargs):
 
                     d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 
-                    if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
+                    try:
                         ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
-                    else:
+                    except:
                         ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
 
                     # Uncompress event chronology if it has been compressed
                     ec=EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat)
 
-                    # Inventory
-                    inv=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+                    # Land surface attributes
+                    lsat=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
 
                     # Cashflow
-                    econ1=econo.CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,d1)
+                    econ1=econo.CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,lsat,ec,d1)
 
                     for k in v2include:
                         Data0[k][:,indBat[iKeepStands]]=econ1[k][:,iKeepStands].copy()
 
-                del econ1,inv,ec
+                del econ1,lsat,ec
                 #garc.collect()
 
                 # Summarize by project type, region, and time
@@ -2220,7 +2379,7 @@ def Calc_MOS_FromPoints_Area(meta,pNam,**kwargs):
                 indBat=IndexToBatch(meta[pNam],iBat)
 
                 # Import event chronology
-                if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
+                if (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Wind Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Wind Status Future']=='On'):
                     ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
                 else:
                     ec=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
@@ -2630,16 +2789,17 @@ def Import_MOS_ByScnAndStrata_GHGEcon_FromPoints(meta,pNam):
             if oper=='Mean':
                 d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_MortbyAgent_Scn' + str(iScn+1) + '.pkl')
                 for k in d[oper].keys():
-                    Data[iScn][oper]['C_M_' + k]={}
-                    Data[iScn][oper]['C_M_' + k]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble SD']=np.std(d[oper][k],axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
-                    Data[iScn][oper]['C_M_' + k]['Ensemble P005']=np.percentile(d[oper][k],0.5,axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble P025']=np.percentile(d[oper][k],2.5,axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble P250']=np.percentile(d[oper][k],25,axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble P750']=np.percentile(d[oper][k],75,axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble P975']=np.percentile(d[oper][k],97.5,axis=1)
-                    Data[iScn][oper]['C_M_' + k]['Ensemble P995']=np.percentile(d[oper][k],99.5,axis=1)
+                    nam=lut_n2s(meta['LUT']['Event'],k)[0]
+                    Data[iScn][oper]['C_M_' + nam]={}
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble Mean']=np.mean(d[oper][k],axis=1)
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble SD']=np.std(d[oper][k],axis=1)
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble SE']=np.std(d[oper][k],axis=1)/np.sqrt(meta[pNam]['Project']['N Ensemble'])
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble P005']=np.percentile(d[oper][k],0.5,axis=1)
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble P025']=np.percentile(d[oper][k],2.5,axis=1)
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble P250']=np.percentile(d[oper][k],25,axis=1)
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble P750']=np.percentile(d[oper][k],75,axis=1)
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble P975']=np.percentile(d[oper][k],97.5,axis=1)
+                    Data[iScn][oper]['C_M_' + nam]['Ensemble P995']=np.percentile(d[oper][k],99.5,axis=1)
 
     # Save to structure
     mos[pNam]['Scenarios']=Data
@@ -4283,7 +4443,6 @@ def Import_GraphicsParameters(x):
     return params
 
 #%% Prepare inventory from spreadsheet
-
 def PrepareInventoryFromSpreadsheet(meta,pNam):
 
     for iScn in range(0,meta[pNam]['Project']['N Scenario']):
@@ -4291,33 +4450,33 @@ def PrepareInventoryFromSpreadsheet(meta,pNam):
         # Loop through batches, saving inventory to file
         for iBat in range(0,meta[pNam]['Project']['N Batch']):
 
-            inv={}
+            lsat={}
 
             # Index to batch
             indBat=IndexToBatch(meta[pNam],iBat)
             N_StandsInBatch=len(indBat)
 
             # Initialize inventory variables
-            inv['Lat']=np.zeros((1,N_StandsInBatch))
-            inv['Lon']=np.zeros((1,N_StandsInBatch))
-            inv['X']=inv['Lat']
-            inv['Y']=inv['Lon']
+            lsat['Lat']=np.zeros((1,N_StandsInBatch))
+            lsat['Lon']=np.zeros((1,N_StandsInBatch))
+            lsat['X']=lsat['Lat']
+            lsat['Y']=lsat['Lon']
 
             # BEC zone
-            inv['ID_BGCZ']=np.zeros((1,N_StandsInBatch),dtype='int16')
-            inv['ID_BGCZ'][0,:]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][meta[pNam]['Scenario'][iScn]['BGC Zone Code']]
+            lsat['ID_BGCZ']=np.zeros((1,N_StandsInBatch),dtype='int16')
+            lsat['ID_BGCZ'][0,:]=meta['LUT']['VEG_COMP_LYR_R1_POLY']['BEC_ZONE_CODE'][meta[pNam]['Scenario'][iScn]['BGC Zone Code']]
 
             # Timber harvesting landbase (1=yes, 0=no)
-            inv['THLB']=meta[pNam]['Scenario'][iScn]['THLB Status']*np.ones((meta[pNam]['Year'].size,N_StandsInBatch))
+            lsat['THLB']=meta[pNam]['Scenario'][iScn]['THLB Status']*np.ones((meta[pNam]['Year'].size,N_StandsInBatch))
 
             # Temperature will be updated automatically
-            inv['MAT']=4.0*np.ones((1,N_StandsInBatch))
+            lsat['MAT']=4.0*np.ones((1,N_StandsInBatch))
             #cd=meta[pNam]['Scenario'][iScn]['BGC Zone Code']
             #ind=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==cd)[0]
             #mat=meta['Param']['BE']['BGC Zone Averages']['MAT'][ind]
-            #inv['MAT']=mat*np.ones((1,N_StandsInBatch))
+            #lsat['MAT']=mat*np.ones((1,N_StandsInBatch))
 
-            inv['Wood Density']=meta['Param']['BE']['Biophysical']['Density Wood']*np.ones((1,N_StandsInBatch))
+            lsat['Wood Density']=meta['Param']['BE']['Biophysical']['Density Wood']*np.ones((1,N_StandsInBatch))
 
             if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
@@ -4325,17 +4484,17 @@ def PrepareInventoryFromSpreadsheet(meta,pNam):
 
                 id=meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_ID'][ind]
 
-                inv['SRS1_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
-                inv['SRS1_PCT']=100*np.ones((1,N_StandsInBatch),dtype='int16')
+                lsat['SRS1_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
+                lsat['SRS1_PCT']=100*np.ones((1,N_StandsInBatch),dtype='int16')
 
-                inv['SRS2_ID']=np.ones((1,N_StandsInBatch),dtype='int16')
-                inv['SRS2_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+                lsat['SRS2_ID']=np.ones((1,N_StandsInBatch),dtype='int16')
+                lsat['SRS2_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
 
-                inv['SRS3_ID']=np.ones((1,N_StandsInBatch),dtype='int16')
-                inv['SRS3_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+                lsat['SRS3_ID']=np.ones((1,N_StandsInBatch),dtype='int16')
+                lsat['SRS3_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
 
             # Save
-            gu.opickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl',inv)
+            gu.opickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl',lsat)
 
     return
 
@@ -4368,10 +4527,8 @@ def CompileEvents(ec,tv,iS,ID_Type,Year,MortalityFactor,GrowthFactor,ID_GrowthCu
 def GetMortalityFrequencyDistribution(meta,pNam):
 
     iEns=0
-
     M=[None]*meta[pNam]['Project']['N Scenario']
     for iScn in range(meta[pNam]['Project']['N Scenario']):
-
         tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
         M[iScn]={}
         M[iScn]['Ma']={}
@@ -4381,14 +4538,10 @@ def GetMortalityFrequencyDistribution(meta,pNam):
             M[iScn]['Mr'][k]=np.zeros((tv.size,meta[pNam]['Project']['N Stand']))
         M[iScn]['Ma']['Reg']=np.zeros((tv.size,meta[pNam]['Project']['N Stand']))
         M[iScn]['Mr']['Reg']=np.zeros((tv.size,meta[pNam]['Project']['N Stand']))
-
         for iBat in range(meta[pNam]['Project']['N Batch']):
-
             indBat=IndexToBatch(meta[pNam],iBat)
-
             d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
             dh=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl')
-
             for iStandInBat in range(len(indBat)):
                 iStand=indBat[iStandInBat]
                 for iYr in range(dh[iStandInBat]['Year'].size):
@@ -4402,7 +4555,6 @@ def GetMortalityFrequencyDistribution(meta,pNam):
                     M[iScn]['Mr']['Reg'][it,iStand]=d1[0]['C_M_Reg'][it,iStandInBat]/np.maximum(0.0001,d1[0]['Eco_Biomass'][it-1,iStandInBat])
             del d1,dh
             garc.collect()
-
     return M
 
 #%% Summarize affected area due to natural disturbance and management
@@ -4410,22 +4562,29 @@ def GetMortalityFrequencyDistribution(meta,pNam):
 def SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT):
 
     A={}
-    A['Nat Dist']=[None]*5; c=-1
+    A['Nat Dist']=[None]*11; c=-1
     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Wildfire']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Bark beetles'; A['Nat Dist'][c]['Color']=[0.3,0.8,0.2]; A['Nat Dist'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBM']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBB']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBD']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_IBS']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Disease'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Root']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Foliage']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Stem']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Defoliators'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_IDW']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wind, snow & ice'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Wind']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain pine beetle'; A['Nat Dist'][c]['Color']=[0.3,0.8,0.2]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Mountain Pine Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Balsam beetle'; A['Nat Dist'][c]['Color']=[1,0.9,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Balsam Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.15,0.4,0.1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Douglas-fir Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.8,1,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Spruce Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Diseases'; A['Nat Dist'][c]['Color']=[0.75,0.55,1]; A['Nat Dist'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Root']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Foliage']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Stem']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Defoliators'; A['Nat Dist'][c]['Color']=[1,0.6,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Western Spruce Budworm']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wind'; A['Nat Dist'][c]['Color']=[0.03,0.1,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Wind']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Frost, snow, ice and hail'; A['Nat Dist'][c]['Color']=[0.25,0.8,1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Frost Snow Ice Hail']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Flooding, lightning and slides'; A['Nat Dist'][c]['Color']=[0.2,0.4,0.7]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Flooding Lightning Slides']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Drought'; A['Nat Dist'][c]['Color']=[1,0.85,0.7]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Drought']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
     A['Nat Dist']=A['Nat Dist'][0:c+1]
 
-    A['Management']=[None]*8; c=-1
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Slashpile Burn']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Knockdown']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Thinning']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Mechanical Site Prep']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Prescribed Burn']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    A['Management']=[None]*9; c=-1
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0.25,0.85,1]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Knockdown'; A['Management'][c]['Color']=[0.15,0.35,0.65]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Knockdown']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[1,0.85,0.7]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Slashpile Burn']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Prescribed Burn']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']    
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Mechanical Site Prep']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning'; A['Management'][c]['Color']=[0.3,0.55,1]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Thinning']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']    
     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Planting']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Direct Seeding']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Aerial BTK Spray']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[0.66,0.96,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Aerial BTK Spray']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Fertilization'; A['Management'][c]['Color']=[0.75,0.55,1]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Fertilization Aerial']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
     #c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Dwarf Mistletoe Control']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
     A['Management']=A['Management'][0:c+1]
@@ -4441,45 +4600,45 @@ def SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT):
 
 #%% Area affected by individual multipolygon
 
-def AreaAffectedInSingleMultipolygon(meta,iScn,ivlT,tv,MosByMP,iMP):
+# def AreaAffectedInSingleMultipolygon(meta,iScn,ivlT,tv,MosByMP,iMP):
 
-    A={}
-    # Ensemble mean (currently not equipped to give individual ensembles)
-    A['Nat Dist']=[None]*10;
-    c=-1
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Wildfire']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain Pine beetle'; A['Nat Dist'][c]['Color']=[0,0.8,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBM']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.6,1,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBD']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.25,1,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBS']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBB']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Beetles']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IDW']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Rust'; A['Nat Dist'][c]['Color']=[0.75,0.5,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Rust Onset']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Dwarf Mistletoe'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Dwarf Mistletoe Onset']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mechanical'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Mechanical']['Ensemble Mean'][:,iMP]
-    A['Nat Dist']=A['Nat Dist'][0:c+1]
+#     A={}
+#     # Ensemble mean (currently not equipped to give individual ensembles)
+#     A['Nat Dist']=[None]*10;
+#     c=-1
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Wildfire']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain Pine beetle'; A['Nat Dist'][c]['Color']=[0,0.8,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Mountain Pine Beetle']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.6,1,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBD']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.25,1,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBS']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. balsam beetle'; A['Nat Dist'][c]['Color']=[0,0.45,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IBB']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Other pests'; A['Nat Dist'][c]['Color']=[0.8,1,0]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Beetles']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='W. spruce budworm'; A['Nat Dist'][c]['Color']=[0,0.75,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['IDW']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Rust'; A['Nat Dist'][c]['Color']=[0.75,0.5,1]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Rust Onset']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Dwarf Mistletoe'; A['Nat Dist'][c]['Color']=[1,0.5,0.25]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Dwarf Mistletoe Onset']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mechanical'; A['Nat Dist'][c]['Color']=[0,0,0.6]; A['Nat Dist'][c]['Data']=MosByMP[iScn]['Area']['Mechanical']['Ensemble Mean'][:,iMP]
+#     A['Nat Dist']=A['Nat Dist'][0:c+1]
 
-    A['Management']=[None]*10;
-    c=-1
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Harvest']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Harvest Salvage']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Slashpile Burn']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Harvest Salvage']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Knockdown']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Thinning']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Disc Trenching']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Ripping']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Prescribed Burn']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Dwarf Mistletoe Control']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Planting']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Direct Seeding']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['IDW Btk Spray']['Ensemble Mean'][:,iMP]
-    c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.65,0,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Aerial BTK Spray Aerial']['Ensemble Mean'][:,iMP]
-    A['Management']=A['Management'][0:c+1]
+#     A['Management']=[None]*10;
+#     c=-1
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0,0.75,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Harvest']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Harvest Salvage']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[0.75,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Slashpile Burn']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Harvest Salvage']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning and knockdown'; A['Management'][c]['Color']=[0.2,0.4,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Knockdown']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Thinning']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0.7]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Disc Trenching']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Ripping']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Prescribed Burn']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Dwarf Mistletoe Control']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Planting']['Ensemble Mean'][:,iMP]+MosByMP[iScn]['Area']['Direct Seeding']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['IDW Btk Spray']['Ensemble Mean'][:,iMP]
+#     c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Aerial nutrient application'; A['Management'][c]['Color']=[0.65,0,1]; A['Management'][c]['Data']=MosByMP[iScn]['Area']['Aerial BTK Spray Aerial']['Ensemble Mean'][:,iMP]
+#     A['Management']=A['Management'][0:c+1]
 
-    # Convert to x-year intervals
-    A['tv']=gu.BlockMean(tv,ivlT)
-    for i in range(len(A['Nat Dist'])):
-        A['Nat Dist'][i]['Data']=gu.BlockMean(A['Nat Dist'][i]['Data'],ivlT)
-    for i in range(len(A['Management'])):
-        A['Management'][i]['Data']=gu.BlockMean(A['Management'][i]['Data'],ivlT)
+#     # Convert to x-year intervals
+#     A['tv']=gu.BlockMean(tv,ivlT)
+#     for i in range(len(A['Nat Dist'])):
+#         A['Nat Dist'][i]['Data']=gu.BlockMean(A['Nat Dist'][i]['Data'],ivlT)
+#     for i in range(len(A['Management'])):
+#         A['Management'][i]['Data']=gu.BlockMean(A['Management'][i]['Data'],ivlT)
 
-    return A
+#     return A
 
 #%% Post process BatchTIPSY output
 
@@ -4943,7 +5102,11 @@ def ImportParameters(meta):
     if 'Param' not in meta:
         meta['Param']={}
 
+    # A place for the raw parameter data
+    meta['Param']['Raw']={}
+
     # Best estimates, variance, lower and upper confidence levels
+    
     meta['Param']['BE']={}
     meta['Param']['Sigma']={}
     meta['Param']['BL']={}
@@ -4952,7 +5115,6 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # Biophysical
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\Parameters_Biophysical.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['Biophysical']={}
     for i in range(len(df)):
@@ -4963,14 +5125,12 @@ def ImportParameters(meta):
     # Biomass - allometry
     # Values are location specific so no specific processing is done here (see cbrun.py)
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Biomass Allometry']={}
     meta['Param']['BE']['Biomass Allometry']['Raw']=gu.ReadExcel(pthin + '\Parameters_BiomassAllometrySL.xlsx')
 
     #--------------------------------------------------------------------------
     # Biomass - turnover
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\Parameters_BiomassTurnover.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['Biomass Turnover']={}
     meta['Param']['Sigma']['Biomass Turnover']={}
@@ -4986,13 +5146,11 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # By BGC zone
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['BGC Zone Averages']=gu.ReadExcel(pthin + '\Parameters_ByBGC.xlsx')
 
     #--------------------------------------------------------------------------
     # Decomposition parameters (Kurz et al. 2009)
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\Parameters_Decomposition.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['Decomp']={}
     meta['Param']['Sigma']['Decomp']={}
@@ -5006,39 +5164,40 @@ def ImportParameters(meta):
         meta['Param']['BU']['Decomp'][Name]=df['BU'].iloc[i]
 
     #--------------------------------------------------------------------------
-    # Disturbance - static parameters
+    # Events - static parameters
     #--------------------------------------------------------------------------
-
-    p=gu.ReadExcel(pthin + '\Parameters_Disturbances.xlsx')
-
-    str_to_exclude=['ID','Name','Species_CD','MortalityOccurs','Growth Factor',
-                    'GrowthFactor_Source','GrowthRecovery_HL','GrowthRecovery_HL_Source',
-                    'QA1','QA2','QA3']
-
+    p=gu.ReadExcel(pthin + '\Parameters_Events.xlsx')
+    meta['Param']['Raw']['Event']=p.copy()
+    str_to_exclude=['ID','Name','QA1','QA2','QA3','QA4','QA5','QA6','QA7','clr','clg','clb']
     meta['Param']['BE']['Event']={}
     for i in range(p['ID'].size):
-        meta['Param']['BE']['Event'][p['ID'][i]]={}
-        #meta['Param']['BE']['Event'][p['ID'][i]]['BiomassMerch_Affected']=1
-        #meta['Param']['BE']['Event'][p['ID'][i]]['BiomassNonMerch_Affected']=1
-        #meta['Param']['BE']['Event'][p['ID'][i]]['Snags_Affected']=1
+        meta['Param']['BE']['Event'][p['ID'][i]]={}        
         for k in p.keys():
-            # Exclude some legacy variables that may be re-implemented
+            # Exclude some unneeded variables
             if np.isin(k,str_to_exclude)==True:
                 continue
-            meta['Param']['BE']['Event'][p['ID'][i]][k]=np.nan_to_num(p[k][i])
+            meta['Param']['BE']['Event'][ p['ID'][i] ][k]=np.nan_to_num(p[k][i])
+
+    #--------------------------------------------------------------------------
+    # Land use change
+    #--------------------------------------------------------------------------
+    p=gu.ReadExcel(pthin + '\Parameters_LandUseChangeRules.xlsx')
+    meta['Param']['Raw']['LUC']={'LC Final':{},'LU Final':{}}
+    for k in meta['LUT']['Derived']['lclu_chng_comp1'].keys():
+        ind=np.where(p['LUC']==k)[0]
+        meta['Param']['Raw']['LUC']['LC Final'][k]=p['LC Final'][ind][0]
+        meta['Param']['Raw']['LUC']['LU Final'][k]=p['LU Final'][ind][0]
 
     #--------------------------------------------------------------------------
     # Disutrbance - fate of felled material
     # Values are location specific so no specific processing is done here (see cbrun.py)
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Felled Fate']={}
     meta['Param']['BE']['Felled Fate']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_FelledFate.pkl')
 
     #--------------------------------------------------------------------------
     # Disturbance - Wildfire aspatial (Taz-AAO) parameters
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Taz']={}
 
     wf=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_WildfireStatsMod.xlsx')
@@ -5053,20 +5212,18 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # Disturbance - Mountain Pine Beetle (Taz-AAO) parameters
     #--------------------------------------------------------------------------
+    # ibm=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_IBMStatsMod.xlsx')
 
-    ibm=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_IBMStatsMod.xlsx')
-
-    meta['Param']['BE']['Taz']['IBM']={}
-    for i in range(ibm['Name'].size):
-        try:
-            meta['Param']['BE']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i].astype(float)
-        except:
-            meta['Param']['BE']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i]
+    # meta['Param']['BE']['Taz']['IBM']={}
+    # for i in range(ibm['Name'].size):
+    #     try:
+    #         meta['Param']['BE']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i].astype(float)
+    #     except:
+    #         meta['Param']['BE']['Taz']['IBM'][ibm['Name'][i]]=ibm['Value'][i]
 
     #--------------------------------------------------------------------------
     # Disturbance - On the fly parameters
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\Parameters_OnTheFly.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['On The Fly']={}
     for i in range(len(df)):
@@ -5076,20 +5233,27 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # Disturbance - harvesting - basic early historical reconstruction
     #--------------------------------------------------------------------------
-
     fin=meta['Paths']['Model']['Taz Datasets'] + '\\Harvest Stats and Scenarios\\HarvestHistoricalProbabilitySimple.xlsx'
     meta['Param']['BE']['Taz']['Ph_Simp']=gu.ReadExcel(fin)
 
     #--------------------------------------------------------------------------
+    # Insect compilation 1
+    #--------------------------------------------------------------------------
+    meta['Param']['BE']['InsectComp1']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_InsectComp1.xlsx')
+
+    #--------------------------------------------------------------------------
+    # Disturbance - Species-specific mortality net-down factors
+    #--------------------------------------------------------------------------
+    meta['Param']['BE']['DisturbanceSpeciesAffected']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceSpeciesAffected.xlsx')    
+
+    #--------------------------------------------------------------------------
     # Disturbance - By severity class
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['DistBySC']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
-
+    
     #--------------------------------------------------------------------------
     # Economics
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\Parameters_Economics.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['Econ']={}
     for i in range(len(df)):
@@ -5099,7 +5263,6 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # Funding source code
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['FSC']={}
     meta['Param']['BE']['FSC']['Raw']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_ByFundingSourceCode.xlsx')
 
@@ -5114,10 +5277,18 @@ def ImportParameters(meta):
             pass
 
     #--------------------------------------------------------------------------
+    # Growth trends
+    #--------------------------------------------------------------------------
+    d=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_GrowthModifier.xlsx')    
+    meta['Param']['BE']['Growth Modifier']={}
+    meta['Param']['BE']['Growth Modifier']['Raw']=d
+    #for i in range(d['Name'].size):
+    #    meta['Param']['BE']['Growth Modifier'][d['Name'][i]]=d['Value'][i]        
+
+    #--------------------------------------------------------------------------
     # HWP - static parameters
     # Values are location specific so no specific processing is done here (see cbrun.py)
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['HWP']={}
     meta['Param']['BE']['HWP']['Raw']=pd.read_excel(pthin + '\Parameters_HWP.xlsx',sheet_name='Main')
 
@@ -5125,20 +5296,17 @@ def ImportParameters(meta):
     # HWP - End Use parameters
     # Values are location specific so no specific processing is done here (see cbrun.py)
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['HWP End Use']={}
     meta['Param']['BE']['HWP End Use']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_HWP_EndUse.pkl')
 
     #--------------------------------------------------------------------------
     # Genetic worth
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Genetic Worth']=gu.ReadExcel(pthin + '\\Parameters_Seedlot_GW.xlsx')
 
     #--------------------------------------------------------------------------
     # Inter-pool transfer parameters (Kurz et al. 2009)
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\Parameters_InterPoolFluxes.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['Inter Pool Fluxes']={}
     meta['Param']['Sigma']['Inter Pool Fluxes']={}
@@ -5150,7 +5318,6 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # Nutrient application paramaters
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\Parameters_NutrientApplication.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['Nutrient Management']={}
     meta['Param']['Sigma']['Nutrient Management']={}
@@ -5163,13 +5330,11 @@ def ImportParameters(meta):
     # Removed fate scenarios
     # Values are location specific so no specific processing is done here (see cbrun.py)
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Removed Fate']=gu.ipickle(meta['Paths']['Model']['Code'] + '\\Parameters\\Variables_RemovedFate.pkl')
 
     #--------------------------------------------------------------------------
     # Substitution effects (use of basic displacement factors)
     #--------------------------------------------------------------------------
-
     df=pd.read_excel(pthin + '\\Parameters_Substitution.xlsx',sheet_name='Sheet1')
     meta['Param']['BE']['Substitution']={}
     meta['Param']['Sigma']['Substitution']={}
@@ -5181,19 +5346,16 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # By Tree Density Class
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Tree Density Class Averages']=gu.ReadExcel(pthin + '\Parameters_TreeDensityClassStatistics.xlsx')
 
     #--------------------------------------------------------------------------
     # Wood density by species
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Wood Density']=gu.ReadExcel(pthin + '\Parameters_WoodDensity.xlsx')
 
     #--------------------------------------------------------------------------
     # Sawtooth parameters
     #--------------------------------------------------------------------------
-
     #if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
     ps={}
@@ -5225,7 +5387,6 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # Other stuff
     #--------------------------------------------------------------------------
-
     meta['Param']['BE']['Comparison_With_NIR']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_ComparisonWithNIR.xlsx')
     meta['Param']['BE']['Reporting_Version_Comparison']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_BoundaryDefinition.xlsx')
     meta['Param']['BE']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_ForcingCategories.xlsx')
@@ -5417,3 +5578,23 @@ def CombineProjectMOSs(meta,mos,pNamNew,pNamL):
                 mos[pNamNew]['Delta'][cNam]['ByStrata']['Mean'][k1][k2]=mos[pNamNew]['Delta'][cNam]['ByStrata']['Mean'][k1][k2]+mos[pNamL[1]]['Delta'][cNam]['ByStrata']['Mean'][k1][k2]
     return mos
 
+#%% Net-down insect mortality to reflect spcecies composition
+def PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,lsat,iBat):        
+    lsat['Insect Mortality Percent Tree Species Affected']={}
+    for iPest in range(meta['Param']['BE']['DisturbanceSpeciesAffected']['Insect Name'].size):
+        namPest=meta['Param']['BE']['DisturbanceSpeciesAffected']['Insect Name'][iPest]
+        idSpcL=[]
+        for iSpc in range(1,9):
+            cdSpc=meta['Param']['BE']['DisturbanceSpeciesAffected']['Spc' + str(iSpc)][iPest]
+            if cdSpc=='Empty':
+                continue
+            idSpc=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'][cdSpc]
+            idSpcL.append(idSpc)
+        PercentAffected=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
+        for iSpc in range(1,5):
+            ind=np.where(np.isin(lsat['Spc' + str(iSpc) + '_ID'][0,:],idSpcL)==True)[0]
+            PercentAffected[ind]=PercentAffected[ind]+lsat['Spc' + str(iSpc) + '_P'][0,ind]
+        lsat['Insect Mortality Percent Tree Species Affected'][namPest]=PercentAffected        
+    return lsat
+
+#%%

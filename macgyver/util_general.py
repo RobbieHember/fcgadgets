@@ -17,12 +17,13 @@ import pickle
 from scipy.io import loadmat
 from scipy import stats
 from subprocess import call
-import netCDF4 as nc
+import calendar
+#import netCDF4 as nc
 import statsmodels.api as sm
 import csv
 
 #%% Indices to repeated values in array
-
+# idx=gu.IndicesFromUniqueArrayValues(x)
 def IndicesFromUniqueArrayValues(x):
     if type(x[0])=='str':
         records_array=x.astype(str)
@@ -40,30 +41,93 @@ def IndicesFromUniqueArrayValues(x):
 
 def GetRegStats(x,y):
 
-    x0=x.copy()
-    x=sm.tools.tools.add_constant(x)
-    md=sm.OLS(y,x).fit()
-    xhat=np.linspace(np.min(x[:,1]),np.max(x[:,1]),10)
-    yhat=md.predict(np.c_[np.ones(xhat.size),xhat])
+    # Remove nans
+    ikp=np.where(np.isnan(x+y)==False)[0]
+    x=x[ikp]
+    y=y[ikp]
 
+    # Initialize data structure
     rs={}
+
+    #--------------------------------------------------------------------------
+    # Simple linear regression based on ordinary least squares
+    #--------------------------------------------------------------------------
+    
+    x_WithOnes=sm.tools.tools.add_constant(x)
+    md=sm.OLS(y,x_WithOnes).fit()
+    yhat=md.predict(x_WithOnes)    
+    
+    rs['N']=x.size
+    rs['DF']=x.size-md.params.size
     rs['B']=md.params
     rs['pValues']=md.pvalues
+    rs['r']=np.sqrt(md.rsquared)
     rs['R2']=md.rsquared
-    rs['R2 adj']=md.rsquared_adj
+    rs['R2 Adjusted']=md.rsquared_adj
     rs['AIC']=md.aic
     rs['P']=md.f_pvalue
-    rs['xhat']=xhat
-    rs['yhat']=yhat
-    rs['Mean Dif']=(np.mean(y)-np.mean(x0))
-    rs['Dif (%)']=(np.mean(y)-np.mean(x0))/np.mean(x0)*100
+    
+    # Standard error of the estimate
+    rs['Standard Error of the Estimate']=np.sqrt(np.sum((y-yhat)**2)/rs['N'])    
+    
+    # t-statistic for sample size N with degrees of freedom DF
+    # (alpha = 0.05)
+    t_two_tail=np.array([12.706,4.303,3.182,2.776,2.571,2.447,2.365,2.306,2.262,2.228,2.201,2.179,2.16,2.145,2.132,2.12,2.11,2.101,2.093,2.086,2.08,2.074,2.069,2.064,2.06,2.056,2.052,2.048,2.045,1.96])
+    if rs['DF']<30:
+      t=t_two_tail[rs['DF']]
+    else:
+      t=t_two_tail[-1]
+    
+    # 95% cofidence interval of the slope 
+    rs['Slope Error']=1.96*np.sqrt(np.sum((y-yhat)**2)/rs['DF'])/np.sqrt(np.sum((x-np.mean(x))**2))
+    
+    # 95% cofidence interval of the y-intercept 
+    rs['Intercept Error']=t*rs['Standard Error of the Estimate']*np.sqrt((1/rs['N'])+(np.mean(x)**2/(np.sum(x**2)-(np.sum(x)**2/rs['N']))))
+    
+    rs['xhat Line']=np.linspace(np.min(x),np.max(x),10)
+    rs['yhat Line']=md.predict(np.c_[np.ones(rs['xhat Line'].size),rs['xhat Line']])
+    
+    #--------------------------------------------------------------------------
+    # Error between dependent and independent variables
+    #--------------------------------------------------------------------------
+    
+    # Mean error (plus or minus S.E. of mean)
+    me=np.mean(y)-np.mean(x)
+    se_mean=2*(np.std(x-y)/np.sqrt(rs['N']))
+    rs['Mean Error']=[me,se_mean]
+    rs['Mean Error %']=me/np.mean(x)*100
+    
+    # Sum of squares
+    rs['Sum of Squared Error']=np.sum((y-x)**2)
+    
+    # Root mean squared error
+    rs['RMSE']=np.sqrt(rs['Sum of Squared Error']/rs['N'])
+    rs['RMSE %']=rs['RMSE']/np.mean(x)*100
+    
+    # Mean absolute error
+    rs['MAE']=np.mean(np.abs(y-x))
+    rs['MAE %']=rs['MAE']/np.mean(x)*100
+    
+    # Mean squared error
+    rs['MSE Total']=np.sum((x-y)**2)/rs['N']
+    
+    # Systematic and unsystematic squared errors (Willmott 1981)
+    # The sum will equal the mean squared error
+    rs['MSE Systematic']=(1/rs['N'])*np.sum((yhat-x)**2)    
+    rs['MSE Unsystematic']=(1/rs['N'])*np.sum((y-yhat)**2)
+    
+    # Model efficiency coefficient (Nash and Sutcliffe 1970)
+    rs['MEC']=1-np.sum((x-y)**2)/np.sum((x-np.mean(x))**2)
 
+    #--------------------------------------------------------------------------
+    # Text string
+    #--------------------------------------------------------------------------
+    
     if rs['B'][0]<0:
         fl=' - '
     else:
         fl=' + '
-
-    txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\n' + 'R2 = ' + str(np.round(rs['R2'],decimals=2)) + '\n' + 'p < ' + str(np.round(rs['P'],decimals=2))
+    txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np < ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
     rs['txt']=txt
 
     return rs,txt
@@ -165,10 +229,13 @@ def DataFrameToDataStruct(df):
 def axletters(ax,plt,rx,ry,**kwargs):
 
     # Letter style
-    Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)']
+    Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)']
     if 'LetterStyle' in kwargs.keys():
         if kwargs['LetterStyle']=='Caps':
-            Letter=['A','B','C','D','E','F','G','H','I','J']
+            Letter=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P']
+        elif kwargs['LetterStyle']=='NoPar':
+            Letter=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p']
+            
     # Font size
     fs=plt.rcParams.get('font.size')
     if 'FontSize' in kwargs.keys():
@@ -186,6 +253,11 @@ def axletters(ax,plt,rx,ry,**kwargs):
         #print(kwargs['FontColor'])
         fcl=kwargs['FontColor'];
 
+    # Skip axis
+    Skip_Flag=np.zeros(ax.shape)
+    if 'Skip' in kwargs.keys():
+        Skip_Flag[kwargs['Skip']]=1
+
     # Additional labels
     Label=['','','','','','','','','','','','','','']
     if 'Labels' in kwargs.keys():
@@ -196,7 +268,12 @@ def axletters(ax,plt,rx,ry,**kwargs):
     if 'LabelSpacer' in kwargs.keys():
         LabelSpacer=kwargs['LabelSpacer']
 
-    c=0
+    # Start from non-A letter
+    if 'StartLetterIndex' in kwargs.keys():
+        c=kwargs['StartLetterIndex']
+    else:
+        c=0
+        
     if len(ax.shape)>1:
         for i in range(ax.shape[0]):
             for j in range(ax.shape[1]):
@@ -224,6 +301,9 @@ def axletters(ax,plt,rx,ry,**kwargs):
     elif len(ax.shape)==1:
 
         for i in range(ax.shape[0]):
+            
+            if Skip_Flag[i]==1:
+                continue
 
             yl=ax[i].get_ylim()
             xl=ax[i].get_xlim()
@@ -257,7 +337,7 @@ def cm2inch(*tupl):
         return tuple(i/inch for i in tupl)
 
 #%% Count By Category
-# u,N=gu.CountByCategories(z)
+# u,N=gu.CountByCategories(z,'Percent')
 def CountByCategories(z,*args):
 
     z=z.flatten()
@@ -304,7 +384,6 @@ def isempty(value):
     return bool(value)
 
 #%% MINIMUM AND MAXIMUM
-
 def minmax(ar):
 
     mm=[np.amin(ar),np.amax(ar)]
@@ -312,7 +391,6 @@ def minmax(ar):
     return mm
 
 #%% MOVING AVERAGE
-
 def movingave(y0,period,meth):
 
     if y0.ndim==1:
@@ -338,7 +416,6 @@ def movingave(y0,period,meth):
     return ma
 
 #%% PARTIAL CORRELATION
-
 def PartialCorrelation(C):
     C=np.asarray(C)
     p=C.shape[1]
@@ -360,30 +437,33 @@ def PartialCorrelation(C):
             P_corr[j, i]=corr
     return P_corr
 
-#%% TIME VECTOR
-
+#%% Time vector
 def tvec(res,year1,year2):
-
     yr=np.arange(year1,year2+1,1)
-
     if res=='m':
-
         tv=np.zeros((yr.size*12,2),dtype=int)
         cnt=0
         for i in range(yr.size):
             for j in range(12):
                 tv[cnt,0]=yr[i]
                 tv[cnt,1]=j+1
-                cnt=cnt+1
-
-        tv.shape
-
+                cnt=cnt+1    
+    elif res=='d':
+        tv=np.zeros((1000000,4),dtype='int16')
+        cnt=0
+        for iY in range(yr.size):
+            doy=1
+            for iM in range(12):
+                n=calendar.monthrange(yr[iY],iM+1)[1]
+                for iD in range(n):
+                    tv[cnt,:]=np.array([yr[iY],iM+1,iD+1,doy])
+                    doy=doy+1
+                    cnt=cnt+1
+        tv=tv[0:cnt,:]
     return tv
 
 #%% DIESCRETE RESPONSE (BINNED RESPONSE)
-
 # N,mu,med,sig,se=gu.discres(x,y,bw,bin)
-
 def discres(x,y,bw,bin):
     N=np.nan*np.ones(bin.size)
     mu=np.nan*np.ones(bin.size)
@@ -831,6 +911,12 @@ def BlockSum(x,ivl):
         y=x[0::ivl]
         for i in range(1,ivl):
             y=y+x1[i::ivl]
+    else:
+        y=np.zeros((int(x.shape[0]/ivl),x.shape[1]))
+        cnt=0
+        for i in range(0,x.shape[0],ivl):
+            y[cnt,:]=np.sum(x[i:i+ivl,:],axis=0)
+            cnt=cnt+1
     return y
 
 #%% Sum over interval
@@ -842,8 +928,11 @@ def BlockMean(x,ivl):
         for i in range(c.size):
             y[i]=np.mean(x[c[i]:c[i]+ivl])
     else:
-        y='Oops!'
-        print('y=Oops, needs revision')
+        y=np.zeros((int(x.shape[0]/ivl),x.shape[1]))
+        cnt=0
+        for i in range(0,x.shape[0],ivl):
+            y[cnt,:]=np.mean(x[i:i+ivl,:],axis=0)
+            cnt=cnt+1        
     return y
 
 #%% Get confidnece intervals for the difference in two variables with confidence intervals
@@ -878,8 +967,239 @@ def ksdensity(y):
     p=kde(x)
     return p
 
-#%% BUNCH CONTENTS OF DICTIONARY
+#%% Polynomial Surface Fit
 
+def PolynomialSurfaceFit(x,y,z,xI,yI,maskI,beta):
+    
+    #x=x0/1000
+    #y=y0/1000
+    #z=z0
+    
+    # Parameters
+    m,n=xI.shape
+    L=z.size    
+    zI=np.zeros(shape=(m,n))
+    eI=np.zeros(shape=(m,n))
+    nI=np.zeros(shape=(m,n))
+        
+    nth=40 # Maximum number of neighbouring measurements used for interpolation
+    #tol=[1e-12]; % Tolerance for the rejection of small singular values
+    tol=1e-15
+    sfar=15000 # Maximum separation
+    
+    def fhyp(b,x):
+        y=((b[0]*b[1]*x)/(b[0]*x+b[2]))+b[2]
+        return y
+    #d0=np.arange(0,100)
+    #s=fhyp(beta,d0*1000)
+    #plt.plot(d0,s,'b-')
+    for i in range(m):
+        for j in range(n):
+            if maskI[i,j]==0:
+                continue
+            
+            # Calculate distance
+            d0=np.sqrt( (xI[i,j]*np.ones(L)-x)**2 + (yI[i,j]*np.ones(L)-y)**2 )
+            
+            # Put them in order of increasing distance
+            ord=np.argsort(d0)
+            ord=ord[1:np.minimum(nth,ord.size)]            
+            d0=d0[ord]
+            x0=x[ord]
+            y0=y[ord]
+            z0=z[ord]
+            #plt.plot(d0)
+            
+            # Exclude points too far away
+            iKeep=np.where(d0<sfar)[0]
+            if iKeep.size<12:
+                continue            
+            d0=d0[iKeep]
+            x0=x0[iKeep]
+            y0=y0[iKeep]
+            z0=z0[iKeep]
+        
+            # Calculate weights based on errorgram (standard error versus separation)
+            s=fhyp(beta,d0*1000)
+            #s=0.0001*np.ones(z0.size)
+            #print(np.mean(d0))
+            
+            # Interpolate
+            b,e,istat=polyfit_lls(z0,s,x0-xI[i,j],y0-yI[i,j],tol)
+ 
+            zI[i,j]=b[0] 
+            #eI[i,j]=e[0]
+            nI[i,j]=iKeep.size
+
+    return zI,eI,nI
+
+#%% Linear least squares polynomial fit based on singular value decomposition
+def polyfit_lls(z,s,x,y,tol):
+    # istat is an output status code:
+    #   0 normal completion
+    #   1 M > N
+    #   2 a standard error S was found <=0
+    #   3 error using SVD
+    istat=0
+    n=z.size
+    
+    # Create design matrix BAS and the number of basis functions M based on L
+    # which is determined by the number of available neighbouring measurements
+    if n>=28*2:
+        l=6
+    elif n>=21*2:
+        l=5
+    elif n>=15*2:
+        l=4
+    elif n>=10*2:
+        l=3
+    elif n>=6*2:
+        l=2
+    else:
+        # n <= m
+        istat=1
+        return
+        
+    m,bas=BasisN(x,y,l)
+    
+    # Weighted Z ZETA and weighted average of Z ZETAMU
+    s2=(1/s)**2
+    zeta=(1/s)*z
+    zetamu=np.sum(s2*z)/s2
+    
+    # Weighted design matrix DES    
+    a=np.tile(1/s,(m,1)).T
+    des=a*bas
+    
+    if np.sum(np.isnan(des))>0:
+        print('Stopping')
+        return
+
+    # Estimate parameers by singular value decomposition
+    u,w,v=np.linalg.svd(des)
+    
+    # Scan for singluar values < TOL
+    #w=np.diag(w)
+    iToss=np.where(w<tol*np.max(w))
+    w[iToss]=0
+    
+    # Solve U*B=ZETA for the parameter vector B, where U has been decomposed 
+    # into U,W, and V.    
+    work=np.nan*np.ones(w.size)
+    b=np.nan*np.ones(w.size)   
+    for j in range(m):
+        work[j]=0
+        if w[j]!=0:
+            for i in range(n):
+                work[j]=work[j]+u[i,j]*zeta[i]                    
+            work[j]=work[j]/w[j]
+    vT=v.T
+    for j in range(m):
+        b[j]=0
+        for k in range(m):
+            b[j]=b[j]+vT[j,k]*work[k]
+    
+    # Goodness of fit of the polynomial at the points in the scatter
+    dz=(z-zetamu)/s
+    vobs=np.sum(dz**2)
+    bt=np.tile(b,(n,1))
+    zhat=np.sum(bt*bas,axis=1)
+    dz=(z-zhat)/s
+    vfit=np.sum(dz**2)
+    vfit=100*(1-vfit/vobs)
+       
+    # Calculate covariance matrix C and standard errors E of the parameters B
+    #wf=np.zeros((w.size,w.size))
+    #wf=np.fill_diagonal(wf,w)
+    #c,e=svdcovm(wf,v,m)
+    e=1
+    
+    return b,e,istat
+
+#%% Covariance matrix and parameter standard errors
+def svdcovm(w,v,m):
+    c=np.nan*np.ones((m,m))
+    e=np.nan*np.ones((m,m))
+    ind=np.where(w!=0)
+    w[ind]=1/(w**2)
+    for i in range(m):
+        for j in range(i):
+            s=0
+            for k in range(m):
+                s=s+v[i,k]*v[j,k]*w[k]
+            c[i,j]=s
+            c[j,i]=s    
+    for i in range(m):
+        if c[i,i]<0:
+            e[i]=999
+        else:
+            e[i]=np.sqrt(c[i,i])
+    return c,e
+
+#%% Basis functions for bivariate polynomials
+def BasisN(x,y,n):    
+    # Column dimension of design matrix
+    l=int((n+1)*(n+2)/2)
+    # Design matrix
+    g0=np.ones(x.size)    
+    if n==0:
+        g=g0
+    elif n==1:
+        g=[g0,x,y]
+    elif n==2:
+        g=[g0,x,y,x**2,x*y,y**2]
+    elif n==3:
+        g=[g0,x,y,x**2,x*y,y**2,x**3,x*2*y,x*y**2,y**3]
+    elif n==4:
+        g=[g0,x,y,x**2,x*y,y**2,x**3,x**2*y,x*y**2,y**3,x**4,x**3*y,x**2*y**2,x*y**3,y**4]
+    elif n==5:
+        g=[g0,x,y,x**2,x*y,y**2,x**3,x**2*y,x*y**2,y**3,x**4,x**3*y,x**2*y**2,x*y**3,y**4,x**5,x**4*y,x**3*y**2,x**2*y**3,x*y**4,y**5]
+    elif n==6:
+        g=[g0,x,y,x**2,x*y,y**2,x**3,x**2*y,x*y**2,y**3,x**4,x**3*y,x**2*y**2,x*y**3,y**4,x**5,x**4*y,x**3*y**2,x**2*y**3,x*y**4,y**5,x**6,x**5*y,x**4*y**2,x**3*y**3,x**2*y**4,x*y**5,y**6]
+    g=np.array(g).T
+    return l,g
+
+#%% Bunch contents of dictionary
 class Bunch(object):
     def __init__(self, adict):
         self.__dict__.update(adict)
+
+#%%
+# z=gu.GeneratePerlin(shape,p_th)
+def GeneratePerlin(shape,p_th):    
+    x=np.linspace(0,10,shape[1])
+    y=np.linspace(0,10,shape[0])
+    xv,yv=np.meshgrid(x,y)
+    seed=np.random.randint(1,500,1)[0]
+    noise=perlin(xv,yv,seed=seed)    
+    p=np.percentile(noise,p_th)
+    z=np.zeros(noise.shape,dtype='int8')
+    ind=np.where(noise<p); z[ind]=1
+    #plt.close('all'); plt.matshow(z)
+    return z
+def perlin(x,y,seed=0):
+    np.random.seed(seed)
+    p = np.arange(256, dtype=int)
+    np.random.shuffle(p)
+    p = np.stack([p, p]).flatten()
+    xi = x.astype(int)
+    yi = y.astype(int)
+    xf = x - xi
+    yf = y - yi
+    u = fade(xf)
+    v = fade(yf)
+    n00 = gradient(p[p[xi] + yi], xf, yf)
+    n01 = gradient(p[p[xi] + yi + 1], xf, yf - 1)
+    n11 = gradient(p[p[xi + 1] + yi + 1], xf - 1, yf - 1)
+    n10 = gradient(p[p[xi + 1] + yi], xf - 1, yf)
+    x1 = lerp(n00, n10, u)
+    x2 = lerp(n01, n11, u)
+    return lerp(x1, x2, v)
+def fade(t):
+    return 6 * t**5 - 15 * t**4 + 10 * t**3
+def lerp(a, b, x):
+    return a + x * (b - a)
+def gradient(h, x, y):
+    vectors = np.array([[0, 1], [0, -1], [1, 0], [-1, 0]])
+    g = vectors[h % 4]
+    return g[:,:,0] * x + g[:,:,1] * y

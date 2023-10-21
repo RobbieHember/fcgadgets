@@ -1,4 +1,4 @@
-# fcgadgets
+﻿# fcgadgets
 ## INTRODUCTION
 The **fcgadgets** repository supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector.
 <br>
@@ -150,8 +150,26 @@ scenarios, consistent across project studies, and supported by documentation.
 ## HARDHAT
 The **hardhat** toolbox contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_application.py
+The nutrient_application module contains functions that update annual nutrient status called by the cbrunner model and a function that schedules hypothetical nutrient applications (during the future period of simulation).
 * Representation of GHG balance responses to aerial applications of Urea
 * Schedule aerial nutrient applications with specified stand selection criteria
+#### Update nutrient status
+All effects of nutrient application were expressed in cbrunner by prescribing a “Fertilization Areal” event during a specified calendar year in the disturbance and management event chronology (DMEC) – a set of variables that are input to cbrunner for each site. The occurrence of “Fertilization Aerial” events triggered the function, UpdateStatus, which:
+1.	Started a timer that eventually terminates stimulus at the specified response duration; 
+2.	Modified emissions to account for manufacture and transport;
+3.	Modified emissions to account for nitrous oxide (N2O) fluxes; 
+4.	Modified net growth rate of tree biomass pools;
+5.	Modified turnover of tree biomass pools; 
+6.	Modified decomposition rate. 
+#### Nutrient application scheduler
+Hypothetical future applications were scheduled by calling the function, ScheduleApplication. The scheduler was defined by a fixed annual probability of aerial nutrient application (PNAP) for stands meeting the following exclusion criteria: 
+1.	Dry biogeoclimatic (BGC) zones, including Bunchgrass, Ponderosa Pine and Interior Douglas-fir; 
+2.	Cold BGC zones, including Mountain Hemlock and Spruce-Willow-Birch; 
+3.	Site index at 50 years < 8 m; 
+4.	Stand age < 10
+5.	Stand age > 61 years; 
+6.	Time since nutrient application < 10 years. 
+Historically, the public forest fertilization program split operations evenly between coastal and interior regions. However, the area of the interior region exceeds that of the coast. The scheduler was set to continue the historical split between regions by making PNAP region specific.
 ### economics.py
 * Calculate cashflow from implementation of forest management events
 

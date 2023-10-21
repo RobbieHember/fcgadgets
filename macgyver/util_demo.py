@@ -19,7 +19,7 @@ from fcgadgets.cbrunner import cbrun_util as cbu
 def GetSingleEnsembleResults(meta):
 
     v0=[]
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
         v0.append(cbu.LoadSingleOutputFile(meta,iScn,0,0))
 
     return v0
@@ -28,7 +28,7 @@ def GetSingleEnsembleResults(meta):
 
 def CalculateAggregateVariables(meta,v1):
 
-    for iScn in range(meta['Project']['N Scenario']):
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
 
         # Calculate carbon content of dead wood, organic and mineral soil horizons following Shaw et al. (2017)
         v1[iScn]['SoilOrgH']=v1[iScn]['C_Eco_Pools'][:,:,meta['Core']['iEP']['LitterVF']]+ \
@@ -282,19 +282,19 @@ def ExportSummariesByScenario(meta,pNam,mos,t_start,t_end,**kwargs):
 
             for k in meta[pNam]['Core']['Output Variable List']:
                 try:
-                    d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[pNam]['Scenarios'][iScn]['Sum'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                    d['Annual mean summed over area ' + k]=np.round(sum_mult*np.mean(mos[pNam]['Scenarios'][iScn]['Sum'][k]['Ensemble Mean'][iT,iPS,iSS,iYS]),decimals=2)
                 except:
                     pass
 
             for k in meta[pNam]['Core']['Output Variable List']:
                 try:
-                    d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[pNam]['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                    d['Per-hectare sum over time ' + k]=np.round(sum_mult*np.sum(mos[pNam]['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS]),decimals=2)
                 except:
                     pass
 
             for k in meta[pNam]['Core']['Output Variable List']:
                 try:
-                    d['Per-hectare mean ' + k]=np.round(np.mean(mos[pNam]['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS]),decimals=2)
+                    d['Per-hectare mean ' + k]=np.round(np.mean(mos[pNam]['Scenarios'][iScn]['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS]),decimals=2)
                 except:
                     pass
 
@@ -343,7 +343,7 @@ def ExportSummariesByScenario(meta,pNam,mos,t_start,t_end,**kwargs):
 
     return df
 
-#%% Custome scenario comparison tabular export
+#%% Custom scenario comparison tabular export
 
 # Exmaple:
 # tabNam='ScenarioComparisons1'
@@ -353,7 +353,7 @@ def ExportSummariesByScenario(meta,pNam,mos,t_start,t_end,**kwargs):
 
 def ExportDeltaTable(meta,mos,tabNam,t_start,t_duration,vL,**kwargs):
 
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     # Key word arguments
     if 'iSP' in kwargs.keys():
@@ -373,7 +373,7 @@ def ExportDeltaTable(meta,mos,tabNam,t_start,t_duration,vL,**kwargs):
 
     df=pd.DataFrame()
 
-    for sc in mos['Delta'].keys():
+    for sc in mos[pNam]['Delta'].keys():
 
         for th in t_duration:
 
@@ -390,16 +390,16 @@ def ExportDeltaTable(meta,mos,tabNam,t_start,t_duration,vL,**kwargs):
 
                 if op1=='Inst':
                     # Instantaneous
-                    y=sum_mult*mos['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT[-1],iSP,iSS]
+                    y=sum_mult*mos[pNam]['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT[-1],iPS,iSS,iYS]
                 elif op1=='IntSum':
                     # Integrated sum
-                    y=sum_mult*np.sum(mos['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT,iSP,iSS])
+                    y=sum_mult*np.sum(mos[pNam]['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT,iPS,iSS,iYS])
                 elif op1=='MeanAnnualSumOverArea':
                     # Mean annual sum
-                    y=sum_mult*np.mean(mos['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT,iSP,iSS])
+                    y=sum_mult*np.mean(mos[pNam]['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT,iPS,iSS,iYS])
                 else:
                     # Integrated mean
-                    y=np.mean(mos['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT,iSP,iSS])
+                    y=np.mean(mos[pNam]['Delta'][sc]['ByStrata'][op0][vnam]['Ensemble Mean'][iT,iPS,iSS,iYS])
 
                 d[vnam]=np.round(y,decimals=2)
 
@@ -416,34 +416,39 @@ def ExportDeltaTable(meta,mos,tabNam,t_start,t_duration,vL,**kwargs):
 
 #%% Plot mean fluxes and mean pools over a specified time horizon
 
-def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
+def PlotSchematicAtmoGHGBal(meta,pNam,mos,iB,iP,t_start,t_end,**kwargs):
 
     # Key word arguments
-    if 'iSP' in kwargs.keys():
-        iSP=kwargs['iSP']
+    if 'iPS' in kwargs.keys():
+        iPS=kwargs['iSP']
     else:
-        iSP=0
+        iPS=0
 
     if 'iSS' in kwargs.keys():
         iSS=kwargs['iSS']
     else:
         iSS=0
+    
+    if 'iYS' in kwargs.keys():
+        iYS=kwargs['iYS']
+    else:
+        iYS=0
 
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 
     iT=np.where( (tv>=t_start) & (tv<=t_end) )[0]
 
     y_b={}
     y_p={}
     y_d={}
-    for k in mos['Scenarios'][0]['Mean'].keys():
+    for k in mos[pNam]['Scenarios'][0]['Mean'].keys():
         if (k=='C_Forest_Tot') | (k=='C_HWP_Tot') | (k=='C_ToMill_Tot'):
-            y_b[k]=mos['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT[-1],iSP,iSS]-mos['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT[0],iSP,iSS]
-            y_p[k]=mos['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT[-1],iSP,iSS]-mos['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT[0],iSP,iSS]
+            y_b[k]=mos[pNam]['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT[-1],iPS,iSS,iYS]-mos[pNam]['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT[0],iPS,iSS,iYS]
+            y_p[k]=mos[pNam]['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT[-1],iPS,iSS,iYS]-mos[pNam]['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT[0],iPS,iSS,iYS]
             y_d[k]=y_p[k]-y_b[k]
         else:
-            y_b[k]=np.sum(mos['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS])
-            y_p[k]=np.sum(mos['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT,iSP,iSS])
+            y_b[k]=np.sum(mos[pNam]['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS])
+            y_p[k]=np.sum(mos[pNam]['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS])
             y_d[k]=y_p[k]-y_b[k]
 
         # Round
@@ -471,7 +476,7 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
             x=''
         return x
 
-    fig,ax=plt.subplots(1,figsize=gu.cm2inch(18,10))
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(18,10))
 
     # Background
     #ax.add_patch(Rectangle([0,1],0,1,fc='w',ec='k'))
@@ -636,54 +641,54 @@ def PlotSchematicAtmoGHGBal(meta,mos,iB,iP,t_start,t_end,**kwargs):
 
     try:
         if meta['Graphics']['Print Figures']=='On':
-            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
+            gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
     except:
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
+        gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\AGHGB Schematic_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
 
     return
 
 #%% Plot Cashflow
-
-def PlotCashflow(meta,mos,iB,iP,t_start,t_end):
-
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
-    iT=np.where( (tv>=t_start) & (tv<=t_end) )[0]
-
-    fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(15,11.5)); lw=0.75
-    ax[0,0].plot(tv,mos[iB]['Cashflow']['Mean']['Cost Total']['Ensemble Mean']/1000,'-bo',lw=lw,ms=4,label='Baseline')
-    ax[0,0].plot(tv,mos[iP]['Cashflow']['Mean']['Cost Total']['Ensemble Mean']/1000,'--r^',lw=lw,ms=3,label='Project')
-    ax[0,0].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cost (CDN$/000)')
-    ax[0,0].legend(loc='upper right',frameon=False,facecolor=None)
-
-    ax[0,1].plot(tv,(mos[iP]['Cashflow']['Mean']['Cost Total']['Ensemble Mean']-mos[iB]['Cashflow']['Mean']['Cost Total']['Ensemble Mean'])/1000,'-g',lw=lw)
-    ax[0,1].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cost (CDN$/000)')
-
-    ax[1,0].plot(tv,mos[iB]['Cashflow']['Mean']['Revenue Net']['Ensemble Mean']/1000,'-bo',ms=4,lw=lw)
-    ax[1,0].plot(tv,mos[iP]['Cashflow']['Mean']['Revenue Net']['Ensemble Mean']/1000,'--r^',ms=3,lw=lw)
-    ax[1,0].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Net revenue (CDN$/000)')
-
-    ax[1,1].plot(tv,(mos[iP]['Cashflow']['Mean']['Revenue Net']['Ensemble Mean']-mos[iB]['Cashflow']['Mean']['Revenue Net']['Ensemble Mean'])/1000,'-g',lw=lw)
-    ax[1,1].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Net revenue (CDN$/000)')
-
-    ax[2,0].plot(tv,mos[iB]['Cashflow']['Mean']['Revenue Net_cumu']['Ensemble Mean']/1000,'-b',ms=4,lw=lw)
-    ax[2,0].plot(tv,mos[iP]['Cashflow']['Mean']['Revenue Net_cumu']['Ensemble Mean']/1000,'--r',ms=3,lw=lw)
-    ax[2,0].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cumulative net revenue (CDN$/000)')
-
-    ax[2,1].plot(tv,(mos[iP]['Cashflow']['Mean']['Revenue Net_cumu']['Ensemble Mean']-mos[iB]['Cashflow']['Mean']['Revenue Net_cumu']['Ensemble Mean'])/1000,'-g',lw=lw)
-    ax[2,1].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cumulative net revenue (CDN$/000)');
-
-    if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Cashflow_S' + str(iP) + 'minusS' + str(iB) + '_' + str(t_start) + 'to' + str(t_end),'png',900)
-
+def PlotCashflow(meta,pNam,mos,tv,iT):
+    iPS=0; iSS=0; iYS=0
+    for k in mos[pNam]['Delta'].keys():
+        iB=mos[pNam]['Delta']['Coast No Harvest']['iB']
+        iP=mos[pNam]['Delta']['Coast No Harvest']['iP']
+        
+        plt.close('all'); fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(15,11.5)); lw=0.75        
+        ax[0,0].plot(tv,mos[pNam]['Scenarios'][iB]['Mean']['Cost Total']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'-bo',lw=lw,ms=4,label='Baseline')
+        ax[0,0].plot(tv,mos[pNam]['Scenarios'][iP]['Mean']['Cost Total']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'--r^',lw=lw,ms=3,label='Project')
+        ax[0,0].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cost (CDN$/000)')
+        ax[0,0].legend(loc='upper right',frameon=False,facecolor=None)
+        ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+        
+        ax[0,1].plot(tv,mos[pNam]['Delta'][k]['ByStrata']['Mean']['Cost Total']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'-g',lw=lw)
+        ax[0,1].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cost (CDN$/000)')
+        ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+        
+        ax[1,0].plot(tv,mos[pNam]['Scenarios'][iB]['Mean']['Revenue Net']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'-bo',lw=lw,ms=4,label='Baseline')
+        ax[1,0].plot(tv,mos[pNam]['Scenarios'][iP]['Mean']['Revenue Net']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'--r^',lw=lw,ms=3,label='Project')
+        ax[1,0].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Net revenue (CDN$/000)')
+        ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+        ax[1,1].plot(tv,mos[pNam]['Delta'][k]['ByStrata']['Mean']['Revenue Net']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'-g',lw=lw)
+        ax[1,1].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Net revenue (CDN$/000)')
+        ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+        ax[2,0].plot(tv,mos[pNam]['Scenarios'][iB]['Mean']['Revenue Net_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'-bo',lw=lw,ms=4,label='Baseline')
+        ax[2,0].plot(tv,mos[pNam]['Scenarios'][iP]['Mean']['Revenue Net_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'--r^',lw=lw,ms=3,label='Project')
+        ax[2,0].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cumulative net revenue (CDN$/000)')
+        ax[2,0].yaxis.set_ticks_position('both'); ax[2,0].xaxis.set_ticks_position('both'); ax[2,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+        ax[2,1].plot(tv,mos[pNam]['Delta'][k]['ByStrata']['Mean']['Revenue Net_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'-g',lw=lw,label='Undiscounted')
+        ax[2,1].plot(tv,mos[pNam]['Delta'][k]['ByStrata']['Mean']['Revenue Net Disc_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS]/1000,'--g',color=[0.5,0.95,0],lw=lw,label='Discounted')
+        ax[2,1].legend(loc='lower left',frameon=False,facecolor=None)
+        ax[2,1].set(xlim=[tv[iT[0]], tv[iT[-1]]],ylabel='Cumulative net revenue (CDN$/000)')
+        ax[2,1].yaxis.set_ticks_position('both'); ax[2,1].xaxis.set_ticks_position('both'); ax[2,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+        if meta['Graphics']['Print Figures']=='On':
+            gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\Cashflow_' + k,'png',900)
     return
 
 #%%
+def PlotPools(meta,mos,pNam,tv,iT,**kwargs):
 
-def PlotPools(meta,mos,tv,iT,**kwargs):
-
-    iSP=0
-    iSS=0
-
+    iPS=0; iSS=0; iYS=0
     vs=['C_Biomass_Tot','C_DeadWood_Tot','C_Litter_Tot','C_Soil_Tot','C_InUse_Tot','C_DumpLandfill_Tot']
     vs2=['Biomass','Dead Wood','Litter','Soil','In-use Products','Dump and Landfill']
 
@@ -694,23 +699,24 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
 
         # Generate one figure per scenario comparison
 
-        for k in mos['Delta'].keys():
+        for k in mos[pNam]['Delta'].keys():
             cnt=0
             fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
-            sL=[mos['Delta'][k]['iB'],mos['Delta'][k]['iP']]
+            sL=[mos[pNam]['Delta'][k]['iB'],mos[pNam]['Delta'][k]['iP']]
             for i in range(3):
                 for j in range(2):
 
                     for iScn in range(len(sL)):
-                        be=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iSP,iSS]
-                        lo=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P025'][iT,iSP,iSS]
-                        hi=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P975'][iT,iSP,iSS]
-                        lo2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P250'][iT,iSP,iSS]
-                        hi2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P750'][iT,iSP,iSS]
+                        be=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPS,iSS,iYS]
+                        lo=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPS,iSS,iYS]
+                        hi=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPS,iSS,iYS]
+                        lo2=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPS,iSS,iYS]
+                        hi2=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPS,iSS,iYS]
 
                         ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
                         ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
                         ax[i,j].plot(tv[iT],be,symb[iScn],color=cl[iScn,:],lw=1,label='Scenario ' + str(iScn+1))
+                        ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both'); ax[i,j].tick_params(length=meta['Graphics']['gp']['tickl'])
 
                     if (i==0) & (j==0):
                         ax[i,j].legend(loc="lower left")
@@ -720,8 +726,8 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
             gu.axletters(ax,plt,0.035,0.9)
 
             if meta['Graphics']['Print Figures']=='On':
-                gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Pools_' + k,'png',900)
-            fig.suptitle(k,fontsize)
+                gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\Pools_' + k,'png',900)
+            #fig.suptitle(k,fontsize)
             #print(k)
 
     else:
@@ -735,11 +741,11 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
             s=kwargs['ScenarioIndexList'][iScn]
             for i in range(3):
                 for j in range(2):
-                    be=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iSP,iSS]
-                    lo=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P025'][iT,iSP,iSS]
-                    hi=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P975'][iT,iSP,iSS]
-                    lo2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P250'][iT,iSP,iSS]
-                    hi2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P750'][iT,iSP,iSS]
+                    be=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPS,iSS,iYS]
+                    lo=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPS,iSS,iYS]
+                    hi=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPS,iSS,iYS]
+                    lo2=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPS,iSS,iYS]
+                    hi2=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPS,iSS,iYS]
 
                     ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
                     ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
@@ -748,21 +754,21 @@ def PlotPools(meta,mos,tv,iT,**kwargs):
                     if (i==0) & (j==0):
                         ax[i,j].legend(loc="lower left")
                     ax[i,j].set(ylabel=vs2[cnt] + ' (MgC/ha)')
+                    ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both'); ax[i,j].tick_params(length=meta['Graphics']['gp']['tickl'])
             cnt=cnt+1
 
         gu.axletters(ax,plt,0.035,0.9)
 
         if meta['Graphics']['Print Figures']=='On':
-            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Pools_CustomScenarioList','png',900)
+            gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\Pools_CustomScenarioList','png',900)
 
     return
 
 #%%
 
-def PlotFluxes(meta,mos,tv,iT,**kwargs):
+def PlotFluxes(meta,mos,pNam,tv,iT,**kwargs):
 
-    iSP=0
-    iSS=0
+    iPS=0; iSS=0; iYS=0
 
     vs=['C_NPP_Tot','C_G_Net_Tot','C_RH_Tot','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_HWP','E_CO2e_SUB_Tot','E_CO2e_AGHGB_WSub']
     vs2=['NPP (tCO2e/ha/yr)','Net growth (tCO2e/ha/yr)','RH (tCO2e/ha/yr)','Open burning (tCO2e/ha/yr)','Wildfire (tCO2e/ha/yr)','HWP (tCO2e/ha/yr)','Substitutions (tCO2e/ha/yr)','GHG balance (tCO2e/ha/yr)']
@@ -774,19 +780,19 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
 
         # Generate one figure per scenario comparison
 
-        for k in mos['Delta'].keys():
+        for k in mos[pNam]['Delta'].keys():
             cnt=0
             fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(18,15)); Alpha=0.09
-            sL=[mos['Delta'][k]['iB'],mos['Delta'][k]['iP']]
+            sL=[mos[pNam]['Delta'][k]['iB'],mos[pNam]['Delta'][k]['iP']]
             for i in range(3):
                 for j in range(2):
 
                     for iScn in range(len(sL)):
-                        be=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iSP,iSS]
-                        lo=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P025'][iT,iSP,iSS]
-                        hi=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P975'][iT,iSP,iSS]
-                        lo2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P250'][iT,iSP,iSS]
-                        hi2=mos['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P750'][iT,iSP,iSS]
+                        be=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPS,iSS,iYS]
+                        lo=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPS,iSS,iYS]
+                        hi=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPS,iSS,iYS]
+                        lo2=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPS,iSS,iYS]
+                        hi2=mos[pNam]['Scenarios'][sL[iScn]]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPS,iSS,iYS]
 
                         ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
                         ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
@@ -795,12 +801,13 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
                     if (i==0) & (j==0):
                         ax[i,j].legend(loc="lower left")
                     ax[i,j].set(ylabel=vs2[cnt] + ' (MgC/ha)')
+                    ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both'); ax[i,j].tick_params(length=meta['Graphics']['gp']['tickl'])
                     cnt=cnt+1
 
             gu.axletters(ax,plt,0.035,0.9)
 
             if meta['Graphics']['Print Figures']=='On':
-                gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Fluxes_' + k,'png',900)
+                gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\Fluxes_' + k,'png',900)
 
     else:
 
@@ -813,11 +820,11 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
             s=kwargs['ScenarioIndexList'][iScn]
             for i in range(3):
                 for j in range(2):
-                    be=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iSP,iSS]
-                    lo=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P025'][iT,iSP,iSS]
-                    hi=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P975'][iT,iSP,iSS]
-                    lo2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P250'][iT,iSP,iSS]
-                    hi2=mos['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P750'][iT,iSP,iSS]
+                    be=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble Mean'][iT,iPS,iSS,iYS]
+                    lo=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P025'][iT,iPS,iSS,iYS]
+                    hi=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P975'][iT,iPS,iSS,iYS]
+                    lo2=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P250'][iT,iPS,iSS,iYS]
+                    hi2=mos[pNam]['Scenarios'][s]['Mean'][vs[cnt]]['Ensemble P750'][iT,iPS,iSS,iYS]
 
                     ax[i,j].fill_between(tv[iT],lo,hi,color=cl[iScn,:],alpha=Alpha,linewidth=0)
                     ax[i,j].fill_between(tv[iT],lo2,hi2,color=cl[iScn,:],alpha=Alpha,linewidth=0)
@@ -826,83 +833,79 @@ def PlotFluxes(meta,mos,tv,iT,**kwargs):
                     if (i==0) & (j==0):
                         ax[i,j].legend(loc="lower left")
                     ax[i,j].set(ylabel=vs2[cnt])
+                    ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both'); ax[i,j].tick_params(length=meta['Graphics']['gp']['tickl'])
             cnt=cnt+1
 
         gu.axletters(ax,plt,0.035,0.9)
 
         if meta['Graphics']['Print Figures']=='On':
-            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Fluxes_CustomScenarioList','png',900)
+            gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\Fluxes_CustomScenarioList','png',900)
 
     return
 
 #%% Plot NEP, RH, and NPP
+def PlotNEP(meta,mos,pNam,tv,iT):
 
-def PlotNEP(meta,mos,tv,iT):
+    iPS=0; iSS=0; iYS=0
 
-    iSP=0
-    iSS=0
+    for k in mos[pNam]['Delta'].keys():
 
-    for k in mos['Delta'].keys():
-
-        iB=mos['Delta'][k]['iB']
-        iP=mos['Delta'][k]['iP']
+        iB=mos[pNam]['Delta'][k]['iB']
+        iP=mos[pNam]['Delta'][k]['iP']
 
         fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(18,8)); Alpha=0.09
-
         for j in range(0,2):
-            ax[j].yaxis.set_ticks_position('both');
-            ax[j].xaxis.set_ticks_position('both')
             ax[j].plot(tv[iT],0*np.ones(tv[iT].shape),'-',lw=3,color=(0.8,0.8,0.8),label='')
-
         cl=np.array([[0.75,0,0],[0,0.85,0],[0.29,0.49,0.77]])
         ymin=0.0
         ymax=0.0
 
         vn='C_RH_Tot'
-        lo=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS]
-        hi=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS]
-        lo2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS]
-        hi2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS]
+        lo=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iPS,iSS,iYS]
+        hi=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iPS,iSS,iYS]
+        lo2=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iPS,iSS,iYS]
+        hi2=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iPS,iSS,iYS]
         #ax[0].fill_between(tv[iT],lo,hi,color=cl[0,:],alpha=Alpha,linewidth=0)
         ax[0].fill_between(tv[iT],lo2,hi2,color=cl[0,:],alpha=Alpha,linewidth=0)
-        ax[0].plot(tv[iT],3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS],'--',color=cl[0,:],label='RH')
+        ax[0].plot(tv[iT],3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=cl[0,:],label='RH')
         ymin=np.minimum(ymin,np.min(lo))
         ymax=np.maximum(ymax,np.max(hi))
 
         vn='C_NPP_Tot'
-        lo=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS]
-        hi=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS]
-        lo2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS]
-        hi2=3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS]
+        lo=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iPS,iSS,iYS]
+        hi=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iPS,iSS,iYS]
+        lo2=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iPS,iSS,iYS]
+        hi2=3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iPS,iSS,iYS]
         #ax[0].fill_between(tv[iT],lo,hi,color=cl[0,:],alpha=Alpha,linewidth=0)
         ax[0].fill_between(tv[iT],lo2,hi2,color=cl[1,:],alpha=Alpha,linewidth=0)
-        ax[0].plot(tv[iT],3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS],'-.',color=cl[1,:],label='NPP')
+        ax[0].plot(tv[iT],3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iPS,iSS,iYS],'-.',color=cl[1,:],label='NPP')
         ymin=np.minimum(ymin,np.min(lo))
         ymax=np.maximum(ymax,np.max(hi))
 
         vn='E_CO2e_LULUCF_NEE'
-        lo=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS]
-        hi=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS]
-        lo2=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS]
-        hi2=-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS]
+        lo=-mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iPS,iSS,iYS]
+        hi=-mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iPS,iSS,iYS]
+        lo2=-mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iPS,iSS,iYS]
+        hi2=-mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iPS,iSS,iYS]
         #ax[0].fill_between(tv[iT],lo,hi,color=cl[0,:],alpha=Alpha,linewidth=0)
         ax[0].fill_between(tv[iT],lo2,hi2,color=cl[2,:],alpha=Alpha,linewidth=0)
-        ax[0].plot(tv[iT],-mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS],'-',color=cl[2,:],label='NEP')
+        ax[0].plot(tv[iT],-mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=cl[2,:],label='NEP')
         ymin=np.minimum(ymin,np.min(lo))
         ymax=np.maximum(ymax,np.max(hi))
 
         ax[0].legend(loc="lower right",frameon=0)
         ax[0].set(ylabel='Annual $\Delta$ (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlabel='Time, years',ylim=[ymin,ymax],xlim=[tv[iT[0]],tv[iT[-1]]]);
-
+        ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
+        
         ymin=0.0
         ymax=0.0
 
         vn='C_RH_Tot'
-        lo=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS])
-        hi=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS])
-        lo2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS])
-        hi2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS])
-        mu=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS])
+        lo=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iPS,iSS,iYS])
+        hi=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iPS,iSS,iYS])
+        lo2=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iPS,iSS,iYS])
+        hi2=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iPS,iSS,iYS])
+        mu=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iPS,iSS,iYS])
         #ax[1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
         ax[1].fill_between(tv[iT],lo2,hi2,color=cl[0,:],alpha=Alpha,linewidth=0)
         ax[1].plot(tv[iT],mu,'--',color=cl[0,:])
@@ -911,11 +914,11 @@ def PlotNEP(meta,mos,tv,iT):
         ymax=np.maximum(ymax,np.max(mu))
 
         vn='C_NPP_Tot'
-        lo=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS])
-        hi=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS])
-        lo2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS])
-        hi2=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS])
-        mu=np.cumsum(3.667*mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS])
+        lo=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iPS,iSS,iYS])
+        hi=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iPS,iSS,iYS])
+        lo2=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iPS,iSS,iYS])
+        hi2=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iPS,iSS,iYS])
+        mu=np.cumsum(3.667*mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iPS,iSS,iYS])
         #ax[1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
         ax[1].fill_between(tv[iT],lo2,hi2,color=cl[1,:],alpha=Alpha,linewidth=0)
         ax[1].plot(tv[iT],mu,'-.',color=cl[1,:])
@@ -923,37 +926,34 @@ def PlotNEP(meta,mos,tv,iT):
         ymax=np.maximum(ymax,np.max(mu))
 
         vn='E_CO2e_LULUCF_NEE'
-        lo=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iSP,iSS])
-        hi=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iSP,iSS])
-        lo2=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iSP,iSS])
-        hi2=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iSP,iSS])
-        mu=-np.cumsum(mos['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iSP,iSS])
+        lo=-np.cumsum(mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P025'][iT,iPS,iSS,iYS])
+        hi=-np.cumsum(mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P975'][iT,iPS,iSS,iYS])
+        lo2=-np.cumsum(mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P250'][iT,iPS,iSS,iYS])
+        hi2=-np.cumsum(mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble P750'][iT,iPS,iSS,iYS])
+        mu=-np.cumsum(mos[pNam]['Delta'][k]['ByStrata']['Mean'][vn]['Ensemble Mean'][iT,iPS,iSS,iYS])
         #ax[1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
         ax[1].fill_between(tv[iT],lo2,hi2,color=cl[2,:],alpha=Alpha,linewidth=0)
         ax[1].plot(tv[iT],mu,'-',color=cl[2,:])
         ymin=np.minimum(ymin,np.min(mu))
         ymax=np.maximum(ymax,np.max(mu))
-
         ax[1].set(ylabel='Cumulative $\Delta$ (tCO$_2$e ha$^-$$^1$)',xlabel='Time, years',ylim=[ymin,ymax],xlim=[tv[iT[0]],tv[iT[-1]]]);
+        ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
         gu.axletters(ax,plt,0.03,0.89)
         if meta['Graphics']['Print Figures']=='On':
-            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\NEE_Balance_' + k,'png',900)
+            gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\NEE_Balance_' + k,'png',900)
         fig.suptitle(k)
 
     return
 
 #%%
+def PlotGHGB(meta,mos,pNam,tv,iT):
 
-def PlotGHGB(meta,mos,tv,iT):
+    iPS=0; iSS=0; iYS=0
 
-    # Always zeros
-    iSP=0
-    iSS=0
+    for k in mos[pNam]['Delta'].keys():
 
-    for k in mos['Delta'].keys():
-
-        iB=mos['Delta'][k]['iB']
-        iP=mos['Delta'][k]['iP']
+        iB=mos[pNam]['Delta'][k]['iB']
+        iP=mos[pNam]['Delta'][k]['iP']
 
         fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(18,10)); Alpha=0.09
 
@@ -962,41 +962,46 @@ def PlotGHGB(meta,mos,tv,iT):
                 ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both')
                 ax[i,j].plot(tv[iT],0*np.ones(tv[iT].shape),'-',lw=3,color=(0.8,0.8,0.8),label='')
 
-        ax[0,0].plot(tv[iT],mos['Scenarios'][iB]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iSP,iSS],'-',color=(0,0.5,1),label='Baseline')
-        ax[0,0].plot(tv[iT],mos['Scenarios'][iP]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iSP,iSS],'--',color=(0,0.6,0),label='Project (With Subs.)')
+        ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0,0.5,1),label='Baseline')
+        ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iP]['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=(0,0.6,0),label='Project (With Subs.)')
         ax[0,0].legend(loc="upper right",frameon=0)
+        #ax[0,0].legend(loc="lower left",frameon=0)
         ax[0,0].set(ylabel='AGHGB (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
-
-        ax[0,1].plot(tv[iT],mos['Scenarios'][iB]['Mean']['E_CO2e_AGHGB_WSub_cumu']['Ensemble Mean'][iT,iSP,iSS],'-',color=(0,0.5,1),label='Baseline SR')
-        ax[0,1].plot(tv[iT],mos['Scenarios'][iP]['Mean']['E_CO2e_AGHGB_WSub_cumu']['Ensemble Mean'][iT,iSP,iSS],'--',color=(0,0.6,0),label='Baseline NSR')
+        ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+        
+        ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_AGHGB_WSub_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0,0.5,1),label='Baseline SR')
+        ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iP]['Mean']['E_CO2e_AGHGB_WSub_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=(0,0.6,0),label='Baseline NSR')
         ax[0,1].set(ylabel='Cumulative AGHGB (tCO$_2$e ha$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
-
-        lo=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P025'][iT,iSP,iSS]
-        hi=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P975'][iT,iSP,iSS]
-        lo2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P250'][iT,iSP,iSS]
-        hi2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P750'][iT,iSP,iSS]
+        ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+        
+        lo=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P025'][iT,iPS,iSS,iYS]
+        hi=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P975'][iT,iPS,iSS,iYS]
+        lo2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P250'][iT,iPS,iSS,iYS]
+        hi2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P750'][iT,iPS,iSS,iYS]
         ax[1,0].fill_between(tv[iT],lo,hi,color=[0.15,0,0.75],alpha=Alpha,linewidth=0,label='95 C.I.')
         ax[1,0].fill_between(tv[iT],lo2,hi2,color=[0.05,0,0.6],alpha=Alpha,linewidth=0,label='50 C.I.')
-        ax[1,0].plot(tv[iT],mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iSP,iSS],'-',color=(0.5,0,1),label='Best estimate (With Subs.)')
-        ax[1,0].legend(loc="upper right",frameon=0)
+        ax[1,0].plot(tv[iT],mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0.5,0,1),label='Best estimate (With Subs.)')
+        #ax[1,0].legend(loc="upper right",frameon=0)
+        ax[1,0].legend(loc="lower left",frameon=0)
         ax[1,0].set(ylabel='$\Delta$ AGHGB (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years',ylim=[np.min(lo),np.max(hi)]);
+        ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 
-        lo=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P025'][iT,iSP,iSS]
-        hi=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P975'][iT,iSP,iSS]
-        lo2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P250'][iT,iSP,iSS]
-        hi2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P750'][iT,iSP,iSS]
+        lo=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P025'][iT,iPS,iSS,iYS]
+        hi=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P975'][iT,iPS,iSS,iYS]
+        lo2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P250'][iT,iPS,iSS,iYS]
+        hi2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P750'][iT,iPS,iSS,iYS]
         ax[1,1].fill_between(tv[iT],lo,hi,color=[0.75,.5,1],alpha=Alpha,linewidth=0,label='95 C.I.')
         ax[1,1].fill_between(tv[iT],lo2,hi2,color=[0.05,0,0.6],alpha=Alpha,linewidth=0,label='50 C.I.')
-        ax[1,1].plot(tv[iT],mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][iT,iSP,iSS],'-',color=(0.5,0,1),label='Best estimate (With Subs.)')
-        ax[1,1].plot(tv[iT],mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WOSub_cumu_from_tref']['Ensemble Mean'][iT,iSP,iSS],'--',color=(0.7,0.2,1),label='Best estimate (W/O Subs.)')
+        ax[1,1].plot(tv[iT],mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0.5,0,1),label='Best estimate (With Subs.)')
+        ax[1,1].plot(tv[iT],mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WOSub_cumu_from_tref']['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=(0.7,0.2,1),label='Best estimate (W/O Subs.)')
         ax[1,1].set(ylabel='Cumulative $\Delta$ AGHGB (tCO$_2$e ha$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
-
+        ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
         gu.axletters(ax,plt,0.03,0.89)
 
         if meta['Graphics']['Print Figures']=='On':
-            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\GHG_Balance_' + k,'png',900)
+            gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\GHG_Balance_' + k,'png',900)
 
-        fig.suptitle(k)
+        #fig.suptitle(k)
 
     return
 
@@ -1017,32 +1022,32 @@ def PlotGHGBenefit(meta,mos,tv,iT):
         ax[i].plot(tv[iT],0*np.ones(tv[iT].shape),'-',lw=3,color=(0.8,0.8,0.8),label='')
 
     cnt=0
-    for k in mos['Delta'].keys():
-        lo=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P025'][iT,iSP,iSS]
-        hi=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P975'][iT,iSP,iSS]
-        lo2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P250'][iT,iSP,iSS]
-        hi2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P750'][iT,iSP,iSS]
+    for k in mos[pNam]['Delta'].keys():
+        lo=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P025'][iT,iPS,iSS,iYS]
+        hi=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P975'][iT,iPS,iSS,iYS]
+        lo2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P250'][iT,iPS,iSS,iYS]
+        hi2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble P750'][iT,iPS,iSS,iYS]
         ax[0].fill_between(tv[iT],lo,hi,color=cl[cnt,:],alpha=Alpha,linewidth=0)
         ax[0].fill_between(tv[iT],lo2,hi2,color=cl[cnt,:],alpha=Alpha,linewidth=0)
-        ax[0].plot(tv[iT],mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iSP,iSS],symb[cnt],color=cl[cnt,:],label='SC ' + str(cnt+1) )
+        ax[0].plot(tv[iT],mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS],symb[cnt],color=cl[cnt,:],label='SC ' + str(cnt+1) )
         ax[0].legend(loc="upper right",frameon=0)
         ax[0].set(ylabel='$\Delta$GHG (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]], \
                   xlabel='Time, years',ylim=[np.min(lo),np.max(hi)]);
 
-        lo=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P025'][iT,iSP,iSS]
-        hi=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P975'][iT,iSP,iSS]
-        lo2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P250'][iT,iSP,iSS]
-        hi2=mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P750'][iT,iSP,iSS]
+        lo=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P025'][iT,iPS,iSS,iYS]
+        hi=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P975'][iT,iPS,iSS,iYS]
+        lo2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P250'][iT,iPS,iSS,iYS]
+        hi2=mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble P750'][iT,iPS,iSS,iYS]
         ax[1].fill_between(tv[iT],lo,hi,color=cl[cnt,:],alpha=Alpha,linewidth=0)
         ax[1].fill_between(tv[iT],lo2,hi2,color=cl[cnt,:],alpha=Alpha,linewidth=0)
-        ax[1].plot(tv[iT],mos['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][iT,iSP,iSS],symb[cnt],color=cl[cnt,:],label='SC ' + str(cnt+1))
+        ax[1].plot(tv[iT],mos[pNam]['Delta'][k]['ByStrata']['Mean']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][iT,iPS,iSS,iYS],symb[cnt],color=cl[cnt,:],label='SC ' + str(cnt+1))
         ax[1].set(ylabel='Cumulative $\Delta$GHG (tCO$_2$e ha$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
         cnt=cnt+1
 
     gu.axletters(ax,plt,0.035,0.92)
 
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\GHG_Benefit','png',900)
+        gu.PrintFig(meta['Paths'][pNam]['Figures'] + '\\GHG_Benefit','png',900)
 
     return
 
@@ -1050,53 +1055,53 @@ def PlotGHGBenefit(meta,mos,tv,iT):
 
 def SummaryBioenergy(meta,mos,sc,th):
 
-    tv=np.arange(meta['Project']['Year Start Saving'],meta['Project']['Year End']+1,1)
-    iT=np.where( (tv>=meta['Project']['Year Project']) & (tv<=meta['Project']['Year Project']+th) )[0]
+    tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
+    iT=np.where( (tv>=meta[pNam]['Project']['Year Project']) & (tv<=meta[pNam]['Project']['Year Project']+th) )[0]
 
     d={}
-    d['EI PelletExport (tCO2e/ODT)']=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
-    d['EI PelletExport Boiler (tCO2e/GJ)']=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])
-    d['EI PelletExport Boiler+Ops (tCO2e/GJ)']=np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0]+ \
-                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                                                       mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,0,0]) )/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])
-    d['EI Pellet Manufacture (tCO2e/ODT Pellets)']=np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]) )/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI PelletExport (tCO2e/ODT)']=np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI PelletExport Boiler (tCO2e/GJ)']=np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI PelletExport Boiler+Ops (tCO2e/GJ)']=np.sum( (mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_BioenergyPelletExport']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                                                       mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,0,0]) )/np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])
+    d['EI Pellet Manufacture (tCO2e/ODT Pellets)']=np.sum( (mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]) )/np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
     d['EI OperationForestry (tCO2e/ODT)']= \
-            np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]) ) / \
-            np.sum( (mos['Delta'][sc]['ByStrata']['Mean']['ODT Lumber']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT LogExport']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT Plywood']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT OSB']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT MDF']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT Paper']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletDomGrid']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletDomRNG']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT PowerFacilityDom']['Ensemble Mean'][iT,0,0]+ \
-            mos['Delta'][sc]['ByStrata']['Mean']['ODT PowerGrid']['Ensemble Mean'][iT,0,0]) )
+            np.sum( (mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]) ) / \
+            np.sum( (mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT Lumber']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT LogExport']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT Plywood']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT OSB']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT MDF']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT Paper']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PelletDomGrid']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PelletDomRNG']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PowerFacilityDom']['Ensemble Mean'][iT,0,0]+ \
+            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PowerGrid']['Ensemble Mean'][iT,0,0]) )
 
-    d['Energy efficiency (GJ/ODT)']=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
+    d['Energy efficiency (GJ/ODT)']=np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['GJ PelletExport']['Ensemble Mean'][iT,0,0])/np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['ODT PelletExport']['Ensemble Mean'][iT,0,0])
 
     # Displacement factor
 
-    SubTot=-np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_Tot']['Ensemble Mean'][iT,0,0])
-    SubE=-np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_E']['Ensemble Mean'][iT,0,0])
-    SubM=-np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_M']['Ensemble Mean'][iT,0,0])
-    Wood=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['C_ToLumber']['Ensemble Mean'][iT,0,0]+ \
-        mos['Delta'][sc]['ByStrata']['Mean']['C_ToPlywood']['Ensemble Mean'][iT,0,0]+ \
-        mos['Delta'][sc]['ByStrata']['Mean']['C_ToMDF']['Ensemble Mean'][iT,0,0]+ \
-        mos['Delta'][sc]['ByStrata']['Mean']['C_ToOSB']['Ensemble Mean'][iT,0,0])
-    Bioenergy=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0])
-    BioenergyPlusOps=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0]+ \
-                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0])
-    BioenergyOpsAndHWPDecay=np.sum(mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0]+ \
-                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]+ \
-                            mos['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0])
+    SubTot=-np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_Tot']['Ensemble Mean'][iT,0,0])
+    SubE=-np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_E']['Ensemble Mean'][iT,0,0])
+    SubM=-np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_SUB_M']['Ensemble Mean'][iT,0,0])
+    Wood=np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['C_ToLumber']['Ensemble Mean'][iT,0,0]+ \
+        mos[pNam]['Delta'][sc]['ByStrata']['Mean']['C_ToPlywood']['Ensemble Mean'][iT,0,0]+ \
+        mos[pNam]['Delta'][sc]['ByStrata']['Mean']['C_ToMDF']['Ensemble Mean'][iT,0,0]+ \
+        mos[pNam]['Delta'][sc]['ByStrata']['Mean']['C_ToOSB']['Ensemble Mean'][iT,0,0])
+    Bioenergy=np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0])
+    BioenergyPlusOps=np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0]+ \
+                            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0])
+    BioenergyOpsAndHWPDecay=np.sum(mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0]+ \
+                            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ET_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_IPPU_OperFor']['Ensemble Mean'][iT,0,0]+ \
+                            mos[pNam]['Delta'][sc]['ByStrata']['Mean']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,0,0])
 
     d['Displacement Factor Total (tC/tC)']=SubTot/BioenergyOpsAndHWPDecay
     d['Displacement Factor Energy (tC/tC)']=SubE/BioenergyPlusOps
