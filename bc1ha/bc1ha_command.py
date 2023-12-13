@@ -1,6 +1,4 @@
-
 #%% Import modules
-
 import os
 import numpy as np
 import time
@@ -26,9 +24,52 @@ import fcgadgets.cbrunner.cbrun_util as cbu
 gp=gu.SetGraphics('Manuscript')
 
 #%% Import paths and look-up-tables
-
 meta=u1ha.Init()
 zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+#%%
+def DeriveHarvestSystem(meta):
+    
+    # Import opening data (takes 26 min)
+    t0=time.time()
+    ops={}
+    ops['Path']=meta['Paths']['GDB']['Results']
+    ops['Layer']='RSLT_OPENING_SVW'; 
+    ops['crs']=meta['Geos']['crs']
+    ops['Keep Geom']='Off'
+    ops['Select Openings']=np.array([])
+    ops['SBC']=np.array([])
+    ops['STC']=np.array([])
+    ops['SMC']=np.array([])
+    ops['FSC']=np.array([])
+    ops['SOC1']=np.array([])
+    ops['ROI']=[]
+    ops['gdf']=qgdb.Query_Openings(ops,[])    
+    print((time.time()-t0)/60)
+    
+    zOP1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\OPENING_ID.tif')['Data']
+    zOP2=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\OPENING_ID_2.tif')['Data']
+    
+    
+    z1=copy.deepcopy(zRef)
+    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int8')
+    for k in meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'].keys():        
+        indOP=np.where(ops['gdf']['DENUDATION_1_SILV_SYSTEM_CODE']==k)[0]
+        for i in indOP:
+            ind=np.where(zOP1==ops['gdf']['OPENING_ID'][i])
+            z1['Data'][ind]=meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'][k]
+            if ind[0].size==0:                
+                ind=np.where(zOP2==ops['gdf']['OPENING_ID'][i])
+                z1['Data'][ind]=meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'][k]
+                
+            
+    
+    zOP2=copy.deepcopy(zRef)
+    zOP2['Data']=np.zeros(zRef['Data'].shape,dtype='int32')
+    zOP2['Data'][ind]=zOP0[ind]#.astype('int32')
+    gis.SaveGeoTiff(zOP2,meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\SILV_SYSTEM_CODE_' '.tif')    
+    
+    return
 
 #%% QA
 flg=0
@@ -58,7 +99,6 @@ print(ind[0].size/1e6)
 z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\FromBurtWilliam\\geomorphons_search50.tif')
 plt.matshow(z['Data'],clim=[0,11])
 
-
 #%% Build look up tables (only do this once a year, takes 8 hours)
 flg=0
 if flg==1:
@@ -67,7 +107,7 @@ if flg==1:
 #%% Simplify geometry of provincial geodatabases (faster useage)
 flg=0
 if flg==1:
-    u1ha.SimplifyProvincialGDBs(meta,gdf)
+    u1ha.SimplifyProvincialGDBs(meta)
 
 #%% Create land mask for BC
 u1ha.GenerateLandMaskBC(meta)
@@ -79,12 +119,12 @@ u1ha.DigitizeTSABoundaries(meta)
 
 #%% Rasterize variables from source
 # *** VRI and Forest Cover Inventory area too big - crash ***
+
 # prp=u1ha.GetVariablesFromGDB(meta,'BC_MAJOR_WATERSHEDS')
 # prp=u1ha.GetVariablesFromGDB(meta,'VEG_COMP_LYR_R1_POLY')
 # prp=u1ha.GetVariablesFromGDB(meta,'OATS_ALR_POLYS')
 # prp=u1ha.GetVariablesFromGDB(meta,'NRC_POPULATED_PLACES_1M_SP')
 # prp=u1ha.GetVariablesFromGDB(meta,'F_OWN')
-
 u1ha.RasterizeFromSource(meta,zRef,'F_OWN','OWNERSHIP_DESCRIPTION')
 u1ha.RasterizeFromSource(meta,zRef,'NRC_POPULATED_PLACES_1M_SP','NAME')
 u1ha.RasterizeFromSource(meta,zRef,'BC_MAJOR_CITIES_POINTS_500M','NAME')
@@ -129,6 +169,7 @@ u1ha.RasterizeFromSource(meta,zRef,'VEG_BURN_SEVERITY_SP','BURN_SEVERITY_RATING'
 # This should speed import by an order of magnitude
 u1ha.GenerateSparseInputs(meta,100,'Province')
 u1ha.GenerateSparseInputs(meta,200,'Province')
+u1ha.GenerateSparseInputs(meta,50,'Province')
 u1ha.GenerateSparseInputs(meta,25,'Province')
 u1ha.GenerateSparseInputs(meta,1,'BCFCS_EvalAtPlots')
 u1ha.GenerateSparseInputs(meta,1,'BCFCS_EvalAtCN')
@@ -137,6 +178,7 @@ u1ha.GenerateSparseInputs(meta,1,'BCFCS_Eval')
 u1ha.GenerateSparseInputs(meta,50,'BCFCS_LUC')
 u1ha.GenerateSparseInputs(meta,100,'NOSE')
 u1ha.GenerateSparseInputs(meta,10,'BCFCS_NMC')
+u1ha.GenerateSparseInputs(meta,1,'TSA_DawsonCreek')
 
 #%% Gap-fill BGC Zone
 u1ha.GapFillBGCZ(meta)
@@ -311,6 +353,7 @@ u1ha.RasterizeInsects(meta,zRef)
 
 #%% Rasterize insect compilation from AOS (5 hours)
 u1ha.RasterizeInsectComp1(meta)
+u1ha.CalcInsectComp1_TimeSeries(meta)
 
 #%% Rasterize consolidated cutblocks database
 u1ha.RasterizeHarvest_CC(meta,zRef)
@@ -338,6 +381,9 @@ u1ha.RasterizeSilviculture(meta,np.array(['FE']),np.array(['CA']),np.array([]),n
 
 #%% Rasterize knockdown
 u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array([]),np.array(['CABLE','GUARD','HARV','MDOWN','PUSH']),np.array([]),'SP-KD')
+
+#%% Rasterize mechanical site prep
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['CABLE','GUARD','HARV','MDOWN','PUSH']),np.array([]),'SP-Ripping')
 
 #%% Rasterize pile burning
 u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['BU']),np.array([]),np.array([]),'SP-BU')
@@ -505,3 +551,39 @@ def ConvertClimateNormals():
 
 z=gis.OpenGeoTiff(r'E:\Data\Climate\NACID\Geotiff\NACID\NACID_rswd_mon_norm_1971to2000_si_hist_v1\NACID_rswd_mon_norm_1971to2000_si_hist_v1_1.tif')
 
+#%% Species groups
+
+def DeriveSpeciesGroups(meta):    
+    
+    z0=u1ha.Import_Raster(meta,[],['refg','lc_comp1_2019'])
+    z1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\SPECIES_CD_1.tif')['Data']
+    z2=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\SPECIES_CD_2.tif')['Data']
+    z3=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\SPECIES_CD_3.tif')['Data']
+    z4=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\SPECIES_CD_4.tif')['Data']    
+    ikp=np.where( (z0['lc_comp1_2019']['Data']==1) & (z1>0) )
+    X=np.flip(np.array([z1[ikp],z2[ikp],z3[ikp],z4[ikp]],dtype='int8').T,axis=1)
+    u,cnts=np.unique(X,axis=0,return_counts=True)
+    
+    ord=np.argsort(cnts)
+    cntss=np.flip(cnts[ord])
+    us=np.flip(u[ord,:])
+    
+    n=100
+    cds=np.array(['empty' for _ in range(n)],dtype=object)
+    for i in range(n):
+        s=''
+        for j in range(4):
+            s0=u1ha.lut_n2s(meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'],us[i,j])
+            if s0.size>0:
+                if j==0:
+                    s=s+s0[0]
+                else:
+                    s=s+'-'+s0[0]
+        cds[i]=s
+    d={}
+    d['Species Group']=cds
+    d['Frequency (%)']=cntss[0:n]/ikp[0].size*100
+    df=pd.DataFrame.from_dict(d)
+    df.to_excel(r'C:\Data\Species Composition\SpeciesGroups.xlsx')
+    
+    return

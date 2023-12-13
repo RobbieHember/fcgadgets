@@ -97,7 +97,8 @@ def PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,Age):
             if iAvailable.size>0:
                 iE=iAvailable[0]+0
                 vi['EC']['ID Event Type'][iT,iA,iE]=meta['LUT']['Event']['Wind']
-                vi['EC']['Mortality Factor'][iT,iA,iE]=1.0
+                #vi['EC']['Mortality Factor'][iT,iA,iE]=meta['Param']['BE']['On The Fly']['Wind Mort']
+                vi['EC']['Mortality Factor'][iT,iA,iE]=np.random.random(1)[0]
                 vi['EC']['ID Growth Curve'][iT,iA,iE]=1
             else:
                 print('No space left in event chronology for on-the-fly event!')
@@ -135,7 +136,8 @@ def PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,Age):
             if iAvailable.size>0:
                 iE=iAvailable[0]+0
                 vi['EC']['ID Event Type'][iT,iA,iE]=meta['LUT']['Event']['Disease Root']
-                vi['EC']['Mortality Factor'][iT,iA,iE]=1.0
+                #vi['EC']['Mortality Factor'][iT,iA,iE]=meta['Param']['BE']['On The Fly']['Disease Mort']
+                vi['EC']['Mortality Factor'][iT,iA,iE]=np.random.random(1)[0]
                 vi['EC']['ID Growth Curve'][iT,iA,iE]=1
             else:
                 print('No space left in event chronology for on-the-fly event!')
@@ -179,9 +181,15 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
         # Historical period
 
         #bH=[0.0007,5.05,0.32,1975]
-        bH=[0.00085,5.15,0.32,1975]
-        f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
-        f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
+        #bH=[0.00085,5.15,0.32,1975]
+        if meta[pNam]['Year'][iT]<1933:
+            bH=[0.002,5.0,0.32,1977]
+            f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
+            f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
+        else:
+            bH=[0.00085,5.15,0.32,1975]
+            f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
+            f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
         Pa_H_Sat=f1*f2
 
         # Plot
@@ -241,14 +249,13 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 
     # Random number
     rn=np.random.random(V_Merch.size)
-    #rn=meta[pNam]['Project']['On the Fly']['Random Numbers']['Harvest'][iT,:]
 
-    # if Period=='Historical':
-    #     # This will make sure the historical harvest simulations don't occur on
-    #     # the footprint of recorded historical harvesting
-    #     flag_HistHarv=-1*(np.minimum(1,vi['lsat']['Year Harvest First'])-1)        
-    # else:
-    #     flag_HistHarv=np.ones(rn.size)
+    # Don't allow historical harvest simulations to occur on
+    # the footprint of recorded historical harvesting
+    if Period=='Historical':
+        flag_HistHarv=-1*(np.minimum(1,vi['lsat']['Year Harvest First'])-1)
+    else:
+        flag_HistHarv=np.ones(rn.size)
 
     # Occurrence
     #Oc=flag_ep*flag_thlb*flag_HistHarv*np.floor(np.minimum(1,Po/rn))

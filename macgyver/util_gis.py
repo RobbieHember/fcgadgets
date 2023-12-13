@@ -52,7 +52,7 @@ def ImportSRSs():
 def ResampleRaster(fin,sf):
 
     with rasterio.open(fin) as dataset:
-        data=dataset.read(out_shape=(dataset.count,int(dataset.height*sf),int(dataset.width*sf)),resampling=Resampling.bilinear)
+        data=dataset.read(out_shape=(dataset.count,int(dataset.height*sf),int(dataset.width*sf)),resampling=Resampling.nearest)
         #transform=dataset.transform*dataset.transform.scale((dataset.width/data.shape[-1]),(dataset.height/data.shape[-2]))
 
     z=OpenGeoTiff(fin)
@@ -278,6 +278,8 @@ def ClipToRaster(z_in0,z_ref0):
     elif (dx==-1) & (dy==-1):
         ix_in=np.where((z_in['X'][0,:]>=xmin) & (z_in['X'][0,:]<xmax))[0]
         iy_in=np.where((z_in['Y'][:,0]>=ymin) & (z_in['Y'][:,0]<ymax))[0]
+    elif (dx==0) & (dy==-1):
+        iy_in=np.where((z_in['Y'][:,0]>=ymin) & (z_in['Y'][:,0]<ymax))[0]        
     else:
         pass
 

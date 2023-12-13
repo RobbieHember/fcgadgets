@@ -38,94 +38,104 @@ def CreateIdForCategoricalVariable(meta,lNam,vNam,df):
 
 def Init(*argv):
 
-    meta={}
+	meta={}
+	
+	# Set paths
+	meta['Paths']={}
+	meta['Paths']['bc1ha']=r'C:\Data\BC1ha'
+	meta['Paths']['bc1ha Ref Grid']=meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandMask.tif'
+	meta['Paths']['GDB']={}
+	meta['Paths']['GDB']['GDB']=r'C:\Data\Geodatabases'
+	meta['Paths']['GDB']['LandCover']=r'C:\Data\Geodatabases\LandCover\20230607\LandCover.gdb'
+	meta['Paths']['GDB']['LandUse']=r'C:\Data\Geodatabases\LandUse\20230501\LandUse.gdb'
+	meta['Paths']['GDB']['Disturbance']=r'C:\Data\Geodatabases\Disturbances\20230501\Disturbances.gdb'
+	meta['Paths']['GDB']['Results']=r'C:\Data\Geodatabases\Results\20230430\Results.gdb'
+	meta['Paths']['GDB']['VRI 2002']=r'C:\Data\Geodatabases\VRI\2002\VRI2002_VEG_COMP_LYR_R1_POLY_FINAL_DELIVERYV4.gdb'
+	meta['Paths']['GDB']['VRI 2023']=r'C:\Data\Geodatabases\VRI\20230401\VRI.gdb'
+	meta['Paths']['Model']={}
+	#meta['Paths']['Model']['Code']=r'C:\Code_Python\fcgadgets\cbrunner'
+	meta['Paths']['Model']['Code']=r'G:\My Drive\Code_Python\fcgadgets\cbrunner'
+	meta['Paths']['Model']['Parameters']=meta['Paths']['Model']['Code'] + '\\Parameters'
+	meta['Paths']['Model']['Taz Datasets']=r'C:\Data\Taz Datasets'
+	meta['Paths']['GP']={}
+	meta['Paths']['GP']['DB']=r'C:\Data\GroundPlots\PSP-NADB2'
+	meta['Paths']['GP']['Raw Data']={}
+	meta['Paths']['GP']['Raw Data']['BC']=meta['Paths']['GP']['DB'] + '\\Given\BC\Received 2023-03-02'
+	
+	meta['Graphics']={'Plot Style':{},'Map':{},'Flowchart':{}}
+	meta['Graphics']['Plot Style']='Web' # Manuscript
+	meta['Graphics']['gp']=gu.SetGraphics(meta['Graphics']['Plot Style'])
+	meta['Graphics']['gp']['AxesLetterStyle']='Caps'
+	meta['Graphics']['gp']['AxesLetterFontWeight']='Bold'
+	meta['Graphics']['Print Figures']='Off'
+	meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS'
+	
+	# Defaults assume province-wide map
+	meta['Graphics']['Map']['RGSF']=1
+	meta['Graphics']['Map']['Fig Width']=9.75
+	meta['Graphics']['Map']['Side Space']=0
+	meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['Side Space']-0.01,1]
+	meta['Graphics']['Map']['Map Axis Vis']='off'
+	meta['Graphics']['Map']['Map Grid Vis']=False
+	meta['Graphics']['Map']['Legend X']=0.72
+	meta['Graphics']['Map']['Legend Width']=0.03
+	meta['Graphics']['Map']['Legend Font Size']=7
+	meta['Graphics']['Map']['Legend Text Space']=0.035
+	meta['Graphics']['Map']['Show Bound Land Mask']='On'
+	meta['Graphics']['Map']['Show Bound Within']='Off'
+	meta['Graphics']['Map']['Show Lakes']='Off'
+	meta['Graphics']['Map']['Show Rivers']='Off'
+	meta['Graphics']['Map']['Show Roads']='Off'
+	meta['Graphics']['Map']['Show TPF and Cities']='Off'
+	meta['Graphics']['Map']['Show Symbol Labels']='Off'
+	
+	meta['Graphics']['Flowchart']={}
+	meta['Graphics']['Flowchart']['Font Name']='Arial'
+	meta['Graphics']['Flowchart']['Font Color']='#6b7d2a'
+	meta['Graphics']['Flowchart']['Font Size']='10'
+	meta['Graphics']['Flowchart']['Node Background Color']='#f0fca2'
+	meta['Graphics']['Flowchart']['Cluster Background Color']='#f4f5f2'
+	meta['Graphics']['Flowchart']['Cluster Background Color 2']='#d1d1d1'
+	
+	meta['Graphics']['GP Comp']={}
+	meta['Graphics']['GP Comp']['bl']=np.array([0.55,0.75,1])
+	meta['Graphics']['GP Comp']['bd']=np.array([0.27,0.49,0.77])
+	meta['Graphics']['GP Comp']['gl']=np.array([0.7,0.95,0]) # 0.85,1,0.65
+	meta['Graphics']['GP Comp']['gd']=np.array([0.4,0.75,0])
+	meta['Graphics']['GP Comp']['rl']=np.array([0.8,0.6,0.4])
+	meta['Graphics']['GP Comp']['rd']=np.array([0.4,0.3,0.2])
+	
+	meta['Graphics']['Modelling']={}
+	meta['Graphics']['Modelling']['AxesLetterStyle']='NoPar'
+	meta['Graphics']['Modelling']['AxesFontWeight']='Bold'
+	
+	# Tracking parameters
+	meta['Graphics']['Fig Count']=1
+	meta['Graphics']['Tab Count']=1
+	
+	# Initiate geospatial info
+	meta['Geos']={}
+	
+	# Import variable info
+	meta['Geos']['Variable Info']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Table_BCFCS_BC1haRasterVariableList.xlsx')
+	
+	# Import coordinate reference system
+	gdf_bm=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='TA_REGIONAL_DISTRICTS_SVW')
+	meta['Geos']['crs']=gdf_bm.crs
+	
+	# Import LUTs
+	if 'LUT' not in meta:
+		meta=ImportLUTs(meta)
 
-    # Set paths
-    meta['Paths']={}
-    meta['Paths']['bc1ha']=r'C:\Users\rhember\Documents\Data\BC1ha'
-    meta['Paths']['bc1ha Ref Grid']=meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandMask.tif'
-    meta['Paths']['GDB']={}
-    meta['Paths']['GDB']['GDB']=r'C:\Users\rhember\Documents\Data\Geodatabases'
-    meta['Paths']['GDB']['LandCover']=r'C:\Users\rhember\Documents\Data\Geodatabases\LandCover\20230607\LandCover.gdb'
-    meta['Paths']['GDB']['LandUse']=r'C:\Users\rhember\Documents\Data\Geodatabases\LandUse\20230501\LandUse.gdb'
-    meta['Paths']['GDB']['Disturbance']=r'C:\Users\rhember\Documents\Data\Geodatabases\Disturbances\20230501\Disturbances.gdb'
-    meta['Paths']['GDB']['Results']=r'C:\Users\rhember\Documents\Data\Geodatabases\Results\20230430\Results.gdb'
-    meta['Paths']['GDB']['VRI']=r'C:\Users\rhember\Documents\Data\Geodatabases\VRI\20230401\VRI.gdb'
-    meta['Paths']['Model']={}
-    #meta['Paths']['Model']['Code']=r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner'
-    meta['Paths']['Model']['Code']=r'E:\My Drive\Code_Python\fcgadgets\cbrunner'
-    meta['Paths']['Model']['Parameters']=meta['Paths']['Model']['Code'] + '\\Parameters'
-    meta['Paths']['Model']['Taz Datasets']=r'C:\Users\rhember\Documents\Data\Taz Datasets'
-    meta['Paths']['GP']={}
-    meta['Paths']['GP']['DB']=r'C:\Users\rhember\Documents\Data\GroundPlots\PSP-NADB2'
-    meta['Paths']['GP']['Raw Data']={}
-    meta['Paths']['GP']['Raw Data']['BC']=meta['Paths']['GP']['DB'] + '\\Given\BC\Received 2023-03-02'
+	if 'Include GPs' in argv:
+		meta['GP'],data,soc=ugp.ImportGroundPlotData(meta,type='Just Parameters',include_soil='True')
+		meta['GP']['Data']=data
+		meta['GP']['SOC']=soc
 
-    meta['Graphics']={'Plot Style':{},'Map':{},'Flowchart':{}}
-    meta['Graphics']['Plot Style']='Web' # Manuscript
-    meta['Graphics']['gp']=gu.SetGraphics(meta['Graphics']['Plot Style'])
-    meta['Graphics']['Print Figures']='Off'
-    meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS'
+	# Import model parameters
+	meta=cbu.ImportParameters(meta)
 
-    # Defaults assume province-wide map
-    meta['Graphics']['Map']['RGSF']=1
-    meta['Graphics']['Map']['Fig Width']=9.75
-    meta['Graphics']['Map']['Side Space']=0
-    meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['Side Space']-0.01,1]
-    meta['Graphics']['Map']['Map Axis Vis']='off'
-    meta['Graphics']['Map']['Map Grid Vis']=False
-    meta['Graphics']['Map']['Legend X']=0.72
-    meta['Graphics']['Map']['Legend Width']=0.03
-    meta['Graphics']['Map']['Legend Font Size']=7
-    meta['Graphics']['Map']['Legend Text Space']=0.035
-    meta['Graphics']['Map']['Show Bound Land Mask']='On'
-    meta['Graphics']['Map']['Show Bound Within']='Off'
-    meta['Graphics']['Map']['Show Lakes']='Off'
-    meta['Graphics']['Map']['Show Rivers']='Off'
-    meta['Graphics']['Map']['Show Roads']='Off'
-
-    meta['Graphics']['Flowchart']={}
-    meta['Graphics']['Flowchart']['Font Name']='Arial'
-    meta['Graphics']['Flowchart']['Font Color']='#6b7d2a'
-    meta['Graphics']['Flowchart']['Font Size']='10'
-    meta['Graphics']['Flowchart']['Node Background Color']='#f0fca2'
-    meta['Graphics']['Flowchart']['Cluster Background Color']='#f4f5f2'
-    meta['Graphics']['Flowchart']['Cluster Background Color 2']='#d1d1d1'
-    
-    meta['Graphics']['GP Comp']={}
-    meta['Graphics']['GP Comp']['bl']=np.array([0.55,0.75,1])
-    meta['Graphics']['GP Comp']['bd']=np.array([0.27,0.49,0.77])
-    meta['Graphics']['GP Comp']['gl']=np.array([0.7,0.95,0]) # 0.85,1,0.65
-    meta['Graphics']['GP Comp']['gd']=np.array([0.4,0.75,0])
-    meta['Graphics']['GP Comp']['rl']=np.array([0.8,0.6,0.4])
-    meta['Graphics']['GP Comp']['rd']=np.array([0.4,0.3,0.2])
-
-    # Tracking parameters
-    meta['Graphics']['Fig Count']=1
-    meta['Graphics']['Tab Count']=1
-
-    # Initiate geospatial info
-    meta['Geos']={}
-
-    # Import variable info
-    meta['Geos']['Variable Info']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_BCFCS_BC1haRasterVariableList.xlsx')
-
-    # Import coordinate reference system
-    gdf_bm=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='TA_REGIONAL_DISTRICTS_SVW')
-    meta['Geos']['crs']=gdf_bm.crs
-
-    # Import LUTs
-    if 'LUT' not in meta:
-        meta=ImportLUTs(meta)
-
-    if 'Include GPs' in argv:
-        meta['GP'],data=ugp.ImportGroundPlotData(meta,type='Just Parameters')
-        meta['GP']['Data']=data
-
-    # Import model parameters
-    meta=cbu.ImportParameters(meta)
-
-    return meta
+	return meta
 
 #%% Look up tables
 
@@ -291,8 +301,8 @@ def ImportLUTs(meta):
         meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
     # Forest Cover Stocking Type
-    #d=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\BC1ha\Results\stocktype.tif.vat.xlsx')
-    #d=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_ForestCover_StockingType.xlsx')
+    #d=gu.ReadExcel(r'C:\Data\BC1ha\Results\stocktype.tif.vat.xlsx')
+    #d=gu.ReadExcel(r'C:\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_ForestCover_StockingType.xlsx')
     # nam='fcst'
     # meta['LUT'][nam]={}
     # for i in range(d['VALUE'].size):
@@ -519,7 +529,8 @@ def RasterizeVRI(meta,year):
     zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
     # Import feature ID
-    zFID=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\vri_feaid.tif')
+    zFID=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\featid.tif')
+    #zFID=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\vri_feaid.tif')
     fid=zFID['Data'].flatten()
     iu=gu.IndicesFromUniqueArrayValues(fid)
 
@@ -578,6 +589,88 @@ def RasterizeVRI(meta,year):
         z['Data']=np.reshape(d[vNam],zRef['Data'].shape)
         gis.SaveGeoTiff(z,meta['Paths']['bc1ha'] + '\\VRI ' + str(year) + '\\' + vNam + '.tif')
 
+    print((time.time()-t0)/60/60)
+
+    return
+
+#%% Rasterize VRI 2002
+# *** Takes 7.5 hours ***
+def RasterizeVRI_2002(meta):
+    t0=time.time()
+    lNam='VEG_COMP_LYR_R1_POLY'
+
+    # Import reference grid
+    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+    # Import feature ID
+    zFID=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\featid.tif')
+    fid=zFID['Data'].flatten()
+    iu=gu.IndicesFromUniqueArrayValues(fid)
+
+    # Index to variables
+    indL=np.where( (meta['Geos']['Variable Info']['Layer Name']==lNam) )[0]
+
+    # Initialize variables
+    d={}
+    for i in indL:
+        vNam=meta['Geos']['Variable Info']['Variable Name'][i]
+        Prec=meta['Geos']['Variable Info']['Precision'][i]
+        Date=meta['Geos']['Variable Info']['Date Conversion Required'][i]
+        if Date=='Yes':
+            d[vNam + '_Year']=np.zeros(fid.size,dtype=Prec)
+            d[vNam + '_Month']=np.zeros(fid.size,dtype=Prec)
+        d[vNam]=np.zeros(fid.size,dtype=Prec)
+
+    # Keep track of instances where there is no crosswalk between GDB and rasterized feature ID
+    cn=0
+
+    with fiona.open(meta['Paths']['GDB']['VRI 2002'],layer='VEG_COMP_LYR_R1_POLY_FINALV4') as source:
+        for feat in source:
+            prp=dict(feat['properties'].items())
+            
+            # if prp['BCLCS_LEVEL_2']!='T':
+            #     continue
+
+            try:
+                ind=iu[ prp['FEATURE_ID'] ]
+            except:
+                cn=cn+1
+                print(cn)
+
+            for i in indL:
+                vNam=meta['Geos']['Variable Info']['Variable Name'][i]
+                Cat=meta['Geos']['Variable Info']['LUT Required'][i]
+                Date=meta['Geos']['Variable Info']['Date Conversion Required'][i]
+
+                if vNam not in prp.keys():
+                    continue
+
+                if prp[vNam]==None:
+                    continue
+
+                if Date=='Yes':
+                    d[vNam + '_Year'][ind]=int(prp[vNam][0:4])
+                    d[vNam + '_Month'][ind]=int(prp[vNam][5:7])
+                else:
+                    if Cat=='Yes':
+                        # Categorical, requires LUT
+                        try:
+                            d[vNam][ind]=meta['LUT'][lNam][vNam][ prp[vNam] ]
+                        except:
+                            # Older 2002 elements missing from 2023 LUT elements
+                            pass
+                    else:
+                        # Numerical
+                        d[vNam][ind]=prp[vNam]
+
+    # Save
+    for i in indL:
+        vNam=meta['Geos']['Variable Info']['Variable Name'][i]
+        z=copy.deepcopy(zFID)
+        z['Data']=np.reshape(d[vNam],zFID['Data'].shape)
+        z=gis.ClipToRaster(z,zRef)
+        gis.SaveGeoTiff(z,meta['Paths']['bc1ha'] + '\\VRI 2002\\' + vNam + '.tif')
+        
     print((time.time()-t0)/60/60)
 
     return
@@ -683,7 +776,7 @@ def Import_GDBs_ProvinceWide(meta):
     gdf['ogf']={'gdf':gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\ogf.geojson')}
     gdf['ogp']={'gdf':gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\ogp.geojson')}    
     gdf['popp']={'gdf':gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='NRC_POPULATED_PLACES_1M_SP')}
-    gdf['cities']={'gdf':gis.ImportCities(r'C:\Users\rhember\Documents\Data\Cities\Cities.xlsx','GDF')}
+    gdf['cities']={'gdf':gis.ImportCities(r'C:\Data\Cities\Cities.xlsx','GDF')}
     gdf['cities']['gdf'].crs=meta['Geos']['crs']
     return gdf
 
@@ -820,6 +913,8 @@ def Import_Raster(meta,roi,vList,*argv):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Age\\Age_NTEM_2019.tif')
         elif v=='age_vri':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\PROJ_AGE_1.tif')
+        elif v=='age_vri02':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\PROJ_AGE_1.tif')
         elif v=='alr':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\OATS_ALR_POLYS\\ALR_POLY_ID.tif')
         elif v=='BEC_ZONE_CODE':
@@ -827,7 +922,7 @@ def Import_Raster(meta,roi,vList,*argv):
         elif v=='bgcz':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\BEC_BIOGEOCLIMATIC_POLY\\ZONE_GapFilled.tif')
         elif v=='biomass_glob':
-            d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\Biomass\GlobBiomass\N80W140_agb pc8.tif')
+            d[v]=gis.OpenGeoTiff(r'C:\Data\Biomass\GlobBiomass\N80W140_agb pc8.tif')
             d[v]['Data']=np.squeeze(d[v]['Data'])
             d[v]['Data']=0.5*d[v]['Data']
         elif v=='bsr_yr':
@@ -837,14 +932,14 @@ def Import_Raster(meta,roi,vList,*argv):
         elif v=='btm':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\landuse.btm.tif')
             d[v]['Data']=np.squeeze(d[v]['Data'])
-            lut=pd.read_csv(r'C:\Users\rhember\Documents\Data\BC1ha\LandCoverUse\landuse_btm_category_metadata.csv')
+            lut=pd.read_csv(r'C:\Data\BC1ha\LandCoverUse\landuse_btm_category_metadata.csv')
             cl=np.column_stack( (lut['C1'].values,lut['C2'].values,lut['C3'].values) )
             d[v]['Compressed']={}
             d[v]['Compressed']['Data'],d[v]['Compressed']['lab'],d[v]['Compressed']['cl1']=gis.CompressCats(d[v]['Data'],lut['Raster Value'].values,lut['PLU Label'].values,cl)
         elif v=='citym':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\BC_MAJOR_CITIES_POINTS_500M\\NAME.tif')
         elif v=='crownc':
-            d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\VRI\crownc.tif')
+            d[v]=gis.OpenGeoTiff(r'C:\Data\BC1ha\VRI\crownc.tif')
         elif v=='d2road':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Management\\DistanceFromRoads.tif')
         elif v=='d2fac':
@@ -856,7 +951,7 @@ def Import_Raster(meta,roi,vList,*argv):
         elif v=='ezcan':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Ecozones_Canada\\Ecozones_Canada.tif')
         elif v=='feca_yr':
-           d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FECA_YearLast.tif')
+           d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FE-CA_YearLast.tif')
         elif v=='fire_yr':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_YearLast.tif')
         elif v=='fire_2023':
@@ -907,6 +1002,8 @@ def Import_Raster(meta,roi,vList,*argv):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BCLCS_LEVEL_4.tif')
         elif v=='lc_vri_l5':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BCLCS_LEVEL_5.tif')
+        elif v=='lc_vri_l5_02':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\BCLCS_LEVEL_5.tif')
         elif v=='lc_comp1_1800':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCover_Comp1_1800.tif')
         elif v=='lc_comp1_2019':
@@ -964,13 +1061,13 @@ def Import_Raster(meta,roi,vList,*argv):
         elif v=='own':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\F_OWN\\OWNERSHIP_DESCRIPTION.tif')
         elif v=='pfi_c':
-            d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\ForestInventory\LiDAR\Boundary TSA\From GQ 20230302\BoundaryTSA_PFI_LnTotalWSV_bc1ha.tif')
+            d[v]=gis.OpenGeoTiff(r'C:\Data\ForestInventory\LiDAR\Boundary TSA\From GQ 20230302\BoundaryTSA_PFI_LnTotalWSV_bc1ha.tif')
             d[v]['Data']=np.squeeze(d[v]['Data'])
             d[v]['Data']=0.5*0.5*d[v]['Data']
         elif v=='pdead_cruise':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\HarvestPercentDead_FromCruise.tif')
         elif v=='plam':
-            d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Results\Planting_FromRESULTS_MaskCount.tif')
+            d[v]=gis.OpenGeoTiff(r'C:\Data\BC1ha\Results\Planting_FromRESULTS_MaskCount.tif')
         elif v=='popp':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\NRC_POPULATED_PLACES_1M_SP\\NAME.tif')
         elif v=='prcp_ann_n':
@@ -982,13 +1079,13 @@ def Import_Raster(meta,roi,vList,*argv):
         elif v=='parknat':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\CLAB_NATIONAL_PARKS\\ENGLISH_NAME.tif')
         elif v=='rangecon':
-            d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\LandCoverUse\rangeten_consol.tif')
+            d[v]=gis.OpenGeoTiff(r'C:\Data\BC1ha\LandCoverUse\rangeten_consol.tif')
         elif v=='rears':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\REARs_CompPlusProp.tif')
         elif v=='refg':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
         elif v=='regentype':
-            d[v]=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Results\Harvest_Regen_Type.tif')
+            d[v]=gis.OpenGeoTiff(r'C:\Data\BC1ha\Results\Harvest_Regen_Type.tif')
         elif v=='rd':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\TA_REGIONAL_DISTRICTS_SVW\\REGIONAL_DISTRICT_NAME.tif')
         elif v=='road_atl':
@@ -999,6 +1096,8 @@ def Import_Raster(meta,roi,vList,*argv):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\Slope.tif')
         elif v=='si_vri23':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\SITE_INDEX.tif')
+        elif v=='sp_me':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-ME_MaskAll.tif')
         elif v=='sphl_vri23':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI\\sphlive.tif')
         elif v=='sphd_vri23':
@@ -1007,6 +1106,8 @@ def Import_Raster(meta,roi,vList,*argv):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Soil\\soc_tot_forest_Shawetal2018.tif')
         elif v=='spc1_ntems':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Species\\NTEMS_Spc1_Filled_RD_CAPITAL.tif')
+        elif v=='spc1_vri02':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_CD_1.tif')
         elif v=='si_spl_ntems':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\SPL\\SI_From_NTEMS_Spc1_Filled_RD_CAPITAL_GF.tif')
         elif v=='si_spl_fd':
@@ -1015,6 +1116,8 @@ def Import_Raster(meta,roi,vList,*argv):
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\SPL\\Site_Prod_Hw.tif')
         elif v=='tdc':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_Current.tif')
+        elif v=='tdc_02':
+            d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_2002.tif')
         elif v=='tdc_wsg':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_WithShrubsGrasses.tif')
         elif v=='tmean_ann_n':
@@ -1034,13 +1137,7 @@ def Import_Raster(meta,roi,vList,*argv):
         elif v=='wbmm':
             d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\FWA_MANMADE_WATERBODIES_POLY\\WATERBODY_TYPE.tif')
         elif v=='ws_gs_n':
-            tmp=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-            #z_tmp=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\wbm_ws_gs_norm_1971to2000.tif')
-            #d[v]=tmp.copy()
-            #d[v]['Data']=z_tmp['Data']
-            #del z_tmp
-            #d[v]['Data']=d[v]['Data'].astype('float')
-            #d[v]['cm']=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\Colormaps\colormap_ws.xlsx')
+            d[v]=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\Seasonal\wbm_ws_gs_norm_1971to2000.tif')
         else:
             pass
 
@@ -1107,7 +1204,6 @@ def RasterizeWildfire(meta,zRef):
     uYear=df[vNam].unique()
     tv=np.arange(np.min(uYear),np.max(uYear),1)
     for iT in range(tv.size):
-
         df0=df[df[vNam]==tv[iT]].copy()
         shapes=((geom,value) for geom, value in zip(df0.geometry,df0[vNam]))
 
@@ -1121,6 +1217,16 @@ def RasterizeWildfire(meta,zRef):
 
         # Update by year grid
         zYearLast['Data'][burned>0]=tv[iT]
+
+    #zYearLast=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_YearLast.tif')
+
+    # Get Current year
+    zC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_2022.tif')
+    ind=np.where( (zYearLast['Data']==0) & (zC['Data']>0) )
+    zYearLast['Data'][ind]=2022
+    zC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\' + lNam + '\\' + vNam + '_2023.tif')
+    ind=np.where( (zYearLast['Data']==0) & (zC['Data']>0) )
+    zYearLast['Data'][ind]=2023
 
     # Year of last occurrence
     z1=copy.deepcopy(zRef)
@@ -1174,6 +1280,58 @@ def RasterizeWildfire(meta,zRef):
         vNam='FIRE_YEAR'
         tv,N=TimeSeriesOccurrenceFromPackedEvents(meta,lNam,vNam,6)
         plt.plot(tv,N,'-bo')
+    return
+
+#%% Current-year wildfire
+# Current year + preveous year (sometimes missing)
+def RasterizeWildfireCurrentYear(meta,yr):
+    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])    
+    
+    # Current year
+    yr=2023
+    pthin=r'C:\Data\Wildfire\Current Year\prot_current_fire_polys.shp'
+    df=gpd.read_file(pthin)
+    df=df[df.geometry!=None]
+    df=df.reset_index()
+    shapes=((geom,value) for geom, value in zip(df['geometry'],df['FIRE_YEAR']))
+    z0=np.zeros(zRef['Data'].shape,dtype=float)
+    burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
+    z1=copy.deepcopy(zRef)
+    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+    ind=np.where(burned>0); z1['Data'][ind]=1
+    plt.close(); plt.matshow(z1['Data'])
+    print(np.sum(z1['Data']))
+    #gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\prot_current_fire_polys\prot_current_fire_polys.tif')
+    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(yr) + '.tif')
+    
+    # Previous year when missing
+    import geotable
+    import pyproj
+    srs=gis.ImportSRSs()
+    crs=pyproj.CRS(srs['String']['Geographic'])
+    
+    a=geotable.load(r'C:\Data\Wildfire\BC Fire Perimeters 2020-2022.kmz')
+    df=gpd.GeoDataFrame(data=a.Name,geometry=a.geometry_object)
+    df['ID']=np.ones(len(df))
+    df.crs=pyproj.CRS(srs['String']['Geographic'])
+    df=df.to_crs({'init':'epsg:3005'})
+    
+    shapes=((geom,value) for geom, value in zip(df['geometry'],df['ID']))
+    z0=np.zeros(zRef['Data'].shape,dtype=float)
+    burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
+    
+    # Fix by removing other years
+    tv=np.arange(2020,2021+1,1)
+    for iT in range(tv.size):
+        zF0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(tv[iT]) + '.tif')
+        ind=np.where(zF0['Data']>0)
+        burned[ind]=0
+    
+    z1=copy.deepcopy(zRef)
+    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+    ind=np.where(burned>0); z1['Data'][ind]=1
+    print(np.sum(z1['Data']))
+    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_2022.tif')
     return
 
 #%%
@@ -1324,10 +1482,10 @@ def RasterizePlanting(meta):
         ats['gdf']=ats['gdf'][ (ats['gdf']['RESULTS_IND']=='Y') & (ats['gdf']['SILV_METHOD_CODE']!='LAYOT') ].copy()
         ats['gdf']=ats['gdf'][ats['gdf'].geometry!=None]
         ats['gdf']=ats['gdf'].reset_index()
-        #ats['gdf'].to_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats.geojson',driver="GeoJSON")
+        #ats['gdf'].to_file(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats.geojson',driver="GeoJSON")
     else:
         ats={}
-        ats['gdf']=gpd.read_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats.geojson')
+        ats['gdf']=gpd.read_file(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats.geojson')
 
     # Add areas where FC is artificial
     flg=0
@@ -1354,9 +1512,9 @@ def RasterizePlanting(meta):
         at['gdf']['Year']=np.zeros(at['gdf']['ACTIVITY_TREATMENT_UNIT_ID'].size)
         for i in range(at['gdf']['Year'].size):
             at['gdf']['Year'][i]=int(at['gdf']['ATU_COMPLETION_DATE'][i][0:4])
-        gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at.pkl',at)
+        gu.opickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at.pkl',at)
     else:
-        at=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at.pkl')
+        at=gu.ipickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at.pkl')
 
     #ind=np.where(at['gdf']['Year']==2010)[0]
     #at['gdf']['OPENING_ID'][ind]
@@ -1503,8 +1661,8 @@ def RasterizePlanting(meta):
             print('From VRI')
      
         #print('Missing')
-    gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl',dP)
-    #dP=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl')
+    gu.opickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl',dP)
+    #dP=gu.ipickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl')
 
     # Pack
 
@@ -1662,10 +1820,10 @@ def RasterizeDirectSeeding(meta):
         ats['gdf']=ats['gdf'][ (ats['gdf']['RESULTS_IND']=='Y') & (ats['gdf']['SILV_METHOD_CODE']!='LAYOT') ].copy()
         ats['gdf']=ats['gdf'][ats['gdf'].geometry!=None]
         ats['gdf']=ats['gdf'].reset_index()
-        #ats['gdf'].to_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats_ds.geojson',driver="GeoJSON")
+        #ats['gdf'].to_file(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats_ds.geojson',driver="GeoJSON")
     else:
         ats={}
-        ats['gdf']=gpd.read_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats_ds.geojson')
+        ats['gdf']=gpd.read_file(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats_ds.geojson')
 
     # Add areas where FC is artificial
     flg=0
@@ -1692,9 +1850,9 @@ def RasterizeDirectSeeding(meta):
         at['gdf']['Year']=np.zeros(at['gdf']['ACTIVITY_TREATMENT_UNIT_ID'].size)
         for i in range(at['gdf']['Year'].size):
             at['gdf']['Year'][i]=int(at['gdf']['ATU_COMPLETION_DATE'][i][0:4])
-        gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at_ds.pkl',at)
+        gu.opickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at_ds.pkl',at)
     else:
-        at=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at_ds.pkl')
+        at=gu.ipickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at_ds.pkl')
 
     # Import opening ID with spatial   
     zOP1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_OPENING_SVW\\OPENING_ID.tif')['Data']
@@ -1827,8 +1985,8 @@ def RasterizeDirectSeeding(meta):
             print('From VRI')
      
         #print('Missing')
-    gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dDS.pkl',dDS)
-    #dDS=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dDS.pkl')
+    gu.opickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dDS.pkl',dDS)
+    #dDS=gu.ipickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dDS.pkl')
 
     # Pack
 
@@ -1966,10 +2124,10 @@ def RasterizeSilviculture(meta,sbc,stc,smc,soc1,vNam):
     
     #sbc=meta,np.array(['SP']),np.array(['BU']),np.array(['BROAD']),np.array([]),np.array(['SP-BU-BROAD'])
     sbc=np.array(['SP'])
-    stc=np.array(['BU'])
-    smc=np.array(['BROAD'])
+    stc=np.array(['ME'])
+    smc=np.array(['DISC','EXCAV','MOUND','LRIP','RRIP','WING'])
     soc1=np.array([])
-    vNam='SP-BU-BROAD'
+    vNam='SP-ME'
     
     tv=np.arange(1960,2024,1)
     zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
@@ -2006,10 +2164,10 @@ def RasterizeSilviculture(meta,sbc,stc,smc,soc1,vNam):
         ats['gdf']=ats['gdf'][ (ats['gdf']['RESULTS_IND']=='Y') & (ats['gdf']['SILV_METHOD_CODE']!='LAYOT') ].copy()
         ats['gdf']=ats['gdf'][ats['gdf'].geometry!=None]
         ats['gdf']=ats['gdf'].reset_index()
-        #ats['gdf'].to_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats' + vNam + '.geojson',driver="GeoJSON")
+        #ats['gdf'].to_file(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats' + vNam + '.geojson',driver="GeoJSON")
     #else:
     #    ats={}
-    #    ats['gdf']=gpd.read_file(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats' + vNam + '.geojson')
+    #    ats['gdf']=gpd.read_file(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\ats' + vNam + '.geojson')
 
     #--------------------------------------------------------------------------
     # Add areas where FC is artificial
@@ -2040,9 +2198,9 @@ def RasterizeSilviculture(meta,sbc,stc,smc,soc1,vNam):
         at['gdf']['Year']=np.zeros(at['gdf']['ACTIVITY_TREATMENT_UNIT_ID'].size)
         for i in range(at['gdf']['Year'].size):
             at['gdf']['Year'][i]=int(at['gdf']['ATU_COMPLETION_DATE'][i][0:4])
-        #gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at_' + vNam + '.pkl',at)
+        #gu.opickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at_' + vNam + '.pkl',at)
     #else:
-    #    at=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at' + vNam + '.pkl')
+    #    at=gu.ipickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\at' + vNam + '.pkl')
     
     np.sum(ats['gdf']['ACTUAL_TREATMENT_AREA'])
     
@@ -2191,8 +2349,8 @@ def RasterizeSilviculture(meta,sbc,stc,smc,soc1,vNam):
             print('From VRI')
      
         #print('Missing')
-    #gu.opickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl',dP)
-    #dP=gu.ipickle(r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl')
+    #gu.opickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl',dP)
+    #dP=gu.ipickle(r'C:\Data\BC1ha\RSLT_ACTIVITY_TREATMENT_SVW\dP.pkl')
 
     #--------------------------------------------------------------------------
     # Pack
@@ -2329,10 +2487,19 @@ def RasterizeSilviculture(meta,sbc,stc,smc,soc1,vNam):
     return
 
 #lNam='RSLT_ACTIVITY_TREATMENT_SVW'
-#vNam='FE-CA'
-#tv,N=TimeSeriesOccurrenceFromPackedEvents(meta,lNam,vNam,6)
-#plt.plot(tv,N,'-bo')
+#vNam='SP-ME'
+#tv,N=u1ha.TimeSeriesOccurrenceFromPackedEvents(meta,lNam,vNam,6)
 
+flg=0
+if flg==1:
+    plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15.5,6)); barw=0.35;
+    ax.bar(tv,N/1000,0.8)    
+    ax.set(xticks=np.arange(0,3000,5),xlabel='Time, years',ylabel='Implementation (hectares x 1000 per year)',xlim=[1960,2023],ylim=[0,40])
+    ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=gp['tickl'])
+    plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+    plt.tight_layout()
+    gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Site Prep\SE-ME_TimeSeries','png',900)
+    
 # z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FRE_1_SILV_TECHNIQUE_CODE.tif')
 # u,N=gu.CountByCategories(z['Data'],'Percent')
 # plt.bar(u[1:],N[1:])
@@ -2443,58 +2610,6 @@ def DeriveDistanceFromSettlement(meta):
     gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\Management\DistanceFromSettlement.tif')
     return
 
-#%% Current-year wildfire
-# Current year + preveous year (sometimes missing)
-def RasterizeWildfireCurrentYear(meta,yr):
-    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])    
-    
-    # Current year
-    yr=2023
-    pthin=r'C:\Users\rhember\Documents\Data\Wildfire\Current Year\prot_current_fire_polys.shp'
-    df=gpd.read_file(pthin)
-    df=df[df.geometry!=None]
-    df=df.reset_index()
-    shapes=((geom,value) for geom, value in zip(df['geometry'],df['FIRE_YEAR']))
-    z0=np.zeros(zRef['Data'].shape,dtype=float)
-    burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
-    z1=copy.deepcopy(zRef)
-    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    ind=np.where(burned>0); z1['Data'][ind]=1
-    plt.close(); plt.matshow(z1['Data'])
-    print(np.sum(z1['Data']))
-    #gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\prot_current_fire_polys\prot_current_fire_polys.tif')
-    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(yr) + '.tif')
-    
-    # Previous year when missing
-    import geotable
-    import pyproj
-    srs=gis.ImportSRSs()
-    crs=pyproj.CRS(srs['String']['Geographic'])
-    
-    a=geotable.load(r'C:\Users\rhember\Documents\Data\Wildfire\BC Fire Perimeters 2020-2022.kmz')
-    df=gpd.GeoDataFrame(data=a.Name,geometry=a.geometry_object)
-    df['ID']=np.ones(len(df))
-    df.crs=pyproj.CRS(srs['String']['Geographic'])
-    df=df.to_crs({'init':'epsg:3005'})
-    
-    shapes=((geom,value) for geom, value in zip(df['geometry'],df['ID']))
-    z0=np.zeros(zRef['Data'].shape,dtype=float)
-    burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
-    
-    # Fix by removing other years
-    tv=np.arange(2020,2021+1,1)
-    for iT in range(tv.size):
-        zF0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(tv[iT]) + '.tif')
-        ind=np.where(zF0['Data']>0)
-        burned[ind]=0
-    
-    z1=copy.deepcopy(zRef)
-    z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-    ind=np.where(burned>0); z1['Data'][ind]=1
-    print(np.sum(z1['Data']))
-    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_2022.tif')
-    return
-
 #%% NALCMS CEC 2020 - Compress categories to remove tropics
 def NALCMS_Compress(lut_in,zRef,zCEC10,zCEC20):
 
@@ -2601,15 +2716,15 @@ def NALCMS_Compress(lut_in,zRef,zCEC10,zCEC20):
 #%%
 def PrepareLandUseCEC(meta):
     zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-    fin=r'C:\Users\rhember\Documents\Data\Land Cover\NALCMS\NALCMS_lc_2010.tif'
-    fout=r'C:\Users\rhember\Documents\Data\Land Cover\NALCMS\NALCMS_lc_2010_bc1ha.tif'
-    gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])    
+    fin=r'C:\Data\Land Cover\NALCMS\NALCMS_lc_2010.tif'
+    fout=r'C:\Data\Land Cover\NALCMS\NALCMS_lc_2010_bc1ha.tif'
+    gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])
     zLCC_CEC10=gis.OpenGeoTiff(fout)
     zLCC_CEC10=gis.ClipToRaster(zLCC_CEC10,zRef)    
     ind=np.where(zRef['Data']==0)
     zLCC_CEC10['Data'][ind]=0 
-    fin=r'C:\Users\rhember\Documents\Data\Land Cover\NALCMS\NALCMS_lc_2020.tif'
-    fout=r'C:\Users\rhember\Documents\Data\Land Cover\NALCMS\NALCMS_lc_2020_bc1ha.tif'
+    fin=r'C:\Data\Land Cover\NALCMS\NALCMS_lc_2020.tif'
+    fout=r'C:\Data\Land Cover\NALCMS\NALCMS_lc_2020_bc1ha.tif'
     gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])    
     zLCC_CEC20=gis.OpenGeoTiff(fout)
     zLCC_CEC20=gis.ClipToRaster(zLCC_CEC20,zRef)    
@@ -2626,9 +2741,9 @@ def PrepareLandUseCEC(meta):
 def PrepareNTEMS(meta):
     zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
     # Harvest year
-    fin=r'C:\Users\rhember\Documents\Data\Harvest\NTEMS\harv85to20.tif'
+    fin=r'C:\Data\Harvest\NTEMS\harv85to20.tif'
     a=gis.OpenGeoTiff(fin)
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\Disturbances\Harvest_NTEM_Year.tif'
+    fout=r'C:\Data\BC1ha\Disturbances\Harvest_NTEM_Year.tif'
     gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])
     z=gis.OpenGeoTiff(fout)
     z=gis.ClipToRaster(z,zRef)
@@ -2636,7 +2751,7 @@ def PrepareNTEMS(meta):
     z['Data'][ind]=0
     gis.SaveGeoTiff(z,fout)
     # Land cover 
-    fin=r'C:\Users\rhember\Documents\Data\Land Cover\NTEMS\vlce2_2019.tif'
+    fin=r'C:\Data\Land Cover\NTEMS\vlce2_2019.tif'
     fout=meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCover_NTEMS_2019.tif'
     gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])
     z=gis.OpenGeoTiff(fout)
@@ -2645,7 +2760,7 @@ def PrepareNTEMS(meta):
     z['Data'][ind]=0
     gis.SaveGeoTiff(z,fout)
     # Age
-    fin=r'C:\Users\rhember\Documents\Data\Age\NTEMS\age_ntem_c.tif'
+    fin=r'C:\Data\Age\NTEMS\age_ntem_c.tif'
     fout=meta['Paths']['bc1ha'] + '\\Age\\Age_NTEM_2019.tif'
     gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])
     return
@@ -2761,10 +2876,10 @@ def ClimateStatsByBGCZone(meta):
     zBGC['Data']=zBGC['Data'].flatten()
     lutBGC=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\VRI 2023\\becz_lut.xlsx')
     
-    zMAT=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
+    zMAT=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
     zMAT['Data']=zMAT['Data'].flatten().astype(float)/10
     
-    zWS=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+    zWS=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
     zWS['Data']=zWS['Data'].flatten().astype(float)
     
     zSI=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\si.tif')
@@ -2785,7 +2900,7 @@ def ClimateStatsByBGCZone(meta):
         lutBGC['Age'][i]=np.mean(zA['Data'][ind])
     
     df=pd.DataFrame(lutBGC)
-    df.to_excel(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\tmp.xlsx')
+    df.to_excel(r'C:\Data\BC1ha\Climate\tmp.xlsx')
     return
 
 #%%
@@ -2843,43 +2958,43 @@ def RasterizeForestCoverInventory(meta):
 def ClipToBC1ha(meta):
 
     # Forest Cover ID
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_FOREST_COVER_INV_SVW\fcid.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\RSLT_FOREST_COVER_INV_SVW\fcid2.tif'
+    fin=r'C:\Data\BC1ha\RSLT_FOREST_COVER_INV_SVW\fcid.tif'
+    fout=r'C:\Data\BC1ha\RSLT_FOREST_COVER_INV_SVW\fcid2.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
 
     # VRI Feature ID
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\VRI 2023\vri_feaid.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\VRI 2023\vri_feaid.tif'
+    fin=r'C:\Data\BC1ha\VRI 2023\vri_feaid.tif'
+    fout=r'C:\Data\BC1ha\VRI 2023\vri_feaid.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
 
     # DEM
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\elevation.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\elevation.tif'
+    fin=r'C:\Data\BC1ha\Terrain\elevation.tif'
+    fout=r'C:\Data\BC1ha\Terrain\elevation.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
 
     # Aspect
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\aspect.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\aspect.tif'
+    fin=r'C:\Data\BC1ha\Terrain\aspect.tif'
+    fout=r'C:\Data\BC1ha\Terrain\aspect.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
 
     # Slope
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\slope.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\Terrain\slope.tif'
+    fin=r'C:\Data\BC1ha\Terrain\slope.tif'
+    fout=r'C:\Data\BC1ha\Terrain\slope.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
 
     # BTM
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\LandCoverUse\landuse.btm.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\LandCoverUse\landuse.btm.tif'
+    fin=r'C:\Data\BC1ha\LandCoverUse\landuse.btm.tif'
+    fout=r'C:\Data\BC1ha\LandCoverUse\landuse.btm.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
     # Radiation
-    fin=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_rswd_gs_norm_1971to2000_si_hist_v1_c.tif'
-    fout=r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_rswd_gs_norm_1971to2000_si_hist_v1_c.tif'
+    fin=r'C:\Data\BC1ha\Climate\Seasonal\BC1ha_rswd_gs_norm_1971to2000_si_hist_v1_c.tif'
+    fout=r'C:\Data\BC1ha\Climate\Seasonal\BC1ha_rswd_gs_norm_1971to2000_si_hist_v1_c.tif'
     gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
 
     sL=['At','Ba','Bl','Cw','Ep','Fd','Hm','Hw','Lt','Lw','Pa','Pl','Pw','Py','Sb','Se','Ss','Sx','Sw','Yc']
     for s in sL:
-        fin=r'C:\Users\rhember\Documents\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + s + '.tif'
-        fout=r'C:\Users\rhember\Documents\Data\BC1ha\SPL\Site_Prod_' + s + '.tif'
+        fin=r'C:\Data\SiteProductivityLayer\Site_Prod_BC_Geotiffs\Site_Prod_' + s + '.tif'
+        fout=r'C:\Data\BC1ha\SPL\Site_Prod_' + s + '.tif'
         #gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
         z=gis.OpenGeoTiff(fout)
         z['Data']=z['Data'].astype('int16')
@@ -3036,7 +3151,7 @@ def RasterizeHarvest_CC(meta,zRef):
 
 #%%
 def RasterizeCruisePercentDead(meta):
-    dC=gu.ipickle(r'C:\Users\rhember\Documents\Data\ECAS\Received 2023-04-04\rh_COMP_DATA_CleanCombined.pkl')
+    dC=gu.ipickle(r'C:\Data\ECAS\Received 2023-04-04\rh_COMP_DATA_CleanCombined.pkl')
 
     vTM=list(meta['LUT']['FTEN_CUT_BLOCK_POLY_SVW']['TIMBER_MARK'].values())
     kTM=list(meta['LUT']['FTEN_CUT_BLOCK_POLY_SVW']['TIMBER_MARK'].keys())
@@ -3098,13 +3213,13 @@ def RasterizeEcozonesOfCanada(meta):
     srs=gis.ImportSRSs()
     crs=pyproj.CRS(srs['String']['Geographic'])
 
-    pthin=r'C:\Users\rhember\Documents\Data\Ecozones\nef_ca_ter_ecozone_v2_2.geojson'
+    pthin=r'C:\Data\Ecozones\nef_ca_ter_ecozone_v2_2.geojson'
     df=gpd.read_file(pthin)
     df=df[df.geometry!=None]
     df=df.reset_index()
     df.crs=pyproj.CRS(srs['String']['Geographic'])
     df=df.to_crs({'init':'epsg:3005'})
-    # Used to create LUT: df.drop(columns='geometry').to_excel(r'C:\Users\rhember\Documents\Data\Ecozones\table.xlsx')
+    # Used to create LUT: df.drop(columns='geometry').to_excel(r'C:\Data\Ecozones\table.xlsx')
 
     shapes=((geom,value) for geom, value in zip(df['geometry'],df['ECOZONE_ID']))
     z0=np.zeros(zRef['Data'].shape,dtype=float)
@@ -3118,7 +3233,7 @@ def RasterizeEcozonesOfCanada(meta):
 
 #%%
 def RasterizeBTKSpray(meta):
-    gdf_spray=gpd.read_file(r'C:\Users\rhember\Documents\Data\Aerial Btk Spray\Processed\btk_spray_comp.geojson')
+    gdf_spray=gpd.read_file(r'C:\Data\Aerial Btk Spray\Processed\btk_spray_comp.geojson')
     tv=np.arange(1950,2021,1)
     for iT in range(tv.size):
         print(tv[iT])
@@ -3147,11 +3262,11 @@ def RasterizeGFC_LossYear(meta):
     z=copy.deepcopy(zRef)
     z['Data']=np.zeros(z['Data'].shape)
     for f in finL:
-        fin=r'C:\Users\rhember\Documents\Data\Global Forest Change\Hansen_GFC-2021-v1.9_lossyear_' + f + '.tif'
-        fout=r'C:\Users\rhember\Documents\Data\Global Forest Change\Hansen_GFC-2021-v1.9_lossyear_' + f + 'p.tif'
+        fin=r'C:\Data\Global Forest Change\Hansen_GFC-2021-v1.9_lossyear_' + f + '.tif'
+        fout=r'C:\Data\Global Forest Change\Hansen_GFC-2021-v1.9_lossyear_' + f + 'p.tif'
         gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])
 
-        z0=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\Global Forest Change\Hansen_GFC-2021-v1.9_lossyear_' + f + 'p.tif')
+        z0=gis.OpenGeoTiff(r'C:\Data\Global Forest Change\Hansen_GFC-2021-v1.9_lossyear_' + f + 'p.tif')
         ind=np.where(z0['Data']>0)
         z['Data'][ind]=z0['Data'][ind]
 
@@ -3168,7 +3283,7 @@ def RasterizeGFC_LossYear(meta):
 #%%
 def ImportBurnSeverityCanada(meta):
     # https://ftp.maps.canada.ca/pub/nrcan_rncan/Forest-fires_Incendie-de-foret/CanLaBS-Burned_Severity-Severite_des_feux/
-    pthin=r'C:\Users\rhember\Documents\Data\Wildfire\Burn Severity'
+    pthin=r'C:\Data\Wildfire\Burn Severity'
     fin=pthin + '\\bsn_yr1.tif'
     z=gis.OpenGeoTiff(fin); print(zRef['Data'].shape); print(z['Data'].shape)
     fout=pthin + '\\bsn_yr2.tif'
@@ -3277,6 +3392,7 @@ def DeriveHarvestRetentionComp1(meta):
     zH=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_MaskAll.tif')
     zFCR=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_FOREST_COVER_RESERVE_SVW\\SILV_RESERVE_CODE.tif')
     zIBR=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_FOREST_COVER_INV_SVW\\ID_SILV_RESERVE_CODE.tif')
+        
     zC=np.maximum(zFCR['Data'],zIBR['Data'])
     u,N=gu.CountByCategories(zC,'Percent')
     
@@ -3374,33 +3490,48 @@ def DeriveHarvestRegenType(meta):
 #%% Consolidate Tree Density Class
 # *** Ensure harvested areas are listed as dense ***
 def DeriveTreeDensityClass(meta):
-    z=Import_Raster(meta,[],['refg','lc_comp1_2019','lc_vri_l5','harv_yr_con1'])
+    # 2002 VRI
+    z=Import_Raster(meta,[],['refg','lc_comp1_2019','lc_vri_l5_02','harv_yr_con1'])
         
     z1=z['refg'].copy()
-    z1['Data']=np.zeros(z['lc_vri_l5']['Data'].shape,dtype='int8')
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['SP']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Sparse']
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['OP']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Open']
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['DE']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Dense']
-    ind=np.where( (z['harv_yr_con1']['Data']==1) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Dense']
+    z1['Data']=np.zeros(z['lc_vri_l5_02']['Data'].shape,dtype='int8')
+    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5_02']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['SP']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Sparse']
+    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5_02']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['OP']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Open']
+    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5_02']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['DE']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Dense']
+    #ind=np.where( (z['harv_yr_con1']['Data']==1) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Dense']
     ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z1['Data']==0) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Open']
     # plt.matshow(z1,clim=[0,3])
-    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_Current.tif')
+    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_2002.tif')
+
+    # # 2023 VRI
+    # z=Import_Raster(meta,[],['refg','lc_comp1_2019','lc_vri_l5','harv_yr_con1'])
+        
+    # z1=z['refg'].copy()
+    # z1['Data']=np.zeros(z['lc_vri_l5']['Data'].shape,dtype='int8')
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['SP']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Sparse']
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['OP']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Open']
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['DE']) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Dense']
+    # ind=np.where( (z['harv_yr_con1']['Data']==1) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Dense']
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z1['Data']==0) ); z1['Data'][ind]=meta['LUT']['Derived']['tdc']['Open']
+    # # plt.matshow(z1,clim=[0,3])
+    # gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_Current.tif')
     
-    # With shrubs and grasses
-    z1=z['refg'].copy()
-    z1['Data']=np.zeros(z['lc_vri_l5']['Data'].shape,dtype='int8')
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['SP']) ); z1['Data'][ind]=1
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['OP']) ); z1['Data'][ind]=2
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['DE']) ); z1['Data'][ind]=3
-    ind=np.where( (z['harv_yr_con1']['Data']==1) ); z1['Data'][ind]=3
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z1['Data']==0) ); z1['Data'][ind]=2
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Shrub']) ); z1['Data'][ind]=4
-    ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Herb']) ); z1['Data'][ind]=5
-    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-    ind=np.where( (zRef['Data']==1) & (z1['Data']==0) ); z1['Data'][ind]=6
-    ind=np.where( (zRef['Data']==0) ); z1['Data'][ind]=7
-    gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_WithShrubsGrasses.tif')
-    return
+    # # With shrubs and grasses
+    # z1=z['refg'].copy()
+    # z1['Data']=np.zeros(z['lc_vri_l5']['Data'].shape,dtype='int8')
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['SP']) ); z1['Data'][ind]=1
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['OP']) ); z1['Data'][ind]=2
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_vri_l5']['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['BCLCS_LEVEL_5']['DE']) ); z1['Data'][ind]=3
+    # ind=np.where( (z['harv_yr_con1']['Data']==1) ); z1['Data'][ind]=3
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z1['Data']==0) ); z1['Data'][ind]=2
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Shrub']) ); z1['Data'][ind]=4
+    # ind=np.where( (z['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Herb']) ); z1['Data'][ind]=5
+    # zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+    # ind=np.where( (zRef['Data']==1) & (z1['Data']==0) ); z1['Data'][ind]=6
+    # ind=np.where( (zRef['Data']==0) ); z1['Data'][ind]=7
+    # gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\LandCoverUse\\TreeDensityClass_WithShrubsGrasses.tif')
+    
+    # return
 
 #%% Land mask for BC
 def GenerateLandMaskBC(meta):
@@ -3690,16 +3821,16 @@ def FilterGFC_LossYear(meta):
 
 #%% Salvage logging mask
 def HarvestSalvageMaskFromCruise(meta):
-    zH=gis.OpenGeoTiff(meta['Paths'] + '\\Disturbances\\VEG_CONSOLIDATED_CUT_BLOCKS_SP_MaskAll.tif')
-    zLCC1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCoverClass1.tif')
+    zH=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_YearLast.tif')
+    zLCC1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCover_Comp1_2019.tif')
     zPD=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\HarvestPercentDead_FromCruise.tif')
     
     z=copy.deepcopy(zRef)
     z['Data']=6*np.ones(zRef['Data'].shape,dtype='int8')
     ind=np.where( (zPD['Data']>=50) ); z['Data'][ind]=1 # Salvage high
     ind=np.where( (zPD['Data']>=10) & (zPD['Data']<50) ); z['Data'][ind]=2 # Salvage low
-    ind=np.where( (zPD['Data']<10) & (zH['Data']>0) ); z['Data'][ind]=3 # Non-salvage harvested forest
-    ind=np.where( (zH['Data']==0) & (zLCC1['Data']==1) ); z['Data'][ind]=4 # Unharvested forest
+    ind=np.where( (zPD['Data']<10) & (zH['Data']>=2015) ); z['Data'][ind]=3 # Non-salvage harvested forest
+    ind=np.where( (zH['Data']<2015) & (zLCC1['Data']==1) ); z['Data'][ind]=4 # Unharvested forest
     ind=np.where( (zRef['Data']==1) & (zLCC1['Data']!=1) ); z['Data'][ind]=5 # Non-forest land
     ind=np.where( (zRef['Data']==0) ); z['Data'][ind]=6 # Non land
     gis.SaveGeoTiff(z,meta['Paths'] + '\\Disturbances\\HarvestSalvageMask_FromCruise.tif')
@@ -3737,6 +3868,13 @@ def GenerateSparseInputs(meta,rgsf,mask):
     elif mask=='BCFCS_EvalInterior':
         # Evaluate Interior
         zMask=gu.ipickle(r'D:\Data\FCI_Projects\BCFCS_EvalInterior\geos.pkl')['Grid']
+    elif mask=='TSA_DawsonCreek':
+        # Mask from timber supply area            
+        zTSA=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\FADM_TSA\\TSA_NUMBER_DESCRIPTION.tif')
+        zMask=copy.deepcopy(zTSA)
+        zMask['Data']=np.zeros(zTSA['Data'].shape,'int8')
+        ind=np.where( (zTSA['Data']==meta['LUT']['FADM_TSA']['TSA_NUMBER_DESCRIPTION']['Dawson Creek TSA']) )
+        zMask['Data'][ind]=1
     else:
         pass
     
@@ -4711,6 +4849,7 @@ def DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta):
     z0=u1ha.Import_Raster(meta,[],vList,'Extract Grid')
     tv=np.arange(2020,2050,1)
     
+    # Annual prob deforestation
     P_Def0=0.00065
     
     # Track area
@@ -4793,7 +4932,7 @@ def DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta):
     gis.SaveGeoTiff(z2,meta['Paths']['bc1ha'] + '\\Disturbances\\LandUseChange_Comp1_2020to2049_Scn1_Year.tif')
     
     #==========================================================================
-    # LCLU-Comp1 2020to2049 Scenario 2: LUC-BAU / C-CAP / FM-H
+    # LCLU-Comp1 2020to2049 Scenario 2: LUC-BAU / C-CAP / FM-Hist
     #==========================================================================
     
     z1={}    
@@ -4910,7 +5049,7 @@ def DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta):
     gis.SaveGeoTiff(z2,meta['Paths']['bc1ha'] + '\\Disturbances\\LandUseChange_Comp1_2020to2049_Scn2_Year.tif')
    
     #==========================================================================
-    # LCLU-Comp1 2020to2049 Scenario 3: LUC-BAU / C-CAP / FM-CAP
+    # LCLU-Comp1 2020to2049 Scenario 3: LUC-BAU / C-CAP / FM-CAP1
     #==========================================================================    
     # Import required data
     zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCover_Comp1_2049_Scn2.tif')
@@ -4920,22 +5059,6 @@ def DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta):
     #z1['Type Change']=np.zeros(zRef['Data'].shape,dtype='int8')
     
     # Create Perlin noise
-    noise=PerlinNoise(octaves=35,seed=3)
-    xpix,ypix=1000,1000
-    zNoise0=np.zeros((xpix,ypix))
-    for i in range(xpix):
-        for j in range(ypix):
-            zNoise0[i,j]=noise([i/xpix, j/ypix])
-    
-    # Fibrous pattern for bioenergy 
-    zNoise1=np.zeros(zNoise0.shape); 
-    ind=np.where(np.abs(zNoise0)<0.05); 
-    zNoise1[ind]=1    
-    zNoise1=np.tile(zNoise1,(int(np.ceil(zRef['m']/1000)),int(np.ceil(zRef['n']/1000))))
-    zNoise1=zNoise1[0:zRef['m'],0:zRef['n']]  
-    #plt.close('all'); plt.matshow(zNoise1)
-    
-    # Exterior
     noise=PerlinNoise(octaves=10,seed=3)
     xpix,ypix=1000,1000
     zNoise0=np.zeros((xpix,ypix))
@@ -4948,45 +5071,9 @@ def DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta):
     zNoise2=np.tile(zNoise2,(int(np.ceil(zRef['m']/1000)),int(np.ceil(zRef['n']/1000))))
     zNoise2=zNoise2[0:zRef['m'],0:zRef['n']]  
     # plt.close('all'); plt.matshow(zNoise2)
-    
-    #--------------------------------------------------------------------------
-    # Add bioenergy production    
-    Mask1=np.zeros(zRef['Data'].shape,dtype='int8')
-    ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
-    ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zSlope<20) & (zNoise1==1) )
-    Mask1[ind]=1
-    #plt.close('all'); plt.matshow(Mask1)
-    print(ind[0].size/1e6)
-    zLU['Data'][ind]=lut_lu['Bioenergy Production']
 
     #--------------------------------------------------------------------------
-    # Wildfire management
-    zMaskWM=np.zeros(zRef['Data'].shape,dtype=float)
-    # Add FN communities    
-    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='FN_COMMUNITY_LOCATIONS_SP')
-    gdf['geometry']=gdf.geometry.buffer(2*1000)    
-    gdf=gdf[gdf.geometry!=None]
-    gdf=gdf.reset_index()
-    gdf['ID']=np.ones(len(gdf))
-    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))    
-    burned=features.rasterize(shapes=shapes,fill=0,out=zMaskWM,transform=zRef['Transform'])        
-    ind=np.where( (zMaskWM>0) )        
-    zMaskWM[ind]=1    
-    # Add major cities
-    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
-    gdf['geometry']=gdf.geometry.buffer(2*1000)
-    gdf=gdf[gdf.geometry!=None]
-    gdf=gdf.reset_index()
-    gdf['ID']=np.ones(len(gdf))
-    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))    
-    burned=features.rasterize(shapes=shapes,fill=0,out=zMaskWM,transform=zRef['Transform'])        
-    # Add to LU map
-    ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
-    ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zSlope<30) & (zMaskWM==1) & (zNoise2==1) )
-    zLU['Data'][ind]=lut_lu['Wildfire Risk Management']
-
-    #--------------------------------------------------------------------------
-    # Bands of intense forestry zone
+    # Add Bands of intense forestry zone
     gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
     gdf['geometry']=gdf.geometry.buffer(7*1000)
     gdf=gdf[gdf.geometry!=None]
@@ -5005,28 +5092,28 @@ def DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta):
     zOuter=np.zeros(zRef['Data'].shape,dtype=float)
     burned=features.rasterize(shapes=shapes,fill=0,out=zOuter,transform=zRef['Transform'])
     
-    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
-    gdf['geometry']=gdf.geometry.buffer(56*1000)
-    gdf=gdf[gdf.geometry!=None]
-    gdf=gdf.reset_index()
-    gdf['ID']=np.ones(len(gdf))
-    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
-    zOuter2=np.zeros(zRef['Data'].shape,dtype=float)
-    burned=features.rasterize(shapes=shapes,fill=0,out=zOuter2,transform=zRef['Transform'])
+    # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    # gdf['geometry']=gdf.geometry.buffer(56*1000)
+    # gdf=gdf[gdf.geometry!=None]
+    # gdf=gdf.reset_index()
+    # gdf['ID']=np.ones(len(gdf))
+    # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    # zOuter2=np.zeros(zRef['Data'].shape,dtype=float)
+    # burned=features.rasterize(shapes=shapes,fill=0,out=zOuter2,transform=zRef['Transform'])
     
-    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
-    gdf['geometry']=gdf.geometry.buffer(6*1000)
-    gdf=gdf[gdf.geometry!=None]
-    gdf=gdf.reset_index()
-    gdf['ID']=np.ones(len(gdf))
-    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
-    zInner2=np.zeros(zRef['Data'].shape,dtype=float)
-    burned=features.rasterize(shapes=shapes,fill=0,out=zInner2,transform=zRef['Transform'])
+    # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    # gdf['geometry']=gdf.geometry.buffer(6*1000)
+    # gdf=gdf[gdf.geometry!=None]
+    # gdf=gdf.reset_index()
+    # gdf['ID']=np.ones(len(gdf))
+    # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    # zInner2=np.zeros(zRef['Data'].shape,dtype=float)
+    # burned=features.rasterize(shapes=shapes,fill=0,out=zInner2,transform=zRef['Transform'])
     
-    zCb=np.zeros(zRef['Data'].shape,dtype='int8')
-    ind=np.where( (zF==1) & (zOuter==1) )
-    zCb[ind]=1
-    plt.close('all'); plt.matshow(zCb)
+    # zCb=np.zeros(zRef['Data'].shape,dtype='int8')
+    # ind=np.where( (zF==1) & (zOuter==1) )
+    # zCb[ind]=1
+    # plt.close('all'); plt.matshow(zCb)
     
     gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='GSR_TMBR_PRCSSING_FAC_SV')
     gdf['geometry']=gdf.geometry.buffer(75*1000)
@@ -5035,33 +5122,278 @@ def DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta):
     gdf['ID']=np.ones(len(gdf))
     shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
     zF=np.zeros(zRef['Data'].shape,dtype=float)
-    burned=features.rasterize(shapes=shapes,fill=0,out=zF,transform=zRef['Transform'])    
+    burned=features.rasterize(shapes=shapes,fill=0,out=zF,transform=zRef['Transform'])
     
     zMaskIFM=np.zeros(zRef['Data'].shape,dtype='int8')
     ind=np.where( (zInner==0) & (zOuter==1) & (zF==1) )
     zMaskIFM[ind]=1
     #plt.close('all'); plt.matshow(zMaskIFM)
-    
-    zMaskWMRing=np.zeros(zRef['Data'].shape,dtype='int8')
-    ind=np.where( (zInner==0) & (zOuter==0) & (zOuter2==1) )
-    zMaskWMRing[ind]=1
-    ind=np.where( (zInner2==0) & (zInner==1) )
-    zMaskWMRing[ind]=1
-    #plt.close('all'); plt.matshow(zMaskWMRing)
         
     # Add intensee forest management
     ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
     ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zMaskIFM==1) & (zNoise2==1) )
     zLU['Data'][ind]=lut_lu['Timber Production Intense']
     
-    # Add outter protective WM ring
+    # Add wildfire management zones
+    ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zInner==1) )
+    zLU['Data'][ind]=lut_lu['Wildfire Risk Management']
+    
+    # Save    
+    gis.SaveGeoTiff(zLU,meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandUse_Comp1_2049_Scn3.tif')
+   
+    #==========================================================================
+    # LCLU-Comp1 2020to2049 Scenario 4: LUC-BAU / C-CAP / FM-CAP2
+    #==========================================================================    
+    # Import required data
+    zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCover_Comp1_2049_Scn2.tif')
+    zLU=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandUse_Comp1_2049_Scn2.tif')
+    zSlope=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\slope.tif')['Data']
+    
+    #--------------------------------------------------------------------------
+    # Add Bands of intense forestry zone
+    noise=PerlinNoise(octaves=10,seed=3)
+    xpix,ypix=1000,1000
+    zNoise0=np.zeros((xpix,ypix))
+    for i in range(xpix):
+        for j in range(ypix):
+            zNoise0[i,j]=noise([i/xpix, j/ypix])            
+    zNoise2=np.zeros(zNoise0.shape); 
+    ind=np.where( (zNoise0<-0.12) | (zNoise0>0.12) ); 
+    zNoise2[ind]=1
+    zNoise2=np.tile(zNoise2,(int(np.ceil(zRef['m']/1000)),int(np.ceil(zRef['n']/1000))))
+    zNoise2=zNoise2[0:zRef['m'],0:zRef['n']]  
+    # plt.close('all'); plt.matshow(zNoise2)
+
+    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    gdf['geometry']=gdf.geometry.buffer(7*1000)
+    gdf=gdf[gdf.geometry!=None]
+    gdf=gdf.reset_index()
+    gdf['ID']=np.ones(len(gdf))
+    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    zInner=np.zeros(zRef['Data'].shape,dtype=float)
+    burned=features.rasterize(shapes=shapes,fill=0,out=zInner,transform=zRef['Transform'])
+    
+    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    gdf['geometry']=gdf.geometry.buffer(55*1000)
+    gdf=gdf[gdf.geometry!=None]
+    gdf=gdf.reset_index()
+    gdf['ID']=np.ones(len(gdf))
+    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    zOuter=np.zeros(zRef['Data'].shape,dtype=float)
+    burned=features.rasterize(shapes=shapes,fill=0,out=zOuter,transform=zRef['Transform'])
+    
+    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='GSR_TMBR_PRCSSING_FAC_SV')
+    gdf['geometry']=gdf.geometry.buffer(75*1000)
+    gdf=gdf[gdf.geometry!=None]
+    gdf=gdf.reset_index()
+    gdf['ID']=np.ones(len(gdf))
+    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    zF=np.zeros(zRef['Data'].shape,dtype=float)
+    burned=features.rasterize(shapes=shapes,fill=0,out=zF,transform=zRef['Transform'])
+    
+    zMaskIFM=np.zeros(zRef['Data'].shape,dtype='int8')
+    ind=np.where( (zInner==0) & (zOuter==1) & (zF==1) )
+    zMaskIFM[ind]=1
+    #plt.close('all'); plt.matshow(zMaskIFM)
+        
+    # Add intensee forest management
     ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
-    ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zMaskWMRing==1) )
+    ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zMaskIFM==1) & (zNoise2==1) )
+    zLU['Data'][ind]=lut_lu['Timber Production Intense']
+    
+    # Add wildfire management zones
+    ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zInner==1) )
     zLU['Data'][ind]=lut_lu['Wildfire Risk Management']
     
     #--------------------------------------------------------------------------
+    # Add bioenergy production
+    
+    # Fibrous pattern for bioenergy 
+    noise=PerlinNoise(octaves=35,seed=3)
+    xpix,ypix=1000,1000
+    zNoise0=np.zeros((xpix,ypix))
+    for i in range(xpix):
+        for j in range(ypix):
+            zNoise0[i,j]=noise([i/xpix, j/ypix])
+    zNoise1=np.zeros(zNoise0.shape); 
+    ind=np.where(np.abs(zNoise0)<0.05); 
+    zNoise1[ind]=1    
+    zNoise1=np.tile(zNoise1,(int(np.ceil(zRef['m']/1000)),int(np.ceil(zRef['n']/1000))))
+    zNoise1=zNoise1[0:zRef['m'],0:zRef['n']]  
+    #plt.close('all'); plt.matshow(zNoise1)    
+    
+    gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    gdf['geometry']=gdf.geometry.buffer(60*1000)
+    gdf=gdf[gdf.geometry!=None]
+    gdf=gdf.reset_index()
+    gdf['ID']=np.ones(len(gdf))
+    shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    zOuterBE=np.zeros(zRef['Data'].shape,dtype=float)
+    burned=features.rasterize(shapes=shapes,fill=0,out=zOuterBE,transform=zRef['Transform'])
+    
+    Mask1=np.zeros(zRef['Data'].shape,dtype='int8')
+    ListLU=[lut_lu['Timber Production Intense'],lut_lu['Timber Production Passive'],lut_lu['No Designation']]
+    ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zSlope<20) & (zNoise1==1) & (zOuterBE==1) )
+    Mask1[ind]=1
+    plt.close('all'); plt.matshow(Mask1)
+    print(ind[0].size/1e6)
+    zLU['Data'][ind]=lut_lu['Bioenergy Production']
+    
     # Save    
-    gis.SaveGeoTiff(zLU,meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandUse_Comp1_2049_Scn3.tif')
+    gis.SaveGeoTiff(zLU,meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandUse_Comp1_2049_Scn4.tif')
+    
+    
+    
+    
+    # # Import required data
+    # zLC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandCover_Comp1_2049_Scn2.tif')
+    # zLU=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandUse_Comp1_2049_Scn2.tif')
+    # zSlope=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\slope.tif')['Data']
+    # #z1['Year Change']=np.zeros(zRef['Data'].shape,dtype='int16')
+    # #z1['Type Change']=np.zeros(zRef['Data'].shape,dtype='int8')
+    
+    # # Create Perlin noise
+    # noise=PerlinNoise(octaves=35,seed=3)
+    # xpix,ypix=1000,1000
+    # zNoise0=np.zeros((xpix,ypix))
+    # for i in range(xpix):
+    #     for j in range(ypix):
+    #         zNoise0[i,j]=noise([i/xpix, j/ypix])
+    
+    # # Fibrous pattern for bioenergy 
+    # zNoise1=np.zeros(zNoise0.shape); 
+    # ind=np.where(np.abs(zNoise0)<0.05); 
+    # zNoise1[ind]=1    
+    # zNoise1=np.tile(zNoise1,(int(np.ceil(zRef['m']/1000)),int(np.ceil(zRef['n']/1000))))
+    # zNoise1=zNoise1[0:zRef['m'],0:zRef['n']]  
+    # #plt.close('all'); plt.matshow(zNoise1)
+    
+    # # Exterior
+    # noise=PerlinNoise(octaves=10,seed=3)
+    # xpix,ypix=1000,1000
+    # zNoise0=np.zeros((xpix,ypix))
+    # for i in range(xpix):
+    #     for j in range(ypix):
+    #         zNoise0[i,j]=noise([i/xpix, j/ypix])            
+    # zNoise2=np.zeros(zNoise0.shape); 
+    # ind=np.where( (zNoise0<-0.12) | (zNoise0>0.12) ); 
+    # zNoise2[ind]=1
+    # zNoise2=np.tile(zNoise2,(int(np.ceil(zRef['m']/1000)),int(np.ceil(zRef['n']/1000))))
+    # zNoise2=zNoise2[0:zRef['m'],0:zRef['n']]  
+    # # plt.close('all'); plt.matshow(zNoise2)
+    
+    # #--------------------------------------------------------------------------
+    # # Add bioenergy production    
+    # Mask1=np.zeros(zRef['Data'].shape,dtype='int8')
+    # ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
+    # ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zSlope<20) & (zNoise1==1) )
+    # Mask1[ind]=1
+    # #plt.close('all'); plt.matshow(Mask1)
+    # print(ind[0].size/1e6)
+    # zLU['Data'][ind]=lut_lu['Bioenergy Production']
+
+    # # #--------------------------------------------------------------------------
+    # # # Wildfire management
+    # # zMaskWM=np.zeros(zRef['Data'].shape,dtype=float)
+    # # # Add FN communities    
+    # # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='FN_COMMUNITY_LOCATIONS_SP')
+    # # gdf['geometry']=gdf.geometry.buffer(2*1000)    
+    # # gdf=gdf[gdf.geometry!=None]
+    # # gdf=gdf.reset_index()
+    # # gdf['ID']=np.ones(len(gdf))
+    # # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))    
+    # # burned=features.rasterize(shapes=shapes,fill=0,out=zMaskWM,transform=zRef['Transform'])        
+    # # ind=np.where( (zMaskWM>0) )        
+    # # zMaskWM[ind]=1    
+    # # # Add major cities
+    # # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    # # gdf['geometry']=gdf.geometry.buffer(2*1000)
+    # # gdf=gdf[gdf.geometry!=None]
+    # # gdf=gdf.reset_index()
+    # # gdf['ID']=np.ones(len(gdf))
+    # # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))    
+    # # burned=features.rasterize(shapes=shapes,fill=0,out=zMaskWM,transform=zRef['Transform'])        
+    # # # Add to LU map
+    # # ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
+    # # ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zSlope<30) & (zMaskWM==1) & (zNoise2==1) )
+    # # zLU['Data'][ind]=lut_lu['Wildfire Risk Management']
+
+    # #--------------------------------------------------------------------------
+    # # Add Bands of intense forestry zone
+    # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    # gdf['geometry']=gdf.geometry.buffer(7*1000)
+    # gdf=gdf[gdf.geometry!=None]
+    # gdf=gdf.reset_index()
+    # gdf['ID']=np.ones(len(gdf))
+    # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    # zInner=np.zeros(zRef['Data'].shape,dtype=float)
+    # burned=features.rasterize(shapes=shapes,fill=0,out=zInner,transform=zRef['Transform'])
+    
+    # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    # gdf['geometry']=gdf.geometry.buffer(55*1000)
+    # gdf=gdf[gdf.geometry!=None]
+    # gdf=gdf.reset_index()
+    # gdf['ID']=np.ones(len(gdf))
+    # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    # zOuter=np.zeros(zRef['Data'].shape,dtype=float)
+    # burned=features.rasterize(shapes=shapes,fill=0,out=zOuter,transform=zRef['Transform'])
+    
+    # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    # gdf['geometry']=gdf.geometry.buffer(56*1000)
+    # gdf=gdf[gdf.geometry!=None]
+    # gdf=gdf.reset_index()
+    # gdf['ID']=np.ones(len(gdf))
+    # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    # zOuter2=np.zeros(zRef['Data'].shape,dtype=float)
+    # burned=features.rasterize(shapes=shapes,fill=0,out=zOuter2,transform=zRef['Transform'])
+    
+    # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='BC_MAJOR_CITIES_POINTS_500M')
+    # gdf['geometry']=gdf.geometry.buffer(6*1000)
+    # gdf=gdf[gdf.geometry!=None]
+    # gdf=gdf.reset_index()
+    # gdf['ID']=np.ones(len(gdf))
+    # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    # zInner2=np.zeros(zRef['Data'].shape,dtype=float)
+    # burned=features.rasterize(shapes=shapes,fill=0,out=zInner2,transform=zRef['Transform'])
+    
+    # zCb=np.zeros(zRef['Data'].shape,dtype='int8')
+    # ind=np.where( (zF==1) & (zOuter==1) )
+    # zCb[ind]=1
+    # plt.close('all'); plt.matshow(zCb)
+    
+    # gdf=gpd.read_file(meta['Paths']['GDB']['LandUse'],layer='GSR_TMBR_PRCSSING_FAC_SV')
+    # gdf['geometry']=gdf.geometry.buffer(75*1000)
+    # gdf=gdf[gdf.geometry!=None]
+    # gdf=gdf.reset_index()
+    # gdf['ID']=np.ones(len(gdf))
+    # shapes=((geom,value) for geom, value in zip(gdf['geometry'],gdf['ID']))
+    # zF=np.zeros(zRef['Data'].shape,dtype=float)
+    # burned=features.rasterize(shapes=shapes,fill=0,out=zF,transform=zRef['Transform'])
+    
+    # zMaskIFM=np.zeros(zRef['Data'].shape,dtype='int8')
+    # ind=np.where( (zInner==0) & (zOuter==1) & (zF==1) )
+    # zMaskIFM[ind]=1
+    # #plt.close('all'); plt.matshow(zMaskIFM)
+    
+    # zMaskWMRing=np.zeros(zRef['Data'].shape,dtype='int8')
+    # ind=np.where( (zInner==0) & (zOuter==0) & (zOuter2==1) )
+    # zMaskWMRing[ind]=1
+    # ind=np.where( (zInner2==0) & (zInner==1) )
+    # zMaskWMRing[ind]=1
+    # #plt.close('all'); plt.matshow(zMaskWMRing)
+        
+    # # Add intensee forest management
+    # ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
+    # ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zMaskIFM==1) & (zNoise2==1) )
+    # zLU['Data'][ind]=lut_lu['Timber Production Intense']
+    
+    # # # Add outter protective WM ring
+    # # ListLU=[lut_lu['Timber Production Passive'],lut_lu['No Designation']]
+    # # ind=np.where( (zLC['Data']==lut_lc['Forest']) & (np.isin(zLU['Data'],ListLU)==True) & (zMaskWMRing==1) )
+    # # zLU['Data'][ind]=lut_lu['Wildfire Risk Management']
+    
+    # # Save    
+    # gis.SaveGeoTiff(zLU,meta['Paths']['bc1ha'] + '\\LandCoverUse\\LandUse_Comp1_2049_Scn3.tif') 
    
     return
 
@@ -5195,8 +5527,38 @@ def RasterizeInsectComp1(meta):
         gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\InsectComp1_' + str(iY+1) + '_Type.tif')
     return
 
-#%% Generate a random sample of points from areas with disagreement in forest
+#%% Calculate time series summaries for insect comp 1
+def CalcInsectComp1_TimeSeries(meta):
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	tv=np.arange(1951,2024,1)
+	id=meta['Param']['BE']['InsectComp1']['ID']
+	name=meta['Param']['BE']['InsectComp1']['Insect Name']
+	sev=meta['Param']['BE']['InsectComp1']['Severity Code']
+	uNam=np.unique(name)
+	d={}
+	for nam in uNam:
+		d[nam]=np.zeros((tv.size,4))
+	N_Year=10
+	for iY in range(N_Year):
+		yr0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\InsectComp1_' + str(iY+1) + '_Year.tif')['Data']
+		id0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\InsectComp1_' + str(iY+1) + '_Type.tif')['Data']
+		ind=np.where(yr0>0)
+		yr0=yr0[ind]
+		id0=id0[ind]
+		uID=np.unique(id0)
+		for u in uID:
+			iID=np.where(id==u)[0]
+			iSev=np.where( np.array(['L','M','S','V'])==sev[iID] )[0]
+			ind1=np.where(id0==u)[0]
+			yr1=yr0[ind1]
+			idx=gu.IndicesFromUniqueArrayValues(yr1)
+			for i in idx.keys():
+				iT=np.where(tv==i)[0]
+				d[name[iID[0]]][iT,iSev]=d[name[iID[0]]][iT,iSev]+idx[i].size
+	gu.opickle(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\InsectComp1_SummaryTS.pkl',d)
+	return
 
+#%% Generate a random sample of points from areas with disagreement in forest
 def GenerateSampleForGroundTruthing(meta):
     import pyproj
     import geopandas as gpd
@@ -5246,7 +5608,7 @@ def DeriveLandUseChangeYear_1800to2019(meta):
     df=df[df['CITY_TYPE']!='DM']
     df=df.reset_index()
     df['Seed Year']=1865*np.ones(len(df['BCMJ_TAG']))
-    dSet=gu.ReadExcel(r'C:\Users\rhember\Documents\Data\Cities\BC_MAJOR_CITIES_POINTS_500M.xlsx')    
+    dSet=gu.ReadExcel(r'C:\Data\Cities\BC_MAJOR_CITIES_POINTS_500M.xlsx')    
     for i in range(len(dSet['BCMJ_TAG'])):
         ind=np.where(df['BCMJ_TAG']==dSet['BCMJ_TAG'][i])[0]; 
         df['Seed Year'][ind]=dSet['Year Settled'][i]

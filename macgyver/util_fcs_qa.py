@@ -1,6 +1,5 @@
 
 #%% Import modules
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,20 +11,630 @@ import statsmodels.formula.api as smf
 import warnings
 import time
 import copy
+from scipy import stats
 import matplotlib.colors
 import matplotlib.ticker as ticker
 #from matplotlib import animation
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
-import fcgadgets.macgyver.util_inventory as uinv
 import fcgadgets.bc1ha.bc1ha_util as u1ha
 import fcgadgets.cbrunner.cbrun_util as cbu
 import fcexplore.field_plots.Processing.psp_util as ugp
 
+#%% Age class distribution (by BGC Zone)
+def QA_FullComparisonAgeDistByBGC_CN(meta,gpt):
+	x=np.arange(0,501,1); yt=np.arange(0,2,0.1)
+	ord=np.flip(np.argsort(meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)']))
+	lab=np.array(['' for _ in range(ord.size)],dtype=object)
+	plt.close('all'); fig,ax=plt.subplots(3,3,figsize=gu.cm2inch(22,11)); cnt=0
+	for j in range(3):
+		for i in range(3):
+			zone=meta['Param']['BE']['BGC Zone Averages']['Name'][ord[cnt]]
+			#ind=np.where( (gpt['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1'][zone]) & (gpt['Plot Type']==meta['LUT']['GP']['Plot Type']['VRI']) & (gpt['Age Mean t0']>=0) )[0]
+			#kde=stats.gaussian_kde(gpt['Age Mean t0'][ind])
+			#p=kde(x); y1=p/np.sum(p)*100
+			#ax[i,j].plot(x,y1,'k-',lw=0.75,color=[0.5,0,1],label='VRI ground plots')
+	
+			ind=np.where( (gpt['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1'][zone]) & (gpt['PTF CN']==1) & (gpt['Age Mean t0']>=0) )[0]
+			kde=stats.gaussian_kde(gpt['Age Mean t0'][ind])
+			p=kde(x); y2=p/np.sum(p)*100
+			ax[i,j].fill_between(x,y2,alpha=0.15)
+			ax[i,j].plot(x,y2,'b-',lw=0.75,color=[0.27,0.44,0.79],label='CMI + NFI network\ntree cores')
+			#ym=np.maximum(np.max(y1),np.max(y2)); indYT=np.where(yt>ym)[0]
+			ym=np.max(y2); indYT=np.where(yt>ym)[0]
+			mu=np.mean(gpt['Age Mean t0'][ind])
+			ax[i,j].plot([mu,mu],[0,20],'b--',color=[0.27,0.44,0.79],label='Mean')
+			ax[i,j].set(ylabel='Frequency (%)',xlabel='Stand age, years',xlim=[0,500],ylim=[0,yt[indYT[1]]])
+			if (i==0) & (j==0):
+				ax[i,j].legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+			ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both'); ax[i,j].tick_params(length=meta['Graphics']['gp']['tickl'])
+			plt.tight_layout()
+			lab[cnt]=zone
+			cnt=cnt+1
+	gu.axletters(ax,plt,0.025,0.89,FontColor=meta['Graphics']['gp']['cla'],LetterStyle='NoPar',FontWeight='Bold',Labels=lab,LabelSpacer=0.035)
+	if meta['Graphics']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareAgeDistByBGC_CN_' + str(iScn+1),'png',900)
+	return
+
+#%%
+def QA_FullCompareBiomassDynamicsAve_CN(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
+			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+
+		dO_mu={}
+		dO_se={}
+		for v in dObs['data']['CNV'].keys():
+			dO_mu[v]=np.nansum(Area*dObs['data']['CNV'][v]['mu'])/np.nansum(Area)
+			dO_se[v]=np.nansum(Area*dObs['data']['CNV'][v]['se'])/np.nansum(Area)
+		dO_mu['Ctot G Tot']=dO_mu['Ctot G Surv']+dO_mu['Ctot G Recr']
+		dO_se['Ctot G Tot']=dO_se['Ctot G Surv']+dO_se['Ctot G Recr']
+
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		dM_mu={}
+		dM_se={}
+		for v in dMod[0]['SBS'].keys():
+			mu=np.zeros(lab.size)
+			se=np.zeros(lab.size)
+			for i in range(dObs['code'].size):
+				tmp=dMod[iScn][dObs['code'][i]]
+				mu[i]=np.mean(tmp[v][iT])
+				se[i]=2*np.std(tmp[v][iT])/np.sqrt(iT.size)
+			dM_mu[v]=np.sum(Area*mu)/np.sum(Area)
+			dM_se[v]=np.sum(Area*se)/np.sum(Area)
+
+		lab=['Gross\ngrowth','Natural\nmortality','Harvest\nmortality','Net\ngrowth'] #,'Harvest\nmortality'
+		cl=meta['Graphics']['GP Comp']; barw=0.38
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(9,7))
+		ax.plot([0,5],[0,0],'k-',color=meta['Graphics']['gp']['cla'],lw=meta['Graphics']['gp']['lw1'])
+		ax.bar(1-barw/2-0.01,dO_mu['Ctot G Tot'],barw,facecolor=cl['bl'],label='Ground plot observations')
+		ax.bar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.errorbar(1-barw/2-0.01,dO_mu['Ctot G Tot'],yerr=dO_se['Ctot G Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],yerr=dM_se['C_G_Gross_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.bar(2-barw/2-0.01,-dO_mu['Ctot Mort Nat'],barw,facecolor=cl['bl'])
+		ax.bar(2+barw/2+0.01,-dM_mu['C_M_Nat'],barw,facecolor=cl['gl'])
+		ax.errorbar(2-barw/2-0.01,-dO_mu['Ctot Mort Nat'],yerr=dO_se['Ctot Mort Nat'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(2+barw/2+0.01,-dM_mu['C_M_Nat'],yerr=dM_se['C_M_Nat'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.bar(3-barw/2-0.01,-dO_mu['Ctot Mort Harv'],barw,facecolor=cl['bl'])
+		ax.bar(3+barw/2+0.01,-dM_mu['C_M_Harv'],barw,facecolor=cl['gl'])
+		ax.errorbar(3-barw/2-0.01,-dO_mu['Ctot Mort Harv'],yerr=dO_se['Ctot Mort Harv'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(3+barw/2+0.01,-dM_mu['C_M_Harv'],yerr=dM_se['C_M_Harv'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.bar(4-barw/2-0.01,dO_mu['Ctot Net'],barw,facecolor=cl['bl'])
+		ax.bar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],barw,facecolor=cl['gl'])
+		ax.errorbar(4-barw/2-0.01,dO_mu['Ctot Net'],yerr=dO_se['Ctot Net'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],yerr=dM_se['C_G_Net_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.set(position=[0.14,0.12,0.84,0.86],xticks=np.arange(1,len(lab)+1),xticklabels=lab,yticks=np.arange(-2,3,0.5),ylabel='Carbon balance of trees (tC ha$^{-1}$ yr$^{-1}$)',xlim=[0.5,4.5],ylim=[-1.5,2])
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareBiomassDynamicsAve_CN_' + str(iScn+1),'png',900)
+	return
+
+#%%
+def QA_FullCompareBiomassByBGC_CNV(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+
+		d={}
+		d['obs mu']=dObs['data']['CNV']['Ctot L t0']['mu']
+		d['obs se']=dObs['data']['CNV']['Ctot L t0']['se']
+		# Add modelled data
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		d['mod mu']=np.zeros(d['obs mu'].size)
+		d['mod se']=np.zeros(d['obs se'].size)
+		for i in range(dObs['code'].size):
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_Biomass_Tot'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_Biomass_Tot'][iT])/np.sqrt(iT.size)
+		
+		# Put in order
+		ord=np.argsort(d['obs mu'])
+		lab=np.flip(lab[ord])
+		u=u[ord]
+		for v in d:
+			d[v]=np.flip(d[v][ord])
+		
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
+			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+		
+		# Area weighting
+		for v in d:
+			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
+		lab=np.append(lab,'Weighted\naverage')
+		u=np.append(u,0.0)
+		
+		# Percent difference
+		yp=d['mod mu']
+		yo=d['obs mu']
+		Dp=(yp-yo)/yo*100
+		
+		cl=meta['Graphics']['GP Comp']; barw=0.32
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
+		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
+		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.errorbar(np.arange(u.size)-barw/2-0.01,d['obs mu'],yerr=d['obs se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(np.arange(u.size)+barw/2+0.01,d['mod mu'],yerr=d['mod se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		for i in range(u.size):
+			if Dp[i]>=0:
+				a='+'
+			else:
+				a=''
+			ax.text(i+barw/2+0.01,yp[i]+d['mod se'][i]+6,a + str(Dp[i].astype(int)) + '%',color=meta['Graphics']['gp']['cla'],ha='center',fontsize=6)
+		#for i in range(u.size):
+		#ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
+		ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Biomass (tC ha$^{-1}$)',xlim=[-0.5,u.size-0.5],ylim=[0,250])
+		plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareBiomassByBGC_CNV_' + str(iScn+1),'png',900)
+	return
+
+#%%
+def QA_FullCompareGrowthGrossByBGC_CN(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+		d={}
+		d['obs mu']=dObs['data']['CN']['Ctot G Surv']['mu']+dObs['data']['CN']['Ctot G Recr']['mu']
+		d['obs se']=dObs['data']['CN']['Ctot G Surv']['se']+dObs['data']['CN']['Ctot G Recr']['se']
+		
+		# Add modelled data
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		d['mod mu']=np.zeros(d['obs mu'].size)
+		d['mod se']=np.zeros(d['obs se'].size)
+		for i in range(dObs['code'].size):
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_G_Gross_Tot'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_G_Gross_Tot'][iT])/np.sqrt(iT.size)
+		
+		# Put in order
+		ord=np.argsort(np.nan_to_num(d['obs mu']))
+		lab=np.flip(lab[ord])
+		u=u[ord]
+		for v in d:
+			d[v]=np.flip(d[v][ord])
+		
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
+			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+		
+		# Area weighting
+		for v in d:
+			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
+		lab=np.append(lab,'Weighted\naverage')
+		u=np.append(u,0.0)
+		
+		# Percent difference
+		yp=d['mod mu']
+		yo=d['obs mu']
+		Dp=(yp-yo)/yo*100
+		
+		cl=meta['Graphics']['GP Comp']; barw=0.32
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
+		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
+		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.errorbar(np.arange(u.size)-barw/2-0.01,d['obs mu'],yerr=d['obs se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(np.arange(u.size)+barw/2+0.01,d['mod mu'],yerr=d['mod se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		for i in range(u.size):
+			if (np.abs(Dp[i])>10000) | (np.isnan(yo[i])==True):
+				continue
+			if Dp[i]>=0:
+				a='+'
+			else:
+				a=''
+			ax.text(i+barw/2+0.01,yp[i]+d['mod se'][i]+0.25,a + str(Dp[i].astype(int)) + '%',color=meta['Graphics']['gp']['cla'],ha='center',fontsize=6)
+		#for i in range(u.size):
+		#ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
+		ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Gross growth (tC ha$^{-1}$ yr$^{-1}$)',xlim=[-0.5,u.size-0.5],ylim=[0,5])
+		plt.legend(loc='upper right',frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareGrowthGrossByBGC_CNV_' + str(iScn+1),'png',900)
+	return
+
+#%%
+def QA_FullCompareGrowthNetByBGC_CN(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+		d={}
+		d['obs mu']=dObs['data']['CN']['Ctot Net']['mu']
+		d['obs se']=dObs['data']['CN']['Ctot Net']['se']
+		
+		# Add modelled data
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		d['mod mu']=np.zeros(d['obs mu'].size)
+		d['mod se']=np.zeros(d['obs se'].size)
+		for i in range(dObs['code'].size):
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_G_Net_Tot'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_G_Net_Tot'][iT])/np.sqrt(iT.size)
+		
+		# Put in order
+		tmp=d['obs mu'].copy()
+		ind=np.where(np.isnan(tmp)==True)[0]
+		tmp[ind]=-1000
+		ord=np.argsort(tmp)
+		lab=np.flip(lab[ord])
+		u=u[ord]
+		for v in d.keys():
+			d[v]=np.flip(d[v][ord])
+		
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
+			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+		
+		# Area weighting
+		for v in d:
+			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
+		lab=np.append(lab,'Weighted\naverage')
+		u=np.append(u,0.0)
+		
+		# Percent difference
+		yp=d['mod mu']
+		yo=d['obs mu']
+		Dp=(yp-yo)/yo*100
+		
+		cl=meta['Graphics']['GP Comp']; barw=0.32
+		
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
+		ax.plot([-1,100],[0,0],'k-',lw=1)
+		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
+		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.errorbar(np.arange(u.size)-barw/2-0.01,d['obs mu'],yerr=d['obs se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(np.arange(u.size)+barw/2+0.01,d['mod mu'],yerr=d['mod se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		for i in range(u.size):
+			if (np.abs(Dp[i])>10000) | (np.isnan(yo[i])==True):
+				continue
+			if Dp[i]>=0:
+				a='+'
+			else:
+				a=''
+			ax.text(i+barw/2+0.01,yp[i]+d['mod se'][i]+0.25,a + str(Dp[i].astype(int)) + '%',color=meta['Graphics']['gp']['cla'],ha='center',fontsize=6)
+		#for i in range(u.size):
+		#ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
+		ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Net growth (tC ha$^{-1}$ yr$^{-1}$)',xlim=[-0.5,u.size-0.5],ylim=[-3,3])
+		plt.legend(loc='upper right',frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareGrowthNetByBGC_CN_' + str(iScn+1),'png',900)
+	return
+
+#%%
+def QA_FullCompareMortalityByBGC_CN(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+		d={}
+		d['obs mu']=dObs['data']['CN']['Ctot Mort Nat']['mu']+dObs['data']['CN']['Ctot Mort Harv']['mu']
+		d['obs se']=dObs['data']['CN']['Ctot Mort Nat']['se']+dObs['data']['CN']['Ctot Mort Harv']['se']
+		
+		# Add modelled data
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		d['mod mu']=np.zeros(d['obs mu'].size)
+		d['mod se']=np.zeros(d['obs se'].size)
+		for i in range(dObs['code'].size):
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_M_Tot'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_M_Tot'][iT])/np.sqrt(iT.size)
+		
+		# Put in order
+		ord=np.argsort(np.nan_to_num(d['obs mu']))
+		lab=np.flip(lab[ord])
+		u=u[ord]
+		for v in d:
+			d[v]=np.flip(d[v][ord])
+		
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
+			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+		
+		# Area weighting
+		for v in d:
+			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
+		lab=np.append(lab,'Weighted\naverage')
+		u=np.append(u,0.0)
+		
+		# Percent difference
+		yp=d['mod mu']
+		yo=d['obs mu']
+		Dp=(yp-yo)/yo*100
+		
+		cl=meta['Graphics']['GP Comp']; barw=0.32
+		plt.close('all');fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
+		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
+		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.errorbar(np.arange(u.size)-barw/2-0.01,d['obs mu'],yerr=d['obs se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(np.arange(u.size)+barw/2+0.01,d['mod mu'],yerr=d['mod se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		for i in range(u.size):
+			if (np.abs(Dp[i])>10000) | (np.isnan(yo[i])==True):
+				continue
+			if Dp[i]>=0:
+				a='+'
+			else:
+				a=''
+			ax.text(i+barw/2+0.01,yp[i]+d['mod se'][i]+0.25,a + str(Dp[i].astype(int)) + '%',color=meta['Graphics']['gp']['cla'],ha='center',fontsize=6)
+		#for i in range(u.size):
+		#ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
+		ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Mortality (tC ha$^{-1}$ yr$^{-1}$)',xlim=[-0.5,u.size-0.5],ylim=[0,6])
+		plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.2)
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareMortByBGC_CN_' + str(iScn+1),'png',900)
+	
+	return
+
+#%%
+def QA_FullCompareSOCByBGC(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+
+		# Add modelled data
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		dM={}
+		dM['Tot_mu']=np.zeros(lab.size)
+		dM['Org_mu']=np.zeros(lab.size)
+		dM['Min_mu']=np.zeros(lab.size)
+		dM['Tot_se']=np.zeros(lab.size)
+		dM['Org_se']=np.zeros(lab.size)
+		dM['Min_se']=np.zeros(lab.size)
+		for i in range(lab.size):
+			dM['Tot_mu'][i]=np.mean(dMod[iScn][lab[i]]['C_Soil_Tot'][iT])
+			dM['Org_mu'][i]=np.mean(dMod[iScn][lab[i]]['C_Soil_OHorizon'][iT])
+			dM['Min_mu'][i]=dM['Tot_mu'][i]-dM['Org_mu'][i]
+			dM['Tot_se'][i]=2*np.std(dMod[iScn][lab[i]]['C_Soil_Tot'][iT])/np.sqrt(iT.size)
+			dM['Org_se'][i]=2*np.std(dMod[iScn][lab[i]]['C_Soil_OHorizon'][iT])/np.sqrt(iT.size)
+			dM['Min_se'][i]=dM['Tot_se'][i]-dM['Org_se'][i]
+
+		# Put in order
+		ord=np.argsort(dObs['data']['Soil']['TOT_C_THA']['mu'])
+		lab=np.flip(lab[ord])
+		for v in dObs['data']['Soil'].keys():
+			for k in dObs['data']['Soil'][v].keys():
+				dObs['data']['Soil'][v][k]=np.flip(dObs['data']['Soil'][v][k][ord])
+		for v in dM.keys():
+			dM[v]=np.flip(dM[v][ord])
+
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
+			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+		
+		# Area weighting
+		for v in dObs['data']['Soil'].keys():
+			dObs['data']['Soil'][v]['mu']=np.append(dObs['data']['Soil'][v]['mu'],np.sum(dObs['data']['Soil'][v]['mu']*Area)/np.sum(Area))
+			dObs['data']['Soil'][v]['se']=np.append(dObs['data']['Soil'][v]['se'],np.sum(dObs['data']['Soil'][v]['se']*Area)/np.sum(Area))
+		for v in dM.keys():
+			dM[v]=np.append(dM[v],np.sum(dM[v]*Area)/np.sum(Area))
+		lab=np.append(lab,'Weighted\naverage')
+		u=np.append(u,0.0)
+		
+		# Percent difference
+		yp=dM['Tot_mu']
+		yo=dObs['data']['Soil']['TOT_C_THA']['mu']
+		Dp=(yp-yo)/yo*100
+		
+		cl=meta['Graphics']['GP Comp']; barw=0.32
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
+		ax.bar(np.arange(u.size)-barw/2-0.01,dObs['data']['Soil']['MIN_C_THA']['mu'],barw,facecolor=cl['bl'],label='Ground plot observations, mineral horizon (Shaw et al. 2018)')
+		ax.bar(np.arange(u.size)-barw/2-0.01,dObs['data']['Soil']['ORG_C_THA']['mu'],barw,facecolor=cl['bd'],bottom=dObs['data']['Soil']['MIN_C_THA']['mu'],label='Ground plot observations, organic horizon (Shaw et al. 2018)')
+		ax.bar(np.arange(u.size)+barw/2+0.01,dM['Min_mu'],barw,facecolor=cl['gl'],label='Prediction, mineral horizon (FCS)')
+		ax.bar(np.arange(u.size)+barw/2+0.01,dM['Org_mu'],barw,facecolor=cl['gd'],bottom=dM['Min_mu'],label='Prediction, organic horizon (FCS)')
+		ax.errorbar(np.arange(u.size)-barw/2-0.01,dObs['data']['Soil']['TOT_C_THA']['mu'],yerr=dObs['data']['Soil']['TOT_C_THA']['se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(np.arange(u.size)+barw/2+0.01,dM['Tot_mu'],yerr=dM['Tot_se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		for i in range(u.size):
+			if (np.abs(Dp[i])>10000) | (np.isnan(yo[i])==True):
+				continue
+			if Dp[i]>=0:
+				a='+'
+			else:
+				a=''
+			ax.text(i+barw/2+0.01,yp[i]+dM['Tot_se'][i]+15,a + str(Dp[i].astype(int)) + '%',color=meta['Graphics']['gp']['cla'],ha='center',fontsize=5)
+		ax.set(position=[0.08,0.12,0.9,0.86],xlim=[-0.5,u.size-0.5],ylim=[0,450],xticks=np.arange(u.size),
+		 xticklabels=lab,ylabel='Soil organic carbon (tC ha$^{-1}$ yr$^{-1}$)')
+		plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25,fontsize=6)
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareSOCByBGC_' + str(iScn+1),'png',900)
+	
+	return
+
+#%%
+def QA_FullComparison_AgeResponsesBiomassAndNetGrowth_ByReg_CNY(meta,pNam,dObs,dMod):
+	lw=0.5; ms=3; cl=meta['Graphics']['GP Comp']
+	ptf='PTF CN'
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		plt.close('all'); fig,ax1=plt.subplots(1,2,figsize=gu.cm2inch(22,7))
+		reg='Coast'
+		ax1[0].plot(dObs['bin'],dObs['data'][ptf][reg]['Ctot L t0']['mu'],'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],label='Observed biomass',zorder=1)
+		ax1[0].plot(dObs['bin'],dMod[iScn][reg]['C_Biomass_Tot']['mu'],'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],label='Predicted biomass',zorder=1)
+		ax1[0].set(ylabel='Biomass (tC ha$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(0,500,50),xlim=[0,250+dObs['bw']],ylim=[0,250])
+		ax1[0].yaxis.set_ticks_position('both'); ax1[0].xaxis.set_ticks_position('both'); ax1[0].tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax2=ax1[0].twinx()
+		ax2.bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot Net']['mu'],0.45*dObs['bw'],ec='none',fc=cl['bl'],zorder=-1,label='Observed net growth')
+		ax2.bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Net_Tot']['mu'] ,0.45*dObs['bw'],ec='none',fc=cl['gl'],zorder=-1,label='Predicted net growth')
+		ax2.plot([0,500],[0,0],'-k',lw=lw)
+		ax2.set(ylabel='Net growth (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='',ylim=[-1.75,5.5])
+		ax1[0].set_zorder(ax2.get_zorder()+1)
+		ax1[0].patch.set_visible(False)
+		ax2.tick_params(length=meta['Graphics']['gp']['tickl'])
+		reg='Interior'
+		ax1[1].plot(dObs['bin'],dObs['data'][ptf][reg]['Ctot L t0']['mu'],'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],zorder=1)
+		ax1[1].plot(dObs['bin'],dMod[iScn][reg]['C_Biomass_Tot']['mu'],'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],zorder=1)
+		ax1[1].set(ylabel='Biomass (tC ha$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(0,500,50),xlim=[0,250+dObs['bw']],ylim=[0,250])
+		ax1[1].yaxis.set_ticks_position('both'); ax1[1].xaxis.set_ticks_position('both'); ax1[1].tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax3=ax1[1].twinx()
+		ax3.bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot Net']['mu'],0.45*dObs['bw'],ec='none',fc=cl['bl'],label='Observed net growth',zorder=-1)
+		ax3.bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Net_Tot']['mu'],0.45*dObs['bw'],ec='none',fc=cl['gl'],label='Predicted net growth',zorder=-1)
+		ax3.plot([0,500],[0,0],'-k',lw=lw)
+		ax3.set(ylabel='Net growth (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='',ylim=[-1.75,5.5])
+		ax1[1].set_zorder(ax3.get_zorder()+1)
+		ax1[1].patch.set_visible(False)
+		ax3.tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax1[0].legend(loc='lower center',frameon=False,facecolor=None,edgecolor='w',fontsize=6)
+		ax3.legend(loc='upper center',frameon=False,facecolor=None,edgecolor='w',fontsize=6)
+		gu.axletters(ax1,plt,0.04,0.92,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
+		plt.tight_layout()
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullComparison_AgeResponsesBiomassAndNetGrowth_ByReg_CNY_' + str(iScn+1),'png',900)
+	return
+
+#%%
+def QA_FullComparison_AgeResponsesGrossGrowthAndMortality_ByReg_CNY(meta,pNam,dObs,dMod):
+	cl=meta['Graphics']['GP Comp']
+	ptf='PTF CN'
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		plt.close('all'); fig,ax1=plt.subplots(1,2,figsize=gu.cm2inch(22,7.25))
+		reg='Coast'
+		ax1[0].bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bl'],label='Observed gross growth')
+		ax1[0].errorbar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],yerr=dObs['data'][ptf][reg]['Ctot G Surv']['se']+dObs['data'][ptf][reg]['Ctot G Recr']['se'],color=0.5*cl['bl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[0].bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gl'],label='Predicted gross growth')
+		ax1[0].errorbar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],yerr=dMod[iScn][reg]['C_G_Gross_Tot']['se'],color=0.5*cl['gl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax1[0].bar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bd'],label='Observed mortality')
+		ax1[0].errorbar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],yerr=dObs['data'][ptf][reg]['Ctot Mort']['se'],color=0.5*cl['bd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[0].bar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gd'],label='Predicted mortality')
+		ax1[0].errorbar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],yerr=dMod[iScn][reg]['C_M_Tot']['se'],color=0.5*cl['gd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[0].plot([0,300],[0,0],'k-',lw=0.5)
+		ax1[0].set(ylabel='Biomass flux (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(-10,500,1),xlim=[0,250+dObs['bw']],ylim=[-3,7])
+		ax1[0].yaxis.set_ticks_position('both'); ax1[0].xaxis.set_ticks_position('both'); ax1[0].tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax1[0].legend(loc='upper right',frameon=False,facecolor=[1,1,1],labelspacing=0.25,fontsize=6)
+		
+		reg='Interior'
+		ax1[1].bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bl'])
+		ax1[1].errorbar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],yerr=dObs['data'][ptf][reg]['Ctot G Surv']['se']+dObs['data'][ptf][reg]['Ctot G Recr']['se'],color=0.5*cl['bl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[1].bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gl'])
+		ax1[1].errorbar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],yerr=dMod[iScn][reg]['C_G_Gross_Tot']['se'],color=0.5*cl['gl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+
+		ax1[1].bar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bd'])
+		ax1[1].errorbar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],yerr=dObs['data'][ptf][reg]['Ctot Mort']['se'],color=0.5*cl['bd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[1].bar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gd'])
+		ax1[1].errorbar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],yerr=dMod[iScn][reg]['C_M_Tot']['se'],color=0.5*cl['gd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[1].plot([0,300],[0,0],'k-',lw=0.5)
+		ax1[1].set(ylabel='Biomass flux (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(-10,500,1),xlim=[0,250+dObs['bw']],ylim=[-3,7])
+		ax1[1].yaxis.set_ticks_position('both'); ax1[1].xaxis.set_ticks_position('both'); ax1[1].tick_params(length=meta['Graphics']['gp']['tickl'])
+		gu.axletters(ax1,plt,0.04,0.92,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
+		plt.tight_layout()
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullComparison_AgeResponsesGrossGrowthAndMortality_ByReg_CNY_' + str(iScn+1),'png',900)
+	return
+
+#%%
+
+def QA_AgeResponseBiomassNetGrowth_CN(meta,pNam,iScn,gpt):
+    #E=[None]*meta[pNam]['Project']['N Scenario']
+    #for iScn in range(meta[pNam]['Project']['N Scenario']):
+    #E[iScn]={'Coast':{},'Interior':{}}
+    bw=25; bin=np.arange(bw,250+bw,bw)
+    #ind=np.where( (gpt[iScn]['PTF CN']==1) & (gpt[iScn]['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1']['CWH']) | (gpt[iScn]['PTF CN']==1) & (gpt[iScn]['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1']['MH']) )[0]
+    ind=np.where( (gpt[iScn]['PTF CN']==1) & (gpt[iScn]['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1']['CWH']) & (gpt[iScn]['Mod C_M_Harv']==0) | (gpt[iScn]['PTF CN']==1) & (gpt[iScn]['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1']['MH']) & (gpt[iScn]['Mod C_M_Harv']==0) )[0]
+    
+    xO=gpt[iScn]['Age Med t0'][ind]    
+    xM=gpt[iScn]['Mod A t0'][ind]
+    yO=gpt[iScn]['Ctot L t0'][ind]
+    yM=gpt[iScn]['Mod C_Biomass_Tot t0'][ind]
+    N,mu1,med,sig,se=gu.discres(xO,yO,bw,bin)
+    N,mu2,med,sig,se=gu.discres(xM,yM,bw,bin)
+    ikp=np.where(np.isnan(mu1+mu2)==False)[0]
+    E['Coast']['Biomass'],txt=gu.GetRegStats(mu1[ikp],mu2[ikp])
+    #E[0]=np.sqrt(np.sum((mu1[ikp]-mu2[ikp])**2))
+    #E[0]=np.nanmedian((mu2[ikp]-mu1[ikp])/mu1[ikp]*100)        
+    
+    yO=gpt[iScn]['Ctot Net'][ind]
+    yM=gpt[iScn]['Mod C_G_Net'][ind]
+    N,mu3,med,sig,se=gu.discres(xO,yO,bw,bin)
+    N,mu4,med,sig,se=gu.discres(xM,yM,bw,bin)
+    ikp=np.where(np.isnan(mu3+mu4)==False)[0]
+    E['Coast']['Net Growth'],txt=gu.GetRegStats(mu3[ikp],mu4[ikp])
+    #E[1]=np.sqrt(np.sum((mu3[ikp]-mu4[ikp])**2))
+    #E[1]=np.nanmedian((mu4[ikp]-mu3[ikp])/mu3[ikp]*100)
+    
+    ind=np.where( (gpt[iScn]['PTF CN']==1) & (gpt[iScn]['Mod C_M_Harv']==0) & (gpt[iScn]['Ecozone BC L1']!=meta['LUT']['GP']['Ecozone BC L1']['CWH']) & (gpt[iScn]['Ecozone BC L1']!=meta['LUT']['GP']['Ecozone BC L1']['MH']) )[0]
+    xO=gpt[iScn]['Age Med t0'][ind]
+    xM=gpt[iScn]['Mod A t0'][ind]
+    yO=gpt[iScn]['Ctot L t0'][ind]
+    yM=gpt[iScn]['Mod C_Biomass_Tot t0'][ind]
+    N,mu5,med,sig,se=gu.discres(xO,yO,bw,bin)
+    N,mu6,med,sig,se=gu.discres(xM,yM,bw,bin)
+    ikp=np.where(np.isnan(mu5+mu6)==False)[0]
+    E['Interior']['Biomass'],txt=gu.GetRegStats(mu5[ikp],mu6[ikp])
+    #E[2]=np.sqrt(np.sum((mu5[ikp]-mu6[ikp])**2))
+    #E[2]=np.nanmedian((mu5[ikp]-mu4[ikp])/mu4[ikp]*100)
+    
+    yO=gpt[iScn]['Ctot Net'][ind]
+    yM=gpt[iScn]['Mod C_G_Net'][ind]
+    N,mu7,med,sig,se=gu.discres(xO,yO,bw,bin)
+    N,mu8,med,sig,se=gu.discres(xM,yM,bw,bin)
+    ikp=np.where(np.isnan(mu7+mu8)==False)[0]
+    E['Interior']['Net Growth'],txt=gu.GetRegStats(mu7[ikp],mu8[ikp])
+    #E[3]=np.sqrt(np.sum((mu7[ikp]-mu8[ikp])**2))
+    #E[3]=np.nanmedian((mu8[ikp]-mu7[ikp])/mu7[ikp]*100)
+    
+    if 'Just get errors' not in meta[pNam].keys():            
+        lw=0.5; ms=3; cl=meta['Graphics']['GP Comp']
+        plt.close('all'); fig,ax1=plt.subplots(1,2,figsize=gu.cm2inch(15,6))
+        # Coast    
+        ax1[0].plot(bin,mu1,'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],label='Observed biomass',zorder=1)    
+        ax1[0].plot(bin,mu2,'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],label='Predicted biomass',zorder=1)
+        ax1[0].set(ylabel='Biomass (tC ha$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,bw),yticks=np.arange(0,500,50),xlim=[0,250+bw],ylim=[0,400])
+        ax1[0].yaxis.set_ticks_position('both'); ax1[0].xaxis.set_ticks_position('both'); ax1[0].tick_params(length=meta['Graphics']['gp']['tickl'])        
+        ax2=ax1[0].twinx()
+        ax2.bar(bin-(0.45*bw/2),mu3,0.4*bw,ec='none',fc=cl['bl'],zorder=-1)
+        ax2.bar(bin+(0.45*bw/2),mu4,0.45*bw,ec='none',fc=cl['gl'],zorder=-1)
+        ax2.plot([0,500],[0,0],'-k',lw=lw)
+        ax2.set(ylabel='Net growth (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='',ylim=[-1.75,5.5])
+        ax1[0].set_zorder(ax2.get_zorder()+1)
+        ax1[0].patch.set_visible(False)
+        ax2.tick_params(length=meta['Graphics']['gp']['tickl'])                
+        # Interior    
+        ax1[1].plot(bin,mu5,'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],zorder=1)    
+        ax1[1].plot(bin,mu6,'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],zorder=1)
+        ax1[1].set(ylabel='Biomass (tC ha$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,bw),yticks=np.arange(0,500,20),xlim=[0,250+bw],ylim=[0,200])
+        ax1[1].yaxis.set_ticks_position('both'); ax1[1].xaxis.set_ticks_position('both'); ax1[1].tick_params(length=meta['Graphics']['gp']['tickl'])        
+        ax3=ax1[1].twinx()    
+        ax3.bar(bin-(0.45*bw/2),mu7,0.4*bw,ec='none',fc=cl['bl'],label='Observed net growth',zorder=-1)    
+        ax3.bar(bin+(0.45*bw/2),mu8,0.45*bw,ec='none',fc=cl['gl'],label='Predicted net growth',zorder=-1)    
+        ax3.plot([0,500],[0,0],'-k',lw=lw)
+        ax3.set(ylabel='Net growth (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='',ylim=[-1.75,5.5])
+        ax1[1].set_zorder(ax3.get_zorder()+1)
+        ax1[1].patch.set_visible(False)
+        ax3.tick_params(length=meta['Graphics']['gp']['tickl'])
+        ax1[0].legend(loc='lower center',frameon=False,facecolor=None,edgecolor='w',fontsize=6)
+        ax3.legend(loc='upper center',frameon=False,facecolor=None,edgecolor='w',fontsize=6)
+        gu.axletters(ax1,plt,0.04,0.92,FontColor=meta['Graphics']['gp']['cla'],LetterStyle='Caps',FontWeight='Bold')
+        plt.tight_layout()
+        if meta['Graphics']['Print Figures']=='On':
+            gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_AgeResponseBiomassNetGrowth_CN_' + str(iScn+1),'png',900)
+    
+    return E
+
 #%% Age
-
-def EvalAgeByBGCZ_CNV(meta,pNam,gpt):
-
+def EvalAtPlots_AgeByBGCZ_CNV(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
         lab=np.array(['' for _ in range(u.size)],dtype=object)
@@ -128,8 +737,7 @@ def EvalAgeByBGCZ_CNV(meta,pNam,gpt):
     return
 
 #%%
-
-def EvalBiomassByBGC_CNV(meta,pNam,gpt):
+def EvalAtPlots_BiomassByBGC_CNV(meta,pNam,gpt):
 
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -141,8 +749,7 @@ def EvalBiomassByBGC_CNV(meta,pNam,gpt):
             d[v]['N']=np.zeros(u.size)
             d[v]['mu']=np.zeros(u.size)
             d[v]['sd']=np.zeros(u.size)
-            d[v]['se']=np.zeros(u.size)
-    
+            d[v]['se']=np.zeros(u.size)    
         for i in range(u.size):
             lab[i]=ugp.lut_id2cd(meta['LUT']['GP']['Ecozone BC L1'],u[i])
             for v in gpt[iScn]['vaL']:
@@ -312,12 +919,10 @@ def EvalBiomassByBGC_CNV(meta,pNam,gpt):
         ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
         if meta['Graphics']['Print Figures']=='On':
             gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_Biomass_ByBGCZone_BarChart_CN_' + str(iScn+1),'png',900)
-
     return
 
 #%% Biomass (YSM)
-
-def EvalBiomassByBGC_YSM(meta,gpt):
+def EvalAtPlots_BiomassByBGC_YSM(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -421,8 +1026,7 @@ def EvalBiomassByBGC_YSM(meta,gpt):
     return
 
 #%% Biomass (TIPSY stemwood)
-
-def EvalStemwoodFromTIPSYByBGC_CNV(meta,gpt):
+def EvalAtPlots_StemwoodFromTIPSYByBGC_CNV(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -515,8 +1119,7 @@ def EvalStemwoodFromTIPSYByBGC_CNV(meta,gpt):
     return
 
 #%% Biomass components
-
-def Eval_BiomassComponents_CN(meta,gpt):
+def EvalAtPlots_BiomassComponents_CN(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.array([1])
         d={}
@@ -553,8 +1156,7 @@ def Eval_BiomassComponents_CN(meta,gpt):
     return
 
 #%% Biomass dynammics summary (total CO2e)
-
-def Eval_BiomassDynamicsAve_TotCO2e_CN(meta,gpt):
+def EvalAtPlots_BiomassDynamicsAve_TotCO2e_CN(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
         lab=np.array(['' for _ in range(u.size)],dtype=object)
@@ -630,8 +1232,7 @@ def Eval_BiomassDynamicsAve_TotCO2e_CN(meta,gpt):
     return
 
 #%% Biomass dynammics summary (CN average)
-
-def EvalBiomassDynamicsAve_CN(meta,pNam,gpt):
+def EvalAtPlots_BiomassDynamicsAve_CN(meta,pNam,gpt):
 
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -720,8 +1321,7 @@ def EvalBiomassDynamicsAve_CN(meta,pNam,gpt):
     return
 
 #%% Biomass dynammics summary (average YSM)
-
-def Plot_BiomassDynamicsAve_YSM(meta,gpt):
+def EvalAtPlots_BiomassDynamicsAve_YSM(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -797,8 +1397,7 @@ def Plot_BiomassDynamicsAve_YSM(meta,gpt):
     return
 
 #%% Gross growth (CN)
-
-def EvalGrossGrowthByBGC_CN(meta,pNam,gpt):
+def EvalAtPlots_GrossGrowthByBGC_CN(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
         lab=np.array(['' for _ in range(u.size)],dtype=object)
@@ -904,7 +1503,7 @@ def EvalGrossGrowthByBGC_CN(meta,pNam,gpt):
     return
 
 #%% Gross growth (YSM)
-def EvalGrossGrowthByBGC_YSM(meta,gpt):
+def EvalAtPlots_GrossGrowthByBGC_YSM(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -1011,8 +1610,7 @@ def EvalGrossGrowthByBGC_YSM(meta,gpt):
     return
 
 #%% Mortality
-
-def EvalMortalityByBGC_CN(meta,pNam,gpt):
+def EvalAtPlots_MortalityByBGC_CN(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -1117,8 +1715,7 @@ def EvalMortalityByBGC_CN(meta,pNam,gpt):
     return
 
 #%% Mortality (YSM)
-
-def EvalMortalityByBGC_YSM(meta,gpt):
+def EvalAtPlots_MortalityByBGC_YSM(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
         lab=np.array(['' for _ in range(u.size)],dtype=object)
@@ -1225,7 +1822,7 @@ def EvalMortalityByBGC_YSM(meta,gpt):
 
 #%% Net growth (CN)
 
-def EvalGrowthNetByBGC_CN(meta,gpt):
+def EvalAtPlots_GrowthNetByBGC_CN(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -1336,7 +1933,7 @@ def EvalGrowthNetByBGC_CN(meta,gpt):
 
 #%% Net growth (YSM)
 
-def EvalGrowthNetByBGC_YSM(meta,gpt):
+def EvalAtPlots_GrowthNetByBGC_YSM(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -1445,7 +2042,7 @@ def EvalGrowthNetByBGC_YSM(meta,gpt):
 
 #%% Net growth (TIPSY stemwood)
 
-def EvalGrowthNetStemwoodTIPSY_CN(meta,gpt):
+def EvalAtPlots_GrowthNetStemwoodTIPSY_CN(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         # Unique BGC zones
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
@@ -1544,9 +2141,8 @@ def EvalGrowthNetStemwoodTIPSY_CN(meta,gpt):
 
     return
 
-#%% Soil organic carbon
-
-def EvalSOCByBGC_ShawComp(meta,pNam,gpt):
+#%%
+def EvalAtPlots_SOCByBGC_ShawComp(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         u=np.unique(gpt[iScn]['Ecozone BC L1'][gpt[iScn]['Ecozone BC L1']>0])
         lab=np.array(['' for _ in range(u.size)],dtype=object)
@@ -1653,7 +2249,7 @@ def EvalSOCByBGC_ShawComp(meta,pNam,gpt):
 
 #%%
 
-def EvalAgeResponsesBiomassAndNetGrowth_ByReg_CN(meta,pNam,iScn,gpt,E):
+def EvalAtPlots_AgeResponsesBiomassAndNetGrowth_ByReg_CN(meta,pNam,iScn,gpt,E):
     #E=[None]*meta[pNam]['Project']['N Scenario']
     #for iScn in range(meta[pNam]['Project']['N Scenario']):
     #E[iScn]={'Coast':{},'Interior':{}}
@@ -1741,7 +2337,7 @@ def EvalAgeResponsesBiomassAndNetGrowth_ByReg_CN(meta,pNam,iScn,gpt,E):
     return E
 
 #%%
-def EvalAgeResponsesGrossGrowthAndMortality_ByReg(meta,pNam,gpt):
+def EvalAtPlots_AgeResponsesGrossGrowthAndMortality_ByReg(meta,pNam,gpt):
     for iScn in range(meta[pNam]['Project']['N Scenario']):
         bw=25; bin=np.arange(bw,250+bw,bw)
         cl=meta['Graphics']['GP Comp']
@@ -2069,78 +2665,6 @@ def Prepare_ObsVsModComparison(meta,pNam):
     gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\EvaluationAtGroundPlots.pkl',gptS)
 
     return
-
-#%% Plot map of GHG balance
-
-def PlotMap(meta,pNam,iScn,mu_mod,v):
-    
-    vL=['A','C_Biomass_Tot','C_Litter_Tot','C_Soil_Tot','C_Soil_OHorizon','C_DeadWood_Tot','C_G_Gross_Tot',
-        'C_G_Net_Tot','C_M_Reg_Tot','C_M_Dist','C_LF_Tot','C_ToMillMerch',
-        'C_ToMillNonMerch', 'C_ToMillSnagStem', 'C_ToSlashpileBurnTot','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub']
-    flg_FromScratch=1
-    if flg_FromScratch==1:
-        mu_mod=cbu.Calc_MOS_MapMean(meta,pNam,iScn,[2000,2020],VariablesToKeep=vL)
-        gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MapData_iScn' + str(iScn) + '.pkl',mu_mod)
-    else:
-        mu_mod=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MapData_iScn' + str(iScn) + '.pkl')
-
-    gdf=u1ha.Import_GDBs_ProvinceWide(meta)
-    #ufcs.PlotMap(meta,pNam,mu_mod,'E_CO2e_AGHGB_WSub')
-
-    zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-    zRef['Data']=zRef['Data'][0::meta['Geos']['RGSF'],0::meta['Geos']['RGSF']]    
-    
-    z0=np.zeros(meta['Geos']['Grid']['Data'].shape,dtype='int16')
-    z0[meta['Geos']['iMask']]=mu_mod[v]
-    
-    if v=='C_Biomass_Tot':
-        bw=50; bin=np.arange(0,500+bw,bw)
-    elif v=='E_CO2e_AGHGB_WSub':
-        bw=2; bin=np.arange(-10,20+bw,bw)   
-    
-    z1=(bin.size)*np.ones(z0.shape)
-    for i in range(bin.size):
-        ind=np.where(np.abs(z0-bin[i])<=bw/2)
-        z1[ind]=i
-    z1[np.where(meta['Geos']['Grid']['Data']==0)]=i+1
-    z1[(zRef['Data']==0)]=i+2
-    L=i+2
-    lab=bin.astype(str)
-
-    # Colormap
-    #cm=plt.cm.get_cmap('viridis',i)
-    #cm=plt.cm.get_cmap('plasma',i)
-
-    cm=plt.cm.get_cmap('RdYlGn_r',i)
-    cm.colors=cm(np.arange(0,cm.N))
-
-    cm=np.vstack( (cm.colors,(0,0,0,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    N_color=bin.size+3
-    N_hidden=3
-
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(14,14*meta['Geos']['Grid']['yxrat']))
-    im=ax[0].matshow(z1,clim=(0,L+1),extent=meta['Geos']['Grid']['Extent'],cmap=cm)
-    gdf['bc_bound']['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
-    ax[0].set(position=[0,0,1,1],xlim=meta['Geos']['Grid']['xlim'],ylim=meta['Geos']['Grid']['ylim'],aspect='auto',visible='off')
-    ax[0].grid(False)
-    ax[0].axis('off')
-    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_color-(N_hidden-1),1),ticks=np.arange(0.5,N_color-N_hidden,1))
-    cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=6,length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(0,N_color):
-        ax[1].plot([0,100],[i,i],'w-',linewidth=0.75)
-    ax[1].set(position=[0.73,0.48,0.03,0.4]);
-
-    nam_ps=meta[pNam]['Project']['Strata']['Project Type']['Unique CD'][iPS]
-    nam_ss=meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]
-    nam_ys=meta[pNam]['Project']['Strata']['Year']['Unique CD'][iYS]
-    if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_Map_' + v,'png',900)
-
-    return fig,ax
 
 #%%
 def QA_ProfileIBM(meta,pNam,gpt,iScn):

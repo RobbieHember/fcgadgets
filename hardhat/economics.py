@@ -1,6 +1,4 @@
-
 #%% Import modules
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -13,7 +11,6 @@ from fcgadgets.macgyver import util_general as gu
 from fcgadgets.cbrunner import cbrun_util as cbu
 
 #%% Calculate net revenue
-
 def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
     # Extract biophysical parameters
@@ -23,27 +20,23 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
     tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Year'][-1]+1,1)
     tv_full=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
 
-    #--------------------------------------------------------------------------
     # Discounting variables
-    #--------------------------------------------------------------------------
-
     r_disc=meta['Param']['BEV']['Econ']['Discount Rate']
     t_disc=np.maximum(0,tv-meta[pNam]['Project']['Year Project'])
     t_disc=np.tile(t_disc,(v1['A'].shape[1],1)).T
 
     # Import prices
-    dPrice=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_Product_Prices_BC.xlsx','Summary')
-
+    dCP=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_Costs_And_Prices.xlsx','Data')
+    #dPrice=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_Product_Prices_BC.xlsx','Summary')
     # Import costs
-    dCost=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_Costs_BC.xlsx','Summary')
+    #dCost=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_Costs_BC.xlsx','Summary')
 
     # Initialize dictionary of economic variables
     d={}
-
+    
     #----------------------------------------------------------------------
     # Price
     #----------------------------------------------------------------------
-
     d['Price Lumber']=np.zeros(v1['A'].shape)
     d['Price Plywood']=np.zeros(v1['A'].shape)
     d['Price OSB']=np.zeros(v1['A'].shape)
@@ -58,29 +51,27 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
     d['Exchange Rate US']=np.zeros(v1['A'].shape)
     d['Exchange Rate Euro']=np.zeros(v1['A'].shape)
 
-    it0=np.where( (dPrice['Year']>=tv[0]) & (dPrice['Year']<=tv[-1]) )[0]
-    it1=np.where( (tv>=dPrice['Year'][0]) & (tv<=dPrice['Year'][-1]) )[0]
+    it0=np.where( (dCP['Year']>=tv[0]) & (dCP['Year']<=tv[-1]) )[0]
+    it1=np.where( (tv>=dCP['Year'][0]) & (tv<=dCP['Year'][-1]) )[0]
 
     for iStand in range(v1['A'].shape[1]):
-
-        d['Price Lumber'][it1,iStand]=dPrice['Price Lumber SPF 2x4 (US$/mbf)'][it0]
-        d['Price Plywood'][it1,iStand]=dPrice['Price Plywood (CDN$/000 sq ft)'][it0]
-        d['Price OSB'][it1,iStand]=dPrice['Price OSB (CDN$/000 sq ft)'][it0]
-        d['Price MDF'][it1,iStand]=dPrice['Price MDF (CDN$/000 sq ft)'][it0]
-        d['Price Newsprint'][it1,iStand]=dPrice['Price Newsprint (US$/tonne)'][it0]
-        d['Price PowerFacilityDom'][it1,iStand]=dPrice['Price Power Facility (CDN$/MWh)'][it0]
-        d['Price PowerGrid'][it1,iStand]=dPrice['Price Power Grid (CDN$/MWh)'][it0]
-        d['Price PelletExport'][it1,iStand]=dPrice['Price Pellet Export (Euro/MWh CIF)'][it0]
-        d['Price PelletDom'][it1,iStand]=dPrice['Price Pellet Domestic (CDN$/MWh)'][it0]
-        d['Price LogExport'][it1,iStand]=dPrice['Price Log Export (CDN$/m3)'][it0]
-        d['Price FirewoodDom'][it1,iStand]=dPrice['Price Firewood (CDN$/ODT)'][it0]
-        d['Exchange Rate US'][it1,iStand]=dPrice['Exchange Rate (US to CDN)'][it0]
-        d['Exchange Rate Euro'][it1,iStand]=dPrice['Exchange Rate (Euro to CDN)'][it0]
+        d['Price Lumber'][it1,iStand]=dCP['Price Lumber SPF 2x4 (US$/mbf)'][it0]
+        d['Price Plywood'][it1,iStand]=dCP['Price Plywood (CDN$/000 sq ft)'][it0]
+        d['Price OSB'][it1,iStand]=dCP['Price OSB (CDN$/000 sq ft)'][it0]
+        d['Price MDF'][it1,iStand]=dCP['Price MDF (CDN$/000 sq ft)'][it0]
+        d['Price Newsprint'][it1,iStand]=dCP['Price Newsprint (US$/tonne)'][it0]
+        d['Price PowerFacilityDom'][it1,iStand]=dCP['Price Power Facility (CDN$/MWh)'][it0]
+        d['Price PowerGrid'][it1,iStand]=dCP['Price Power Grid (CDN$/MWh)'][it0]
+        d['Price PelletExport'][it1,iStand]=dCP['Price Pellet Export (Euro/MWh CIF)'][it0]
+        d['Price PelletDom'][it1,iStand]=dCP['Price Pellet Domestic (CDN$/MWh)'][it0]
+        d['Price LogExport'][it1,iStand]=dCP['Price Log Export (CDN$/m3)'][it0]
+        d['Price FirewoodDom'][it1,iStand]=dCP['Price Firewood (CDN$/ODT)'][it0]
+        d['Exchange Rate US'][it1,iStand]=dCP['Exchange Rate (US to CDN)'][it0]
+        d['Exchange Rate Euro'][it1,iStand]=dCP['Exchange Rate (Euro to CDN)'][it0]
 
     #----------------------------------------------------------------------
     # Cost
     #----------------------------------------------------------------------
-
     d['Cost Roads']=np.zeros(v1['A'].shape)
     d['Cost Harvest Overhead']=np.zeros(v1['A'].shape)
     d['Cost Harvest Felling and Piling']=np.zeros(v1['A'].shape)
@@ -103,7 +94,6 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
         #----------------------------------------------------------------------
         # Nutrient management
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             try:
@@ -113,18 +103,17 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
             for i in ind:
                 Year=tv_full[i]
-                it0=np.where(dPrice['Year']==Year)[0]
+                it0=np.where(dCP['Year']==Year)[0]
                 it1=np.where(tv==Year)[0]
                 if it1.size==0:
                     continue
-                d['Cost Nutrient Management'][it1,iStand]=dCost['Cost Nutrient Purchase (CDN$/ha)'][it0]+ \
-                    dCost['Cost Nurtrient Application (CDN$/ha)'][it0]+ \
-                    dCost['Cost Nutrient Overhead (CDN$/ha)'][it0]
+                d['Cost Nutrient Management'][it1,iStand]=dCP['Cost Nutrient Purchase (CDN$/ha)'][it0]+ \
+                    dCP['Cost Nurtrient Application (CDN$/ha)'][it0]+ \
+                    dCP['Cost Nutrient Overhead (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Aerial BTK Spray (Btk)
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Aerial BTK Spray']) )[0]
@@ -133,18 +122,17 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
                 continue
 
             Year=tv_full[ind]
-            it0=np.where(dPrice['Year']==Year)[0]
+            it0=np.where(dCP['Year']==Year)[0]
             it1=np.where(tv==Year)[0]
 
             if it1.size==0:
                 continue
 
-            d['Cost Aerial BTK Spray'][it1,iStand]=dCost['Cost Aerial BTK Spray (CDN$/ha)'][it0]
+            d['Cost Aerial BTK Spray'][it1,iStand]=dCP['Cost Aerial BTK Spray (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Planting
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Planting']) )[0]
@@ -155,7 +143,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
             for i_ind in range(ind.size):
 
                 Year=tv_full[ind[i_ind]]
-                it0=np.where(dPrice['Year']==Year)[0]
+                it0=np.where(dCP['Year']==Year)[0]
                 it1=np.where(tv==Year)[0]
 
                 if it0.size==0:
@@ -167,43 +155,42 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
                 # Administrative costs
                 try:
                     dt=-2
-                    d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCost['Cost Planting Admin (CDN$/ha)'][it0+dt]
+                    d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Planting Admin (CDN$/ha)'][it0+dt]
                 except:
                     pass
 
                 # Seedling purchase
                 try:
                     dt=-1
-                    d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCost['Cost Seedling Purchase (CDN$/ha)'][it0+dt]
+                    d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Seedling Purchase (CDN$/ha)'][it0+dt]
                 except:
                     pass
 
                 # Planting
                 dt=0
-                d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCost['Cost Planting (CDN$/ha)'][it0+dt]
+                d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Planting (CDN$/ha)'][it0+dt]
 
                 # Survey 1
                 dt=0
-                d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCost['Cost Survey (CDN$/ha)'][it0+dt]
+                d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Survey (CDN$/ha)'][it0+dt]
 
                 # Survey 2 - this could creash if it extends beyond simulation period
                 try:
                     dt=+2
-                    d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCost['Cost Survey (CDN$/ha)'][it0+dt]
+                    d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Survey (CDN$/ha)'][it0+dt]
                 except:
                     pass
 
                 # Survey 3 - this could creash if it extends beyond simulation period
                 try:
                     dt=+8
-                    d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCost['Cost Survey (CDN$/ha)'][it0+dt]
+                    d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Survey (CDN$/ha)'][it0+dt]
                 except:
                     pass
 
         #----------------------------------------------------------------------
         # Knockdown
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Knockdown']) )[0]
@@ -214,7 +201,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
                 ind=ind[0]
 
             Year=tv_full[ind]
-            it0=np.where(dPrice['Year']==Year)[0]
+            it0=np.where(dCP['Year']==Year)[0]
             it1=np.where(tv==Year)[0]
 
             if it0.size==0:
@@ -223,12 +210,11 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
             if it1.size==0:
                 continue
 
-            d['Cost Knockdown'][it1,iStand]=dCost['Cost Knockdown (CDN$/ha)'][it0]
+            d['Cost Knockdown'][it1,iStand]=dCP['Cost Knockdown (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Ripping
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Mechanical Site Prep']) )[0]
@@ -237,7 +223,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
                 continue
 
             Year=tv_full[ind]
-            it0=np.where(dPrice['Year']==Year)[0]
+            it0=np.where(dCP['Year']==Year)[0]
             it1=np.where(tv==Year)[0]
 
             if it0.size==0:
@@ -246,12 +232,11 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
             if it1.size==0:
                 continue
 
-            d['Cost Ripping'][it1,iStand]=dCost['Cost Ripping (CDN$/ha)'][it0]
+            d['Cost Ripping'][it1,iStand]=dCP['Cost Ripping (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Deactivation of permanent access structures
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             if 'PAS Deactivation' not in meta['LUT']['Event']:
@@ -263,7 +248,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
                 continue
 
             Year=tv_full[ind]
-            it0=np.where(dPrice['Year']==Year)[0]
+            it0=np.where(dCP['Year']==Year)[0]
             it1=np.where(tv==Year)[0]
 
             if it0.size==0:
@@ -272,12 +257,11 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
             if it1.size==0:
                 continue
 
-            d['Cost PAS Deactivation'][it1,iStand]=dCost['Cost PAS Deactivation (CDN$/ha)'][it0]
+            d['Cost PAS Deactivation'][it1,iStand]=dCP['Cost PAS Deactivation (CDN$/ha)'][it0]
 
         #----------------------------------------------------------------------
         # Harvesting
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Harvest']) | \
@@ -289,7 +273,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
             for i_ind in range(ind.size):
 
                 Year=tv_full[ind[i_ind]]
-                it0=np.where(dCost['Year']==Year)[0]
+                it0=np.where(dCP['Year']==Year)[0]
                 it1=np.where(tv==Year)[0]
 
                 if (it1.size==0) | (it0.size==0):
@@ -325,31 +309,30 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
                 if (inv['ID_BGCZ'][0,iStand]==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE']['CWH']) | (inv['ID_BGCZ'][0,iStand]==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE']['CDF']):
 
-                    d['Cost Harvest Overhead'][it1,iStand]=dCost['Cost Harvest Overhead Coast (CDN$/ha)'][it0]
+                    d['Cost Harvest Overhead'][it1,iStand]=dCP['Cost Harvest Overhead Coast (CDN$/ha)'][it0]
 
-                    d['Cost Harvest Hauling'][it1,iStand]=dCost['Cost Transportation Coast (CDN$/m3)'][it0]*Removed_V
+                    d['Cost Harvest Hauling'][it1,iStand]=dCP['Cost Transportation Coast (CDN$/m3)'][it0]*Removed_V
 
-                    d['Cost Roads'][it1,iStand]=dCost['Cost Roads Coast (CDN$/mbf)'][it0]*lsef_roads*Removed_mbf
+                    d['Cost Roads'][it1,iStand]=dCP['Cost Roads Coast (CDN$/mbf)'][it0]*lsef_roads*Removed_mbf
 
                 else:
 
-                    d['Cost Harvest Overhead'][it1,iStand]=dCost['Cost Harvest Overhead Interior (CDN$/ha)'][it0]
+                    d['Cost Harvest Overhead'][it1,iStand]=dCP['Cost Harvest Overhead Interior (CDN$/ha)'][it0]
 
-                    d['Cost Harvest Hauling'][it1,iStand]=dCost['Cost Transportation Interior (CDN$/m3)'][it0]*Removed_V
+                    d['Cost Harvest Hauling'][it1,iStand]=dCP['Cost Transportation Interior (CDN$/m3)'][it0]*Removed_V
 
-                    d['Cost Roads'][it1,iStand]=dCost['Cost Roads Interior (CDN$/mbf)'][it0]*lsef_roads*Removed_mbf
+                    d['Cost Roads'][it1,iStand]=dCP['Cost Roads Interior (CDN$/mbf)'][it0]*lsef_roads*Removed_mbf
 
-                d['Cost Harvest Felling and Piling'][it1,iStand]=dCost['Cost Harvest Felling and Piling (CDN$/m3)'][it0]*lsef_skidding*Removed_V
+                d['Cost Harvest Felling and Piling'][it1,iStand]=dCP['Cost Harvest Felling and Piling (CDN$/m3)'][it0]*lsef_skidding*Removed_V
 
-                d['Cost Milling'][it1,iStand]=dCost['Cost Milling (CDN$/mbf)'][it0]*Removed_mbf
+                d['Cost Milling'][it1,iStand]=dCP['Cost Milling (CDN$/mbf)'][it0]*Removed_mbf
 
                 # Residual fibre
-                d['Cost Harvest Residuals'][it1,iStand]=dCost['Cost Residual Haul and Grind (CDN$/m3)'][it0]*v1['V_ToMillNonMerch'][it1,iStand]
+                d['Cost Harvest Residuals'][it1,iStand]=dCP['Cost Residual Haul and Grind (CDN$/m3)'][it0]*v1['V_ToMillNonMerch'][it1,iStand]
 
         #----------------------------------------------------------------------
         # Slashpile burning
         #----------------------------------------------------------------------
-
         for k in range(meta['Core']['Max Events Per Year']):
 
             ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Slashpile Burn']) )[0]
@@ -360,7 +343,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
             for i_ind in range(ind.size):
 
                 Year=tv_full[ind[i_ind]]
-                it0=np.where(dPrice['Year']==Year)[0]
+                it0=np.where(dCP['Year']==Year)[0]
                 it1=np.where(tv==Year)[0]
 
                 if it0.size==0:
@@ -371,7 +354,7 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
                 Burned_C=v1['C_ToSlashpileBurnTot'][it1,iStand]
                 Burned_V=Burned_C/b['Carbon Content Wood']/b['Density Wood']
-                d['Cost Slashpile Burn'][it1,iStand]=(dCost['Cost Slashpile Burn (CDN$/m3)'][it0])*Burned_V
+                d['Cost Slashpile Burn'][it1,iStand]=(dCP['Cost Slashpile Burn (CDN$/m3)'][it0])*Burned_V
 
     # Total cost
     d['Cost Total']=d['Cost Roads']+ \
@@ -473,7 +456,6 @@ def CalculateNetRevenue(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
         d[vnam + '_cumu'][iT,:]=np.cumsum(d[vnam][iT,:],axis=0)
 
     return d
-
 
 #%% Calculate economic results for each scenario
 

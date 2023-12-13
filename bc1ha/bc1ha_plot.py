@@ -11,7 +11,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Polygon,Point,box,shape
 from rasterio import features
-import fiona
+import copy
 import time
 import cv2
 import fcgadgets.macgyver.util_general as gu
@@ -91,6 +91,24 @@ def Plot_LandCoverComp1(meta,roi,nam):
     return fig,ax
 
 #%%
+def Plot_VectorVariable(meta,roi):
+    gdf=gpd.read_file(meta['Paths']['BCFCS_NMC']['Data'] + '\\geos.geojson')
+    fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,12))
+    #roi=PlotVectorBaseMaps(meta,roi,ax)    
+    roi['gdf']['bc_bound'].plot(ax=ax,facecolor=[0.8,0.8,0.8],edgecolor=[0,0,0],label='Political Boundary',linewidth=0.25,alpha=1)
+    gdf.plot(ax=ax,markersize=2,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1)
+    #ax.grid(color='k',linestyle='-',linewidth=0.25)    
+    #ax.set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    #ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+    # ax.grid(color='k',linestyle='-',linewidth=0.25)
+    ax.set(position=[0.01,0.01,0.98,0.98],xticks=[],yticks=[])
+    ax.axis(meta['Graphics']['Map']['Map Axis Vis'])
+    #if meta['Graphics']['Print Figures']=='On':
+    #    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + nam,'png',900)
+    
+    return fig,ax
+
+#%%
 def Plot_LandUseComp1(meta,roi,nam):
     
     z0=roi['grd'][nam]['Data']
@@ -137,9 +155,10 @@ def Plot_LandUseComp1(meta,roi,nam):
 
 #%%
 def Plot_LandUseComp1Panels(meta,roi):
-    namL=['lu_comp1_2029s1','lu_comp1_2029s2','lu_comp1_2029s3','lu_comp1_2029s4']
+    namL=['lu_comp1_2019','lu_comp1_2049s1','lu_comp1_2049s2','lu_comp1_2049s3']
     cnt=0
-    plt.close('all'); fig,ax=plt.subplots(5,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    plt.close('all'); 
+    fig,ax=plt.subplots(5,figsize=gu.cm2inch(2*meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*(2*meta['Graphics']['Map']['Fig Width'])*roi['grd']['yxrat']))
     for nam in namL:
         z0=roi['grd'][nam]['Data']
         lab=list(meta['LUT']['Derived']['lu_comp1'].keys())
@@ -161,16 +180,16 @@ def Plot_LandUseComp1Panels(meta,roi):
         cm=np.vstack( ((0.65,0,0,1),(0.9,0.8,0.4,1),(0.5,0.8,0.1,1),(0,0.2,0.5,1),(0.25,0,0,1),(0.2,0.5,0,1),(0.35,0.87,0.94,1),(0.85,0.95,0.7,1),(0.8,0.6,1,1),(1,1,0,1),(1,0,0,1),(0.4,0.7,0.79,1),(0.6,0.6,0.6,1),(1,1,1,1)) )
         cm=matplotlib.colors.ListedColormap(cm)    
         im=ax[cnt].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-        roi=PlotVectorBaseMaps(meta,roi,ax[0])
+        roi=PlotVectorBaseMaps(meta,roi,ax[cnt])
         ax[cnt].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
         ax[cnt].yaxis.set_ticks_position('both'); ax[cnt].xaxis.set_ticks_position('both'); ax[cnt].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[cnt].axis(meta['Graphics']['Map']['Map Axis Vis'])
         cnt=cnt+1
     gu.axletters(ax,plt,-0.025,0.9,FontColor=meta['Graphics']['gp']['cla'],LetterStyle='NoPar',FontWeight='Bold',Skip=[4])
 
-    ax[0].set(position=[-0.1,0.5,0.5,0.5])
-    ax[1].set(position=[0.14,0.5,0.5,0.5])
-    ax[2].set(position=[-0.1,0,0.5,0.5])
-    ax[3].set(position=[0.14,0,0.5,0.5])
+    ax[0].set(position=[0,0.5,0.5,0.5])
+    ax[1].set(position=[0.5,0.5,0.5,0.5])
+    ax[2].set(position=[0,0,0.5,0.5])
+    ax[3].set(position=[0.5,0,0.5,0.5])
 
     zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
     cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
@@ -180,7 +199,8 @@ def Plot_LandUseComp1Panels(meta,roi):
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[4].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-    pos2=[0.5,0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    #pos2=[0.78,0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    pos2=[0.86,0.74,0.02,0.25]
     ax[4].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
         gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_LandUseComp1Panels','png',900)
@@ -236,10 +256,10 @@ def Plot_LandCoverLandUseChange(meta,roi,nam):
     return fig,ax
 
 #%%
-def Plot_Geomorphons(meta,roi):
+def Plot_Geomorphons(meta,roi,vnam):
     
     lab=['Flat','Peak','Ridge','Shoulder','Spur','Slope','Hollow','Footslope','Valley','Pit']
-    z1=roi['grd']['geomorph']['Data']
+    z1=roi['grd'][vnam]['Data']
     ind=np.where(z1==0); z1[ind]=len(lab)+1
     ind=np.where(roi['grd']['Data']==0)
     if ind[0].size>0:
@@ -273,7 +293,7 @@ def Plot_Geomorphons(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_Geomorphons','png',900)
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     return fig,ax
 
 #%%
@@ -324,8 +344,8 @@ def Plot_UplandWetlandForest(meta,roi,nam):
     return fig,ax
 
 #%%
-def Plot_BurnSeverity(meta,roi):
-    z0=roi['grd']['bsr_sc']['Data']    
+def Plot_BurnSeverity(meta,roi,vnam):
+    z0=roi['grd'][vnam]['Data']    
     lab=list(meta['LUT']['Derived']['burnsev_comp1'].keys())
     z1=z0
     
@@ -360,13 +380,13 @@ def Plot_BurnSeverity(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_burnsev','png',900)
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     
     return fig,ax
 
 #%%
-def Plot_HarvestYear(meta,roi,nam):
-    z0=roi['grd']['harv_yr_' + nam]['Data']
+def Plot_HarvestYear(meta,roi,vnam):
+    z0=roi['grd'][vnam]['Data']
     bw=10; bin=np.arange(1855,2025+bw,bw);
     
     N_vis=bin.size
@@ -403,15 +423,15 @@ def Plot_HarvestYear(meta,roi,nam):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
         
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_harv_yr_' + nam,'png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     return fig,ax
 
 #%%
 
-def Plot_HarvestRetentionComp1(meta,roi):
+def Plot_HarvestRetentionComp1(meta,roi,vnam):
 
     lab=list(meta['LUT']['Derived']['harvret1'].keys())
-    z1=roi['grd']['harvret1']['Data']
+    z1=roi['grd'][vnam]['Data']
     z1[roi['grd']['Data']==0]=9
     z1[0,0:9]=np.arange(1,10)
 
@@ -440,14 +460,14 @@ def Plot_HarvestRetentionComp1(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_harvest_retention1','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_REARs(meta,roi):
+def Plot_REARs(meta,roi,vnam):
     if 'rears' in roi['grd'].keys():
-        z1=roi['grd']['rears']['Data']
+        z1=roi['grd'][vnam]['Data']
     else:
         z1=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\LandCoverUse\\REARs_CompPlusProp.tif')['Data']
         z1=gis.UpdateGridCellsize(z1,meta['Graphics']['Map']['RGSF'])['Data']
@@ -485,7 +505,7 @@ def Plot_REARs(meta,roi):
     ax[1].set(position=pos2)
 
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_REARs','png',900)
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
@@ -555,9 +575,9 @@ def Plot_Harvest_Po(meta,roi):
     return
 
 #%%
-def Plot_BGC_Zone(meta,roi):
+def Plot_BGC_Zone(meta,roi,vnam):
 
-    z0=roi['grd']['bgcz']['Data']
+    z0=roi['grd'][vnam]['Data']
     lab0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys())
     cl0=np.column_stack([meta['LUT']['Raw']['bgc_zone']['R'],meta['LUT']['Raw']['bgc_zone']['G'],meta['LUT']['Raw']['bgc_zone']['B']])
     id0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].values())
@@ -601,46 +621,41 @@ def Plot_BGC_Zone(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_bgcz','png',900)
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     plt.show()
     return fig,ax
 
 #%%
-def Plot_Ownership(meta,roi):
+def Plot_Ownership(meta,roi,vnam):
 
-    z0=roi['grd']['own']['Data']
-    lab0=list(meta['LUT']['F_OWN']['OWNERSHIP_DESCRIPTION'].keys())
-    #cl0=np.column_stack([meta['LUT']['Raw']['bgc_zone']['R'],meta['LUT']['Raw']['bgc_zone']['G'],meta['LUT']['Raw']['bgc_zone']['B']])
-    #cl0=np.random.random((len(lab0),3))
-    cl0=np.array([[0.95,0.9,1],[0.9,0.85,1],[0.85,0.8,1],[0.2,0.5,0],[0.75,0.7,1],[0.7,0.65,1],[0.3,0.6,0],[0.6,0.55,1],[0.55,0.5,1],
+    z1=roi['grd'][vnam]['Data']
+    lab1=list(meta['LUT']['F_OWN']['OWNERSHIP_DESCRIPTION'].keys())    
+    cl1=np.array([[0.95,0.9,1],[0.9,0.85,1],[0.85,0.8,1],[0.2,0.5,0],[0.75,0.7,1],[0.7,0.65,1],[0.3,0.6,0],[0.6,0.55,1],[0.55,0.5,1],
                   [1,1,0.8],[0.95,0.95,0.7],[0.95,0.95,0.6],[0.95,0.95,0.5],[0.95,0.95,0.4],[0.9,0.9,0.3],[0.9,0.9,0.2],[0.85,0.85,0.1],                  
                   [0,0.75,0],[0,0.5,0],[0,0.25,0],[0.85,0.65,0.75],[0.7,0.5,0.6],[0.6,0.8,0.8],[0.7,0.9,0.8],[0.8,1,0.9],[0.9,1,0.65],[0.9,1,0.6],
                   [0.85,0.95,1],[0.8,0.9,1],[0.75,0.85,1],[0.7,0.8,1],[0.65,0.75,1],
                   [1,0.9,0.8],[1,0.8,0.7],[1,0.7,0.6],[0.9,0.9,0.9]])
-    id0=list(meta['LUT']['F_OWN']['OWNERSHIP_DESCRIPTION'].values())
-    z1,lab1,cl1=gis.CompressCats(z0,id0,lab0,cl0)
-
-    N_vis=int(np.max(z1))
-    N_hidden=2
+        
+    N_vis=len(lab1)
+    N_hidden=1
     N_tot=N_vis+N_hidden
-    ind=np.where(z1==0); z1[ind]=N_vis+1
-    lab1=lab1[1:]
-    cl1=cl1[1:,:]
-
-    z1[0,0]=N_vis+1
-    z1[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=N_vis+2
-
-    lab1=np.append(lab1,[''])
-
+    #ind=np.where(z1==0); z1[ind]=N_vis+1
+    #lab1=lab1[1:]
+    #cl1=cl1[1:,:]
+    
+    z1[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=N_vis+1
+    for i in range(len(lab1)):
+        z1[i,0]=i+1
+    #lab1=np.append(lab1,[''])
     cm=plt.cm.get_cmap('viridis',N_vis);
     for i in range(N_vis):
         cm.colors[i,0:3]=cl1[i,:]
-    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
+    cm=np.vstack( (cm.colors,(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    roi=PlotVectorBaseMaps(meta,roi,ax[0])
+    #roi=PlotVectorBaseMaps(meta,roi,ax[0])
     ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
@@ -656,15 +671,15 @@ def Plot_Ownership(meta,roi):
     pos2=[0.66,0.45,0.01,0.54]
     ax[1].set(position=pos2)
     if meta['Graphics']['Print Figures']=='On':
-        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_ownership','png',900)
+        gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     return fig,ax
 
 #%%
-def Plot_SalvageLogging(meta,roi):
+def Plot_SalvageLogging(meta,roi,vnam):
 
     lab=['Salvage (>50% dead)','Salvage (>10% dead)','Harvest (<10% dead)','No harvesting','Non-forest land','Outside']
     lab=lab[0:-1]
-    z1=roi['grd']['harv_salv']['Data']
+    z1=roi['grd'][vnam]['Data']
     z1[roi['grd']['Data']==0]=6
 
     # Number of colours and number of colours excluded from colorbar
@@ -673,7 +688,7 @@ def Plot_SalvageLogging(meta,roi):
     N_tot=N_vis+N_hidden
 
     # Colormap
-    cm=np.vstack( ((0.9,0,0,1),(1,0.85,0,1),(0.85,1,0.65,1),(0.6,0.6,0.6,1), (0.93,0.93,0.93,1),(1,1,1,1)) )
+    cm=np.vstack( ((0.9,0,0,1),(1,0.85,0,1),(0.5,0.5,0.5,1),(0.75,0.75,0.75,1), (0.93,0.93,0.93,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
@@ -695,14 +710,14 @@ def Plot_SalvageLogging(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_harv_salv','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_MAP(meta,roi):
+def Plot_MAP(meta,roi,vnam):
 
-    z0=roi['grd']['prcp_ann_n']['Data']
+    z0=roi['grd'][vnam]['Data']
 
     bw=200; bin=np.arange(0,2400+bw,bw)
 
@@ -748,14 +763,14 @@ def Plot_MAP(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_prcp_ann_n','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_MAT(meta,roi):
+def Plot_MAT(meta,roi,vnam):
 
-    z0=roi['grd']['tmean_ann_n']['Data']
+    z0=roi['grd'][vnam]['Data']
 
     bw=10; bin=np.arange(-30,120+bw,bw)
 
@@ -801,7 +816,7 @@ def Plot_MAT(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_tmean_ann_n','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     plt.show()
     return fig,ax
 
@@ -889,27 +904,29 @@ def PlotMills(ax,gdf,mtypeL,labels):
     return ax
 
 #%% Plot FECA year
+def Plot_FECA_Year(meta,roi,vnam):
 
-def Plot_FECA_Year(meta,roi):
-
-    z0=roi['grd']['feca_yr']['Data']
+    z0=roi['grd'][vnam]['Data']
     bw=5; bin=np.arange(1975,2025+bw,bw);
-    z1=(bin.size)*np.ones( z0.shape)
+    z1=(bin.size)*np.ones(z0.shape)
     for i in range(bin.size):
         ind=np.where(np.abs(z0-bin[i])<=bw/2)
         z1[ind]=i
     z1[(z0==0)]=i+1
     z1[(roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=i+2
-
-    N_vis=bin.size+3
-    N_hidden=3
+    for i in range(bin.size):
+        z1[0,i]=i
+    
+    N_vis=bin.size
+    N_hidden=2
     N_tot=N_vis+N_hidden
-
     lab=bin.astype(str)
-
+    lab=np.append(lab,'Hidden')
+    lab=np.append(lab,'Hidden')
+    
     #cm=plt.cm.get_cmap('viridis',N_vis)
     cm=plt.cm.get_cmap('plasma',N_vis)
-    cm=np.vstack( (cm.colors,(0,0,0,1),(1,1,1,1)) )
+    cm=np.vstack( (cm.colors,(0.8,0.8,0.8,1),(1,1,1,1)) )
     cm=matplotlib.colors.ListedColormap(cm)
 
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
@@ -918,22 +935,26 @@ def Plot_FECA_Year(meta,roi):
     ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
-    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
+    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+    ax[1].set(position=[0.71,0.6,0.05,0.14])
     cb.ax.set(yticklabels=lab)
     cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
     cb.outline.set_edgecolor('w')
-    for i in range(0,N_vis):
-        ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+    for i in range(cb_bnd.size):
+        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+        
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_feca_yr','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     return fig,ax
 
 #%%
-def Plot_Spc1(meta,roi):
+def Plot_Spc1_NTEMS(meta,roi,vnam):
 
     # Compress categories
-    z0=roi['grd']['spc1_ntems']['Data']
+    z0=roi['grd'][vnam]['Data']
     lab0=np.array(list(meta['LUT']['Derived']['spc1_ntems'].keys()))
     id0=np.array(list(meta['LUT']['Derived']['spc1_ntems'].values()))
     cl0=np.column_stack([meta['LUT']['Raw']['spc1_ntems']['R'],meta['LUT']['Raw']['spc1_ntems']['G'],meta['LUT']['Raw']['spc1_ntems']['B']])
@@ -976,62 +997,8 @@ def Plot_Spc1(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_spc1_ntems','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     plt.show()
-    return fig,ax
-
-#%%
-def Plot_PROJ_AGE_1(meta,roi):
-
-    z0=roi['grd']['PROJ_AGE_1']['Data']
-
-    bw=20
-    bin=np.arange(0,220,bw)
-    id=np.arange(1,bin.size+1)
-
-    N_vis=bin.size
-    N_hidden=2
-    N_tot=N_vis+N_hidden
-
-    z1=N_vis*np.ones(z0.shape)
-    for i in range(N_vis):
-        ind=np.where(np.abs(z0-bin[i])<=bw/2)
-        if ind[0].size>0:
-            z1[ind]=id[i]
-        else:
-            z1[0,i]=id[i]
-    ind=np.where(roi['grd']['PROJ_AGE_1']['Data']>bin[i]); z1[ind]=id[-1]
-    z1[(roi['grd']['PROJ_AGE_1']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']!=meta['LUT']['Derived']['lc_comp1']['Forest'])]=id[-1]+1
-    z1[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=id[-1]+2
-
-    lab=['']*(N_tot-1)
-    lab[0:N_vis]=bin.astype(str)
-
-    cm=plt.cm.get_cmap('viridis',N_vis)
-    cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
-    cm=matplotlib.colors.ListedColormap(cm)
-
-    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    roi=PlotVectorBaseMaps(meta,roi,ax[0])
-    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-    zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-    cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-    cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-    ax[1].set(position=[0.71,0.6,0.05,0.14])
-    cb.ax.set(yticklabels=lab)
-    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-    cb.outline.set_edgecolor('w')
-    for i in range(cb_bnd.size):
-        ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
-    ax[1].set(position=pos2)
-
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_PROJ_AGE_1','png',900)
-
     return fig,ax
 
 #%%
@@ -1095,10 +1062,8 @@ def Plot_SI(meta,roi):
     return fig,ax
 
 #%%
-def Plot_Age_NTEMS(meta,roi):
-
-    z0=roi['grd']['age_ntem']['Data']
-
+def Plot_Age(meta,roi,vnam):
+    z0=roi['grd'][vnam]['Data']
     bw=20
     bin=np.arange(0,220,bw)
     id=np.arange(1,bin.size+1)
@@ -1141,22 +1106,19 @@ def Plot_Age_NTEMS(meta,roi):
     cb.outline.set_edgecolor('w')
     for i in range(cb_bnd.size):
         ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_Age_NTEM','png',900)
-
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     return fig,ax
 
 #%%
 
-def Plot_PlantedMask(meta,roi):
+def Plot_PlantedMask(meta,roi,vnam):
 
     lab=[]
-    z1=2*np.ones(roi['grd']['plam']['Data'].shape)
-    z1[(roi['grd']['Data']==1) & (roi['grd']['plam']['Data']>0)]=1; lab.append('Planted')
-    z1[(roi['grd']['Data']==1) & (roi['grd']['plam']['Data']==0)]=2; lab.append('Not planted')
+    z1=2*np.ones(roi['grd'][vnam]['Data'].shape)
+    z1[(roi['grd']['Data']==1) & (roi['grd'][vnam]['Data']>0)]=1; lab.append('Planted')
+    z1[(roi['grd']['Data']==1) & (roi['grd'][vnam]['Data']==0)]=2; lab.append('Not planted')
     z1[(roi['grd']['Data']!=1)]=3;
 
     # Number of colours and number of colours excluded from colorbar
@@ -1187,56 +1149,121 @@ def Plot_PlantedMask(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_planted','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_Elev(meta,roi):
+def Plot_Elev(meta,roi,vnam):
+    z0=roi['grd'][vnam]['Data']
+    bw=200; bin=np.arange(0,2600+bw,bw);
+    
+    N_vis=bin.size
+    N_hidden=1
+    N_tot=N_vis+N_hidden
+    
+    z1=N_vis*np.ones(z0.shape)
+    for i in range(bin.size):
+        ind=np.where(np.abs(z0-bin[i])<=bw/2)
+        z1[ind]=i
+    z1[(z1>bin[i])]=i
+    #z1[(roi['grd']['Data']==1) & (z0==0)]=i+2
+    #z1[(roi['grd']['Data']==1) & (roi['grd']['lc_comp1_2019']['Data']!=meta['LUT']['Derived']['lc_comp1']['Forest'])]=i+1    
+    z1[(roi['grd']['Data']==0)]=i+1
+    z1[0,0:N_tot]=np.arange(0,N_tot,1)
 
-    z=roi['grd']['elev']['Data']
-    if (roi['Type']=='ByTSA') | (roi['Type']=='ByRegDis'):
-        z[roi['grd']['Data']==0]=0
+    lab=bin.astype(str)
+
+    cm=plt.cm.get_cmap('Greys',i)
+    cmc=np.zeros((N_vis,4))
+    cnt=0
+    for ivl in np.linspace(0,1,N_vis):
+        cmc[cnt,:]=np.array(cm(ivl))
+        cnt=cnt+1
+    cm=np.vstack( (cmc,(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
 
     plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
-    im=ax[0].matshow(roi['grd']['elev']['Data'],extent=roi['grd']['Extent'],cmap='Greys')
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
     roi=PlotVectorBaseMaps(meta,roi,ax[0])
-
-    # Plot fuel treatments
-    #fre['gdf'].plot(ax=ax[0],facecolor='None',edgecolor=[1,0.5,0],linewidth=1.5,label='Opening',alpha=1)
-
-    # Plot lumber mills, pulp mills and chipper mills
-    #mtypeL=['LBR','PLP','PLT']
-    #mtypeL=list(gdf['tpf']['gdf']['PRODUCT_CODE'].unique())
-    #ax=u1ha.PlotMills(ax,gdf['tpf']['gdf'],mtypeL,labels='On')
-
-    roi['gdf']['cities'].plot(ax=ax[0],marker='s',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=1,markersize=20,alpha=1,zorder=2)
-    for x,y,label in zip(roi['gdf']['cities'].geometry.x,roi['gdf']['cities'].geometry.y,roi['gdf']['cities'].Name):
-        ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0.9,0.45,0],fontsize=4)
-
-    #roi['gdf']['popp'].plot(ax=ax[0],marker='s',edgecolor=None,facecolor=[0.9,0.45,0],lw=0.5,markersize=3,alpha=1,zorder=2)
-    #for x,y,label in zip(roi['gdf']['popp'].geometry.x,roi['gdf']['popp'].geometry.y,roi['gdf']['popp'].NAME):
-    #    ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0.9,0.45,0],fontsize=4)
-
-    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-    # Add relief shading
-    z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['Cellsize'],roi['grd']['Cellsize']
-    ls=LightSource(azdeg=90,altdeg=45)
-    ve=0.1
-    hs=ls.hillshade(z,vert_exag=ve,dx=dx,dy=dy)
-    ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
-
-    plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis+1.5,1))
-    pos=[meta['Graphics']['Map']['Legend X'],0.5,meta['Graphics']['Map']['Legend Width'],0.4]
-    ax[1].set(position=pos);
-
-    #gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_elev','png',900)
+    
+    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis+1,1),ticks=np.arange(0.5,N_vis,1))
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(0,N_vis):
+        ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+        
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     return fig,ax
-
+ 
 #%%
-def Plot_LC20_CEC(meta,roi):
+def Plot_Infastructure(meta,roi,vnam):
+    z0=roi['grd'][vnam]['Data']
+    bw=200; bin=np.arange(0,2600+bw,bw);
+    
+    N_vis=bin.size
+    N_hidden=1
+    N_tot=N_vis+N_hidden
+    
+    z1=N_vis*np.ones(z0.shape)
+    for i in range(bin.size):
+        ind=np.where(np.abs(z0-bin[i])<=bw/2)
+        z1[ind]=i
+    z1[(z1>bin[i])]=i    
+    z1[(roi['grd']['Data']==0)]=i+1
+    z1[0,0:N_tot]=np.arange(0,N_tot,1)
+
+    lab=bin.astype(str)
+
+    cm=plt.cm.get_cmap('Greys',i)
+    cmc=np.zeros((N_vis,4))
+    cnt=0
+    for ivl in np.linspace(0,1,N_vis):
+        cmc[cnt,:]=np.array(cm(ivl))
+        cnt=cnt+1
+    cm=np.vstack( (cmc,(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
+    
+    #roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+    #roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=0.25)
+    roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+    roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0.4,0,0],linewidth=0.25,label='Road',alpha=1,zorder=1)
+    roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor=[0,0.75,0.75],facecolor=[0,1,1],linewidth=0.25,label='TPF',alpha=1,zorder=1,markersize=15)
+    for x,y,label in zip(roi['gdf']['tpf'].geometry.x,roi['gdf']['tpf'].geometry.y,roi['gdf']['tpf']['COMPANY_NAME']):
+        ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0,0,0],fontsize=4)
+    roi['gdf']['cities'].plot(ax=ax[0],marker='o',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=1,markersize=20,alpha=1,zorder=2)
+    for x,y,label in zip(roi['gdf']['cities'].geometry.x,roi['gdf']['cities'].geometry.y,roi['gdf']['cities']['City Name']):
+        ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0,0,0],fontsize=4)
+    roi['gdf']['popp'].plot(ax=ax[0],marker='o',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=0.25,markersize=6,alpha=1,zorder=2)
+    for x,y,label in zip(roi['gdf']['popp'].geometry.x,roi['gdf']['popp'].geometry.y,roi['gdf']['popp']['NAME']):
+        ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+    
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+    
+    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis+1,1),ticks=np.arange(0.5,N_vis,1))
+    cb.ax.set(yticklabels=lab)
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(0,N_vis):
+        ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+        
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_infastructure','png',900)
+    return fig,ax    
+ 
+#%%
+def Plot_LC20_CEC(meta,roi,vnam):
 
     dCEC=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_cec_Compressed.xlsx')
 
@@ -1244,7 +1271,7 @@ def Plot_LC20_CEC(meta,roi):
     N_hidden=1
     N_tot=N_vis+N_hidden
 
-    z1=roi['grd']['lc_cec_2020']['Data']
+    z1=roi['grd'][vnam]['Data']
     z1[(roi['grd']['Data']==0)]=np.max(z1)
     z1[0,0:N_vis]=np.arange(1,N_vis+1,1)
     
@@ -1278,16 +1305,16 @@ def Plot_LC20_CEC(meta,roi):
 
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_lc_cec_2020','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_TreeDensityClass(meta,roi):
+def Plot_TreeDensityClass(meta,roi,vnam):
 
     lab=['Treed sparse','Treed open','Treed dense','Shrubland','Grassland','Non-treed']
-    z1=roi['grd']['tdc_wsg']['Data']
-    #z1[roi['grd']['Data']==0]=np.max(z1)
+    z1=roi['grd'][vnam]['Data']
+    z1[roi['grd']['Data']==0]=np.max(z1)
     z1[0,0:6]=np.arange(1,7,1)
 
     N_vis=6
@@ -1318,37 +1345,28 @@ def Plot_TreeDensityClass(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_tdc_wsg','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_SI(meta,roi):
-
-    z=roi['grd']['SITE_INDEX']['Data']
+def Plot_SI(meta,roi,vnam):
+    z=roi['grd'][vnam]['Data']
     if roi['Type']=='ByTSA':
         z[roi['grd']['Data']==0]=0
 
-    # Plot
-    plt.close('all')
-    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
     im=ax[0].matshow(roi['grd']['SITE_INDEX']['Data'],extent=roi['grd']['Extent'],cmap='magma',clim=[5,22])
 
     #roi['gdf']['tsa'].plot(ax=ax[0],color=None,edgecolor=[0,0,0],facecolor='none')
     ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'],xticklabels='',yticklabels='')
     ax[0].grid(False)
 
-    # # Add relief shading
-    # z=roi['grd']['elev']['Data']; dx,dy=roi['grd']['Cellsize'],roi['grd']['Cellsize']
-    # ls=LightSource(azdeg=90,altdeg=45)
-    # ve=0.1
-    # hs=ls.hillshade(z,vert_exag=ve,dx=dx,dy=dy)
-    # ax[0].matshow(hs,extent=roi['grd']['elev']['Extent'],cmap='Greys',alpha=0.4,clim=(np.min(hs),np.max(hs)))
-
     cb=plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis+1.5,1))
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + vnam,'png',900)
+    
     return fig,ax
 
 #%%
@@ -1453,16 +1471,16 @@ def Plot_PFI(meta,roi):
 
 #%%
 
-def Plot_SoilOrganicCarbon_GSOC(meta,roi):
+def Plot_SoilOrganicCarbon_GSOC(meta,roi,vnam):
 
     # Grid
     bw=10; bin=np.arange(0,100+bw,bw);
-    z1=(bin.size)*np.ones( roi['grd']['gsoc']['Data'].shape)
+    z1=(bin.size)*np.ones( roi['grd'][vnam]['Data'].shape)
     for i in range(bin.size):
-        ind=np.where(np.abs( roi['grd']['gsoc']['Data']-bin[i])<=bw/2)
+        ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
         z1[ind]=i
-    ind=np.where(roi['grd']['gsoc']['Data']>=bin[i]); z1[ind]=i
-    z1[(roi['grd']['Data']==1) & ( roi['grd']['gsoc']['Data']==0)]=i+1
+    ind=np.where(roi['grd'][vnam]['Data']>=bin[i]); z1[ind]=i
+    z1[(roi['grd']['Data']==1) & ( roi['grd'][vnam]['Data']==0)]=i+1
     z1[(roi['grd']['Data']!=1)]=i+2
     L=i+2
 
@@ -1493,23 +1511,21 @@ def Plot_SoilOrganicCarbon_GSOC(meta,roi):
 
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_gsoc','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
+def Plot_CrownCover(meta,roi,vnam):
 
-def Plot_CrownCover(meta,roi):
-
-    # Grid
     bw=10; bin=np.arange(0,100+bw,bw);
-    z1=(bin.size)*np.ones( roi['grd']['crownc']['Data'].shape)
+    z1=(bin.size)*np.ones( roi['grd'][vnam]['Data'].shape)
     for i in range(bin.size):
-        ind=np.where(np.abs( roi['grd']['crownc']['Data']-bin[i])<=bw/2)
+        ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
         z1[ind]=i
-    ind=np.where(roi['grd']['crownc']['Data']>bin[i])
+    ind=np.where(roi['grd'][vnam]['Data']>bin[i])
     z1[ind]=0
-    z1[(roi['grd']['Data']==1) & ( roi['grd']['crownc']['Data']==0)]=i+1
+    z1[(roi['grd']['Data']==1) & ( roi['grd'][vnam]['Data']==0)]=i+1
     z1[(roi['grd']['Data']!=1)]=i+2
     L=i+2
 
@@ -1539,22 +1555,22 @@ def Plot_CrownCover(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_crownc','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_SPH_Live(meta,roi):
+def Plot_SPH(meta,roi,vnam):
 
     # Grid
     bw=400; bin=np.arange(0,2400,bw);
-    z1=(bin.size)*np.ones( roi['grd']['sphlive']['Data'].shape)
+    z1=(bin.size)*np.ones( roi['grd'][vnam]['Data'].shape)
     for i in range(bin.size):
-        ind=np.where(np.abs( roi['grd']['sphlive']['Data']-bin[i])<=bw/2)
+        ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
         z1[ind]=i
-    ind=np.where(roi['grd']['sphlive']['Data']>bin[i])
+    ind=np.where(roi['grd'][vnam]['Data']>bin[i])
     z1[ind]=i
-    z1[(roi['grd']['Data']==1) & ( roi['grd']['sphlive']['Data']==0)]=i+1
+    z1[(roi['grd']['Data']==1) & ( roi['grd'][vnam]['Data']==0)]=i+1
     z1[(roi['grd']['Data']!=1)]=i+2
     L=i+2
 
@@ -1593,14 +1609,15 @@ def Plot_SPH_Live(meta,roi):
     # pos2[1]=0.6
     # pos2[3]=0.24
     # ax[1].set(position=pos2)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
 
-def Plot_LUC_Year(meta,roi):
+def Plot_LUC_Year(meta,roi,vnam):
 
-    z0=roi['grd']['luc1_yr']['Data']
+    z0=roi['grd'][vnam]['Data']
 
     bw=10; bin=np.arange(1850,2020+bw,bw);
     z1=(bin.size)*np.ones( z0.shape)
@@ -1638,22 +1655,20 @@ def Plot_LUC_Year(meta,roi):
         ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_luc1_yr','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     return fig,ax
 
 #%%
-def Plot_WildfireYear(meta,roi):
+def Plot_WildfireYear(meta,roi,vnam):
 
-    # Grid
     bw=10; bin=np.arange(1910,2020+bw,bw);
-    z1=(bin.size)*np.ones( roi['grd']['fire_yr']['Data'].shape)
+    z1=(bin.size)*np.ones( roi['grd'][vnam]['Data'].shape)
     for i in range(bin.size):
-        ind=np.where(np.abs( roi['grd']['fire_yr']['Data']-bin[i])<=bw/2)
+        ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
         z1[ind]=i
     z1[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=i+2
     #z1[(roi['grd']['Data']!=1)]=i+2
     L=i+2
-
     lab=bin.astype(str)
 
     # Colormap
@@ -1683,15 +1698,15 @@ def Plot_WildfireYear(meta,roi):
 
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_fire_yr','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
 
-def Plot_GFC_LossYear(meta,roi):
+def Plot_GFC_LossYear(meta,roi,vnam):
 
-    z0=roi['grd']['gfcly']['Data']
+    z0=roi['grd'][vnam]['Data']
     #z0=roi['grd']['gfcly_filt']['Data']
 
     bw=1; bin=np.arange(2001,2022,bw);
@@ -1732,24 +1747,24 @@ def Plot_GFC_LossYear(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_gfcly','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
     #gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_gfcly_filt','png',900)
 
     return fig,ax
 
 #%%
-def Plot_SoilWaterContent(meta,roi):
+def Plot_SoilWaterContent(meta,roi,vnam):
 
     bw=20; bin=np.arange(0,200+bw,bw);
-    z1=bin.size*np.ones( roi['grd']['ws_gs_n']['Data'].shape)
+    z1=bin.size*np.ones( roi['grd'][vnam]['Data'].shape)
     for i in range(bin.size):
-        ind=np.where(np.abs( roi['grd']['ws_gs_n']['Data']-bin[i])<=bw/2)
+        ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
         if ind[0].size>0:
             z1[ind]=i
         else:
             z1[0,i]=i
-    z1[(roi['grd']['ws_gs_n']['Data']>200)]=i
-    z1[(roi['grd']['lcc1']==0) | (roi['grd']['lcc1']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
+    z1[(roi['grd'][vnam]['Data']>200)]=i
+    z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
 
     lab=bin.astype(str)
     lab=np.append(lab,'Hidden')
@@ -1757,8 +1772,8 @@ def Plot_SoilWaterContent(meta,roi):
     N_vis=bin.size
     N_hidden=1
     N_tot=N_vis+N_hidden
-
-    cm=np.column_stack((roi['grd']['ws_gs_n']['cm']['cl1'],roi['grd']['ws_gs_n']['cm']['cl2'],roi['grd']['ws_gs_n']['cm']['cl3'],np.ones(roi['grd']['ws_gs_n']['cm']['bin'].size)))
+    cm0=gu.ReadExcel(r'C:\Data\Colormaps\colormap_ws.xlsx')
+    cm=np.column_stack((cm0['cl1'],cm0['cl2'],cm0['cl3'],np.ones(cm0['bin'].size)))
     cm=np.vstack( (cm,(1,1,1,1)) ) # (0.83137,0.81569,0.78431,1)
     cm=matplotlib.colors.ListedColormap(cm)
 
@@ -1784,7 +1799,7 @@ def Plot_SoilWaterContent(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_SoilWaterContent_Normal','png',300)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',300)
 
     return fig,ax
 
@@ -1859,8 +1874,7 @@ def Plot_GroundPlots(meta,roi):
 
 #%%
 def Plot_GroundPlotsPanels(meta,roi):
-    import fcexplore.field_plots.Processing.psp_util as ugp
-    meta2,gpt=ugp.ImportGroundPlotData(meta,type='Stand')
+    meta2,gpt,soc=ugp.ImportGroundPlotData(meta,type='Stand')
     
     plt.close('all'); fig,ax=plt.subplots(1,4,figsize=gu.cm2inch(17.5,15))
     
@@ -1924,7 +1938,7 @@ def Plot_GroundPlotsPanels(meta,roi):
     cm=matplotlib.colors.ListedColormap(cm)
     ms=2
     im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    roi=PlotVectorBaseMaps(meta,roi,ax[0])
+    #roi=PlotVectorBaseMaps(meta,roi,ax[0])
     ax[0].set(position=[0,0.5,0.5,0.5],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
     
@@ -1946,7 +1960,7 @@ def Plot_GroundPlotsPanels(meta,roi):
     cm=matplotlib.colors.ListedColormap(cm)
     ms=2
     im=ax[1].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    roi=PlotVectorBaseMaps(meta,roi,ax[0])
+    #roi=PlotVectorBaseMaps(meta,roi,ax[1])
     ax[1].set(position=[0.5,0.5,0.5,0.5],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[1].axis(meta['Graphics']['Map']['Map Axis Vis'])
     
@@ -1979,7 +1993,7 @@ def Plot_GroundPlotsPanels(meta,roi):
     cm=matplotlib.colors.ListedColormap(cm)
     ms=2
     im=ax[2].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    roi=PlotVectorBaseMaps(meta,roi,ax[0])
+    #roi=PlotVectorBaseMaps(meta,roi,ax[2])
     ax[2].set(position=[0,0,0.5,0.5],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[2].axis(meta['Graphics']['Map']['Map Axis Vis'])
     
@@ -2011,11 +2025,11 @@ def Plot_GroundPlotsPanels(meta,roi):
     cm=matplotlib.colors.ListedColormap(cm)
     ms=2
     im=ax[3].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-    roi=PlotVectorBaseMaps(meta,roi,ax[0])
+    #roi=PlotVectorBaseMaps(meta,roi,ax[3])
     ax[3].set(position=[0.5,0,0.5,0.5],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
     ax[3].yaxis.set_ticks_position('both'); ax[3].xaxis.set_ticks_position('both'); ax[3].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[3].axis(meta['Graphics']['Map']['Map Axis Vis'])
     
-    soils=gu.ipickle(r'C:\Users\rhember\Documents\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
+    soils=gu.ipickle(r'C:\Data\Soils\Shaw et al 2018 Database\SITES.pkl')
     x=soils['x']; y=soils['y']
     points=[]
     for k in range(x.size):
@@ -2032,11 +2046,11 @@ def Plot_GroundPlotsPanels(meta,roi):
 
 #%%
 
-def Plot_RangeTenure(meta,roi):
+def Plot_RangeTenure(meta,roi,vnam):
 
     lab=['Forest with grazing tenure','Forest with haycutting tenure','Forest with no range tenure','Non-forest land','Non land']
     lab=lab[0:-1]
-    z1=roi['grd']['rangecon']['Data']
+    z1=roi['grd'][vnam]['Data']
     z1[roi['grd']['Data']==0]=5
 
     # Number of colours and number of colours excluded from colorbar
@@ -2067,25 +2081,25 @@ def Plot_RangeTenure(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_range_consol','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
 
-def Plot_biomass_glob(meta,roi):
+def Plot_biomass_glob(meta,roi,vnam):
 
     # Grid
     bw=20; bin=np.arange(0,200+bw,bw);
-    z1=(bin.size)*np.ones( roi['grd']['biomass_glob']['Data'].shape)
+    z1=(bin.size)*np.ones( roi['grd'][vnam]['Data'].shape)
     for i in range(bin.size):
-        ind=np.where(np.abs( roi['grd']['biomass_glob']['Data']-bin[i])<=bw/2)
+        ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
         if ind[0].size>0:
             z1[ind]=i
         else:
             z1[0,i]=i
-    ind=np.where(roi['grd']['biomass_glob']['Data']>bin[i]); z1[ind]=i
-    z1[(roi['grd']['Data']==1) & ( roi['grd']['biomass_glob']['Data']==0)]=i+1
+    ind=np.where(roi['grd'][vnam]['Data']>bin[i]); z1[ind]=i
+    z1[(roi['grd']['Data']==1) & ( roi['grd'][vnam]['Data']==0)]=i+1
     z1[(roi['grd']['Data']!=1) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=i+2
     L=i+2
 
@@ -2116,15 +2130,15 @@ def Plot_biomass_glob(meta,roi):
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
 
-    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_biomass_glob','png',900)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
 #%%
-def Plot_DistanceFromRoad(meta,roi):
+def Plot_DistanceFrom(meta,roi,vnam):
 
     #z=roi['grd']['d2fac']['Data']
-    z=roi['grd']['d2road']['Data']
+    z=roi['grd'][vnam]['Data']
     if roi['Type']=='ByTSA':
         z[roi['grd']['Data']==0]=0
 
@@ -2148,6 +2162,7 @@ def Plot_DistanceFromRoad(meta,roi):
     cb=plt.colorbar(im,cax=ax[1])#,boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis+1.5,1))
     pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
     ax[1].set(position=pos2)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 
     return fig,ax
 
@@ -2271,3 +2286,65 @@ def Plot_OutbreakMap(meta,roi):
     
         gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Beetles\Maps\Map_' + pest_cd + '_Severity_' + str(tv[iT]),'png',300)
     return
+
+#%%
+def Plot_FromModel(meta,roi,zRef,geos,md,vnam):
+    
+    z0=copy.deepcopy(zRef)
+    z0['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+    z0['Data'][geos['iMask']]=md[vnam]
+    z0=gis.ClipToRaster(z0,roi['grd'])
+
+    if vnam=='C_Biomass_Tot':
+        bw=50; bin=np.arange(0,500+bw,bw);
+    elif (vnam=='C_Litter_Tot'):
+        bw=20; bin=np.arange(0,200+bw,bw);
+    elif (vnam=='C_DeadWood_Tot'):
+        bw=5; bin=np.arange(0,50+bw,bw);
+    elif (vnam=='C_ToMillMerch'):
+        bw=5; bin=np.arange(0,50+bw,bw)
+    elif (vnam=='E_CO2e_AGHGB_WSub'):
+        bw=2; bin=np.arange(-16,20+bw,bw)
+    
+    z1=(bin.size)*np.ones(z0['Data'].shape)
+    for i in range(bin.size):
+        ind=np.where(np.abs(z0['Data']-bin[i])<=bw/2)
+        z1[ind]=i
+    z1[(z0['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=i+2
+    #z1[(roi['grd']['Data']!=1)]=i+2
+    L=i+2
+    lab=bin.astype(str)
+
+    # Colormap
+    #cm=plt.cm.get_cmap('viridis',i)
+    #cm=plt.cm.get_cmap('plasma',i)
+    cm=plt.cm.get_cmap('RdYlGn_r',i)
+    cm.colors=cm(np.arange(0,cm.N))
+    cm=np.vstack( (cm.colors,(0.85,0.85,0.85,1),(1,1,1,1)) )
+    cm=matplotlib.colors.ListedColormap(cm)
+
+    N_vis=bin.size+3
+    N_hidden=3
+
+    # Plot
+    plt.close('all')
+    fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+    im=ax[0].matshow(z1,clim=(0,L+1),extent=roi['grd']['Extent'],cmap=cm)
+    roi=PlotVectorBaseMaps(meta,roi,ax[0])
+    ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+    ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+    cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis-(N_hidden-1),1),ticks=np.arange(0.5,N_vis-N_hidden,1))
+    cb.ax.set(yticklabels=lab)
+
+    cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+    cb.outline.set_edgecolor('w')
+    for i in range(0,N_vis):
+        ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+
+    pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+    ax[1].set(position=pos2)
+    gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_FromModel_' + vnam,'png',900)
+
+    return fig,ax
+

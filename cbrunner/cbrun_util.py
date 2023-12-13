@@ -17,357 +17,7 @@ from fcgadgets.macgyver import util_inventory as invu
 from fcgadgets.hardhat import economics as econo
 from fcgadgets.taz import aspatial_stat_models as asm
 
-#%% CONVERT LUT NUMBER TO STRING NAME
-
-def lut_n2s(dc,numb):
-    if numb!=9999:
-        vals=np.fromiter(dc.values(),dtype=float)
-        keys=np.fromiter(dc.keys(),dtype='<U70')
-        ind=np.where(vals==numb)[0]
-        s=keys[ind]
-    else:
-        s=np.array(['Unidentified'],ndmin=1)
-    return s
-
-#%% Index to batch
-
-def IndexToBatch(m,iBat):
-    iStart=m['Project']['Batch Interval']*iBat
-    iStop=np.minimum(m['Project']['N Stand'],iStart+m['Project']['Batch Interval'])
-    indBat=np.arange(iStart,iStop,1)
-    return indBat
-
-#%% QUERY RESULTS CODES FOR MANAGEMENT ACTIVITY TYPES
-
-def QueryResultsActivity(d):
-
-    # Convert to arrays with at least 1d
-    for key in d:
-        d[key]=np.array(d[key],ndmin=1)
-
-    Name=[]
-    for i in range(d['SILV_BASE_CODE'].size):
-
-        if (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CA'):
-            Name.append('Fertilization Aerial')
-
-        elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]!='BAGS'):
-            Name.append('Fertilization Hand')
-
-        elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]=='BAGS'):
-            Name.append('Fertilization Teabag')
-
-        elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='OG'):
-            Name.append('Fertilization Organic')
-
-        elif (d['SILV_BASE_CODE'][i]=='PL') & (d['SILV_METHOD_CODE'][i]!='LAYOT'):
-            # The planting in road rehab projects falls into this milestone type
-            Name.append('Planting')
-
-        elif (d['SILV_BASE_CODE'][i]=='DS') & (d['SILV_TECHNIQUE_CODE'][i]!='GS'):
-            # Everything except grass seeding
-            Name.append('Direct Seeding')
-
-        elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_OBJECTIVE_CODE_1'][i]=='DM'):
-            # This will exclude SILV_TECHNIQUE_CODE=BI. Virtually all of it is mechanical.
-            Name.append('Dwarf Mistletoe Control')
-
-        elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_TECHNIQUE_CODE'][i]=='CA') & (d['SILV_OBJECTIVE_CODE_1'][i]=='ID'):
-            Name.append('IDW Control')
-
-        elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
-            Name.append('Road Rehab')
-
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='BU') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PBURN'):
-            Name.append('Slashpile Burn')
-
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='Unidentified') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='GUARD') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='HAND') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='KNOCK') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='POWER') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MANCT') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='PILE') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='SNAG') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='CABLE') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='GUARD') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PILE') | \
-            (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PUSH'):
-            Name.append('Knockdown')
-
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='BRIP'):
-            Name.append('Ripping')
-
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='DISC'):
-            Name.append('Disc Trenching')
-
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MULCH'):
-            Name.append('Mulching')
-
-        elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='HARV'):
-            Name.append('Harvest Salvage')
-
-        elif (d['SILV_BASE_CODE'][i]=='LB') & (d['SILV_TECHNIQUE_CODE'][i]=='GR'):
-            Name.append('LB-GR')
-
-        elif (d['SILV_BASE_CODE'][i]=='SU'):
-            Name.append('Surveys')
-
-        else:
-            Name.append('Undefined')
-
-    return Name
-
-#%% CONVERT DICTIONARY TO DATA STRUCTURE CLASS
-
-class BunchDictionary(dict):
-    def __init__(self, *args, **kwds):
-        super(BunchDictionary, self).__init__(*args, **kwds)
-        self.__dict__ = self
-
-
-#%% Build event chronology from spreadsheet
-
-def BuildEventChronologyFromSpreadsheet(meta,pNam):
-
-    # Import inventory to get BGC zone
-    iScn=0
-    iBat=0
-    lsat=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
-
-    # # Simulate wildfires
-    # if (meta[pNam]['Scenario'][iScn]['Wildfire Scn Pre-obs']!=-9999) | (meta[pNam]['Scenario'][iScn]['Wildfire Scn Obs Period']!=-9999) | (meta[pNam]['Scenario'][iScn]['Wildfire Scn Future']!=-9999):
-    #     asm.SimulateWildfireFromAAO(meta,lsat)
-
-    # # Simulate MPB
-    # if (meta[pNam]['Scenario'][iScn]['Beetle Scn Pre-obs']!=-9999) | (meta[pNam]['Scenario'][iScn]['Beetle Scn Obs Period']!=-9999) | (meta[pNam]['Scenario'][iScn]['Beetle Scn Future']!=-9999):
-    #     asm.SimulateIBMFromAAO(meta,lsat)
-
-    for iScn in range(meta[pNam]['Project']['N Scenario']):
-
-        for iEns in range(meta[pNam]['Project']['N Ensemble']):
-
-            # # Import wildfire simulations from Taz
-            # if (meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On'):
-
-            #     wf_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
-            #     if 'idx' in wf_sim:
-            #         idx=wf_sim['idx']
-            #         tmp=wf_sim.copy()
-            #         for v in ['Occurrence','Mortality']:
-            #             wf_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
-            #             wf_sim[v][idx[0],idx[1]]=tmp[v]
-            #         del tmp
-
-            # # Import IBM
-            # if (meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On'):
-
-            #     ibm_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
-            #     if 'idx' in ibm_sim:
-            #         idx=ibm_sim['idx']
-            #         tmp=ibm_sim.copy()
-            #         for v in ['Occurrence','Mortality']:
-            #             ibm_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
-            #             ibm_sim[v][idx[0],idx[1]]=tmp[v]
-            #         del tmp
-
-            for iBat in range(meta[pNam]['Project']['N Batch']):
-
-                # Index to batch
-                indBat=IndexToBatch(meta[pNam],iBat)
-
-                # Always just one stand
-                iS=0
-
-                tv=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
-
-                # Initialize dictionary
-                ec={}
-                ec['ID Event Type']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-                ec['Mortality Factor']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-                ec['Growth Factor']=9999*np.ones((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-                ec['ID Growth Curve']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
-
-                #----------------------------------------------------------
-                # Add spinup events
-                #----------------------------------------------------------
-
-                # Spinup interval
-                if meta[pNam]['Project']['Return Interval Source']=='Custom':
-                    # From custom input
-                    ivl_spin=meta[pNam]['Project']['Custom Return Interval']
-                elif meta[pNam]['Project']['Return Interval Source']=='BGC Zone':
-                    # BGC Zone values
-                    cd=meta[pNam]['Scenario'][iScn]['BGC Zone Code']
-                    ind=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==cd)[0]
-                    ivl_spin=meta['Param']['BE']['BGC Zone Averages']['Disturbance Return Interval'][ind]
-                else:
-                    print('Spin-up return interval source incorrect.')
-
-                YearRef=meta[pNam]['Scenario'][iScn]['Year1_DisFromInv']
-                AgeRef=meta[pNam]['Scenario'][iScn]['Age1_DisFromInv']
-                if AgeRef>=0:
-                    Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)
-                else:
-                    Year1=meta[pNam]['Project']['Year Start']+ivl_spin
-                    Year2=meta[pNam]['Project']['Spinup Year End']
-                    Year=np.arange(Year1,Year2+1,ivl_spin)
-
-                for iYr in range(Year.size):
-                    iT=np.where(tv==Year[iYr])[0]
-                    ec['ID Event Type'][iT,:,0]=meta['LUT']['Event'][meta[pNam]['Project']['Spinup Disturbance Type']]
-                    ec['Mortality Factor'][iT,:,0]=100
-                    ec['Growth Factor'][iT,:,0]=9999
-                    ec['ID Growth Curve'][iT,:,0]=meta[pNam]['Project']['Spinup Growth Curve ID']
-
-                #----------------------------------------------------------
-                # Add events from inventory
-                #----------------------------------------------------------
-
-                for iYr in range(1,10):
-
-                    if ('Year' + str(iYr) + '_DisFromInv') not in meta[pNam]['Scenario'][iScn]:
-                        continue
-
-                    if np.isnan(meta[pNam]['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
-                        continue
-
-                    # If IDW, convert IDW class to growth and mortality factor
-                    sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
-                    flg_i=0
-                    indSc=np.where(sc==meta[pNam]['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
-                    if indSc.size!=0:
-                        if flg_i==0:
-                            dfParDistBySC=pd.read_excel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
-                            flg_i=1
-                        indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
-                        ID_TypeN=meta['LUT']['Event']['IDW']
-                        MF=dfParDistBySC.loc[indPar,'Mortality Factor']
-                        GF=dfParDistBySC.loc[indPar,'Growth Factor']
-                    else:
-                        ID_TypeS=meta[pNam]['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
-                        try:
-                            ID_TypeN=meta['LUT']['Event'][ID_TypeS]
-                        except:
-                            print(iScn)
-                            print(iYr)
-                            print(ID_TypeS)
-                        MF=meta[pNam]['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
-                        GF=0
-
-                    Year=meta[pNam]['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
-                    iT=np.where(tv==Year)[0]
-
-                    if iT.size==0:
-                        print('Warning: An event was scheduled outside the timeframe of the simulation.')
-
-                    iE=np.where(ec['ID Event Type'][iT,:,:]==0)[1]
-
-                    ec['ID Event Type'][iT,:,iE[0]]=ID_TypeN
-                    ec['Mortality Factor'][iT,:,iE[0]]=MF
-                    ec['Growth Factor'][iT,:,iE[0]]=GF
-                    ec['ID Growth Curve'][iT,:,iE[0]]=meta[pNam]['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
-
-                # #----------------------------------------------------------
-                # # Add simulated wildfire from Taz
-                # #----------------------------------------------------------
-
-                # ind=np.array([],dtype=int)
-                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':
-                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
-                #     ind=np.append(ind,ind0)
-                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On':
-                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
-                #     ind=np.append(ind,ind0)
-                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On':
-                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
-                #     ind=np.append(ind,ind0)
-
-                # if ind.size>0:
-
-                #     ID_Type=meta['LUT']['Event']['Wildfire']*np.ones(ind.size)
-                #     Year=tv[ind]
-                #     MortF=wf_sim['Mortality'][ind,iS]
-                #     GrowthF=9999*np.ones(ind.size)
-                #     ID_GrowthCurve=1*np.ones(ind.size)
-
-                #     for iYr in range(Year.size):
-                #         iT=np.where(tv==Year[iYr])[0]
-                #         ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
-                #         ec['Mortality Factor'][iT,:,0]=MortF[iYr]
-                #         ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
-                #         ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
-
-                #     #----------------------------------------------------------
-                #     # Add simulated MPB from Taz
-                #     #----------------------------------------------------------
-
-                #     ind=np.array([],dtype=int)
-                #     if meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On':
-                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
-                #         ind=np.append(ind,ind0)
-                #     if meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On':
-                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
-                #         ind=np.append(ind,ind0)
-                #     if meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On':
-                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
-                #         ind=np.append(ind,ind0)
-
-                #     if ind.size>0:
-
-                #         ID_Type=meta['LUT']['Event']['Mountain Pine Beetle']*np.ones(ind.size)
-                #         Year=tv[ind]
-                #         MortF=ibm_sim['Mortality'][ind,iS]
-                #         GrowthF=9999*np.ones(ind.size)
-                #         ID_GrowthCurve=1*np.ones(ind.size)
-
-                #         for iYr in range(Year.size):
-                #             iT=np.where(tv==Year[iYr])[0]
-                #             ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
-                #             ec['Mortality Factor'][iT,:,0]=MortF[iYr]
-                #             ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
-                #             ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
-
-                #--------------------------------------------------------------
-                # Save to file
-                #--------------------------------------------------------------
-
-                gu.opickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',ec)
-
-    return
-
-#%% Decompress event chronology
-
-def EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat):
-
-    # Uncompress event chronology if it has been compressed
-    if 'idx' in ec:
-        idx=ec['idx']
-        tmp=ec.copy()
-        for v in ['ID Event Type','Mortality Factor','Growth Factor','ID Growth Curve']:
-            ec[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat],meta['Core']['Max Events Per Year']),dtype='int16')
-            ec[v][idx[0],idx[1],idx[2]]=tmp[v]
-        del tmp
-
-    return ec
-
-#%% Fix ensemble name and numbering
-
-def FixFileNum(ind):
-    indStrFixed=str(ind+1)
-    if len(indStrFixed)==1:
-        indStrFixed='000' + indStrFixed
-    elif len(indStrFixed)==2:
-        indStrFixed='00' + indStrFixed
-    elif len(indStrFixed)==3:
-        indStrFixed='0' + indStrFixed
-    return indStrFixed
-
 #%% Configure project
-
 def ImportProjectConfig(meta,pNam,**kwargs):
 
     #--------------------------------------------------------------------------
@@ -675,6 +325,15 @@ def ImportProjectConfig(meta,pNam,**kwargs):
             
             # Land mask for BC
             zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+        elif meta[pNam]['Project']['ROI Source']=='TSA':
+            
+            # Mask from timber supply area            
+            zTSA=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\FADM_TSA\\TSA_NUMBER_DESCRIPTION.tif')
+            zMask=copy.deepcopy(zLCC1)
+            zMask['Data']=np.zeros(zLCC1['Data'].shape,'int8')
+            ind=np.where( (zTSA['Data']==meta['LUT']['FADM_TSA']['TSA_NUMBER_DESCRIPTION'][ meta[pNam]['Project']['ROI Elements'] ]) )
+            zMask['Data'][ind]=1
 
         elif meta[pNam]['Project']['ROI Source']=='Regional District':
             
@@ -1552,8 +1211,36 @@ def ImportProjectConfig(meta,pNam,**kwargs):
 
     return meta
 
-#%% Load look-up-tables
+#%% Look-up-table crosswalk (numbers to strings)
+def lut_n2s(dc,numb):
+    if numb!=9999:
+        vals=np.fromiter(dc.values(),dtype=float)
+        keys=np.fromiter(dc.keys(),dtype='<U70')
+        ind=np.where(vals==numb)[0]
+        s=keys[ind]
+    else:
+        s=np.array(['Unidentified'],ndmin=1)
+    return s
 
+#%% Index to batch
+def IndexToBatch(m,iBat):
+    iStart=m['Project']['Batch Interval']*iBat
+    iStop=np.minimum(m['Project']['N Stand'],iStart+m['Project']['Batch Interval'])
+    indBat=np.arange(iStart,iStop,1)
+    return indBat
+
+#%% Fix ensemble name and numbering
+def FixFileNum(ind):
+    indStrFixed=str(ind+1)
+    if len(indStrFixed)==1:
+        indStrFixed='000' + indStrFixed
+    elif len(indStrFixed)==2:
+        indStrFixed='00' + indStrFixed
+    elif len(indStrFixed)==3:
+        indStrFixed='0' + indStrFixed
+    return indStrFixed
+
+#%% Load look-up-tables
 def Load_LUTs_Modelling(meta):
 
     # Initialize LUTs dictionary
@@ -1616,6 +1303,229 @@ def Load_LUTs_Modelling(meta):
     #    meta['LUT']['SRS'][par['SRS']['SRS_CD'][i]]=par['SRS']['SRS_ID'][i]
 
     return meta
+
+#%% Build event chronology from spreadsheet
+def BuildEventChronologyFromSpreadsheet(meta,pNam):
+
+    # Import inventory to get BGC zone
+    iScn=0
+    iBat=0
+    lsat=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Inventory_Bat' + FixFileNum(iBat) + '.pkl')
+
+    # # Simulate wildfires
+    # if (meta[pNam]['Scenario'][iScn]['Wildfire Scn Pre-obs']!=-9999) | (meta[pNam]['Scenario'][iScn]['Wildfire Scn Obs Period']!=-9999) | (meta[pNam]['Scenario'][iScn]['Wildfire Scn Future']!=-9999):
+    #     asm.SimulateWildfireFromAAO(meta,lsat)
+
+    # # Simulate MPB
+    # if (meta[pNam]['Scenario'][iScn]['Beetle Scn Pre-obs']!=-9999) | (meta[pNam]['Scenario'][iScn]['Beetle Scn Obs Period']!=-9999) | (meta[pNam]['Scenario'][iScn]['Beetle Scn Future']!=-9999):
+    #     asm.SimulateIBMFromAAO(meta,lsat)
+
+    for iScn in range(meta[pNam]['Project']['N Scenario']):
+
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
+
+            # # Import wildfire simulations from Taz
+            # if (meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On'):
+
+            #     wf_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\wf_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+            #     if 'idx' in wf_sim:
+            #         idx=wf_sim['idx']
+            #         tmp=wf_sim.copy()
+            #         for v in ['Occurrence','Mortality']:
+            #             wf_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
+            #             wf_sim[v][idx[0],idx[1]]=tmp[v]
+            #         del tmp
+
+            # # Import IBM
+            # if (meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On') | (meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On'):
+
+            #     ibm_sim=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\ibm_sim_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '.pkl')
+            #     if 'idx' in ibm_sim:
+            #         idx=ibm_sim['idx']
+            #         tmp=ibm_sim.copy()
+            #         for v in ['Occurrence','Mortality']:
+            #             ibm_sim[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['N Stand']),dtype='int16')
+            #             ibm_sim[v][idx[0],idx[1]]=tmp[v]
+            #         del tmp
+
+            for iBat in range(meta[pNam]['Project']['N Batch']):
+
+                # Index to batch
+                indBat=IndexToBatch(meta[pNam],iBat)
+
+                # Always just one stand
+                iS=0
+
+                tv=np.arange(meta[pNam]['Project']['Year Start'],meta[pNam]['Project']['Year End']+1,1)
+
+                # Initialize dictionary
+                ec={}
+                ec['ID Event Type']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['Mortality Factor']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['Growth Factor']=9999*np.ones((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+                ec['ID Growth Curve']=np.zeros((meta[pNam]['Year'].size,indBat.size,meta['Core']['Max Events Per Year']),dtype='int16')
+
+                #----------------------------------------------------------
+                # Add spinup events
+                #----------------------------------------------------------
+
+                # Spinup interval
+                if meta[pNam]['Project']['Return Interval Source']=='Custom':
+                    # From custom input
+                    ivl_spin=meta[pNam]['Project']['Custom Return Interval']
+                elif meta[pNam]['Project']['Return Interval Source']=='BGC Zone':
+                    # BGC Zone values
+                    cd=meta[pNam]['Scenario'][iScn]['BGC Zone Code']
+                    ind=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==cd)[0]
+                    ivl_spin=meta['Param']['BE']['BGC Zone Averages']['Disturbance Return Interval'][ind]
+                else:
+                    print('Spin-up return interval source incorrect.')
+
+                YearRef=meta[pNam]['Scenario'][iScn]['Year1_DisFromInv']
+                AgeRef=meta[pNam]['Scenario'][iScn]['Age1_DisFromInv']
+                if AgeRef>=0:
+                    Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)
+                else:
+                    Year1=meta[pNam]['Project']['Year Start']+ivl_spin
+                    Year2=meta[pNam]['Project']['Spinup Year End']
+                    Year=np.arange(Year1,Year2+1,ivl_spin)
+
+                for iYr in range(Year.size):
+                    iT=np.where(tv==Year[iYr])[0]
+                    ec['ID Event Type'][iT,:,0]=meta['LUT']['Event'][meta[pNam]['Project']['Spinup Disturbance Type']]
+                    ec['Mortality Factor'][iT,:,0]=100
+                    ec['Growth Factor'][iT,:,0]=9999
+                    ec['ID Growth Curve'][iT,:,0]=meta[pNam]['Project']['Spinup Growth Curve ID']
+
+                #----------------------------------------------------------
+                # Add events from inventory
+                #----------------------------------------------------------
+
+                for iYr in range(1,10):
+
+                    if ('Year' + str(iYr) + '_DisFromInv') not in meta[pNam]['Scenario'][iScn]:
+                        continue
+
+                    if np.isnan(meta[pNam]['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv'])==True:
+                        continue
+
+                    # If IDW, convert IDW class to growth and mortality factor
+                    sc=np.array(['IDW-T','IDW-L','IDW-M','IDW-S','IDW-V','IDW-MM','IDW-MS','IDW-MV','IDW-SS','IDW-SV','IDW-VV'])
+                    flg_i=0
+                    indSc=np.where(sc==meta[pNam]['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv'])[0]
+                    if indSc.size!=0:
+                        if flg_i==0:
+                            dfParDistBySC=pd.read_excel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_DisturbanceBySeverityClass.xlsx')
+                            flg_i=1
+                        indPar=np.where( (dfParDistBySC['Name']=='IDW') & (dfParDistBySC['SeverityCD']==sc[indSc[0]][4:]) )[0]
+                        ID_TypeN=meta['LUT']['Event']['IDW']
+                        MF=dfParDistBySC.loc[indPar,'Mortality Factor']
+                        GF=dfParDistBySC.loc[indPar,'Growth Factor']
+                    else:
+                        ID_TypeS=meta[pNam]['Scenario'][iScn]['Type' + str(iYr) + '_DisFromInv']
+                        try:
+                            ID_TypeN=meta['LUT']['Event'][ID_TypeS]
+                        except:
+                            print(iScn)
+                            print(iYr)
+                            print(ID_TypeS)
+                        MF=meta[pNam]['Scenario'][iScn]['Severity' + str(iYr) + '_DisFromInv']
+                        GF=0
+
+                    Year=meta[pNam]['Scenario'][iScn]['Year' + str(iYr) + '_DisFromInv']
+                    iT=np.where(tv==Year)[0]
+
+                    if iT.size==0:
+                        print('Warning: An event was scheduled outside the timeframe of the simulation.')
+
+                    iE=np.where(ec['ID Event Type'][iT,:,:]==0)[1]
+
+                    ec['ID Event Type'][iT,:,iE[0]]=ID_TypeN
+                    ec['Mortality Factor'][iT,:,iE[0]]=MF
+                    ec['Growth Factor'][iT,:,iE[0]]=GF
+                    ec['ID Growth Curve'][iT,:,iE[0]]=meta[pNam]['Scenario'][iScn]['GrowthCurve' + str(iYr) + '_DisFromInv']
+
+                # #----------------------------------------------------------
+                # # Add simulated wildfire from Taz
+                # #----------------------------------------------------------
+
+                # ind=np.array([],dtype=int)
+                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Pre-modern']=='On':
+                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
+                #     ind=np.append(ind,ind0)
+                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Modern']=='On':
+                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
+                #     ind=np.append(ind,ind0)
+                # if meta[pNam]['Scenario'][iScn]['Wildfire Status Future']=='On':
+                #     ind0=np.where( (wf_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
+                #     ind=np.append(ind,ind0)
+
+                # if ind.size>0:
+
+                #     ID_Type=meta['LUT']['Event']['Wildfire']*np.ones(ind.size)
+                #     Year=tv[ind]
+                #     MortF=wf_sim['Mortality'][ind,iS]
+                #     GrowthF=9999*np.ones(ind.size)
+                #     ID_GrowthCurve=1*np.ones(ind.size)
+
+                #     for iYr in range(Year.size):
+                #         iT=np.where(tv==Year[iYr])[0]
+                #         ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
+                #         ec['Mortality Factor'][iT,:,0]=MortF[iYr]
+                #         ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
+                #         ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
+
+                #     #----------------------------------------------------------
+                #     # Add simulated MPB from Taz
+                #     #----------------------------------------------------------
+
+                #     ind=np.array([],dtype=int)
+                #     if meta[pNam]['Scenario'][iScn]['MPB Status Pre-modern']=='On':
+                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']<1920) )[0]
+                #         ind=np.append(ind,ind0)
+                #     if meta[pNam]['Scenario'][iScn]['MPB Status Modern']=='On':
+                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=1920) & (meta[pNam]['Year']<meta[pNam]['Project']['Year Project']) )[0]
+                #         ind=np.append(ind,ind0)
+                #     if meta[pNam]['Scenario'][iScn]['MPB Status Future']=='On':
+                #         ind0=np.where( (ibm_sim['Occurrence'][:,iS]==1) & (meta[pNam]['Year']>=meta[pNam]['Project']['Year Project']) )[0]
+                #         ind=np.append(ind,ind0)
+
+                #     if ind.size>0:
+
+                #         ID_Type=meta['LUT']['Event']['Mountain Pine Beetle']*np.ones(ind.size)
+                #         Year=tv[ind]
+                #         MortF=ibm_sim['Mortality'][ind,iS]
+                #         GrowthF=9999*np.ones(ind.size)
+                #         ID_GrowthCurve=1*np.ones(ind.size)
+
+                #         for iYr in range(Year.size):
+                #             iT=np.where(tv==Year[iYr])[0]
+                #             ec['ID Event Type'][iT,:,0]=ID_Type[iYr]
+                #             ec['Mortality Factor'][iT,:,0]=MortF[iYr]
+                #             ec['Growth Factor'][iT,:,0]=GrowthF[iYr]
+                #             ec['ID Growth Curve'][iT,:,0]=ID_GrowthCurve[iYr]
+
+                #--------------------------------------------------------------
+                # Save to file
+                #--------------------------------------------------------------
+
+                gu.opickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl',ec)
+
+    return
+
+#%% Decompress event chronology
+def EventChronologyDecompress(meta,pNam,ec,iScn,iEns,iBat):
+
+    # Uncompress event chronology if it has been compressed
+    if 'idx' in ec:
+        idx=ec['idx']
+        tmp=ec.copy()
+        for v in ['ID Event Type','Mortality Factor','Growth Factor','ID Growth Curve']:
+            ec[v]=np.zeros((meta[pNam]['Project']['N Time'],meta[pNam]['Project']['Batch Size'][iBat],meta['Core']['Max Events Per Year']),dtype='int16')
+            ec[v][idx[0],idx[1],idx[2]]=tmp[v]
+        del tmp
+
+    return ec
 
 #%% Load scenario results
 # Return a list of dictionaries for each scenario. If multiple ensemble were run,
@@ -2165,7 +2075,7 @@ def Calc_MOS_FromPoints_GHG(meta,pNam,**kwargs):
         # Save GHGs
         gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_GHGB_Scn' + str(iScn+1) + '.pkl',Data1)
         
-        # Save land cover / land use areas (only for first ensembe because no stochasticity represented and not accommodating query functionality)
+        # Save land cover / land use areas (only for first ensemble because no stochasticity represented and not accommodating query functionality)
         lclu={'LC':lc1,'LU':lu1}
         gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_LandCoverAndUse_Scn' + str(iScn+1) + '.pkl',lclu)
 
@@ -2694,40 +2604,29 @@ def Calc_AgeClassDistribution(meta,pNam,acd):
     return acd
 
 #%% Map mean of ensembles for specified time period
-
 def Calc_MOS_MapMean(meta,pNam,iScn,tp,**kwargs):
-
+    t0=time.time()
     tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
     it_ref=np.where( (tv>=tp[0]) & (tv<=tp[1]) )[0]
-
     mu0={}
     for iEns in range(meta[pNam]['Project']['N Ensemble']):
-        print(iEns)
         for iBat in range(meta[pNam]['Project']['N Batch']):
             indBat=IndexToBatch(meta[pNam],iBat)
             d0=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
-
-            # Initialize
             if (iEns==0) & (iBat==0):
-
                 if 'VariablesToKeep' not in kwargs.keys():
                     v2include=list(d0.keys())
                 else:
                     v2include=kwargs['VariablesToKeep']
-
                 for k in v2include:
                     mu0[k]=np.zeros(meta[pNam]['Project']['N Stand'])
-
-            # Populate
             for k in v2include:
                 if (type(d0[k])==dict) | (k=='Year'):
                     continue
                 mu0[k][indBat]=mu0[k][indBat]+np.mean(d0[k][it_ref,:],axis=0)
-
-    # Divide by number of ensembles to get ensemble mean
     for k in v2include:
-        mu0[k]=mu0[k]/meta[pNam]['Project']['N Ensemble']
-
+        mu0[k]=mu0[k]/meta[pNam]['Project']['N Ensemble']   
+    print((time.time()-t0)/60)
     return mu0
 
 #%% Import scenario data from points
@@ -5387,10 +5286,23 @@ def ImportParameters(meta):
     #--------------------------------------------------------------------------
     # Other stuff
     #--------------------------------------------------------------------------
-    meta['Param']['BE']['Comparison_With_NIR']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_ComparisonWithNIR.xlsx')
-    meta['Param']['BE']['Reporting_Version_Comparison']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_BoundaryDefinition.xlsx')
-    meta['Param']['BE']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_ForcingCategories.xlsx')
-    meta['Param']['BE']['Level_4_Categories_Status']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_BCFCS_Level4CategoriesStatus.xlsx')
+    meta['Param']['BE']['AccountingInclusionCriteria']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_BCFCS_AccountingInclusionCriteria.xlsx')
+    meta['Param']['BE']['Comparison_With_NIR']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_BCFCS_ComparisonWithNIR.xlsx')
+    meta['Param']['BE']['Reporting_Version_Comparison']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_BCFCS_BoundaryDefinition.xlsx')
+    meta['Param']['BE']['Forcing_Categories']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_BCFCS_ForcingCategories.xlsx')
+    meta['Param']['BE']['Level_4_Categories_Status']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_BCFCS_Level4CategoriesStatus.xlsx')
+    meta['Param']['BE']['Core_Combusion']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_Core_Combustion.xlsx')    
+    meta['Param']['BE']['NA_DataSources']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_BCFCS_NA_DataSources.xlsx')
+    meta['Param']['BE']['NA_RunDescriptions']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_BCFCS_NA_SingleStandRunDescriptions.xlsx')
+    meta['Param']['BE']['NA_ExperimentalResponseStemwood']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseStemwood.xlsx')    
+    meta['Param']['BE']['NA_ExperimentalResponseFoliage']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseFoliage.xlsx')
+    meta['Param']['BE']['NA_ExperimentalResponseBranch']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseBranch.xlsx')
+    meta['Param']['BE']['NA_ExperimentalResponseRootCoarse']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseRootCoarse.xlsx')
+    meta['Param']['BE']['NA_ExperimentalResponseRootFine']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseRootFine.xlsx')
+    meta['Param']['BE']['NA_ExperimentalResponseStemwoodMortality']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseStemwoodMortality.xlsx')
+    meta['Param']['BE']['NA_ExperimentalResponseLitterfall']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseLitterfall.xlsx')
+    meta['Param']['BE']['NA_ExperimentalResponseSummary']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ExperimentalResponseSummary.xlsx')
+    meta['Param']['BE']['NA_ModelResponseSummary']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Table_NA_ModelResponseSummary.xlsx')
 
     return meta
 
@@ -5598,3 +5510,208 @@ def PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,lsat,iBat):
     return lsat
 
 #%%
+
+# #%% CONVERT DICTIONARY TO DATA STRUCTURE CLASS
+# class BunchDictionary(dict):
+#     def __init__(self, *args, **kwds):
+#         super(BunchDictionary, self).__init__(*args, **kwds)
+#         self.__dict__ = self
+
+# #%% QUERY RESULTS CODES FOR MANAGEMENT ACTIVITY TYPES
+# def QueryResultsActivity(d):
+
+#     # Convert to arrays with at least 1d
+#     for key in d:
+#         d[key]=np.array(d[key],ndmin=1)
+
+#     Name=[]
+#     for i in range(d['SILV_BASE_CODE'].size):
+
+#         if (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CA'):
+#             Name.append('Fertilization Aerial')
+
+#         elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]!='BAGS'):
+#             Name.append('Fertilization Hand')
+
+#         elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='CG') & (d['SILV_METHOD_CODE'][i]=='BAGS'):
+#             Name.append('Fertilization Teabag')
+
+#         elif (d['SILV_BASE_CODE'][i]=='FE') & (d['SILV_TECHNIQUE_CODE'][i]=='OG'):
+#             Name.append('Fertilization Organic')
+
+#         elif (d['SILV_BASE_CODE'][i]=='PL') & (d['SILV_METHOD_CODE'][i]!='LAYOT'):
+#             # The planting in road rehab projects falls into this milestone type
+#             Name.append('Planting')
+
+#         elif (d['SILV_BASE_CODE'][i]=='DS') & (d['SILV_TECHNIQUE_CODE'][i]!='GS'):
+#             # Everything except grass seeding
+#             Name.append('Direct Seeding')
+
+#         elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_OBJECTIVE_CODE_1'][i]=='DM'):
+#             # This will exclude SILV_TECHNIQUE_CODE=BI. Virtually all of it is mechanical.
+#             Name.append('Dwarf Mistletoe Control')
+
+#         elif (d['SILV_BASE_CODE'][i]=='PC') & (d['SILV_TECHNIQUE_CODE'][i]=='CA') & (d['SILV_OBJECTIVE_CODE_1'][i]=='ID'):
+#             Name.append('IDW Control')
+
+#         elif (d['SILV_BASE_CODE'][i]=='RD') & (d['SILV_BASE_CODE'][i]=='UP'):
+#             Name.append('Road Rehab')
+
+#         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='BU') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PBURN'):
+#             Name.append('Slashpile Burn')
+
+#         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='Unidentified') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='GUARD') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='HAND') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='KNOCK') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='POWER') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MANCT') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='PILE') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='MA') & (d['SILV_METHOD_CODE'][i]=='SNAG') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='CABLE') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='GUARD') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MDOWN') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PILE') | \
+#             (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='PUSH'):
+#             Name.append('Knockdown')
+
+#         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='BRIP'):
+#             Name.append('Ripping')
+
+#         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='DISC'):
+#             Name.append('Disc Trenching')
+
+#         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='MULCH'):
+#             Name.append('Mulching')
+
+#         elif (d['SILV_BASE_CODE'][i]=='SP') & (d['SILV_TECHNIQUE_CODE'][i]=='ME') & (d['SILV_METHOD_CODE'][i]=='HARV'):
+#             Name.append('Harvest Salvage')
+
+#         elif (d['SILV_BASE_CODE'][i]=='LB') & (d['SILV_TECHNIQUE_CODE'][i]=='GR'):
+#             Name.append('LB-GR')
+
+#         elif (d['SILV_BASE_CODE'][i]=='SU'):
+#             Name.append('Surveys')
+
+#         else:
+#             Name.append('Undefined')
+
+#     return Name
+
+#%%
+def CalcMosByBGC(meta,pNam,lsat):
+       
+    tvSaved=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)    
+    vmL=['A','C_Biomass_Tot','C_Stemwood_Tot','C_Foliage_Tot','C_Branch_Tot',
+         'C_Bark_Tot','C_Root_Tot','C_DeadWood_Tot','C_G_Gross_Tot','C_G_Net_Tot',
+         'C_M_Reg_Tot','C_M_Dist','C_Soil_Tot','C_Soil_OHorizon','C_M_Harv']
+    
+    d=[None]*meta[pNam]['Project']['N Scenario']
+    for iScn in range(meta[pNam]['Project']['N Scenario']):        
+        d[iScn]={}
+        for zone in meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys():
+            d[iScn][zone]={}
+            for v in vmL:         
+                d[iScn][zone][v]=np.zeros( (tvSaved.size,) )
+                
+        for iEns in range(meta[pNam]['Project']['N Ensemble']):
+            for iBat in range(meta[pNam]['Project']['N Batch']):
+                indBat=IndexToBatch(meta[pNam],iBat)
+                idxBat=gu.IndicesFromUniqueArrayValues(lsat['ID_BGCZ'][indBat])
+                d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
+                d1['C_G_Net_Tot']=d1['C_G_Net_Tot']-d1['C_M_Dist']
+                for i in idxBat.keys():
+                    zone=lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],i)[0]
+                    for v in vmL:
+                        if v=='C_M_Harv':
+                            d1[v]=np.zeros( (tvSaved.size,indBat.size),dtype='float32')
+                            id=meta['LUT']['Event']['Harvest Salvage']
+                            idx0=d1['C_M_ByAgent'][id]['idx']
+                            d1[v][idx0[0],idx0[1]]=meta['Core']['Scale Factor C_M_ByAgent']*d1['C_M_ByAgent'][id]['M'].astype('float64')                            
+                            d[iScn][zone][v]=d[iScn][zone][v]+np.sum(d1[v][:,idxBat[i]],axis=1)
+                            d1[v]=np.zeros( (tvSaved.size,indBat.size),dtype='float32')
+                            id=meta['LUT']['Event']['Harvest']
+                            idx0=d1['C_M_ByAgent'][id]['idx']
+                            d1[v][idx0[0],idx0[1]]=meta['Core']['Scale Factor C_M_ByAgent']*d1['C_M_ByAgent'][id]['M'].astype('float64')
+                            d[iScn][zone][v]=d[iScn][zone][v]+np.sum(d1[v][:,idxBat[i]],axis=1)
+                        else:                            
+                            d[iScn][zone][v]=d[iScn][zone][v]+np.sum(d1[v][:,idxBat[i]],axis=1)
+          
+        idx=gu.IndicesFromUniqueArrayValues(lsat['ID_BGCZ'])
+        for v in vmL:
+            for zone in meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys():                
+                # Convert from sum to average
+                id=meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'][zone]
+                d[iScn][zone][v]=d[iScn][zone][v]/idx[id].size
+                # Divide by number of ensembles
+                d[iScn][zone][v]=d[iScn][zone][v]/meta[pNam]['Project']['N Ensemble']
+    
+        # Calculate total mortality and add disturbance mortality to net growth
+        for zone in meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys():
+            d[iScn][zone]['C_M_Tot']=d[iScn][zone]['C_M_Reg_Tot']+d[iScn][zone]['C_M_Dist']
+            d[iScn][zone]['C_M_Nat']=d[iScn][zone]['C_M_Reg_Tot']+d[iScn][zone]['C_M_Dist']-d[iScn][zone]['C_M_Harv']
+    gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MosByBGC.pkl',d)
+    return d
+
+#%%
+def CalcMosByAgeAndRegion(meta,pNam,lsat):
+	bw=25; bin=np.arange(bw,250+bw,bw)	
+	tvSaved=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
+
+	vmL=['C_Biomass_Tot','C_Stemwood_Tot','C_Foliage_Tot','C_Branch_Tot',
+	'C_Bark_Tot','C_Root_Tot','C_DeadWood_Tot','C_G_Gross_Tot','C_G_Net_Tot',
+	'C_M_Tot','C_M_Reg_Tot','C_M_Dist','C_Soil_Tot','C_Soil_OHorizon','C_M_Harv','C_M_Nat']
+	
+	d=[None]*meta[pNam]['Project']['N Scenario']
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		d[iScn]={}
+		for reg in meta['LUT']['Region'].keys():
+			d[iScn][reg]={}
+			for v in vmL: 
+				d[iScn][reg][v]={}
+				d[iScn][reg][v]['N']=np.zeros( bin.size )
+				d[iScn][reg][v]['mu']=np.zeros( bin.size )
+				d[iScn][reg][v]['se']=np.zeros( bin.size )
+	
+		for iEns in range(meta[pNam]['Project']['N Ensemble']):
+			for iBat in range(meta[pNam]['Project']['N Batch']):
+				indBat=IndexToBatch(meta[pNam],iBat)
+				idxBat=gu.IndicesFromUniqueArrayValues(lsat['Region Code'][indBat])
+				d1=LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
+				d1['C_G_Net_Tot']=d1['C_G_Net_Tot']-d1['C_M_Dist']
+				d1['C_M_Tot']=d1['C_M_Reg_Tot']+d1['C_M_Dist']
+				v='C_M_Harv'
+				d1[v]=np.zeros( (tvSaved.size,indBat.size),dtype='float32')
+				id=meta['LUT']['Event']['Harvest Salvage']
+				idx0=d1['C_M_ByAgent'][id]['idx']
+				d1[v][idx0[0],idx0[1]]=meta['Core']['Scale Factor C_M_ByAgent']*d1['C_M_ByAgent'][id]['M'].astype('float64')
+				id=meta['LUT']['Event']['Harvest']
+				idx0=d1['C_M_ByAgent'][id]['idx']
+				d1[v][idx0[0],idx0[1]]=d1[v][idx0[0],idx0[1]]+meta['Core']['Scale Factor C_M_ByAgent']*d1['C_M_ByAgent'][id]['M'].astype('float64')
+				d1['C_M_Nat']=d1['C_M_Reg_Tot']+d1['C_M_Dist']-d1['C_M_Harv']
+				for i in idxBat.keys():
+					reg=lut_n2s(meta['LUT']['Region'],i)[0]
+					for v in vmL:
+						x=d1['A'][:,idxBat[i]].flatten()
+						y=d1[v][:,idxBat[i]].flatten()
+						N,mu,med,sig,se=gu.discres(x,y,bw,bin)
+						d[iScn][reg][v]['N']=d[iScn][reg][v]['N']+N
+						d[iScn][reg][v]['mu']=d[iScn][reg][v]['mu']+mu
+						d[iScn][reg][v]['se']=d[iScn][reg][v]['se']+se
+
+			# Divide by number of batches
+			for reg in d[iScn].keys():
+				for v in d[iScn][reg].keys():
+					d[iScn][reg][v]['mu']=d[iScn][reg][v]['mu']/meta[pNam]['Project']['N Batch']
+					d[iScn][reg][v]['se']=d[iScn][reg][v]['se']/meta[pNam]['Project']['N Batch']
+
+		# Divide by number of ensembles
+		for reg in d[iScn].keys():
+			for v in d[iScn][reg].keys():
+				d[iScn][reg][v]['N']=d[iScn][reg][v]['N']/meta[pNam]['Project']['N Ensemble']
+				d[iScn][reg][v]['mu']=d[iScn][reg][v]['mu']/meta[pNam]['Project']['N Ensemble']
+				d[iScn][reg][v]['se']=d[iScn][reg][v]['se']/meta[pNam]['Project']['N Ensemble']
+	gu.opickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MosByAgeAndRegion.pkl',d)
+	return d

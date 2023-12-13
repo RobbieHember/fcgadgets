@@ -29,10 +29,10 @@ meta['Graphics']['Map']['Legend Text Space']=0.035
 meta['Graphics']['Map']['Show Bound Land Mask']='On'
 meta['Graphics']['Map']['Show Bound Within']='Off'
 meta['Graphics']['Map']['Show Lakes']='Off'
-meta['Graphics']['Map']['Show Rivers']='On'
-meta['Graphics']['Map']['Show Rail']='On'
-meta['Graphics']['Map']['Show Roads']='On'
-meta['Graphics']['Map']['Show TPF and Cities']='On'
+meta['Graphics']['Map']['Show Rivers']='Off'
+meta['Graphics']['Map']['Show Rail']='Off'
+meta['Graphics']['Map']['Show Roads']='Off'
+meta['Graphics']['Map']['Show TPF and Cities']='Off'
 meta['Graphics']['Map']['Show Symbol Labels']='Off'
 
 meta['Graphics']['Plot Style']='Manuscript'
@@ -43,22 +43,25 @@ meta['Graphics']['Print Figures']='On'
 roi={}
 #roi['Type']='Prov'; roi['Name']='Prov'
 
-#roi['Type']='ByRegDis'
-#roi['Name']='CAPITAL'
+roi['Type']='ByRegDis'
+roi['Name']='CAPITAL'
 #roi['Name']='STRATHCONA'
 #roi['Name']='COMOX VALLEY'
 #roi['Name']='COWICHAN VALLEY'
 
 #roi['Type']='ByTSA'; roi['Name']='Arrowsmith TSA'
 #roi['Type']='ByTSA'; roi['Name']='Fort St John TSA'
+#roi['Type']='ByTSA'; roi['Name']='Dawson Creek TSA'
 #roi['Type']='ByTSA'; roi['Name']='Boundary TSA'
 #roi['Type']='ByTSA'; roi['Name']='Cassiar TSA'
-#roi['Type']='ByTSA'; roi['Name']='Merritt TSA'
 #roi['Type']='ByTSA'; roi['Name']='Fort Nelson TSA'
-#roi['Type']='ByTSA'; roi['Name']='Prince George TSA'
-roi['Type']='ByTSA'; roi['Name']='Williams Lake TSA'
+#roi['Type']='ByTSA'; roi['Name']='Kalum TSA'
+#roi['Type']='ByTSA'; roi['Name']='Kootenay Lake TSA'
+#roi['Type']='ByTSA'; roi['Name']='Merritt TSA'
 #roi['Type']='ByTSA'; roi['Name']='North Island TSA'
+#roi['Type']='ByTSA'; roi['Name']='Prince George TSA'
 #roi['Type']='ByTSA'; roi['Name']='Quesnel TSA'
+#roi['Type']='ByTSA'; roi['Name']='Williams Lake TSA'
 #roi['Type']='ByTSA'; roi['Name']='100 Mile House TSA'
 
 #roi['Type']='LICS'
@@ -73,22 +76,23 @@ elif roi['Type']=='LICS':
 
 t0=time.time()
 if roi['Type']=='ByTSA':
-    # Search: gdf['tsa']['key']
+    # Search: list(gdf['tsa']['gdf']['Name'].unique())
     #roi['List']=['Arrowsmith TSA']
-    #roi['List']=['Fort St. John TSA']
     #roi['List']=['Boundary TSA']
     #roi['List']=['Cassiar TSA']
+    roi['List']=['Dawson Creek TSA']
     #roi['List']=['Fort Nelson TSA']
-    #roi['List']=['Merritt TSA']
-    #roi['List']=['Prince George TSA']
+    #roi['List']=['Fort St. John TSA']        
+    #roi['List']=['Kalum TSA']
     #roi['List']=['Kamloops TSA','100 Mile House TSA','Williams Lake TSA']
-    roi['List']=['Williams Lake TSA']
-    #roi['List']=['North Island TSA']
-    #roi['List']=['Quesnel TSA']
-    #roi['List']=['100 Mile House TSA']
     #roi['List']=['Kootenay Lake TSA']
-    #roi['List']=['100 Mile House TSA']
+    #roi['List']=['Merritt TSA']
+    #roi['List']=['North Island TSA']
     #roi['List']=['Okanagan TSA']
+    #roi['List']=['Prince George TSA']
+    #roi['List']=['Quesnel TSA']    
+    #roi['List']=['Williams Lake TSA']
+    #roi['List']=['100 Mile House TSA']    
     #roi['List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
     #roi['List']=list(gdf['tsa']['key']['Name'])
 
@@ -152,8 +156,72 @@ t1=time.time()
 print((t1-t0)/60)
 
 #%% Import rasters over ROI
-vList=u1ha.GetRasterListFromSpreadsheet(r'C:\Users\rhember\Documents\Data\BC1ha\RasterInclusion.xlsx')
+vList=u1ha.GetRasterListFromSpreadsheet(r'C:\Data\BC1ha\RasterInclusion.xlsx')
 roi=u1ha.Import_Raster(meta,roi,vList)
+
+#%% Plot model results
+
+pth=r'D:\FCI_Projects\TSA_DawsonCreek'
+md=gu.ipickle(pth + '\\Outputs\MapData_Scn1.pkl')
+geos=gu.ipickle(r'D:\FCI_Projects\TSA_DawsonCreek\geos.pkl')
+zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+vnam='E_CO2e_AGHGB_WSub'
+#
+fig,ax=p1ha.Plot_FromModel(meta,roi,zRef,geos,md,vnam)
+
+#%% Plot everything
+vList=['age_ntems']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Age(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['age_vri']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Age(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['bgcz']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_BGC_Zone(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['biomass_glob']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_biomass_glob(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['bsr_sc']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_BurnSeverity(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['crownc']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_CrownCover(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['d2road']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_DistanceFrom(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['d2fac']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_DistanceFrom(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Elev(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Infastructure(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['feca_yr']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_FECA_Year(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['fire_yr']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_WildfireYear(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['gfcly']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_GFC_LossYear(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['geomorph']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Geomorphons(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['gsoc']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SoilOrganicCarbon_GSOC(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['harv_yr_comp1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HarvestYear(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['harv_yr_comp2']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HarvestYear(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['harv_salv']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SalvageLogging(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['harvret1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HarvestRetentionComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lc_comp1_1800']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lc_comp1_2019']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); 
+vList=['lc_comp1_2049s1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lc_comp1_2049s2']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['lc_comp1_2049s3']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lc_ntems_2019_recl']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lc_vri_recl']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lc_cec_2020']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LC20_CEC(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lu_comp1_2019']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandUseComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lu_comp1_2049s1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandUseComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lu_comp1_2049s2']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandUseComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lu_comp1_2049s3']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandUseComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['lu_comp1_2049s4']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandUseComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['luc1_hist_type']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverLandUseChange(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['luc1_1019_type']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverLandUseChange(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['luc1_fut_s1_type']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverLandUseChange(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['luc1_hist_yr']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LUC_Year(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['own']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Ownership(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['plam']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_PlantedMask(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['prcp_ann_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_MAP(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['rangecon']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_RangeTenure(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['rears']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_REARs(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['spc1_ntems']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Spc1_NTEMS(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['tdc_wsg']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_TreeDensityClass(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['tmean_ann_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_MAT(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['upwetf_ntems']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_UplandWetlandForest(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['upwetf_vri']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_UplandWetlandForest(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['si_vri23']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SI(meta,roi); del roi['grd'][vList[0]]
+#vList=['sphl_vri23']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SPH(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['sphd_vri23']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SPH(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['ws_gs_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SoilWaterContent(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_PFI(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.(meta,roi,vList[0]); del roi['grd'][vList[0]]
 
 #%% Forest mask for costum vector layers
 fig,ax=p1ha.Plot_ForestMask(meta,roi)
@@ -169,14 +237,14 @@ fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,'lc_comp1_2019')
 fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,'lc_comp1_2049s1')
 fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,'lc_comp1_2049s2')
 fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,'lc_comp1_2049s3')
-fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,'lc_comp1_2049s4')
+#fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,'lc_comp1_2049s4')
 
 #%% Land Use Compilation 1
 fig,ax=p1ha.Plot_LandUseComp1(meta,roi,'lu_comp1_2019')
 fig,ax=p1ha.Plot_LandUseComp1(meta,roi,'lu_comp1_2049s1')
 fig,ax=p1ha.Plot_LandUseComp1(meta,roi,'lu_comp1_2049s2')
 fig,ax=p1ha.Plot_LandUseComp1(meta,roi,'lu_comp1_2049s3')
-fig,ax=p1ha.Plot_LandUseComp1(meta,roi,'lu_comp1_2049s4')
+#fig,ax=p1ha.Plot_LandUseComp1(meta,roi,'lu_comp1_2049s4')
 p1ha.Plot_LandUseComp1Panels(meta,roi) # Plot panels
 
 #%% Other Land Cover estimates
@@ -185,8 +253,9 @@ fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,'lc_vri_recl')
 fig,ax=p1ha.Plot_LC20_CEC(meta,roi)
 
 #%% Plot LUC (Afforestation or Deforestation) from CEC
-fig,ax=p1ha.Plot_LandCoverLandUseChange(meta,roi,'luc1_early_type')
+fig,ax=p1ha.Plot_LandCoverLandUseChange(meta,roi,'luc1_hist_type')
 fig,ax=p1ha.Plot_LandCoverLandUseChange(meta,roi,'luc1_1019_type')
+fig,ax=p1ha.Plot_LandCoverLandUseChange(meta,roi,'luc1_fut_s1_type')
 #fig,ax=p1ha.Plot_LU_Change_FromCEC(meta,roi,'aff')
 #fig,ax=p1ha.Plot_LU_Change_FromCEC(meta,roi,'def')
 
@@ -237,6 +306,9 @@ fig,ax=p1ha.Plot_WildfireYear(meta,roi)
 fig,ax=p1ha.Plot_HarvestYear(meta,roi,'comp1')
 fig,ax=p1ha.Plot_HarvestYear(meta,roi,'comp2')
 
+#%% Salvage mask from timber cruise
+fig,ax=p1ha.Plot_SalvageLogging(meta,roi)
+
 #%% Plot planted area mask
 fig,ax=p1ha.Plot_PlantedMask(meta,roi)
 
@@ -266,9 +338,6 @@ p1ha.Plot_GroundPlots(meta,roi)
 
 #%% Plot ground plots 2 (panels for paper)
 p1ha.Plot_GroundPlotsPanels(meta,roi)
-
-#%% Salvage mask from timber cruise
-fig,ax=p1ha.Plot_SalvageLogging(meta,roi)
 
 #%% Ownership
 fig,ax=p1ha.Plot_Ownership(meta,roi)

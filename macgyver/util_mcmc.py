@@ -1,7 +1,5 @@
 '''
-
 Markov Chain Monte Carlo (MCMC) Utilities
-
 '''
 
 #%% Import modules
@@ -85,7 +83,7 @@ def MetropolisHastings2(thetaInit,thetaScale,thetaMin,thetaMax,SearchWidth,y,mod
 def MetropolisHastings2b(thetaInit,thetaScale,thetaMin,thetaMax,SearchWidth,y,model,N_Iter,chain,ll,ar,E,iStart):    
     for i in tqdm(range(iStart,N_Iter-1)):        
         thetaProposed=proposal(chain[i],SearchWidth,thetaMin,thetaMax)        
-        yhatProposed,y,E[i]=model(thetaProposed)        
+        yhatProposed,y,E[i,:]=model(thetaProposed)        
         log_post_proposal=log_prior(thetaProposed,thetaScale)+log_likelihood(thetaProposed,y,yhatProposed)        
         if i==iStart:
             yhatPrv,y,E[i]=model(chain[i])

@@ -1,12 +1,7 @@
 '''
-
 GENERAL FUNCTIONS
-
 '''
-
-
 #%% Import packages
-
 import numpy as np
 import pandas as pd
 import os
@@ -1203,3 +1198,20 @@ def gradient(h, x, y):
     vectors = np.array([[0, 1], [0, -1], [1, 0], [-1, 0]])
     g = vectors[h % 4]
     return g[:,:,0] * x + g[:,:,1] * y
+
+#%%
+def ScatterDensity(x,y,limX,limY,nBx,nBy):
+    x=x.flatten()
+    y=y.flatten()
+    binX=np.linspace(limX[0],limX[1],nBx)
+    binY=np.linspace(limY[0],limY[1],nBy)
+    dX=binX[1]-binX[0]
+    dY=binY[1]-binY[0]
+    Z=np.zeros((binY.size,binX.size))
+    for i in range(binY.size):
+        for j in range(binX.size):
+            ind=np.where( (np.abs(x-binX[i])<dX/2) & (np.abs(y-binY[j])<dY/2) )[0]
+            Z[i,j]=ind.size
+    return binX,binY,Z
+
+#%%

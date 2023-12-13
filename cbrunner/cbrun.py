@@ -13,7 +13,6 @@ import fcgadgets.cbrunner.cbrun_annproc as annproc
 import fcgadgets.hardhat.geological as geologic
 
 #%% Run simulation
-
 def MeepMeep(meta,pNam):
 
     # Track time
@@ -197,7 +196,6 @@ def MeepMeep(meta,pNam):
     return meta
 
 #%% Initialize stands
-
 def InitializeStands(meta,pNam,iScn,iEns,iBat):
 
     #--------------------------------------------------------------------------
@@ -498,33 +496,6 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
     vo['Atm_N2O_Out']=np.zeros((m,n))
 
     #--------------------------------------------------------------------------
-    # Specify a fast-track period that spans the spin-up period for use of Sawtooth
-    # module
-    # *** Not working ***
-    #--------------------------------------------------------------------------
-
-#    if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
-#
-#        meta[pNam]['Project']['SpinupSpanFastTrack']=[None]*meta[pNam]['Project']['N Scenario']
-#
-#        for iScn in range(meta[pNam]['Project']['N Scenario']):
-#
-#            # Get spinup event years
-#            ivl_spin=meta[pNam]['Project']['Spinup Disturbance Return Inverval']
-#            YearRef=meta[pNam]['Scenario'][iScn]['Year1_DisFromInv']
-#            AgeRef=meta[pNam]['Scenario'][iScn]['Age1_DisFromInv']
-#            if AgeRef>=0:
-#                Year=np.arange(YearRef-AgeRef-100*ivl_spin,YearRef-AgeRef+ivl_spin,ivl_spin)
-#            else:
-#                Year1=meta[pNam]['Project']['Year Start']+ivl_spin
-#                Year2=meta[pNam]['Project']['Spinup Year End']
-#                Year=np.arange(Year1,Year2+1,meta[pNam]['Project']['Spinup Disturbance Return Inverval'])
-#
-#            meta[pNam]['Project']['SpinupSpanFastTrack'][iScn]={}
-#            meta[pNam]['Project']['SpinupSpanFastTrack'][iScn]['Start']=Year[3]
-#            meta[pNam]['Project']['SpinupSpanFastTrack'][iScn]['End']=Year[-2]
-
-    #--------------------------------------------------------------------------
     # Configure batch-specific setttings
     #--------------------------------------------------------------------------
 
@@ -538,28 +509,6 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
     meta[pNam]['Project']['G_Net_PriorToBreakup']=np.zeros((meta[pNam]['Project']['Batch Size'][iBat],7))
 
     #--------------------------------------------------------------------------
-    # Generate random numbers for on-the-fly disturbance types
-    #--------------------------------------------------------------------------
-
-    # if (meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On'):
-    #     if meta[pNam]['Project']['Frozen Ensembles Status']=='Off':
-    #         rn=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
-    #     else:
-    #         rn=gu.ipickle(meta[pNam]['Project']['Frozen Ensembles Path'] + '\\RandomNumbers_Harvest_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
-    #     rn=rn.astype(float)
-    #     rn=rn*meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
-    #     meta[pNam]['Project']['On the Fly']['Random Numbers']['Harvest']=rn.copy()
-
-    # if (meta[pNam]['Scenario'][iScn]['Breakup Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Breakup Status Future']=='On'):
-    #     if meta[pNam]['Project']['Frozen Ensembles Status']=='Off':
-    #         rn=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Inputs\\Ensembles\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
-    #     else:
-    #         rn=gu.ipickle(meta[pNam]['Project']['Frozen Ensembles Path'] + '\\RandomNumbers_Breakup_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl')
-    #     rn=rn.astype(float)
-    #     rn=rn*meta[pNam]['Project']['On the Fly']['Random Numbers']['Scale Factor']
-    #     meta[pNam]['Project']['On the Fly']['Random Numbers']['Breakup']=rn.copy()
-
-    #--------------------------------------------------------------------------
     # Initialize a log book that will record various diagnostics, warnings,
     # and error flags
     #--------------------------------------------------------------------------
@@ -569,7 +518,6 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
     return meta,vi,vo
 
 #%% Import parameters
-
 def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
     #--------------------------------------------------------------------------
@@ -903,7 +851,6 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
     return meta,vi
 
 #%% Export simulation results
-
 def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
     
     #--------------------------------------------------------------------------
@@ -1102,7 +1049,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
         if vo[k].dtype=='int8':
             continue
 
-        # This one variable needs a larger scale factor
+        # These variable needs a larger scale factor
         if (k=='E_CO2e_LULUCF_HWP') | (k=='E_CO2e_ESC_Comb') | (k=='E_CO2e_ET_Comb') | (k=='E_CO2e_IPPU_Comb'):
             vo[k]=vo[k]/meta['Core']['Scale Factor Export Big']
         else:
@@ -1111,7 +1058,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
         if np.max(vo[k])<32767:
             vo[k]=vo[k].astype('int16')
         else:
-            vo[k]=vo[k].astype(int)
+            vo[k]=vo[k].astype('int32')
 
     # Mortality summary by agent
     for k in vo['C_M_ByAgent'].keys():
