@@ -24,12 +24,12 @@ import fcexplore.field_plots.Processing.psp_util as ugp
 #%% Age class distribution (by BGC Zone)
 def QA_FullComparisonAgeDistByBGC_CN(meta,gpt):
 	x=np.arange(0,501,1); yt=np.arange(0,2,0.1)
-	ord=np.flip(np.argsort(meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)']))
+	ord=np.flip(np.argsort(meta['Param']['Raw']['ByBGCZ']['Area Treed (Mha)']))
 	lab=np.array(['' for _ in range(ord.size)],dtype=object)
 	plt.close('all'); fig,ax=plt.subplots(3,3,figsize=gu.cm2inch(22,11)); cnt=0
-	for j in range(3):
-		for i in range(3):
-			zone=meta['Param']['BE']['BGC Zone Averages']['Name'][ord[cnt]]
+	for i in range(3):
+		for j in range(3):
+			zone=meta['Param']['Raw']['ByBGCZ']['Name'][ord[cnt]]
 			#ind=np.where( (gpt['Ecozone BC L1']==meta['LUT']['GP']['Ecozone BC L1'][zone]) & (gpt['Plot Type']==meta['LUT']['GP']['Plot Type']['VRI']) & (gpt['Age Mean t0']>=0) )[0]
 			#kde=stats.gaussian_kde(gpt['Age Mean t0'][ind])
 			#p=kde(x); y1=p/np.sum(p)*100
@@ -52,78 +52,12 @@ def QA_FullComparisonAgeDistByBGC_CN(meta,gpt):
 			lab[cnt]=zone
 			cnt=cnt+1
 	gu.axletters(ax,plt,0.025,0.89,FontColor=meta['Graphics']['gp']['cla'],LetterStyle='NoPar',FontWeight='Bold',Labels=lab,LabelSpacer=0.035)
-	if meta['Graphics']['Print Figures']=='On':
-		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareAgeDistByBGC_CN_' + str(iScn+1),'png',900)
+	#if meta['Graphics']['Print Figures']=='On':
+	#	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareAgeDistByBGC_CN_' + str(iScn+1),'png',900)
 	return
 
 #%%
-def QA_FullCompareBiomassDynamicsAve_CN(meta,pNam,tv,dObs0,dMod0):
-	for iScn in range(meta[pNam]['Project']['N Scenario']):
-
-		dObs=copy.deepcopy(dObs0)
-		dMod=copy.deepcopy(dMod0)
-		lab=dObs['code'].copy()
-		u=dObs['id'].copy()
-
-		Area=np.zeros(lab.size)
-		for i in range(lab.size):
-			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-
-		dO_mu={}
-		dO_se={}
-		for v in dObs['data']['CNV'].keys():
-			dO_mu[v]=np.nansum(Area*dObs['data']['CNV'][v]['mu'])/np.nansum(Area)
-			dO_se[v]=np.nansum(Area*dObs['data']['CNV'][v]['se'])/np.nansum(Area)
-		dO_mu['Ctot G Tot']=dO_mu['Ctot G Surv']+dO_mu['Ctot G Recr']
-		dO_se['Ctot G Tot']=dO_se['Ctot G Surv']+dO_se['Ctot G Recr']
-
-		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
-		dM_mu={}
-		dM_se={}
-		for v in dMod[0]['SBS'].keys():
-			mu=np.zeros(lab.size)
-			se=np.zeros(lab.size)
-			for i in range(dObs['code'].size):
-				tmp=dMod[iScn][dObs['code'][i]]
-				mu[i]=np.mean(tmp[v][iT])
-				se[i]=2*np.std(tmp[v][iT])/np.sqrt(iT.size)
-			dM_mu[v]=np.sum(Area*mu)/np.sum(Area)
-			dM_se[v]=np.sum(Area*se)/np.sum(Area)
-
-		lab=['Gross\ngrowth','Natural\nmortality','Harvest\nmortality','Net\ngrowth'] #,'Harvest\nmortality'
-		cl=meta['Graphics']['GP Comp']; barw=0.38
-		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(9,7))
-		ax.plot([0,5],[0,0],'k-',color=meta['Graphics']['gp']['cla'],lw=meta['Graphics']['gp']['lw1'])
-		ax.bar(1-barw/2-0.01,dO_mu['Ctot G Tot'],barw,facecolor=cl['bl'],label='Ground plot observations')
-		ax.bar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
-		ax.errorbar(1-barw/2-0.01,dO_mu['Ctot G Tot'],yerr=dO_se['Ctot G Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax.errorbar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],yerr=dM_se['C_G_Gross_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		
-		ax.bar(2-barw/2-0.01,-dO_mu['Ctot Mort Nat'],barw,facecolor=cl['bl'])
-		ax.bar(2+barw/2+0.01,-dM_mu['C_M_Nat'],barw,facecolor=cl['gl'])
-		ax.errorbar(2-barw/2-0.01,-dO_mu['Ctot Mort Nat'],yerr=dO_se['Ctot Mort Nat'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax.errorbar(2+barw/2+0.01,-dM_mu['C_M_Nat'],yerr=dM_se['C_M_Nat'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		
-		ax.bar(3-barw/2-0.01,-dO_mu['Ctot Mort Harv'],barw,facecolor=cl['bl'])
-		ax.bar(3+barw/2+0.01,-dM_mu['C_M_Harv'],barw,facecolor=cl['gl'])
-		ax.errorbar(3-barw/2-0.01,-dO_mu['Ctot Mort Harv'],yerr=dO_se['Ctot Mort Harv'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax.errorbar(3+barw/2+0.01,-dM_mu['C_M_Harv'],yerr=dM_se['C_M_Harv'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		
-		ax.bar(4-barw/2-0.01,dO_mu['Ctot Net'],barw,facecolor=cl['bl'])
-		ax.bar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],barw,facecolor=cl['gl'])
-		ax.errorbar(4-barw/2-0.01,dO_mu['Ctot Net'],yerr=dO_se['Ctot Net'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax.errorbar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],yerr=dM_se['C_G_Net_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		
-		ax.set(position=[0.14,0.12,0.84,0.86],xticks=np.arange(1,len(lab)+1),xticklabels=lab,yticks=np.arange(-2,3,0.5),ylabel='Carbon balance of trees (tC ha$^{-1}$ yr$^{-1}$)',xlim=[0.5,4.5],ylim=[-1.5,2])
-		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
-		ax.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
-		if meta['Graphics']['Print Figures']=='On':
-			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareBiomassDynamicsAve_CN_' + str(iScn+1),'png',900)
-	return
-
-#%%
-def QA_FullCompareBiomassByBGC_CNV(meta,pNam,tv,dObs0,dMod0):
+def QA_FullCompareAgeByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 	for iScn in range(meta[pNam]['Project']['N Scenario']):
 		dObs=copy.deepcopy(dObs0)
 		dMod=copy.deepcopy(dMod0)
@@ -131,8 +65,70 @@ def QA_FullCompareBiomassByBGC_CNV(meta,pNam,tv,dObs0,dMod0):
 		u=dObs['id'].copy()
 
 		d={}
-		d['obs mu']=dObs['data']['CNV']['Ctot L t0']['mu']
-		d['obs se']=dObs['data']['CNV']['Ctot L t0']['se']
+		d['obs mu']=dObs['data']['CN']['Age Mean t0']['mu']
+		d['obs se']=dObs['data']['CN']['Age Mean t0']['se']
+		# Add modelled data
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		d['mod mu']=np.zeros(d['obs mu'].size)
+		d['mod se']=np.zeros(d['obs se'].size)
+		for i in range(dObs['code'].size):
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['A'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['A'][iT])/np.sqrt(iT.size)
+		
+		# Put in order
+		ord=np.argsort(d['mod mu'])
+		lab=np.flip(lab[ord])
+		u=u[ord]
+		for v in d:
+			d[v]=np.flip(d[v][ord])
+		
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
+		# Area weighting
+		for v in d:
+			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
+		lab=np.append(lab,'Weighted\naverage')
+		u=np.append(u,0.0)
+		
+		# Percent difference
+		yp=d['mod mu']
+		yo=d['obs mu']
+		Dp=(yp-yo)/yo*100
+		
+		cl=meta['Graphics']['GP Comp']; barw=0.32
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
+		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
+		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.errorbar(np.arange(u.size)-barw/2-0.01,d['obs mu'],yerr=d['obs se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(np.arange(u.size)+barw/2+0.01,d['mod mu'],yerr=d['mod se'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		for i in range(u.size):
+			if Dp[i]>=0:
+				a='+'
+			else:
+				a=''
+			if np.isnan(Dp[i])==True: continue
+			ax.text(i+barw/2+0.01,yp[i]+d['mod se'][i]+6,a + str(Dp[i].astype(int)) + '%',color=meta['Graphics']['gp']['cla'],ha='center',fontsize=6)
+		#for i in range(u.size):
+		#ax.text(i,8,str(d['Csw L t0']['N'][i].astype(int)),color='k',ha='center',fontsize=8)
+		ax.set(position=[0.08,0.12,0.9,0.86],xticks=np.arange(u.size),xticklabels=lab,ylabel='Age (years)',xlim=[-0.5,u.size-0.5],ylim=[0,400])
+		plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareAgeByBGC_CN_' + str(iScn+1),'png',900)
+	return
+#%%
+def QA_FullCompareBiomassByBGC_CN(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+
+		d={}
+		d['obs mu']=dObs['data']['CN']['Ctot L t0']['mu']
+		d['obs se']=dObs['data']['CN']['Ctot L t0']['se']
 		# Add modelled data
 		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
 		d['mod mu']=np.zeros(d['obs mu'].size)
@@ -150,9 +146,8 @@ def QA_FullCompareBiomassByBGC_CNV(meta,pNam,tv,dObs0,dMod0):
 		
 		Area=np.zeros(lab.size)
 		for i in range(lab.size):
-			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-		
+			Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
 		# Area weighting
 		for v in d:
 			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
@@ -182,7 +177,7 @@ def QA_FullCompareBiomassByBGC_CNV(meta,pNam,tv,dObs0,dMod0):
 		plt.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
 		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
 		if meta['Graphics']['Print Figures']=='On':
-			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareBiomassByBGC_CNV_' + str(iScn+1),'png',900)
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareBiomassByBGC_CN_' + str(iScn+1),'png',900)
 	return
 
 #%%
@@ -213,9 +208,8 @@ def QA_FullCompareGrowthGrossByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		
 		Area=np.zeros(lab.size)
 		for i in range(lab.size):
-			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-		
+			Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
 		# Area weighting
 		for v in d:
 			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
@@ -281,9 +275,8 @@ def QA_FullCompareGrowthNetByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		
 		Area=np.zeros(lab.size)
 		for i in range(lab.size):
-			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-		
+			Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
 		# Area weighting
 		for v in d:
 			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
@@ -348,9 +341,8 @@ def QA_FullCompareMortalityByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		
 		Area=np.zeros(lab.size)
 		for i in range(lab.size):
-			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-		
+			Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
 		# Area weighting
 		for v in d:
 			d[v]=np.append(d[v],np.nansum(d[v]*Area)/np.nansum(Area))
@@ -422,9 +414,8 @@ def QA_FullCompareSOCByBGC(meta,pNam,tv,dObs0,dMod0):
 
 		Area=np.zeros(lab.size)
 		for i in range(lab.size):
-			ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-			Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-		
+			Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
 		# Area weighting
 		for v in dObs['data']['Soil'].keys():
 			dObs['data']['Soil'][v]['mu']=np.append(dObs['data']['Soil'][v]['mu'],np.sum(dObs['data']['Soil'][v]['mu']*Area)/np.sum(Area))
@@ -461,7 +452,71 @@ def QA_FullCompareSOCByBGC(meta,pNam,tv,dObs0,dMod0):
 		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
 		if meta['Graphics']['Print Figures']=='On':
 			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareSOCByBGC_' + str(iScn+1),'png',900)
-	
+	return
+
+#%%
+def QA_FullCompareBiomassDynamicsAve_CN(meta,pNam,tv,dObs0,dMod0):
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+
+		dObs=copy.deepcopy(dObs0)
+		dMod=copy.deepcopy(dMod0)
+		lab=dObs['code'].copy()
+		u=dObs['id'].copy()
+
+		Area=np.zeros(lab.size)
+		for i in range(lab.size):
+			Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
+		dO_mu={}
+		dO_se={}
+		for v in dObs['data']['CNV'].keys():
+			dO_mu[v]=np.nansum(Area*dObs['data']['CNV'][v]['mu'])/np.nansum(Area)
+			dO_se[v]=np.nansum(Area*dObs['data']['CNV'][v]['se'])/np.nansum(Area)
+		dO_mu['Ctot G Tot']=dO_mu['Ctot G Surv']+dO_mu['Ctot G Recr']
+		dO_se['Ctot G Tot']=dO_se['Ctot G Surv']+dO_se['Ctot G Recr']
+
+		iT=np.where( (tv>=2000) & (tv<=2018) )[0]
+		dM_mu={}
+		dM_se={}
+		for v in dMod[0]['SBS'].keys():
+			mu=np.zeros(lab.size)
+			se=np.zeros(lab.size)
+			for i in range(dObs['code'].size):
+				tmp=dMod[iScn][dObs['code'][i]]
+				mu[i]=np.mean(tmp[v][iT])
+				se[i]=2*np.std(tmp[v][iT])/np.sqrt(iT.size)
+			dM_mu[v]=np.sum(Area*mu)/np.sum(Area)
+			dM_se[v]=np.sum(Area*se)/np.sum(Area)
+
+		lab=['Gross\ngrowth','Natural\nmortality','Harvest\nmortality','Net\ngrowth'] #,'Harvest\nmortality'
+		cl=meta['Graphics']['GP Comp']; barw=0.38
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(9,7))
+		ax.plot([0,5],[0,0],'k-',color=meta['Graphics']['gp']['cla'],lw=meta['Graphics']['gp']['lw1'])
+		ax.bar(1-barw/2-0.01,dO_mu['Ctot G Tot'],barw,facecolor=cl['bl'],label='Ground plot observations')
+		ax.bar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.errorbar(1-barw/2-0.01,dO_mu['Ctot G Tot'],yerr=dO_se['Ctot G Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],yerr=dM_se['C_G_Gross_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.bar(2-barw/2-0.01,-dO_mu['Ctot Mort Nat'],barw,facecolor=cl['bl'])
+		ax.bar(2+barw/2+0.01,-dM_mu['C_M_Nat'],barw,facecolor=cl['gl'])
+		ax.errorbar(2-barw/2-0.01,-dO_mu['Ctot Mort Nat'],yerr=dO_se['Ctot Mort Nat'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(2+barw/2+0.01,-dM_mu['C_M_Nat'],yerr=dM_se['C_M_Nat'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.bar(3-barw/2-0.01,-dO_mu['Ctot Mort Harv'],barw,facecolor=cl['bl'])
+		ax.bar(3+barw/2+0.01,-dM_mu['C_M_Harv'],barw,facecolor=cl['gl'])
+		ax.errorbar(3-barw/2-0.01,-dO_mu['Ctot Mort Harv'],yerr=dO_se['Ctot Mort Harv'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(3+barw/2+0.01,-dM_mu['C_M_Harv'],yerr=dM_se['C_M_Harv'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.bar(4-barw/2-0.01,dO_mu['Ctot Net'],barw,facecolor=cl['bl'])
+		ax.bar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],barw,facecolor=cl['gl'])
+		ax.errorbar(4-barw/2-0.01,dO_mu['Ctot Net'],yerr=dO_se['Ctot Net'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],yerr=dM_se['C_G_Net_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		
+		ax.set(position=[0.14,0.12,0.84,0.86],xticks=np.arange(1,len(lab)+1),xticklabels=lab,yticks=np.arange(-2,3,0.5),ylabel='Carbon balance of trees (tC ha$^{-1}$ yr$^{-1}$)',xlim=[0.5,4.5],ylim=[-1.5,2])
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax.legend(frameon=False,facecolor=[1,1,1],labelspacing=0.25)
+		if meta['Graphics']['Print Figures']=='On':
+			gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\QA_FullCompareBiomassDynamicsAve_CN_' + str(iScn+1),'png',900)
 	return
 
 #%%
@@ -697,9 +752,8 @@ def EvalAtPlots_AgeByBGCZ_CNV(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-    
+            Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
         # Area weighting
         for v in d:
             d[v]['mu']=np.append(d[v]['mu'],np.sum(d[v]['mu']*Area)/np.sum(Area))
@@ -802,9 +856,8 @@ def EvalAtPlots_BiomassByBGC_CNV(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
-    
+            Area[i]=meta['Param']['BE']['ByBGCZ'][lab[i]]['Area Treed (Mha)']
+
         # Area weighting
         for v in d:
             d[v]['mu']=np.append(d[v]['mu'],np.sum(d[v]['mu']*Area)/np.sum(Area))
@@ -882,8 +935,8 @@ def EvalAtPlots_BiomassByBGC_CNV(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -986,8 +1039,8 @@ def EvalAtPlots_BiomassByBGC_YSM(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -1091,8 +1144,8 @@ def EvalAtPlots_StemwoodFromTIPSYByBGC_CNV(meta,pNam,gpt):
     
         # Area=np.zeros(lab.size)
         # for i in range(lab.size):
-        #     ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-        #     Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+        #     ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+        #     Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # # Area weighting
         # for v in d:
@@ -1191,8 +1244,8 @@ def EvalAtPlots_BiomassDynamicsAve_TotCO2e_CN(meta,pNam,gpt):
         # Area weighting
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
         for v in d:
             d[v]['mu']=np.append(d[v]['mu'],np.sum(d[v]['mu']*Area)/np.sum(Area))
             d[v]['se']=np.append(d[v]['se'],np.sum(d[v]['se']*Area)/np.sum(Area))
@@ -1265,8 +1318,8 @@ def EvalAtPlots_BiomassDynamicsAve_CN(meta,pNam,gpt):
         # Area weighting
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
             
         # z=u1ha.Import_Raster(meta,[],['lcc1_c','bgcz'])
         # dA={}
@@ -1357,8 +1410,8 @@ def EvalAtPlots_BiomassDynamicsAve_YSM(meta,pNam,gpt):
         # Area weighting
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
         for v in d:
             d[v]['mu']=np.append(d[v]['mu'],np.sum(d[v]['mu']*Area)/np.sum(Area))
             d[v]['se']=np.append(d[v]['se'],np.sum(d[v]['se']*Area)/np.sum(Area))
@@ -1463,8 +1516,8 @@ def EvalAtPlots_GrossGrowthByBGC_CN(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -1570,8 +1623,8 @@ def EvalAtPlots_GrossGrowthByBGC_YSM(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -1675,8 +1728,8 @@ def EvalAtPlots_MortalityByBGC_CN(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -1781,8 +1834,8 @@ def EvalAtPlots_MortalityByBGC_YSM(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -1887,8 +1940,8 @@ def EvalAtPlots_GrowthNetByBGC_CN(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -1997,8 +2050,8 @@ def EvalAtPlots_GrowthNetByBGC_YSM(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
@@ -2205,8 +2258,8 @@ def EvalAtPlots_SOCByBGC_ShawComp(meta,pNam,gpt):
     
         Area=np.zeros(lab.size)
         for i in range(lab.size):
-            ind1=np.where(meta['Param']['BE']['BGC Zone Averages']['Name']==lab[i])[0]
-            Area[i]=meta['Param']['BE']['BGC Zone Averages']['Area Treed (Mha)'][ind1]
+            ind1=np.where(meta['Param']['BE']['ByBGCZ']['Name']==lab[i])[0]
+            Area[i]=meta['Param']['BE']['ByBGCZ']['Area Treed (Mha)'][ind1]
     
         # Area weighting
         for v in d:
