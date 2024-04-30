@@ -14,11 +14,11 @@ science standards
 * Support complex policy decisions in land resource management
 <br>
 <br>
-The **fcgadgets** repository was written in the Python programming language, benefitting 
+The <b>fcgadgets</b> repository was written in the Python programming language, benefitting 
 from integrated libraries for simulation modelling, geographical information systems, data 
 analytics, and application deployment (Downey, 2017). 
 <br>
-The **fcgadgets** repository was designed for a community that conducts forest carbon 
+The <b>fcgadgets</b> repository was designed for a community that conducts forest carbon 
 modelling full time. Users must be fluent in the Python language. Trying to apply 
 fcgadgets without assistance is not advised. That said, it is relatively straightforward 
 to set up small projects that demonstrate dynamics for a single site. 
