@@ -84,16 +84,15 @@ The <b>cbrunner</b> model can be driven with output from [TASS/TIPSY growth and 
 * Convert the output from TASS for use in cbrunner with **GetTASSCurves**
 * Import GY curves into a work session with **Import_BatchTIPSY_Output**
 
-### Model Output Statistics
-Once simulations are complete, use a series of functions in **cbrun_util.py** to summarize model output statistics (MOS).
+### Model Output Statistics (MOS)
+Once simulations are complete, use a series of functions in <b>cbrun_util.py</b> to summarize model output statistics (MOS).
 * Import simulation output variables for a given scenario, ensemble, and batch using **LoadSingleOutputFile**
 * Import simulation output variables for a given scenario using **LoadScenarioResults**
 * Calculate the mean and variance of ensemble simulations using **ModelOutputStats**
-* When projects have been run for multi-polygon openings from RESULTS, model outputs can be summarized while preserving the exact treatment area that is specified for each multi-polygon using **MosByMultipolygon**
 
 ## MACGYVER
-The <b>macgyver</b> toolbox contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
-* Pre-processing script template to prepare **cbrunner** inputs for a:
+The <b>macgyver</b> toolbox contains custom scripts that compile information sources and prepare projects that use <b>cbrunner</b>. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
+* Pre-processing script template to prepare <b>cbrunner</b> inputs for a:
 	* Sample of points
 	* Sample of polygons
 	* Tile or multi-tile project
@@ -127,33 +126,26 @@ scenarios, consistent across project studies, and supported by documentation.
 * Spatially explicit simulations of events based on annual probability of onset and spread
 
 ## HARDHAT
-The <b>hardhat</b> toolbox contains resources for representing effects of forest management on forest sector GHG balance.
-### nutrient_application.py
-The nutrient_application module contains functions that update annual nutrient status called by the cbrunner model and a function that schedules hypothetical nutrient applications (during the future period of simulation).
+The <b>hardhat</b> repository contains resources for representing effects of forest management on forest sector GHG balance.
+### Nutrient Applications
+The <b>nutrient_application</b> module contains functions that update annual nutrient status called by the <b>cbrunner</b> model and a function that schedules hypothetical nutrient applications (during the future period of simulation).
 * Representation of GHG balance responses to aerial applications of Urea
 * Schedule aerial nutrient applications with specified stand selection criteria
-#### Update nutrient status
-All effects of nutrient application were expressed in cbrunner by prescribing a “Fertilization Areal” event during a specified calendar year in the disturbance and management event chronology (DMEC) – a set of variables that are input to cbrunner for each site. The occurrence of “Fertilization Aerial” events triggered the function, UpdateStatus, which:
-1.	Started a timer that eventually terminates stimulus at the specified response duration; 
-2.	Modified emissions to account for manufacture and transport;
-3.	Modified emissions to account for nitrous oxide (N2O) fluxes; 
-4.	Modified net growth rate of tree biomass pools;
-5.	Modified turnover of tree biomass pools; 
-6.	Modified decomposition rate. 
-#### Nutrient application scheduler
-Hypothetical future applications were scheduled by calling the function, ScheduleApplication. The scheduler was defined by a fixed annual probability of aerial nutrient application (PNAP) for stands meeting the following exclusion criteria: 
-1.	Dry biogeoclimatic (BGC) zones, including Bunchgrass, Ponderosa Pine and Interior Douglas-fir; 
-2.	Cold BGC zones, including Mountain Hemlock and Spruce-Willow-Birch; 
-3.	Site index at 50 years < 8 m; 
-4.	Stand age < 10
-5.	Stand age > 61 years; 
-6.	Time since nutrient application < 10 years. 
-Historically, the public forest fertilization program split operations evenly between coastal and interior regions. However, the area of the interior region exceeds that of the coast. The scheduler was set to continue the historical split between regions by making PNAP region specific.
 ### economics.py
 * Calculate cashflow from implementation of forest management events
 
 ## BC1HA
-The <b>bc1ha</b> repository supports raster processing on a 1 hectare regular grid of British Columbia.<br>
+* The <b>bc1ha</b> repository supports raster processing on a 1 hectare regular grid of British Columbia.<br>
+* The <b>bc1ha</b> raster framework is controlled with scripts in the <b>bc1ha</b> repository. The ordered workflow is shown in bc1ha_command.py, which calls functions in bc1ha_util.py.
+* On an annual basis, the required vector data are downloaded from the BC Data Catalogue and stored in local geodatabases. The layers that are downloaded from BC Data Catalogue are listed in: cbrunner/Parameters/Table_BCFCS_DataSources.xlsx.
+* The variables that are rasterized directly from layers on BC Data Catalogue are listed in: cbrunner/Parameters/Table_BCFCS_BC1haRasterVariableList.xlsx.
+* Upon download, the vector data are rasterized. Categorical variables must be converted into numerical data. These numerical variables record an “ID” for each category and are stored as 8-, 16- or 32-bit integers depending on the required precision. This is achieved using look-up-tables (LUTs). The LUTs for categorical variables sourced directly from geodatabases are generated automatically during the annual update process. The LUT for any derived categorical variables (e.g., land cover compilation 1) is manually created in a spreadsheet stored in the <b>cbrunner</b> Parameters folder. 
+* The LUTs are imported into the meta dictionary at the onset of each project and can be accessed through the meta dictionary, for example:
+meta[‘LUT’][‘ BEC_BIOGEOCLIMATIC_POLY’][‘ZONE’][‘CWH’]
+returns ID = 6
+* The ID associated with a specific category can be found using the lut_n2s function:
+cbu.lut_n2s(6,meta[‘LUT’][‘ BEC_BIOGEOCLIMATIC_POLY’][‘ZONE’])
+returning category “CWH”
 
 ## PROJECT WORKFLOW
 There are two ways to apply <b>cbrunner</b>. In small projects, the land surface attributes and disturbance and management event chronology are specified in the project configuration spreadsheet by the user. This approach is suitable for projects with less than 20 stands or less than 20 scenarios. In bigger georeferenced projects, where modelling is conducted over thousands of hectares, the model is run from a python script. Big projects can subsample from landscapes to reduce computation time.
