@@ -1,23 +1,29 @@
 ﻿# fcgadgets
 ## INTRODUCTION
-The **fcgadgets** repository supports greenhouse gas (GHG) balance estimation, accounting, and reporting in British Columbia’s forest sector.
-<br>
-<br>
-Use **fcgadgets** to quantify the impact of natural processes, land-use decisions, and forest management on the concentration of atmospheric GHGs. Emissions and removals are reported by sector, including Land Use, Land-use Change and Forestry Sector (i.e., forest ecosystems and harvested wood products), Energy - Stationary Combustion Sector, Energy - Transportation Sector, and the Industrial Product and Product Use Sector.
+The **fcgadgets** repository supports estimation, accounting, and reporting of greenhouse 
+gas (GHG) emissions in British Columbia’s forest sector. The repository is a toolbox that 
+offers flexible processing and outputs the variables required to meet international 
+reporting standards for the forest sector, or complete life cycle assessments.
 <br>
 <br> 
 The repository was developed to: 
-* Consolidate source code used by BC's Forest Carbon Initiative (FCI)
+* Achieve transparency and reproduceability as commitments to open government and open 
+science standards
 * Share knowledge, methods and limitations
-* Automate and streamline project design with BC information systems
-* Benefit from the diverse ecosystem of existing and new modelling approaches
+* Automate and streamline workflow
+* Promote a diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
 <br>
-fcgadgets is written in the Python programming language, benefitting from integrated libraries for simulation modelling, 
+<br>
+**fcgadgets** is written in the Python programming language, benefitting from integrated libraries for simulation modelling, 
 geographical information systems, data analytics, and application deployment (Downey, 2017). 
-
-fcgadgets was designed to streamline large, integrated modelling projects for advanced users that are fluent in the Python language. Trying to apply fcgadgets without assistance is not advised. That said, it is relatively straightforward to set up small projects that demonstrate dynamics for a single site. 
-
+<br>
+<br>
+**fcgadgets** was designed for a community who conducts forest carbon modelling full time. 
+Users must be fluent in the Python language. Trying to apply fcgadgets without assistance 
+is not advised. That said, it is relatively straightforward to set up small projects that 
+demonstrate dynamics for a single site. 
+<br>
 ## PLUG-AND-PLAY MODULARITY
 The repository allows for comprehensive representation of processes and new science by connecting a constellation of supporting modules.
 ![image info](./images/fcgadgets_constellation.png)
