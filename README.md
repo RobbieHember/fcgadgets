@@ -5,6 +5,7 @@ gas (GHG) emissions in British Columbia’s forest sector. The repository is a t
 offers flexible processing and outputs the variables required to meet international 
 reporting standards for the forest sector, or complete life cycle assessments.
 <br>
+<br>
 The repository was developed to: 
 * Achieve transparency and reproduceability as commitments to open government and open 
 science standards
@@ -16,7 +17,6 @@ The <b>fcgadgets</b> repository was written in the Python programming language, 
 from integrated libraries for simulation modelling, geographical information systems, data 
 analytics, and application deployment (Downey, 2017). 
 <br>
-<br>
 The <b>fcgadgets</b> repository was designed for a community that conducts forest carbon 
 modelling full time. Users must be fluent in the Python language. Trying to apply 
 fcgadgets without assistance is not advised. That said, it is relatively straightforward 
@@ -25,7 +25,6 @@ to set up small projects that demonstrate dynamics for a single site.
 ## PLUG-AND-PLAY MODULARITY
 The repository allows for comprehensive representation of processes and new science by connecting a constellation of supporting modules.
 ![image info](./images/fcgadgets_constellation.png)
-
 ## CBRUNNER
 <b>cbrunner</b> is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
 wood products. The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the 
