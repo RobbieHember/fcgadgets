@@ -37,10 +37,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		meta['Modules']['NutrientApp']['ResponseCounter'][iApp]=1
 		meta['Modules']['NutrientApp']['ResponseCounterContinuous'][iApp]=1
 
-		#----------------------------------------------------------------------
 		# Update log-size enhancement factor
-		#----------------------------------------------------------------------
-
 		vo['LogSizeEnhancement'][iT:,iApp]=vo['LogSizeEnhancement'][iT:,iApp]+1
 
 		# Get age vector for GC's
@@ -157,8 +154,8 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 
 		# Remove the false stimulus that arises from estimating roots from AG
 		# biomass
-		vo['C_G_Net_Reg'][iT,iApp,iEP['RootCoarse']]=0.84*vo['C_G_Net_Reg'][iT,iApp,iEP['RootCoarse']]
-		vo['C_G_Net_Reg'][iT,iApp,iEP['RootFine']]=0.84*vo['C_G_Net_Reg'][iT,iApp,iEP['RootFine']]
+		vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootCoarse']]=0.84*vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootCoarse']]
+		vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootFine']]=0.84*vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootFine']]
 		#Gnet_RC[iApp]=0.65*(2-bNA['r_Stemwood'])*Gnet_RC[iApp]
 		#Gnet_RF[iApp]=0.65*(2-bNA['r_Stemwood'])*Gnet_RF[iApp]
 
@@ -171,8 +168,8 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		#vo['C_Eco_Pools'][iT,iApp,iEP['RootFine']]=vo['C_Eco_Pools'][iT-1,iApp,iEP['RootFine']]+Gnet_RF[iApp]
 
 		# Populate net growth of root biomass
-		vo['C_G_Net_Reg'][iT,iApp,iEP['RootCoarse']]=rrRC*vo['C_G_Net_Reg'][iT,iApp,iEP['RootCoarse']]
-		vo['C_G_Net_Reg'][iT,iApp,iEP['RootFine']]=rrRF*vo['C_G_Net_Reg'][iT,iApp,iEP['RootFine']]
+		vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootCoarse']]=rrRC*vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootCoarse']]
+		vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootFine']]=rrRF*vo['C_G_Net_Reg_ByPool'][iT,iApp,iEP['RootFine']]
 		#vo['C_G_Net_Reg'][iT,iApp,iEP['RootCoarse']]=Gnet_RC[iApp]
 		#vo['C_G_Net_Reg'][iT,iApp,iEP['RootFine']]=Gnet_RF[iApp]
 
@@ -198,9 +195,9 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		#----------------------------------------------------------------------
 
 		if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
-			vo['C_M_Reg'][iT,iApp,0:7]=bNA['rPrime_TreeMortality']*vo['C_M_Reg'][iT,iApp,0:7]
+			vo['C_M_Reg_ByPool'][iT,iApp,0:7]=bNA['rPrime_TreeMortality']*vo['C_M_Reg_ByPool'][iT,iApp,0:7]
 		else:
-			vo['C_M_Reg'][iT,iApp,0:7]=np.tile(bNA['rPrime_TreeMortality'][iApp],(7,1)).T*vo['C_M_Reg'][iT,iApp,0:7]
+			vo['C_M_Reg_ByPool'][iT,iApp,0:7]=np.tile(bNA['rPrime_TreeMortality'][iApp],(7,1)).T*vo['C_M_Reg_ByPool'][iT,iApp,0:7]
 
 	elif (comp=='Litterfall') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
@@ -214,11 +211,11 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		if (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGS') | (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGT'):
 			pass
 		else:
-			vo['C_LF'][iT,iApp,iEP['Foliage']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,iApp,iEP['Foliage']]
-			vo['C_LF'][iT,iApp,iEP['Branch']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,iApp,iEP['Branch']]
-			vo['C_LF'][iT,iApp,iEP['Bark']]=bNA['rPrime_Litterfall']*vo['C_LF'][iT,iApp,iEP['Bark']]
-			vo['C_LF'][iT,iApp,iEP['RootCoarse']]=bNA['rPrime_TurnoverRootCoarse']*vo['C_LF'][iT,iApp,iEP['RootCoarse']]
-			vo['C_LF'][iT,iApp,iEP['RootFine']]=bNA['rPrime_TurnoverRootFine']*vo['C_LF'][iT,iApp,iEP['RootFine']]
+			vo['C_LF_ByPool'][iT,iApp,iEP['Foliage']]=bNA['rPrime_Litterfall']*vo['C_LF_ByPool'][iT,iApp,iEP['Foliage']]
+			vo['C_LF_ByPool'][iT,iApp,iEP['Branch']]=bNA['rPrime_Litterfall']*vo['C_LF_ByPool'][iT,iApp,iEP['Branch']]
+			vo['C_LF_ByPool'][iT,iApp,iEP['Bark']]=bNA['rPrime_Litterfall']*vo['C_LF_ByPool'][iT,iApp,iEP['Bark']]
+			vo['C_LF_ByPool'][iT,iApp,iEP['RootCoarse']]=bNA['rPrime_TurnoverRootCoarse']*vo['C_LF_ByPool'][iT,iApp,iEP['RootCoarse']]
+			vo['C_LF_ByPool'][iT,iApp,iEP['RootFine']]=bNA['rPrime_TurnoverRootFine']*vo['C_LF_ByPool'][iT,iApp,iEP['RootFine']]
 
 	elif comp=='Emissions':
 
@@ -241,14 +238,14 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		therm_per_app=MMBtu_per_app/bNA['MMBtu_per_therm']
 		E_ProdUrea=bNA['EmissionFromUreaProduction_per_therm']*therm_per_app
 
-		vo['E_CO2e_ESC_OperForBurnGas'][iT,iApp]=vo['E_CO2e_ESC_OperForBurnGas'][iT,iApp] + \
+		vo['E_Dom_ESC_ForOpsBurnGas'][iT,iApp]=vo['E_Dom_ESC_ForOpsBurnGas'][iT,iApp] + \
 			(E_ProdNH3+E_ProdUrea)
 
 		#----------------------------------------------------------------------
 		# Emissions from transportation (tCO2e/ha)
 		#----------------------------------------------------------------------
 
-		vo['E_CO2e_ET_OperForBurnOil'][iT,iApp]=vo['E_CO2e_ET_OperForBurnOil'][iT,iApp] + \
+		vo['E_Dom_ET_ForOpsBurnOil'][iT,iApp]=vo['E_Dom_ET_ForOpsBurnOil'][iT,iApp] + \
 			(bNA['EmissionFromRailBargeTruck_Workbook']+bNA['EmissionFromHelicopter_SP10'])
 
 		#----------------------------------------------------------------------
@@ -256,7 +253,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		# approach, IPCC 2006, 11.4.1 (tCO2e/ha)
 		#----------------------------------------------------------------------
 
-		vo['E_CO2e_LULUCF_Denit'][iT,iApp]=vo['E_CO2e_LULUCF_Denit'][iT,iApp] + \
+		vo['E_Dom_FS_Denit'][iT,iApp]=vo['E_Dom_FS_Denit'][iT,iApp] + \
 			(bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4'])
 
 		#----------------------------------------------------------------------
@@ -270,9 +267,9 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 
 		E_vol=0.3
 
-		vo['E_CO2e_IPPU_OperForBurningGas'][iT,iApp]=vo['E_CO2e_IPPU_OperForBurningGas'][iT,iApp] - E_vol
+		vo['E_Dom_IPPU_ForOpsBurningGas'][iT,iApp]=vo['E_Dom_IPPU_ForOpsBurningGas'][iT,iApp] - E_vol
 
-		vo['E_CO2e_LULUCF_Other'][iT,iApp]=vo['E_CO2e_LULUCF_Other'][iT,iApp] + E_vol
+		vo['E_Dom_FS_Other'][iT,iApp]=vo['E_Dom_FS_Other'][iT,iApp] + E_vol
 
 		#----------------------------------------------------------------------
 		# Exterior area (volatilization/deposition effects)
@@ -321,7 +318,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 			# Subtract from ecosystem LULUCF emissions
 			# *** it will crash in the last time step ***
 			try:
-				vo['E_CO2e_LULUCF_Other'][iT+1,iApp]=vo['E_CO2e_LULUCF_Other'][iT+1,iApp]-EA_GHG_Benefit
+				vo['E_Dom_FS_Other'][iT+1,iApp]=vo['E_Dom_FS_Other'][iT+1,iApp]-EA_GHG_Benefit
 			except:
 				pass
 

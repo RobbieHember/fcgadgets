@@ -27,9 +27,9 @@ def PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 
 	if 'Opt' in meta[pNam].keys():
 		meta[pNam]['Opt']['GrowthModifier']
-		Po=meta[pNam]['Opt']['GrowthModifier']['Disease Po Sat']*(1/(1+np.exp(-meta[pNam]['Opt']['GrowthModifier']['Disease Po Shape']*(Age-meta[pNam]['Opt']['GrowthModifier']['Disease Po Inf']))))
+		Po=(meta[pNam]['Opt']['GrowthModifier']['Disease Po Sat Pct']/100)*(1/(1+np.exp(-meta[pNam]['Opt']['GrowthModifier']['Disease Po Shape']*(Age-meta[pNam]['Opt']['GrowthModifier']['Disease Po Inf']))))
 	else:
-		Po=meta['Param']['BEV']['ByBGCZ']['Disease Po Sat']*(1/(1+np.exp(-meta['Param']['BEV']['ByBGCZ']['Disease Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Disease Po Inf']))))
+		Po=(meta['Param']['BEV']['ByBGCZ']['Disease Po Sat Pct']/100)*(1/(1+np.exp(-meta['Param']['BEV']['ByBGCZ']['Disease Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Disease Po Inf']))))
 
 	# Control disturbances before harvest
 	if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
@@ -69,56 +69,6 @@ def PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 	return vi
 
 #%%
-def PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,Age):
-
-	# Occurrence
-	flg=0
-	if flg==1:
-		beta=[0.5,5]
-		Age=np.arange(1,500)
-		Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
-		fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
-		ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
-		ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Age, years',ylabel='Annual probability of disease')
-		ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
-		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
-
-	Po=meta['Param']['BEV']['ByBGCZ']['Frost Po Sat']*(1/(1+np.exp(meta['Param']['BEV']['ByBGCZ']['Frost Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Frost Po Inf']))))
-	rn=np.random.random(Age.size)
-	iOccur=np.where(rn<Po)[0]
-
-	if iOccur.size>0:
-
-		# Control disturbances before harvest
-		if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
-			yr=meta[pNam]['Year'][iT]
-			yrH=vi['lsat']['Year Harvest First']	
-			dY=yr-yrH
-			ind=np.where( (dY>-300) & (dY<=0) )[0]
-			Po[ind]=0
-
-		# Severity
-		# Severity (Uniform distribution)
-		#Severity=np.random.random(1)[0] # Uniform distribution
-
-		# Severity (Beta distribution)
-		Severity=meta['Param']['BEV']['ByBGCZ']['Frost Severity']
-		#Severity=np.random.beta(meta['Param']['BEV']['ByBGCZ']['Frost Sev Alpha'],meta['Param']['BEV']['ByBGCZ']['Frost Sev Beta'],size=1)[0]
-
-		# Populate
-		for iA in iOccur:
-			iAvailable=np.where(vi['EC']['ID Event Type'][iT,iA,:]==0)[0]
-			if iAvailable.size>0:
-				iE=iAvailable[0]+0
-				vi['EC']['ID Event Type'][iT,iA,iE]=meta['LUT']['Event']['Frost Snow Ice Hail']
-				vi['EC']['Mortality Factor'][iT,iA,iE]=Severity[iA]
-				vi['EC']['ID Growth Curve'][iT,iA,iE]=1
-			else:
-				print('No space left in event chronology for on-the-fly event!')
-
-	return vi
-
-#%%
 def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 
 	# Indicator of THLB (THLB=1, Non-THLB=0)
@@ -140,14 +90,17 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 		# Inflection point
 		Po_H_Inf=500
 
+		# Shape parameter
+		Po_H_Shape=meta['Param']['BEV']['ByBGCZ']['Harvest Po Shape']
+
 		# Saturation value
 		#bH=[0.0007,5.05,0.32,1975]
 		#bH=[0.00085,5.15,0.32,1975]
-# 		if meta[pNam]['Year'][iT]<1933:
-# 			bH=[0.002,5.0,0.32,1977]
-# 			f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
-# 			f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
-# 		else:
+		# 		if meta[pNam]['Year'][iT]<1933:
+		# 			bH=[0.002,5.0,0.32,1977]
+		# 			f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
+		# 			f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
+		# 		else:
 		bH=[0.0007,5.15,0.32,1975]
 		f1=bH[0]*np.maximum(0,(meta[pNam]['Year'][iT]-1800)/100)**bH[1]
 		f2=(1/(1+np.exp(bH[2]*(meta[pNam]['Year'][iT]-bH[3]))))
@@ -173,12 +126,19 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 			# Use BGC zone-specific defaults
 			Po_H_Inf=meta['Param']['BEV']['ByBGCZ']['Harvest Po Inf']
 
-		if 'Po Harvest Sat' in meta[pNam]['Scenario'][iScn]:
+		if 'Po Harvest Shape' in meta[pNam]['Scenario'][iScn]:
 			# Default has been overriden with project-specific value
-			Po_H_Sat=meta[pNam]['Scenario'][iScn]['Po Harvest Sat']*vi['lsat']['Harvest Index']
+			Po_H_Shape=meta[pNam]['Scenario'][iScn]['Po Harvest Shape']
 		else:
 			# Use BGC zone-specific defaults
-			Po_H_Sat=meta['Param']['BEV']['ByBGCZ']['Harvest Po Sat']*vi['lsat']['Harvest Index']
+			Po_H_Shape=meta['Param']['BEV']['ByBGCZ']['Harvest Po Shape']
+
+		if 'Po Harvest Sat Pct' in meta[pNam]['Scenario'][iScn]:
+			# Default has been overriden with project-specific value
+			Po_H_Sat=(meta[pNam]['Scenario'][iScn]['Po Harvest Sat Pct']/100)*vi['lsat']['Harvest Index']
+		else:
+			# Use BGC zone-specific defaults
+			Po_H_Sat=(meta['Param']['BEV']['ByBGCZ']['Harvest Po Sat Pct'])*vi['lsat']['Harvest Index']
 
 		# QA - Plot function:
 		flg=0
@@ -196,11 +156,8 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 			ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
 			gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\taz_ann_prob_harvest','png',500)
 
-	# Shape parameter
-	Po_H_Shape=meta['Param']['BEV']['ByBGCZ']['Harvest Po Shape']
-
 	# Annual probability of occurrence
-	Po=Po_H_Sat*(1/(1+np.exp(Po_H_Shape*(V_Merch-Po_H_Inf))))
+	Po=Po_H_Sat*(1/(1+np.exp(-Po_H_Shape*(V_Merch-Po_H_Inf))))
 
 	# Random number
 	rn=np.random.random(V_Merch.size)
@@ -227,7 +184,17 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 
 	if indS.size>0:
 		for i in range(indS.size):
-			iAvailable=np.where(vi['EC']['ID Event Type'][iT,indS[i],:]==0)[0]
+			try:
+				iAvailable=np.where(vi['EC']['ID Event Type'][iT,indS[i],:]==0)[0]
+			except:
+				print(vi['EC']['ID Event Type'].shape)
+				print(indS.size)
+				print(indS[i])
+				print(rn.shape)
+				print(Oc.shape)
+				print(flag_NA.shape)
+				print(flag_thlb.shape)
+				print(Po.shape)
 			if iAvailable.size>0:
 				iE=iAvailable[0]+0
 				vi['EC']['ID Event Type'][iT,indS[i],iE]=meta['LUT']['Event']['Harvest']
@@ -266,25 +233,28 @@ def PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns):
 #%%
 def PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns):
 
-	if (meta[pNam]['Year'][iT]>=meta[pNam]['Project']['Year Project']) & (meta[pNam]['Scenario'][iScn]['Wildfire Scn Future']==-9999):
+	if (meta[pNam]['Year'][iT]>=meta[pNam]['Project']['Year Project']) & (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']==-9999):
 		# No future wildfire
 		return vi
 
 	# Occurrence
-	sH='H' + str(meta[pNam]['Scenario'][iScn]['Wildfire Scn Pre-obs'])
-	sF='F' + str(meta[pNam]['Scenario'][iScn]['Wildfire Scn Future'])
-	
-	if (meta[pNam]['Scenario'][iScn]['Wildfire Scn Pre-obs']==-9999) & (meta[pNam]['Scenario'][iScn]['Wildfire Scn Future']!=-9999):
+	sH='H' + str(meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Scn ID'])
+	sF='F' + str(meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID'])
+
+	if (meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Scn ID']==-9999) & (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']!=-9999):
 		# The project is trying to include the future but it crashes because no history was set. 
 		# Just hardwire the historical scenario - it will not actually be used.
 		sH='H2'
 
-	if (meta[pNam]['Scenario'][iScn]['Wildfire Scn Future']==-9999):
+	if (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']==-9999):
 		# If future is turned off, still need something so that pre-obs doesn't crash
 		sF='F2'
 
 	iT_wf=np.where(meta['Modules']['Taz']['wfss']['tv_scn']==meta[pNam]['Year'][iT])[0]
-	#Wildfire Scn Pre-obs
+	if iT_wf.size==0:
+		iT_wf=np.where(meta['Modules']['Taz']['wfss']['tv_scn']==meta['Modules']['Taz']['wfss']['tv_scn'][-1])[0]
+
+	#Wildfire Sim Pre-obs Scn ID
 	Po=np.zeros(meta[pNam]['Project']['indBat'].size)
 	for zone in vi['lsat']['bgcz idx'].keys():
 		Po_Det=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Po Det Scenarios'][sH][sF][iT_wf]
@@ -331,7 +301,7 @@ def PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 		ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
 		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
 
-	Po=meta['Param']['BEV']['ByBGCZ']['Wind Po Sat']*(1/(1+np.exp(-meta['Param']['BEV']['ByBGCZ']['Wind Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Wind Po Inf']))))
+	Po=(meta['Param']['BEV']['ByBGCZ']['Wind Po Sat Pct']/100)*(1/(1+np.exp(-meta['Param']['BEV']['ByBGCZ']['Wind Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Wind Po Inf']))))
 
 	# Control occurrence before harvest
 	if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
@@ -383,3 +353,53 @@ if flg==1:
 
 	r=np.random.beta(a,b,size=1000)
 	plt.hist(r)
+
+#%%
+def PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,Age):
+
+	# Occurrence
+	flg=0
+	if flg==1:
+		beta=[0.5,5]
+		Age=np.arange(1,500)
+		Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
+		fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+		ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
+		ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Age, years',ylabel='Annual probability of disease')
+		ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+
+	Po=(meta['Param']['BEV']['ByBGCZ']['Frost Po Sat Pct']/100)*(1/(1+np.exp(meta['Param']['BEV']['ByBGCZ']['Frost Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Frost Po Inf']))))
+	rn=np.random.random(Age.size)
+	iOccur=np.where(rn<Po)[0]
+
+	if iOccur.size>0:
+
+		# Control disturbances before harvest
+		if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
+			yr=meta[pNam]['Year'][iT]
+			yrH=vi['lsat']['Year Harvest First']	
+			dY=yr-yrH
+			ind=np.where( (dY>-300) & (dY<=0) )[0]
+			Po[ind]=0
+
+		# Severity
+		# Severity (Uniform distribution)
+		#Severity=np.random.random(1)[0] # Uniform distribution
+
+		# Severity (Beta distribution)
+		Severity=meta['Param']['BEV']['ByBGCZ']['Frost Severity']
+		#Severity=np.random.beta(meta['Param']['BEV']['ByBGCZ']['Frost Sev Alpha'],meta['Param']['BEV']['ByBGCZ']['Frost Sev Beta'],size=1)[0]
+
+		# Populate
+		for iA in iOccur:
+			iAvailable=np.where(vi['EC']['ID Event Type'][iT,iA,:]==0)[0]
+			if iAvailable.size>0:
+				iE=iAvailable[0]+0
+				vi['EC']['ID Event Type'][iT,iA,iE]=meta['LUT']['Event']['Frost Snow Ice Hail']
+				vi['EC']['Mortality Factor'][iT,iA,iE]=Severity[iA]
+				vi['EC']['ID Growth Curve'][iT,iA,iE]=1
+			else:
+				print('No space left in event chronology for on-the-fly event!')
+
+	return vi

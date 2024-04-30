@@ -33,6 +33,22 @@ def IndicesFromUniqueArrayValues(x):
 
 #%% Regression stats
 # Eg: rs,txt=gu.GetRegStats(x,y)
+
+# Scatterplot template:
+flg=0
+if flg==1:
+	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+	ax.plot([-10000,10000],[-10000,10000],'k-',lw=2,color=[0.8,0.8,0.8])
+	ax.plot(x,y,'o',ms=5,mec='w',mfc='k',mew=0.5)
+	rs,txt=gu.GetRegStats(x,y)
+	ax.plot(rs['xhat Line'],rs['yhat Line'],'r-')
+	ax.text(1,1,rs['txt'],fontsize=7,ha='left')
+	ax.text(20,20,'1:1',fontsize=7,ha='center')
+	ax.set(xlabel='X lable',ylabel='Y label',xticks=np.arange(-30,30,5),yticks=np.arange(-30,30,5),xlim=[-30,30],ylim=[-30,30])
+	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+	plt.tight_layout()
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Name','png',900)
+
 def GetRegStats(x,y,*args):
 
 	# Remove nans
@@ -368,9 +384,6 @@ def ImportMat(pth,vnam):
 	mat=loadmat(pth)
 	d={n: mat[vnam][n][0, 0] for n in mat[vnam].dtype.names}
 	return d
-
-#%%
-#a=loadmat(r'G:\My Drive\ColourMaps\cm_etp_tmw_gs_norm.mat')
 
 #%% INTERSECT ARRAYS (RETURNING ALL INDICES)
 # *** doesn't work! ***
@@ -1018,7 +1031,7 @@ def PolynomialSurfaceFit(x,y,z,xI,yI,maskI,beta):
 	
 	# Parameters
 	m,n=xI.shape
-	L=z.size	
+	L=z.size
 	zI=np.zeros(shape=(m,n))
 	eI=np.zeros(shape=(m,n))
 	nI=np.zeros(shape=(m,n))
@@ -1031,9 +1044,13 @@ def PolynomialSurfaceFit(x,y,z,xI,yI,maskI,beta):
 	def fhyp(b,x):
 		y=((b[0]*b[1]*x)/(b[0]*x+b[2]))+b[2]
 		return y
-	#d0=np.arange(0,100)
-	#s=fhyp(beta,d0*1000)
-	#plt.plot(d0,s,'b-')
+	flg=0
+	if flg==1:
+		beta=np.array([0.00001,0.25,0.05])
+		d0=np.arange(0,100)
+		s=fhyp(beta,d0*1000)
+		plt.close('all'); plt.plot(d0,s,'b-')
+
 	for i in range(m):
 		for j in range(n):
 			if maskI[i,j]==0:
@@ -1044,7 +1061,7 @@ def PolynomialSurfaceFit(x,y,z,xI,yI,maskI,beta):
 			
 			# Put them in order of increasing distance
 			ord=np.argsort(d0)
-			ord=ord[1:np.minimum(nth,ord.size)]			
+			ord=ord[1:np.minimum(nth,ord.size)]
 			d0=d0[ord]
 			x0=x[ord]
 			y0=y[ord]
@@ -1054,7 +1071,7 @@ def PolynomialSurfaceFit(x,y,z,xI,yI,maskI,beta):
 			# Exclude points too far away
 			iKeep=np.where(d0<sfar)[0]
 			if iKeep.size<12:
-				continue			
+				continue
 			d0=d0[iKeep]
 			x0=x0[iKeep]
 			y0=y0[iKeep]

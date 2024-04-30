@@ -25,7 +25,8 @@ def ImportSRSs():
 	# Example:
 	#	srs=gis.ImportSRSs()
 	#	x,y=srs['Proj']['BC1ha'](lon[:,1],lat[:,0])
-	#	lon,lat=srs['Proj']['Geographic'](x,y)
+	#   lon,lat=pyproj.transform(srs['Proj']['BC1ha'],srs['Proj']['Geographic'],pl['X BC'],pl['Y BC'])
+	#   x_NA,y_NA=pyproj.transform(srs['Proj']['BC1ha'],srs['Proj']['NACID'],pl['X BC'],pl['Y BC'])
 	srs={}
 	srs['String']={}
 	srs['Proj']={}
@@ -144,7 +145,11 @@ def OpenGeoTiff(pthin):
 
 	x=np.tile(x,(int(m),1))
 
-	y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
+	try:
+		y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
+	except:
+		y=np.flip(np.arange(gt[3]-m*gt[1]+gt[1],gt[3],gt[1]))
+		y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
 
 	Cellsize=gt[1]
 
@@ -255,7 +260,7 @@ def ClipToRaster(z_in0,z_ref0):
 		ix_in=np.where((z_in['X'][0,:]>=xmin) & (z_in['X'][0,:]<xmax))[0]
 		iy_in=np.where((z_in['Y'][:,0]>=ymin) & (z_in['Y'][:,0]<ymax))[0]
 	elif (dx==0) & (dy==-1):
-		iy_in=np.where((z_in['Y'][:,0]>=ymin) & (z_in['Y'][:,0]<ymax))[0]		
+		iy_in=np.where((z_in['Y'][:,0]>=ymin) & (z_in['Y'][:,0]<ymax))[0]
 	else:
 		pass
 
@@ -330,14 +335,12 @@ def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
 #%% Reproject geotiff
 def ReprojectGeoTiff(pthin,pthout,crs_dst):
 	cmp='lzw'
-
 	with rasterio.open(pthin) as src:
 		transform,width,height=calculate_default_transform(src.crs,crs_dst,src.width,src.height,*src.bounds)
 		kwargs=src.meta.copy()
 		kwargs.update({'crs':crs_dst,'transform':transform,'width':width,
 					   'height':height,'dtype':rasterio.int16,
 					   'compress':cmp})
-
 		with rasterio.open(pthout, 'w',**kwargs) as dst:
 			for i in range(1,src.count+1):
 				reproject(
@@ -348,7 +351,6 @@ def ReprojectGeoTiff(pthin,pthout,crs_dst):
 					dst_transform=transform,
 					dst_crs=crs_dst,
 					resampling=Resampling.nearest)
-
 	return
 
 #%% Polygon area
@@ -522,6 +524,7 @@ def UpdateGridCellsize(z_in,scale_factor):
 	return z
 
 #%% Get grid index of points from x and y
+# idx=gis.GetGridIndexToPoints(z,x,y)
 def GetGridIndexToPoints(z,x,y):
 	Xg=z['X'][0,:]
 	Yg=z['Y'][:,0]
@@ -562,6 +565,29 @@ def ImportCities(pthin,output_type):
 		for i in range(Cities['X'].size):
 			points.append(Point(Cities['X'][i],Cities['Y'][i]))
 		out=gpd.GeoDataFrame({'geometry':points,'City Name':Cities['City Name'],'Territory':Cities['Territory'],'Lat':Cities['Lat'],'Lon':Cities['Lon'],'Level':Cities['Level']})
+
+	return out
+
+#%% Import Bioenergy
+def ImportBioenergy(pthin,output_type):
+
+	d=gu.ReadExcel(pthin)
+
+	# Import spatial reference systems
+	srs=ImportSRSs()
+	d['X']=np.zeros(d['Lat'].size)
+	d['Y']=np.zeros(d['Lat'].size)
+	for i in range(d['Lat'].size):
+		d['X'][i],d['Y'][i]=srs['Proj']['BC1ha'](d['Lon'][i],d['Lat'][i])
+
+	if output_type=='Dict':
+		out=d
+	elif output_type=='GDF':
+		points=[]
+		for i in range(d['X'].size):
+			points.append(Point(d['X'][i],d['Y'][i]))
+		d['geometry']=points
+		out=gpd.GeoDataFrame(d)
 
 	return out
 

@@ -15,7 +15,7 @@ import cv2
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.macgyver.util_query_gdb as qgdb
-import fcexplore.field_plots.Processing.psp_util as ugp
+import fcexplore.field_plots.Processing.fp_util as ufp
 import fcgadgets.cbrunner.cbrun_util as cbu
 
 #%%
@@ -483,10 +483,9 @@ def Plot_HarvestYear(meta,roi,vnam):
 	return fig,ax
 
 #%%
+def Plot_ReserveComp1(meta,roi,vnam):
 
-def Plot_HarvestRetentionComp1(meta,roi,vnam):
-
-	lab=list(meta['LUT']['Derived']['harvret1'].keys())
+	lab=list(meta['LUT']['Derived']['reserve_comp1'].keys())
 	z1=roi['grd'][vnam]['Data']
 	z1[roi['grd']['Data']==0]=9
 	z1[0,0:9]=np.arange(1,10)
@@ -1323,7 +1322,52 @@ def Plot_Elev(meta,roi,vnam):
 		
 	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
 	return fig,ax
- 
+
+#%%
+def Plot_Slope(meta,roi,vnam):
+	z0=roi['grd'][vnam]['Data']
+	bw=2; bin=np.arange(0,20+bw,bw);
+	
+	N_vis=bin.size
+	N_hidden=2
+	N_tot=N_vis+N_hidden
+	
+	z1=N_vis*np.ones(z0.shape)
+	for i in range(bin.size):
+		ind=np.where(np.abs(z0-bin[i])<=bw/2)
+		z1[ind]=i
+	z1[(z1>bin[i])]=i
+	#z1[(roi['grd']['Data']==1) & (z0==0)]=i+2
+	#z1[(roi['grd']['Data']==1) & (roi['grd']['lc_comp1_2019']['Data']!=meta['LUT']['Derived']['lc_comp1']['Forest'])]=i+1	
+	z1[z0>bin[-1]]=i+1
+	z1[(roi['grd']['Data']==0)]=i+2
+	z1[0,0:N_tot]=np.arange(0,N_tot,1)
+
+	lab=bin.astype(str)
+
+	cm=plt.cm.get_cmap('jet',i)
+	cm.colors=cm(np.arange(0,cm.N))
+	cm=np.vstack( (cm.colors,(0,0,0,1),(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
+	roi=PlotVectorBaseMaps(meta,roi,ax[0])
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+	
+	cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis+1,1),ticks=np.arange(0.5,N_vis,1))
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(0,N_vis):
+		ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+	pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+	ax[1].set(position=pos2)
+		
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
+	return fig,ax
+
 #%%
 def Plot_Infastructure1(meta,roi,vnam):
 	z0=roi['grd'][vnam]['Data']
@@ -1764,6 +1808,76 @@ def Plot_InfastructureChipper(meta,roi,vnam):
 	ax[1].set(position=pos2)
 		
 	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_infastructureChipper','png',900)
+	return fig,ax
+
+#%%
+def Plot_InfastructureBioenergy(meta,roi,vnam):
+	z0=roi['grd'][vnam]['Data']
+	bw=500; bin=np.arange(0,5000+bw,bw);
+	
+	N_vis=bin.size
+	N_hidden=1
+	N_tot=N_vis+N_hidden
+	
+	z1=N_vis*np.ones(z0.shape)
+	for i in range(bin.size):
+		ind=np.where(np.abs(z0-bin[i])<=bw/2)
+		z1[ind]=i
+	z1[(z1>bin[i])]=i
+	z1[(roi['grd']['Data']==0)]=i+1
+	z1[0,0:N_tot]=np.arange(0,N_tot,1)
+
+	lab=bin.astype(str)
+
+	cm=plt.cm.get_cmap('Greys',i)
+	cmc=np.zeros((N_vis,4))
+	cnt=0
+	for ivl in np.linspace(0,1,N_vis):
+		cmc[cnt,:]=np.array(cm(ivl))
+		cnt=cnt+1
+	cm=np.vstack( (cmc,(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
+	
+	#roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+	roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0.6,0.6,0.6],facecolor='none',linewidth=0.25)
+	roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=0.25)
+	#roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+
+	roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0.9,0.45,0],linewidth=0.25,label='Road',alpha=1,zorder=1)
+
+	roi['gdf']['hydrol'].plot(ax=ax[0],linestyle='--',edgecolor=[0.27,0.45,0.8],linewidth=0.5,alpha=1,zorder=1,label='Road')
+
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[0,0,0],linewidth=0.5,alpha=1,zorder=1,label='Rail')
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[1,1,1],linewidth=0.25,alpha=1,zorder=1,label='Rail')
+
+	#ind=np.where( (np.isin(roi['gdf']['bioe']['PRODUCT_CODE'],['CHP'])==True) )[0]
+	y=roi['gdf']['bioe']['Capacity Electrical (MW)']
+	ms=5+1.5*y
+	roi['gdf']['bioe'].plot(ax=ax[0],marker='o',edgecolor='g',facecolor='g',lw=0.25,markersize=ms,alpha=0.35,zorder=2)
+	for x,y,label in zip(roi['gdf']['bioe'].geometry.x,roi['gdf']['bioe'].geometry.y,roi['gdf']['bioe']['Name']):
+		ax[0].annotate(label,xy=(x,y),xytext=(5,5),textcoords="offset points",color='g',fontsize=3)
+
+	ind=np.where( (roi['gdf']['cities']['Territory']=='BC') & (roi['gdf']['cities']['Level']==1) )[0]
+	roi['gdf']['cities'].iloc[ind].plot(ax=ax[0],marker='s',edgecolor=[0.5,0,0],facecolor=[1,0,0],lw=0.5,markersize=7,alpha=1,zorder=2)
+	for x,y,label in zip(roi['gdf']['cities'].iloc[ind].geometry.x,roi['gdf']['cities'].iloc[ind].geometry.y,roi['gdf']['cities'].iloc[ind]['City Name']):
+		ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+	
+	cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis+1,1),ticks=np.arange(0.5,N_vis,1))
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(0,N_vis):
+		ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+	pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+	ax[1].set(position=pos2)
+		
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_infastructureBioenergy','png',900)
 	return fig,ax
 
 #%%
@@ -2401,269 +2515,7 @@ def Plot_SoilWaterContent(meta,roi,vnam):
 	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',300)
 	return fig,ax
 
-#%%
-def Plot_ClimateNormalsPanels(meta,roi):
-	plt.close('all'); fig,ax=plt.subplots(16,figsize=gu.cm2inch(24,12))
 
-	# Air temperature
-	vnam='tmean_ann_n'
-	bw=1; bin=np.arange(-4,10+bw,bw)
-	z1=bin.size*np.ones( roi['grd'][vnam]['Data'].shape)
-	for i in range(bin.size):
-		ind=np.where(np.abs(roi['grd'][vnam]['Data']-bin[i])<=bw/2)
-		if ind[0].size>0:
-			z1[ind]=i
-		else:
-			z1[0,i]=i
-	z1[(roi['grd'][vnam]['Data']<-4)]=0
-	z1[(roi['grd'][vnam]['Data']>10)]=i
-	z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
-	lab=bin.astype(str)
-	lab=np.append(lab,'Hidden')
-	N_vis=bin.size
-	N_hidden=1
-	N_tot=N_vis+N_hidden
-	cm=plt.cm.get_cmap('plasma',bin.size)
-	cm=np.vstack( (cm.colors,(1,1,1,1)) )
-	cm=matplotlib.colors.ListedColormap(cm)
-	#cm0=gu.ReadExcel(r'C:\Data\Colormaps\colormap_ws.xlsx')
-	#cm=np.column_stack((cm0['cl1'],cm0['cl2'],cm0['cl3'],np.ones(cm0['bin'].size)))
-	#cm=np.vstack( (cm,(1,1,1,1)) ) # (0.83137,0.81569,0.78431,1)
-	#cm=matplotlib.colors.ListedColormap(cm)
-	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-	roi=PlotVectorBaseMaps(meta,roi,ax[0])
-	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-	zmn=np.min(z1);
-	zmx=np.max(z1);
-	cb_ivl=(zmx-zmn)/N_tot;
-	cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-	cb=plt.colorbar(im,cax=ax[6],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-	cb.ax.set(yticklabels=lab)
-	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-	cb.outline.set_edgecolor('w')
-	for i in range(cb_bnd.size):
-		ax[6].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-	# Precipitation
-	vnam='prcp_ann_n'
-	bw=200; bin=np.arange(0,2200+bw,bw);
-	z1=bin.size*np.ones( roi['grd'][vnam]['Data'].shape)
-	for i in range(bin.size):
-		ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
-		if ind[0].size>0:
- 			z1[ind]=i
-		else:
-			z1[0,i]=i
-	z1[(roi['grd'][vnam]['Data']<200)]=0
-	z1[(roi['grd'][vnam]['Data']>2200)]=i
-	z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
-	lab=bin.astype(str)
-	lab=np.append(lab,'Hidden')
-	N_vis=bin.size
-	N_hidden=1
-	N_tot=N_vis+N_hidden
-	cm=plt.cm.get_cmap('viridis',bin.size)
-	cm=np.vstack( (cm.colors,(1,1,1,1)) )
-	cm=matplotlib.colors.ListedColormap(cm)
-# 	cm0=gu.ReadExcel(r'C:\Data\Colormaps\colormap_ws.xlsx')
-# 	cm=np.column_stack((cm0['cl1'],cm0['cl2'],cm0['cl3'],np.ones(cm0['bin'].size)))
-# 	cm=np.vstack( (cm,(1,1,1,1)) ) # (0.83137,0.81569,0.78431,1)
-# 	cm=matplotlib.colors.ListedColormap(cm)
-	im=ax[1].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-	roi=PlotVectorBaseMaps(meta,roi,ax[1])
-	ax[1].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-	ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[1].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-	zmn=np.min(z1);
-	zmx=np.max(z1);
-	cb_ivl=(zmx-zmn)/N_tot;
-	cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-	cb=plt.colorbar(im,cax=ax[7],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-	cb.ax.set(yticklabels=lab)
-	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-	cb.outline.set_edgecolor('w')
-	for i in range(cb_bnd.size):
-		ax[7].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-	# PET
-	vnam='etp_mjjas_n'
-	bw=0.5; bin=np.arange(0,5+bw,bw);
-	z1=bin.size*np.ones( roi['grd'][vnam]['Data'].shape)
-	for i in range(bin.size):
-		ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
-		if ind[0].size>0:
-			z1[ind]=i
-		else:
-			z1[0,i]=i
-	z1[(roi['grd'][vnam]['Data']>200)]=i
-	z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
-	lab=bin.astype(str)
-	lab=np.append(lab,'Hidden')
-	N_vis=bin.size
-	N_hidden=1
-	N_tot=N_vis+N_hidden
-	cm0=gu.ReadExcel(r'C:\Data\Colormaps\colormap_etp.xlsx')
-	cm=np.column_stack((cm0['cl1'],cm0['cl2'],cm0['cl3'],np.ones(cm0['bin'].size)))
-	cm=np.vstack( (cm,(1,1,1,1)) ) #(0.83137,0.81569,0.78431,1)
-	cm=matplotlib.colors.ListedColormap(cm)
-	im=ax[2].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-	roi=PlotVectorBaseMaps(meta,roi,ax[2])
-	ax[2].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-	ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[2].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-	zmn=np.min(z1);
-	zmx=np.max(z1);
-	cb_ivl=(zmx-zmn)/N_tot;
-	cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-	cb=plt.colorbar(im,cax=ax[8],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-	cb.ax.set(yticklabels=lab)
-	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-	cb.outline.set_edgecolor('w')
-	for i in range(cb_bnd.size):
-		ax[8].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-	#CWD
-	vnam='cwd_mjjas_n'
-	bw=0.2;bin=np.arange(0,2+bw,bw);
-	z1=bin.size*np.ones(roi['grd'][vnam]['Data'].shape)
-	for i in range(bin.size):
-		ind=np.where(np.abs(roi['grd'][vnam]['Data']-bin[i])<=bw/2)
-		if ind[0].size>0:
-			z1[ind]=i
-		else:
-			z1[0,i]=i
-	z1[(roi['grd'][vnam]['Data']>2)]=i
-	z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
-	lab=np.round(bin,decimals=1).astype(str)
-	lab=np.append(lab,'Hidden')
-	N_vis=bin.size
-	N_hidden=1
-	N_tot=N_vis+N_hidden
-
-	cm0=gu.ReadExcel(r'C:\Data\Colormaps\colormap_cwd.xlsx')
-	cm=np.column_stack((cm0['cl1'],cm0['cl2'],cm0['cl3'],np.ones(cm0['bin'].size)))
-	cm=np.vstack( (cm,(1,1,1,1)) ) #(0.83137,0.81569,0.78431,1)
-	cm=matplotlib.colors.ListedColormap(cm)
-	im=ax[3].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-	roi=PlotVectorBaseMaps(meta,roi,ax[3])
-	ax[3].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-	ax[3].yaxis.set_ticks_position('both'); ax[3].xaxis.set_ticks_position('both'); ax[3].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[3].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-	zmn=np.min(z1);
-	zmx=np.max(z1);
-	cb_ivl=(zmx-zmn)/N_tot;
-	cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-	cb=plt.colorbar(im,cax=ax[9],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-	cb.ax.set(yticklabels=lab)
-	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-	cb.outline.set_edgecolor('w')
-	for i in range(cb_bnd.size):
-		ax[9].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-	# Soil water content
-	vnam='ws_mjjas_n'
-	bw=20; bin=np.arange(0,200+bw,bw);
-	z1=bin.size*np.ones( roi['grd'][vnam]['Data'].shape)
-	for i in range(bin.size):
-		ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
-		if ind[0].size>0:
-			z1[ind]=i
-		else:
-			z1[0,i]=i
-	z1[(roi['grd'][vnam]['Data']>200)]=i
-	z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
-	lab=bin.astype(str)
-	lab=np.append(lab,'Hidden')
-	N_vis=bin.size
-	N_hidden=1
-	N_tot=N_vis+N_hidden
-	cm0=gu.ReadExcel(r'C:\Data\Colormaps\colormap_ws.xlsx')
-	cm=np.column_stack((cm0['cl1'],cm0['cl2'],cm0['cl3'],np.ones(cm0['bin'].size)))
-	cm=np.vstack( (cm,(1,1,1,1)) ) #(0.83137,0.81569,0.78431,1)
-	cm=matplotlib.colors.ListedColormap(cm)
-	im=ax[4].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-	roi=PlotVectorBaseMaps(meta,roi,ax[4])
-	ax[4].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-	ax[4].yaxis.set_ticks_position('both'); ax[4].xaxis.set_ticks_position('both'); ax[4].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[4].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-	zmn=np.min(z1);
-	zmx=np.max(z1);
-	cb_ivl=(zmx-zmn)/N_tot;
-	cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-	cb=plt.colorbar(im,cax=ax[10],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-	cb.ax.set(yticklabels=lab)
-	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-	cb.outline.set_edgecolor('w')
-	for i in range(cb_bnd.size):
-		ax[10].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-# 	# Soil water content
-# 	vnam='ws_mjjas_n'
-# 	bw=20; bin=np.arange(0,200+bw,bw);
-# 	z1=bin.size*np.ones( roi['grd'][vnam]['Data'].shape)
-# 	for i in range(bin.size):
-# 		ind=np.where(np.abs( roi['grd'][vnam]['Data']-bin[i])<=bw/2)
-# 		if ind[0].size>0:
-# 			z1[ind]=i
-# 		else:
-# 			z1[0,i]=i
-# 	z1[(roi['grd'][vnam]['Data']>200)]=i
-# 	z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=i+1
-# 	lab=bin.astype(str)
-# 	lab=np.append(lab,'Hidden')
-# 	N_vis=bin.size
-# 	N_hidden=1
-# 	N_tot=N_vis+N_hidden
-# 	cm0=gu.ReadExcel(r'C:\Data\Colormaps\colormap_ws.xlsx')
-# 	cm=np.column_stack((cm0['cl1'],cm0['cl2'],cm0['cl3'],np.ones(cm0['bin'].size)))
-# 	cm=np.vstack( (cm,(1,1,1,1)) ) # (0.83137,0.81569,0.78431,1)
-# 	cm=matplotlib.colors.ListedColormap(cm)
-# 	im=ax[5].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
-# 	roi=PlotVectorBaseMaps(meta,roi,ax[3])
-# 	ax[5].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
-# 	ax[5].yaxis.set_ticks_position('both'); ax[5].xaxis.set_ticks_position('both'); ax[5].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[5].axis(meta['Graphics']['Map']['Map Axis Vis'])
-
-# 	zmn=np.min(z1);
-# 	zmx=np.max(z1);
-# 	cb_ivl=(zmx-zmn)/N_tot;
-# 	cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
-# 	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
-# 	cb=plt.colorbar(im,cax=ax[11],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
-# 	cb.ax.set(yticklabels=lab)
-# 	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
-# 	cb.outline.set_edgecolor('w')
-# 	for i in range(cb_bnd.size):
-# 		ax[11].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
-	gu.axletters(ax,plt,-0.025,0.9,FontColor=meta['Graphics']['gp']['cla'],LetterStyle='NoPar',FontWeight='Bold',Skip=[6,7,8,9,10,11])
-	ax[0].set(position=[0,0.5,0.25,0.5])
-	ax[1].set(position=[0.25,0.5,0.25,0.5])
-	ax[2].set(position=[0.5,0.5,0.25,0.5])
-	ax[3].set(position=[0.75,0.5,0.25,0.5])
-	ax[4].set(position=[0,0,0.25,0.5])
-	ax[5].set(position=[0.25,0,0.25,0.5])
-	ax[6].set(position=[0.5,0,0.25,0.5])
-	ax[7].set(position=[0.75,0,0.25,0.5])
-
-	ax[6].set(position=[0.0,0.53,0.012,0.28])
-	ax[7].set(position=[0.25,0.53,0.012,0.28])
-	ax[8].set(position=[0.5,0.53,0.012,0.28])
-	ax[9].set(position=[0.75,0.53,0.012,0.28])
-	ax[10].set(position=[0.0,0.03,0.012,0.28])
-	ax[11].set(position=[0.25,0.03,0.012,0.28])
-	ax[12].set(position=[0.5,0.03,0.012,0.28])
-	ax[12].set(position=[0.75,0.03,0.012,0.28])
-
-	if meta['Graphics']['Print Figures']=='On':
-		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_ClimateNormalPanels','png',900)
-	return fig,ax
 
 #%% Empty forest mask
 # *** For use with custom vector layers ***
@@ -2736,7 +2588,7 @@ def Plot_GroundPlots(meta,roi):
 
 #%%
 def Plot_GroundPlotsPanels(meta,roi):
-	meta2,gpt,soc=ugp.ImportGroundPlotData(meta,type='Stand')
+	meta2,gpt,soc=ufp.ImportGroundPlotData(meta,type='Stand')
 	
 	plt.close('all'); fig,ax=plt.subplots(1,4,figsize=gu.cm2inch(17.5,15))
 	
@@ -2805,7 +2657,7 @@ def Plot_GroundPlotsPanels(meta,roi):
 	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 	
 	ind=np.where( (gpt['PTF CNV']==1) & (gpt['PTF CN']==0) )[0]
-	x=gpt['X'][ind]; y=gpt['Y'][ind]
+	x=gpt['X BC'][ind]; y=gpt['Y BC'][ind]
 	points=[]
 	for k in range(x.size):
 		points.append(Point(x[k],y[k]))
@@ -2827,7 +2679,7 @@ def Plot_GroundPlotsPanels(meta,roi):
 	ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[1].axis(meta['Graphics']['Map']['Map Axis Vis'])
 	
 	ind=np.where( (gpt['PTF CN']==1) & (np.isnan(gpt['Year t1'])==True) )[0]
-	x=gpt['X'][ind]; y=gpt['Y'][ind]
+	x=gpt['X BC'][ind]; y=gpt['Y BC'][ind]
 	points=[]
 	for k in range(x.size):
 		points.append(Point(x[k],y[k]))
@@ -2837,7 +2689,7 @@ def Plot_GroundPlotsPanels(meta,roi):
 	gdf1.plot(ax=ax[1],markersize=0.7,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='Single measurement')
 	
 	ind=np.where( (gpt['PTF CN']==1) & (np.isnan(gpt['Year t1'])==False) )[0]
-	x=gpt['X'][ind]; y=gpt['Y'][ind]
+	x=gpt['X BC'][ind]; y=gpt['Y BC'][ind]
 	points=[]
 	for k in range(x.size):
 		points.append(Point(x[k],y[k]))
@@ -2860,7 +2712,7 @@ def Plot_GroundPlotsPanels(meta,roi):
 	ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[2].axis(meta['Graphics']['Map']['Map Axis Vis'])
 	
 	ind=np.where( (gpt['PTF YSM']==1) & (np.isnan(gpt['Year t1'])==True) )[0]
-	x=gpt['X'][ind]; y=gpt['Y'][ind]
+	x=gpt['X BC'][ind]; y=gpt['Y BC'][ind]
 	points=[]
 	for k in range(x.size):
 		points.append(Point(x[k],y[k]))
@@ -2870,7 +2722,7 @@ def Plot_GroundPlotsPanels(meta,roi):
 	gdf1.plot(ax=ax[2],markersize=0.7,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='Proposed sample')
 	
 	ind=np.where( (gpt['PTF YSM']==1) & (np.isnan(gpt['Year t1'])==False) )[0]
-	x=gpt['X'][ind]; y=gpt['Y'][ind]
+	x=gpt['X BC'][ind]; y=gpt['Y BC'][ind]
 	points=[]
 	for k in range(x.size):
 		points.append(Point(x[k],y[k]))

@@ -15,7 +15,7 @@ import fcgadgets.macgyver.util_query_gdb as qgdb
 
 #%% Import parameters
 meta=u1ha.Init()
-meta['Graphics']['Map']['RGSF']=1
+meta['Graphics']['Map']['RGSF']=5
 meta['Graphics']['Map']['Fig Width']=15.5
 meta['Graphics']['Map']['Side Space']=0.25
 meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['Side Space']-0.01,1]
@@ -42,7 +42,7 @@ meta['Graphics']['Print Figures']='On'
 
 # Define region of interest
 roi={}
-#roi['Type']='Prov'; roi['Name']='Prov'
+roi['Type']='Prov'; roi['Name']='Prov'
 
 #roi['Type']='LICS'
 
@@ -59,7 +59,7 @@ roi={}
 #roi['Type']='ByWatershed'; roi['Name']='Elephant Hill Fire'
 #roi['Type']='ByWatershed'; roi['Name']='Spius Creek'
 
-roi['Type']='ByTSA'; roi['Name']='South'
+#roi['Type']='ByTSA'; roi['Name']='South'
 #roi['Type']='ByTSA'; roi['Name']='Arrowsmith TSA'
 #roi['Type']='ByTSA'; roi['Name']='Fort St John TSA'
 #roi['Type']='ByTSA'; roi['Name']='Dawson Creek TSA'
@@ -148,6 +148,78 @@ print((t1-t0)/60)
 vList=u1ha.GetRasterListFromSpreadsheet(r'C:\Data\BC1ha\RasterInclusion.xlsx')
 roi=u1ha.Import_Raster(meta,roi,vList)
 
+#%%
+vL=['prcp_ann_n','etp_ann_n','runoff_ann_n','melt_ann_n','cwd_ann_n','ws_ann_n']
+roi=u1ha.Import_Raster(meta,roi,vL)
+
+def Plot_ClimateNormalsPanels(meta,roi):
+	plt.close('all'); fig,ax=plt.subplots(16,figsize=gu.cm2inch(24,12))
+	dim0=[30.5,30.5,30.5,30.5,30.5,1.0]
+	bw0=[0.5,0.5,0.5,0.5,0.5,10]
+	ymin=[0,0,0,0,0,0]
+	ymax=[14,5,10,10,4,200]
+	for i in range(len(vL)):
+		v=vL[i]
+		bw=bw0[i]
+		bin=np.arange(ymin[i],ymax[i]+bw,bw)
+		z1=bin.size*np.ones( roi['grd'][v]['Data'].shape)
+		for j in range(bin.size):
+			ind=np.where(np.abs(roi['grd'][v]['Data']/dim0[i]-bin[j])<=bw/2)
+			if ind[0].size>0:
+				z1[ind]=j
+			else:
+				z1[0,i]=j
+
+		#plt.close('all'); plt.matshow(z1)
+		z1[(roi['grd'][v]['Data']/dim0[i]<ymin[i])]=0
+		z1[(roi['grd'][v]['Data']/dim0[i]>ymax[i])]=j
+		z1[(roi['grd']['lc_comp1_2019']==0) | (roi['grd']['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Water']) | (roi['grd']['Data']!=1)]=j+1
+		lab=bin.astype(str)
+		lab=np.append(lab,'Hidden')
+		N_vis=bin.size
+		N_hidden=1
+		N_tot=N_vis+N_hidden
+		cm=plt.cm.get_cmap('plasma',bin.size)
+		cm=np.vstack( (cm.colors,(1,1,1,1)) )
+		cm=matplotlib.colors.ListedColormap(cm)
+		im=ax[i].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+		#roi=PlotVectorBaseMaps(meta,roi,ax[0])
+		ax[i].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+		ax[i].yaxis.set_ticks_position('both'); ax[i].xaxis.set_ticks_position('both'); ax[i].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[i].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+		zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+		cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+		cb=plt.colorbar(im,cax=ax[i+8],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+		ax[i+8].set(position=[0.71,0.6,0.05,0.14])
+		cb.ax.set(yticklabels=lab)
+		cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+		cb.outline.set_edgecolor('w')
+		for j in range(cb_bnd.size):
+			ax[i+8].plot([0,100],[cb_bnd[j],cb_bnd[j]],'w-',linewidth=2)
+
+	gu.axletters(ax,plt,-0.025,0.9,FontColor=meta['Graphics']['gp']['cla'],LetterStyle='NoPar',FontWeight='Bold',Skip=[6,7,8,9,10,11])
+	ax[0].set(position=[0,0.5,0.25,0.5])
+	ax[1].set(position=[0.25,0.5,0.25,0.5])
+	ax[2].set(position=[0.5,0.5,0.25,0.5])
+	ax[3].set(position=[0.75,0.5,0.25,0.5])
+	ax[4].set(position=[0,0,0.25,0.5])
+	ax[5].set(position=[0.25,0,0.25,0.5])
+	ax[6].set(position=[0.5,0,0.25,0.5])
+	ax[7].set(position=[0.75,0,0.25,0.5])
+
+	ax[8].set(position=[0.0,0.53,0.012,0.28])
+	ax[9].set(position=[0.25,0.53,0.012,0.28])
+	ax[10].set(position=[0.5,0.53,0.012,0.28])
+	ax[11].set(position=[0.75,0.53,0.012,0.28])
+	ax[12].set(position=[0.0,0.03,0.012,0.28])
+	ax[13].set(position=[0.25,0.03,0.012,0.28])
+	ax[14].set(position=[0.5,0.03,0.012,0.28])
+	ax[15].set(position=[0.75,0.03,0.012,0.28])
+
+	if meta['Graphics']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_ClimateNormalPanels','png',900)
+	return fig,ax
+
 #%% Plot everything
 vList=['access']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_AccessZones(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['age_ntems']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Age(meta,roi,vList[0]); del roi['grd'][vList[0]]
@@ -173,7 +245,7 @@ vList=['gsoc']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SoilOrg
 vList=['harv_yr_comp1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HarvestYear(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['harv_yr_comp2']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HarvestYear(meta,roi,vList[0]); del roi['grd'][vList[0]]
 #vList=['harv_salv']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SalvageLogging(meta,roi,vList[0]); del roi['grd'][vList[0]]
-vList=['harvret1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HarvestRetentionComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['reserve_comp1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_ReserveComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['lc_comp1_1800']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['lc_comp1_2019']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); 
 vList=['lc_comp1_2049s1']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_LandCoverComp1(meta,roi,vList[0]); del roi['grd'][vList[0]]
@@ -196,6 +268,7 @@ vList=['plam']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Planted
 vList=['prcp_ann_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_MAP(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['rangecon']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_RangeTenure(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['rears']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_REARs(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['slope']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Slope(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['spc1_ntems']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Spc1_NTEMS(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['tdc_wsg']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_TreeDensityClass(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['tmean_ann_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_MAT(meta,roi,vList[0]); del roi['grd'][vList[0]]
@@ -208,6 +281,7 @@ vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_WaterMa
 vList=['ws_mjjas_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SoilWaterContent(meta,roi,vList[0]); del roi['grd'][vList[0]]
 #vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_PFI(meta,roi,vList[0]); del roi['grd'][vList[0]]
 #vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.(meta,roi,vList[0]); del roi['grd'][vList[0]]
+
 
 #%% Plot forest tenure roads
 def PlotRoadsForest(meta):
@@ -228,6 +302,7 @@ fig,ax=p1ha.Plot_InfastructurePulp(meta,roi,vList[0]);
 fig,ax=p1ha.Plot_InfastructurePanel(meta,roi,vList[0]);
 fig,ax=p1ha.Plot_InfastructurePellet(meta,roi,vList[0]);
 fig,ax=p1ha.Plot_InfastructureChipper(meta,roi,vList[0]);
+fig,ax=p1ha.Plot_InfastructureBioenergy(meta,roi,vList[0]);
 
 # # Plot lumber mills, pulp mills and chipper mills
 # mtypeL=['LBR','PLP','PLT']

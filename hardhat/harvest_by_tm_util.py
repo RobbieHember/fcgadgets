@@ -449,16 +449,18 @@ def CreateDerivedVariables(meta,dTMY,dTM):
 
 	# Volume felled (Volume + Waste)
 	dTMY['V Felled m3']=dTMY['V Logs Abs m3']+dTMY['Waste Total m3']
+	dTMY['V Felled m3/ha']=dTMY['V Logs Abs m3/ha']+dTMY['Waste Total m3/ha']
 
-	# Waste rate
-	dTMY['WR']=dTMY['Waste Total m3']/dTMY['V Felled m3']
+	# Waste Fraction
+	dTMY['Waste Fraction']=dTMY['Waste Total m3/ha']/dTMY['V Felled m3/ha']
+	dTMY['Waste Fraction From Tot']=dTMY['Waste Total m3']/dTMY['V Felled m3']
 
-	# Sawlog recovery ratio
-	dTMY['Sawlog Ratio']=np.zeros(dTMY['TM'].size)
+	# Sawlog recovery ratio (based on total felled, not total logs)
+	dTMY['Sawlog Fraction']=np.zeros(dTMY['TM'].size)
 	ind=np.where( (dTMY['Region']=='Interior') )[0]
-	dTMY['Sawlog Ratio'][ind]=(dTMY['V Logs Grade 1 Abs m3/ha'][ind]+dTMY['V Logs Grade 2 Abs m3/ha'][ind])/dTMY['V Logs m3/ha'][ind]
+	dTMY['Sawlog Fraction'][ind]=(dTMY['V Logs Grade 1 Abs m3/ha'][ind]+dTMY['V Logs Grade 2 Abs m3/ha'][ind])/dTMY['V Felled m3/ha'][ind]
 	ind=np.where( (dTMY['Region']=='Coast') )[0]
-	dTMY['Sawlog Ratio'][ind]=(dTMY['V Logs Grade B Abs m3/ha'][ind]+
+	dTMY['Sawlog Fraction'][ind]=(dTMY['V Logs Grade B Abs m3/ha'][ind]+
 						dTMY['V Logs Grade C Abs m3/ha'][ind]+
 						dTMY['V Logs Grade D Abs m3/ha'][ind]+
 						dTMY['V Logs Grade E Abs m3/ha'][ind]+
@@ -469,7 +471,9 @@ def CreateDerivedVariables(meta,dTMY,dTM):
 						dTMY['V Logs Grade J Abs m3/ha'][ind]+
 						dTMY['V Logs Grade K Abs m3/ha'][ind]+
 						dTMY['V Logs Grade L Abs m3/ha'][ind]+
-						dTMY['V Logs Grade M Abs m3/ha'][ind])/dTMY['V Logs m3/ha'][ind]
+						dTMY['V Logs Grade M Abs m3/ha'][ind])/dTMY['V Felled m3/ha'][ind]
+
+	dTMY['Secondary Log Fraction']=1.0-dTMY['Waste Fraction']-dTMY['Sawlog Fraction']
 
 	# By TM
 
@@ -486,15 +490,15 @@ def CreateDerivedVariables(meta,dTMY,dTM):
 	dTM['V Felled m3/ha']=dTM['V Logs Abs m3/ha']+dTM['Waste Total m3/ha']
 
 	# Waste rate
-	dTM['WR']=dTM['Waste Total m3/ha']/dTM['V Felled m3/ha']
-	dTM['WR From Tot']=dTM['Waste Total m3']/dTM['V Felled m3']
+	dTM['Waste Fraction']=dTM['Waste Total m3/ha']/dTM['V Felled m3/ha']
+	dTM['Waste Fraction From Tot']=dTM['Waste Total m3']/dTM['V Felled m3']
 
 	# Sawlog recovery ratio
-	dTM['Sawlog Ratio']=np.zeros(dTM['TM'].size)
+	dTM['Sawlog Fraction']=np.zeros(dTM['TM'].size)
 	ind=np.where( (dTM['Region']=='Interior') )[0]
-	dTM['Sawlog Ratio'][ind]=(dTM['V Logs Grade 1 Abs m3/ha'][ind]+dTM['V Logs Grade 2 Abs m3/ha'][ind])/dTM['V Logs m3/ha'][ind]
+	dTM['Sawlog Fraction'][ind]=(dTM['V Logs Grade 1 Abs m3/ha'][ind]+dTM['V Logs Grade 2 Abs m3/ha'][ind])/dTM['V Felled m3/ha'][ind]
 	ind=np.where( (dTM['Region']=='Coast') )[0]
-	dTM['Sawlog Ratio'][ind]=(dTM['V Logs Grade B Abs m3/ha'][ind]+
+	dTM['Sawlog Fraction'][ind]=(dTM['V Logs Grade B Abs m3/ha'][ind]+
 						dTM['V Logs Grade C Abs m3/ha'][ind]+
 						dTM['V Logs Grade D Abs m3/ha'][ind]+
 						dTM['V Logs Grade E Abs m3/ha'][ind]+
@@ -505,7 +509,9 @@ def CreateDerivedVariables(meta,dTMY,dTM):
 						dTM['V Logs Grade J Abs m3/ha'][ind]+
 						dTM['V Logs Grade K Abs m3/ha'][ind]+
 						dTM['V Logs Grade L Abs m3/ha'][ind]+
-						dTM['V Logs Grade M Abs m3/ha'][ind])/dTM['V Logs m3/ha'][ind]
+						dTM['V Logs Grade M Abs m3/ha'][ind])/dTM['V Felled m3/ha'][ind]
+
+	dTM['Secondary Log Fraction']=1.0-dTM['Waste Fraction']-dTM['Sawlog Fraction']
 
 	# Discrepency in area values between HBS and WS
 	dTM['Delta A %']=(dTM['DISTURBANCE_GROSS_AREA']-dTM['Waste Net Area Tot'])/dTM['DISTURBANCE_GROSS_AREA']*100
@@ -570,7 +576,7 @@ def GetVariablesFromRasterDB(meta,dTMY,dTM):
 def CalcPilingRateByBGCZone(meta,dTM,**kwargs):
 	Tot=dTM['Waste Accumulation %']+dTM['Waste Dispersed %']+dTM['Waste Standing %']
 	#plt.hist(Tot)
-	ikp=np.where( (dTM['WR']>0) & (dTM['WR']<=1) & \
+	ikp=np.where( (dTM['Waste Fraction']>0) & (dTM['Waste Fraction']<=1) & \
 				 (dTM['Waste N Entries']>0) & \
 				(Tot==100) & \
 				(dTM['BGCZ']!='') & \
@@ -606,27 +612,26 @@ def CalcPilingRateByBGCZone(meta,dTM,**kwargs):
 	return
 
 #%%
-def WasteRateRegression(meta,dTMY,**kwargs):
+def WasteFractionRegression(meta,d,**kwargs):
 
 	# Impute % dead
-	ind=np.where( (np.isnan(dTMY['Cruise_Pct Dead Net'])==True) )[0];
-	dTMY['Cruise_Pct Dead Net'][ind]=np.nanmean(dTMY['Cruise_Pct Dead Net'])
+	ind=np.where( (np.isnan(d['Cruise_Pct Dead Net'])==True) )[0];
+	d['Cruise_Pct Dead Net'][ind]=np.nanmean(d['Cruise_Pct Dead Net'])
 
 	# Filter
-	ikp=np.where( (dTMY['WR']>=0) & (dTMY['WR']<=1) & (dTMY['Waste N Entries']>0) & \
-				(dTMY['Waste Accumulation %']>=0) & (dTMY['Waste Accumulation %']<=100) & \
-				(dTMY['Year Max']>1950) & (dTMY['Year Max']<=2023) & \
-				(dTMY['BGCZ']!='') & (dTMY['Tenure Type']!='') & (dTMY['SSC']!='') & \
-				(np.isnan(dTMY['Cruise_Pct Dead Net'])==False) )[0]
+	ikp=np.where( (d['Waste Fraction']>=0) & (d['Waste Fraction']<=1) & (d['Waste N Entries']>0) & \
+				(d['Waste Accumulation %']>=0) & (d['Waste Accumulation %']<=100) & \
+				(d['Year Max']>1950) & (d['Year Max']<=2022) & \
+				(d['BGCZ']!='') & (d['Tenure Type']!='') & (d['SSC']!='') & \
+				(np.isnan(d['Cruise_Pct Dead Net'])==False) )[0]
 	#print(ikp.size)
-	df=pd.DataFrame({'WR':100*dTMY['WR'][ikp],
-					 'PR':dTMY['Waste Accumulation %'][ikp],
-					 'BGCZ':dTMY['BGCZ'][ikp],
-					 'Time':dTMY['Year Max'][ikp],
-					 'Age':dTMY['AgeC'][ikp],
-					 'SSC':dTMY['SSC'][ikp],
-					 'Ten':dTMY['Tenure Type'][ikp],
-					 'PctDead':dTMY['Cruise_Pct Dead Net'][ikp]})
+	df=pd.DataFrame({'WR':100*d['Waste Fraction'][ikp],
+					 'BGCZ':d['BGCZ'][ikp],
+					 'Time':d['Year Max'][ikp],
+					 'Age':d['AgeC'][ikp],
+					 'SSC':d['SSC'][ikp],
+					 'Ten':d['Tenure Type'][ikp],
+					 'PctDead':d['Cruise_Pct Dead Net'][ikp]})
 	#print(df.describe())
 	md=smf.ols("WR~Time+Age+PctDead+C(BGCZ)+C(SSC)+C(Ten)",data=df)
 	rs=md.fit(maxiter=100)
@@ -639,7 +644,7 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 	# Save to file
 	if kwargs['save']=='On':
 		df=pd.DataFrame.from_dict(b)
-		df.to_excel(meta['Paths']['Model']['Parameters'] + '\\Parameters_WasteRateRegression.xlsx',index=False)
+		df.to_excel(meta['Paths']['Model']['Parameters'] + '\\Parameters_WasteFractionRegression.xlsx',index=False)
 	
 	# Plot behaviour of WR model
 	if kwargs['plot']=='On':
@@ -653,7 +658,7 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[0,0].plot(Age,y,'k--',label='% dead = 100')
 		ax[0,0].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[0,0].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[0,0].set(xlabel='Age, years',ylabel='Waste fraction (%)')
 		ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=2010; bgc=bgcD; ssc=sscD; ten=tenD
@@ -663,7 +668,7 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[0,1].plot(Age,y,'k--',label='2024')
 		ax[0,1].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[0,1].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[0,1].set(xlabel='Age, years',ylabel='Waste fraction (%)')
 		ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=yrD; bgc='C(BGCZ)[T.MH]'; ssc=sscD; ten=tenD
@@ -679,7 +684,7 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[0,2].plot(Age,y,'k-.',label='MS')
 		ax[0,2].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[0,2].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[0,2].set(xlabel='Age, years',ylabel='Waste fraction (%)')
 		ax[0,2].yaxis.set_ticks_position('both'); ax[0,2].xaxis.set_ticks_position('both'); ax[0,2].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=yrD; bgc=bgcD; ssc='C(SSC)[T.CLEAR]'; ten=tenD
@@ -698,7 +703,7 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[1,0].plot(Age,y,'k-',lw=1.5,label='SELEC')
 		ax[1,0].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[1,0].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[1,0].set(xlabel='Age, years',ylabel='Waste fraction (%)')
 		ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=yrD; bgc=bgcD; ssc=sscD; ten='C(Ten)[T.Forest Licence]'
@@ -716,7 +721,7 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 		PctDead=pdD; Year=yrD; bgc=bgcD; ssc=sscD; ten='C(Ten)[T.Woodlot Licence]'
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[1,1].plot(Age,y,'k-',lw=1.5,label='Woodlot Licence')
-		ax[1,1].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[1,1].set(xlabel='Age, years',ylabel='Waste fraction (%)')
 		ax[1,1].legend(loc='center left',facecolor=[1,1,1],frameon=False);
 		ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
@@ -725,7 +730,7 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 		ax[1,2].plot(PctDead,y,'k-',label='Age = 60')
 		y=np.maximum(0,b['Intercept']+b['Age']*200+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[1,2].plot(PctDead,y,'k--',label='Age = 200')
-		ax[1,2].set(xlabel='Proportion of dead trees (%)',ylabel='Waste rate (%)')
+		ax[1,2].set(xlabel='Proportion of dead trees (%)',ylabel='Waste fraction (%)')
 		ax[1,2].legend(loc='center left',facecolor=[1,1,1],frameon=False);
 		ax[1,2].yaxis.set_ticks_position('both'); ax[1,2].xaxis.set_ticks_position('both'); ax[1,2].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
@@ -733,29 +738,27 @@ def WasteRateRegression(meta,dTMY,**kwargs):
 		plt.tight_layout()
 	return
 
-def WasteRateRegression2(meta,dTM,**kwargs):
-
+#%% Regression of Sawlog Fraction
+def SawlogFractionRegression(meta,d,**kwargs):
 	# Impute % dead
-	ind=np.where( (np.isnan(dTM['Cruise_Pct Dead Net'])==True) )[0];
-	dTM['Cruise_Pct Dead Net'][ind]=np.nanmean(dTM['Cruise_Pct Dead Net'])
-
+	ind=np.where( (np.isnan(d['Cruise_Pct Dead Net'])==True) )[0];
+	d['Cruise_Pct Dead Net'][ind]=np.nanmean(d['Cruise_Pct Dead Net'])
+	
 	# Filter
-	ikp=np.where( (dTM['WR']>=0) & (dTM['WR']<=1) & (dTM['Waste N Entries']>0) & \
-				(dTM['Waste Accumulation %']>=0) & (dTM['Waste Accumulation %']<=100) & \
-				(dTM['Year Max']>1950) & (dTM['Year Max']<=2020) & \
-				(dTM['BGCZ']!='') & (dTM['Tenure Type']!='') & (dTM['SSC']!='') & \
-				(np.isnan(dTM['Cruise_Pct Dead Net'])==False) )[0]
+	ikp=np.where( (d['Sawlog Fraction']>=0) & (d['Sawlog Fraction']<=1) & \
+				(d['Year Max']>1950) & (d['Year Max']<=2022) & \
+				(d['BGCZ']!='') & (d['Tenure Type']!='') & (d['SSC']!='') & \
+				(np.isnan(d['Cruise_Pct Dead Net'])==False) )[0]
 	#print(ikp.size)
-	df=pd.DataFrame({'WR':100*dTM['WR'][ikp],
-					 'PR':dTM['Waste Accumulation %'][ikp],
-					 'BGCZ':dTM['BGCZ'][ikp],
-					 'Time':dTM['Year Max'][ikp],
-					 'Age':dTM['AgeC'][ikp],
-					 'SSC':dTM['SSC'][ikp],
-					 'Ten':dTM['Tenure Type'][ikp],
-					 'PctDead':dTM['Cruise_Pct Dead Net'][ikp]})
-	#print(df.describe())
-	md=smf.ols("WR~Time+Age+PctDead+C(BGCZ)+C(SSC)+C(Ten)",data=df)
+	df=pd.DataFrame({'SR':100*d['Sawlog Fraction'][ikp],
+					 'BGCZ':d['BGCZ'][ikp],
+					 'Time':d['Year Max'][ikp],
+					 'Age':d['AgeC'][ikp],
+					 'SSC':d['SSC'][ikp],
+					 'Ten':d['Tenure Type'][ikp],
+					 'PctDead':d['Cruise_Pct Dead Net'][ikp]})
+
+	md=smf.ols("SR~Time+Age+PctDead+C(BGCZ)+C(Ten)+C(SSC)",data=df)
 	rs=md.fit(maxiter=100)
 	b=rs.params
 
@@ -766,9 +769,9 @@ def WasteRateRegression2(meta,dTM,**kwargs):
 	# Save to file
 	if kwargs['save']=='On':
 		df=pd.DataFrame.from_dict(b)
-		df.to_excel(meta['Paths']['Model']['Parameters'] + '\\Parameters_WasteRateRegression.xlsx',index=False)
+		df.to_excel(meta['Paths']['Model']['Parameters'] + '\\Parameters_SawlogFractionRegression.xlsx',index=False)
 	
-	# Plot behaviour of WR model
+	# Plot behaviour of model
 	if kwargs['plot']=='On':
 		Age=np.arange(1,300)
 		pdD=10; yrD=2020; bgcD='C(BGCZ)[T.SBS]'; sscD='C(SSC)[T.CLEAR]'; tenD='C(Ten)[T.Forest Licence]'
@@ -780,7 +783,7 @@ def WasteRateRegression2(meta,dTM,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[0,0].plot(Age,y,'k--',label='% dead = 100')
 		ax[0,0].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[0,0].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[0,0].set(xlabel='Age, years',ylabel='Sawlog fraction (%)')
 		ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=2010; bgc=bgcD; ssc=sscD; ten=tenD
@@ -790,7 +793,7 @@ def WasteRateRegression2(meta,dTM,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[0,1].plot(Age,y,'k--',label='2024')
 		ax[0,1].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[0,1].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[0,1].set(xlabel='Age, years',ylabel='Sawlog fraction (%)')
 		ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=yrD; bgc='C(BGCZ)[T.MH]'; ssc=sscD; ten=tenD
@@ -806,7 +809,7 @@ def WasteRateRegression2(meta,dTM,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[0,2].plot(Age,y,'k-.',label='MS')
 		ax[0,2].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[0,2].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[0,2].set(xlabel='Age, years',ylabel='Sawlog fraction (%)')
 		ax[0,2].yaxis.set_ticks_position('both'); ax[0,2].xaxis.set_ticks_position('both'); ax[0,2].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=yrD; bgc=bgcD; ssc='C(SSC)[T.CLEAR]'; ten=tenD
@@ -825,7 +828,7 @@ def WasteRateRegression2(meta,dTM,**kwargs):
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[1,0].plot(Age,y,'k-',lw=1.5,label='SELEC')
 		ax[1,0].legend(loc='center left',facecolor=[1,1,1],frameon=False);
-		ax[1,0].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[1,0].set(xlabel='Age, years',ylabel='Sawlog fraction (%)')
 		ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
 		PctDead=pdD; Year=yrD; bgc=bgcD; ssc=sscD; ten='C(Ten)[T.Forest Licence]'
@@ -843,7 +846,7 @@ def WasteRateRegression2(meta,dTM,**kwargs):
 		PctDead=pdD; Year=yrD; bgc=bgcD; ssc=sscD; ten='C(Ten)[T.Woodlot Licence]'
 		y=np.maximum(0,b['Intercept']+b['Age']*Age+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[1,1].plot(Age,y,'k-',lw=1.5,label='Woodlot Licence')
-		ax[1,1].set(xlabel='Age, years',ylabel='Waste rate (%)')
+		ax[1,1].set(xlabel='Age, years',ylabel='Sawlog fraction (%)')
 		ax[1,1].legend(loc='center left',facecolor=[1,1,1],frameon=False);
 		ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
@@ -852,7 +855,7 @@ def WasteRateRegression2(meta,dTM,**kwargs):
 		ax[1,2].plot(PctDead,y,'k-',label='Age = 60')
 		y=np.maximum(0,b['Intercept']+b['Age']*200+b['Time']*Year+b['PctDead']*PctDead+b[ssc]+b[ten]+b[bgc])
 		ax[1,2].plot(PctDead,y,'k--',label='Age = 200')
-		ax[1,2].set(xlabel='Proportion of dead trees (%)',ylabel='Waste rate (%)')
+		ax[1,2].set(xlabel='Proportion of dead trees (%)',ylabel='Sawlog fraction (%)')
 		ax[1,2].legend(loc='center left',facecolor=[1,1,1],frameon=False);
 		ax[1,2].yaxis.set_ticks_position('both'); ax[1,2].xaxis.set_ticks_position('both'); ax[1,2].tick_params(length=meta['Graphics']['gp']['tickl'])
 		
@@ -873,8 +876,8 @@ def StatsByDistrict(meta,dTM):
 			ikp=np.where(dTM[v][iD[i]]<2000)[0]
 			d[i][v]=np.nanmean(dTM[v][iD[i]][ikp])
 	df=pd.DataFrame(d)
-	df.loc['WR']
-	df.loc['Sawlog Ratio']
+	df.loc['Waste Fraction']
+	df.loc['Sawlog Fraction']
 	df.loc['V Felled m3/ha']
 	return d
 
@@ -890,56 +893,55 @@ def StatsByBGCZone(meta,dTM):
 			if dTM[v].dtype=='O': continue
 			d[i][v]=np.nanmean(dTM[v][iD[i]])
 	df=pd.DataFrame(d)
-	df.loc['WR']
+	df.loc['Waste Fraction']
 	return d
 
 #%%
-def StatsBySILV_SYSTEM_CODE(meta,dTM):
-	rL=['Interior','Coast']
-	for r in rL:
-		d={}
-		for k in meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'].keys():
-			#
-			ind=np.where( (dTM['PLANNED_NET_BLOCK_AREA']>0) & \
-				(dTM['Region']==r) & \
-				(dTM['Sawlog Ratio']>=0) & (dTM['Sawlog Ratio']<=1) & \
-				(dTM['V Logs m3/ha']>0) & (dTM['V Logs m3/ha']<3000) & (dTM['SILV_SYSTEM_CODE % 1']>90) & (dTM['SILV_SYSTEM_CODE ID 1']==meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'][k]) )[0]
-			if ind.size>3:
-				d[k]=[ind.size,
-				  np.round(np.nanmean(dTM['V Felled m3/ha'][ind]),decimals=0),
-				  np.round(np.nanmean(dTM['WR'][ind])*100,decimals=0),
-				  np.round(np.nanmean(dTM['Sawlog Ratio'][ind])*100,decimals=0)]
-				#d[k]=np.mean(dTM['WR'][ind])
-				#d[k]=np.mean(dTM['Sawlog Ratio'][ind])
-			else:
-				d[k]=[np.nan,np.nan,np.nan,np.nan]
-		df=pd.DataFrame(d).T
-		df.columns=['Sample size (# TMs)','Yield (m3/ha)','Waste wood (%)','Sawlog ratio (%)']
-		if r=='Interior':
-			dfI=df
+def StatsBySILV_SYSTEM_CODE(meta,dTM,reg):
+	d={}
+	for k in meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'].keys():
+		#(dTM['ID TSA']==meta['LUT']['FADM_TSA']['TSA_NUMBER_DESCRIPTION']['Boundary TSA']) & \
+		ind=np.where( (dTM['PLANNED_NET_BLOCK_AREA']>0) & \
+			(dTM['Region']==reg) & \
+			(dTM['Sawlog Fraction']>=0) & (dTM['Sawlog Fraction']<=1) & \
+			(dTM['V Logs m3/ha']>0) & (dTM['V Logs m3/ha']<3000) & (dTM['SILV_SYSTEM_CODE % 1']>90) & (dTM['SILV_SYSTEM_CODE ID 1']==meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'][k]) )[0]
+		if ind.size>3:
+			d[k]=[ind.size,
+			  np.round(np.nanmean(dTM['V Felled m3/ha'][ind]),decimals=0),
+			  np.round(np.nanmean(dTM['Sawlog Fraction'][ind])*100,decimals=0),
+			  np.round(np.nanmean(dTM['Secondary Log Fraction'][ind]-dTM['Waste Fraction'][ind])*100,decimals=0),
+			  np.round(np.nanmean(dTM['Waste Fraction'][ind])*100,decimals=0)]
+			#d[k]=np.mean(dTM['Waste Fraction'][ind])
+			#d[k]=np.mean(dTM['Sawlog Fraction'][ind])
 		else:
-			dfC=df
-	return dfI,dfC
+			d[k]=[0,0,0,0,0]
+	df=pd.DataFrame(d).T
+	df.columns=['Sample size (# TMs)','Yield (m3/ha)','Sawlogs (%)','Secondary logs (%)','Waste wood (%)']
+	df=df.astype(int)
+	df=df.reset_index()
+	df=df.rename(columns={'index':'SSC'})
+	return df
 
 #%%
 def StatsBySILV_SYSTEM_CODE_ForBGCZone(meta,dTM,zone):
 	d={}
 	for k in meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'].keys():
 		ind=np.where( (dTM['BGCZ']==zone) & (dTM['V Logs m3/ha']>0) & (dTM['V Logs m3/ha']<3000) & (dTM['SILV_SYSTEM_CODE % 1']>90) & \
-			   (dTM['Sawlog Ratio']>=0) & (dTM['Sawlog Ratio']<=1) & \
+			   (dTM['Sawlog Fraction']>=0) & (dTM['Sawlog Fraction']<=1) & \
 			   (dTM['SILV_SYSTEM_CODE ID 1']==meta['LUT']['RSLT_OPENING_SVW']['DENUDATION_1_SILV_SYSTEM_CODE'][k]) )[0]
 		if ind.size>3:
 			d[k]=[int(ind.size),
 			 np.round(np.nanmean(dTM['V Felled m3/ha'][ind]),decimals=1),
-			  np.round(np.nanmean(dTM['WR'][ind]*100),decimals=0),
-			  np.round(np.nanmean(dTM['Sawlog Ratio'][ind]*100),decimals=0)]
-			#d[k]=np.mean(dTM['WR'][ind])
-			#d[k]=np.mean(dTM['Sawlog Ratio'][ind])
+			  np.round(np.nanmean(dTM['Sawlog Fraction'][ind]*100),decimals=0),
+			  np.round(np.nanmean(1-dTM['Sawlog Fraction'][ind]-dTM['Waste Fraction'][ind])*100,decimals=0),
+			  np.round(np.nanmean(dTM['Waste Fraction'][ind]*100),decimals=0)]
+			#d[k]=np.mean(dTM['Waste Fraction'][ind])
+			#d[k]=np.mean(dTM['Sawlog Fraction'][ind])
 		else:
 			d[k]=[np.nan,np.nan,np.nan,np.nan]
 	#pd.DataFrame(d).T
 	df=pd.DataFrame(d).T
-	df.columns=['Sample size (# TMs)','Yield (m3/ha)','Waste wood (%)','Sawlog ratio (%)']
+	df.columns=['Sample size (# TMs)','Yield (m3/ha)','Waste wood (%)','Sawlog Fraction (%)']
 	return df
 
 #%%
@@ -957,7 +959,7 @@ def StatsByTime(meta,dTMY,**kwargs):
 			ikp=np.where( (dTMY['Year']==tv[iT]) )[0]
 		for k in dTMY.keys():
 			tmp=dTMY[k].copy()
-			if (k=='WR') | (k=='Sawlog Ratio'):
+			if (k=='Waste Fraction') | (k=='Sawlog Fraction'):
 				ind=np.where((tmp<0) | (tmp>1.0))[0]
 				tmp[ind]=np.nan
 			if (dTMY[k].dtype=='O'):
@@ -1000,7 +1002,7 @@ def PlotHarvestVolume_TS(meta,dTMY):
 	ax[1,0].plot(dT['Time'],(dT['Sum']['V Logs Waste m3'])/1e6,'-bo',label='Waste')
 	ax[1,1].plot(dT['Time'],(dT['Sum']['Waste Total m3'])/1e6,'-bo',label='Waste from WS')
 
-	#ax[0,1].plot(dT['Time'],(dT['Mean']['WR']),'-bo')
+	#ax[0,1].plot(dT['Time'],(dT['Mean']['Waste Fraction']),'-bo')
 	#ax[1,0].plot(dT['Time'],(dT['Sum']['Waste N Entries']),'-bo')
 	#ax[1,1].plot(dT['Time'],(dT['Mean']['Waste Total m3/ha']),'-bo')
 
@@ -1031,6 +1033,56 @@ def CalcHarvestVolumeByBGCZ(meta,dTMY,dTM):
 		d['Mm3/yr'][u[iU]]=np.round(dt['Sum']['V Logs m3'][iT]/1e6,decimals=2)
 		d['Mm3/yr Mean'][u[iU]]=np.round(np.mean(dt['Sum']['V Logs m3'][iT]/1e6),decimals=2)
 	return d
+
+#%%
+def PlotYieldByGrade(meta,dTM):
+	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,6));
+	reg='Interior'
+	ikp=np.where( (dTM['PLANNED_NET_BLOCK_AREA']>0) & (dTM['Region']==reg) & (dTM['V Logs Abs m3/ha']<3000) )[0]
+	labs=['1','2','3','4','5','6','7','8','Z']
+	y=np.zeros(9)
+	c=0; y[c]=np.nanmean(dTM['V Logs Grade 1 Abs m3/ha'][ikp])
+	c=1; y[c]=np.nanmean(dTM['V Logs Grade 2 Abs m3/ha'][ikp])
+	c=2; y[c]=np.nanmean(dTM['V Logs Grade 3 Abs m3/ha'][ikp])
+	c=3; y[c]=np.nanmean(dTM['V Logs Grade 4 Abs m3/ha'][ikp])
+	c=4; y[c]=np.nanmean(dTM['V Logs Grade 5 Abs m3/ha'][ikp])
+	c=5; y[c]=np.nanmean(dTM['V Logs Grade 6 Abs m3/ha'][ikp])
+	c=6; y[c]=np.nanmean(dTM['V Logs Grade 7 Abs m3/ha'][ikp])
+	c=7; y[c]=np.nanmean(dTM['V Logs Grade 8 Abs m3/ha'][ikp])
+	c=8; y[c]=np.nanmean(dTM['V Logs Grade Z Abs m3/ha'][ikp])
+	ax.barh(np.arange(1,10),y,0.8)
+	ax.set(yticks=np.arange(1,10),yticklabels=labs,xlabel='Average yield (m3/ha)',ylabel='Grade')
+	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+	plt.tight_layout()
+	
+	#plt.close('all');
+	fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,6));
+	reg='Coast'
+	ikp=np.where( (dTM['PLANNED_NET_BLOCK_AREA']>0) & (dTM['Region']==reg) & (dTM['V Logs Abs m3/ha']<3000) )[0]
+	labs=['B','C','D','E','F','G','H','I','J','K','L','M','U','W','X','Y','Z']
+	y=np.zeros(17)
+	c=0; y[c]=np.nanmean(dTM['V Logs Grade B Abs m3/ha'][ikp])
+	c=1; y[c]=np.nanmean(dTM['V Logs Grade C Abs m3/ha'][ikp])
+	c=2; y[c]=np.nanmean(dTM['V Logs Grade D Abs m3/ha'][ikp])
+	c=3; y[c]=np.nanmean(dTM['V Logs Grade E Abs m3/ha'][ikp])
+	c=4; y[c]=np.nanmean(dTM['V Logs Grade F Abs m3/ha'][ikp])
+	c=5; y[c]=np.nanmean(dTM['V Logs Grade G Abs m3/ha'][ikp])
+	c=6; y[c]=np.nanmean(dTM['V Logs Grade H Abs m3/ha'][ikp])
+	c=7; y[c]=np.nanmean(dTM['V Logs Grade I Abs m3/ha'][ikp])
+	c=8; y[c]=np.nanmean(dTM['V Logs Grade J Abs m3/ha'][ikp])
+	c=9; y[c]=np.nanmean(dTM['V Logs Grade K Abs m3/ha'][ikp])
+	c=10; y[c]=np.nanmean(dTM['V Logs Grade L Abs m3/ha'][ikp])
+	c=11; y[c]=np.nanmean(dTM['V Logs Grade M Abs m3/ha'][ikp])
+	c=12; y[c]=np.nanmean(dTM['V Logs Grade U Abs m3/ha'][ikp])
+	c=13; y[c]=np.nanmean(dTM['V Logs Grade W Abs m3/ha'][ikp])
+	c=14; y[c]=np.nanmean(dTM['V Logs Grade X Abs m3/ha'][ikp])
+	c=15; y[c]=np.nanmean(dTM['V Logs Grade Y Abs m3/ha'][ikp])
+	c=16; y[c]=np.nanmean(dTM['V Logs Grade Z Abs m3/ha'][ikp])
+	ax.barh(np.arange(1,18),y,0.8)
+	ax.set(yticks=np.arange(1,18),yticklabels=labs,xlabel='Average yield (m3/ha)',ylabel='Grade')
+	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+	plt.tight_layout()
+	return
 
 #%% Add insect and fire damage
 # Not done.

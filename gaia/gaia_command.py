@@ -32,6 +32,9 @@ gaia.CreateRefGrid_BC5k(meta)
 #%% Prepare nitrogen deposition
 gaia.Process_Ndep_ISIMIP(meta)
 
+#%% Import CMIP6
+gaia.Process_CMIP6(meta)
+
 #%%
 tv=np.arange(1850,2151,1)
 d=gaia.ImportEnvironment(meta,tv)

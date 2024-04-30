@@ -19,7 +19,7 @@ def PredictNOSE_OnTheFly(meta,pNam,iScn,iBat,vi,iT):
         flg_wf=np.max(flg_wf,axis=1)
         #print(flg_wf.shape)
     
-        Po=meta[pNam]['Scenario'][iScn]['NOSE Prob']
+        Po=meta[pNam]['Scenario'][iScn]['NOSE Sim Probability']
         rn=np.random.random(flg_wf.size)   
     
         indAffected=np.where( (rn<Po) & (flg_wf==1) )[0]

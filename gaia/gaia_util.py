@@ -250,10 +250,6 @@ def Process_Ndep_FromAckerman2018(meta):
 	# See bc1ha_map_full for plots
 	return
 
-#%% Project Environment Compiler
-
-
-
 #%% Potential evpapotranspiration
 '''============================================================================
 Input variables:
@@ -273,12 +269,13 @@ Methods of calculation:
 
 ============================================================================'''
 def GetETp(vi,Dims,Method,TimeInterval):
+
 	if Dims=='Months by sites':
 		# Dimensions (months by sites)
 		N_m,N_s=vi['rswn'].shape
 	elif Dims=='Sparse grid':
 		N_m=1
-		N_s=vi['rswn'].size		
+		N_s=vi['rswn'].size
 	elif Dims=='Single site':
 		N_m=vi['rswn'].size
 		N_s=1
@@ -348,6 +345,9 @@ def GetETp(vi,Dims,Method,TimeInterval):
 		# Potential evapotranspiration from Penman-Monteith combination model (mm d-1)
 		ETp=((Svps*Rn + con['RhoAir']*con['CpAir']*vi['vpd']*vi['Ga'])/(Svps+Psychro*(1+vi['Ga']/vi['Gs'])))/con['Lam']*con['DayLength']
 
+		# Extremely high combinations of temperature, radiation and vpd cuase extreme anomalies, truncating
+		ETp=np.minimum(14,ETp)
+
 	else:
 		print('Method not recognized, quiting.')
 		return ()
@@ -358,7 +358,9 @@ def GetETp(vi,Dims,Method,TimeInterval):
 			DIM=mb.repmat(np.reshape(con['DIM'],(-1,1)),N_yr,N_s)
 			ETp=ETp*DIM
 	elif Dims=='Sparse grid':
-		ETp=ETp*con['DIM'][vi['Month']-1]		
+		ETp=ETp*con['DIM'][vi['Month']-1]
+
+	ETp=np.maximum(0,ETp)
 
 	return ETp
 
@@ -373,18 +375,18 @@ Inputs variables (field names in vi structure):
 	prcp, total precipitation (mm month-1)
 	rswn, net shortwave radiation (MJ m-2 d-1)
 	vpd, vapour pressure deficit (hPa)
-	Ws, water content of soil (mm) ** Optional **
-	Wsp, water content of snow (mm) ** Optional **
+	ws, water content of soil (mm) ** Optional **
+	wsp, water content of snow (mm) ** Optional **
 
 Outputs variables (field names in ov structure):
 
-	ETp, potential evapotranspiration (mm month-1)
-	ETa, actual evapotranspiration (mm month-1)
-	Ws, water content of soil (mm)
-	Wsp, water content of snow (mm)
-	M, snowmelt(mm month-1)
-	R, runoff (mm month-1)
-	RSF, rain to snow ratio (dim)
+	etp, potential evapotranspiration (mm month-1)
+	eta, actual evapotranspiration (mm month-1)
+	ws, water content of soil (mm)
+	wsp, water content of snow (mm)
+	melt, snowmelt(mm month-1)
+	runoff, runoff (mm month-1)
+	rainf, rain to snow ratio (dim)
 
 Mode of operation:
 
@@ -398,9 +400,9 @@ steps.
 Parameters required in meta structure:
 
 	Ws_max: water storage capacity (200 mm)
-	Tmin: minimum rain/snow fraction temperature (-3 degC)
-	Tmax: maximum rain/snow fraction temperature (-3 degC)
-	Daily Interval: daily soil water computaiton interval (5)
+	Tmin: minimum rain/snow fraction temperature (degC)
+	Tmax: maximum rain/snow fraction temperature (degC)
+	Daily Interval: daily soil water computation interval (5)
 
 Warnings:
 
@@ -412,25 +414,25 @@ def WBM_SparseGrid(par,vi):
 	N_s=vi['tmean'].size
 	vo={}
 
-	if 'Ws' in vi:
+	if 'ws' in vi:
 		# Use final soil water content and snowpack water content from end of 
 		# previous month
-		vo['Ws']=vi['Ws']
-		vo['Wsp']=vi['Wsp']
+		vo['ws']=vi['ws']
+		vo['wsp']=vi['wsp']
 	else:
 		# Initialize for first time step
-		vo['Ws']=par['Ws_max']*np.ones(N_s)
-		vo['Wsp']=np.zeros(N_s)
+		vo['ws']=par['Ws_max']*np.ones(N_s)
+		vo['wsp']=np.zeros(N_s)
    
 	# Constants
 	con=HydroMetCon()
 	
 	# Potential evapotranspiratiom (mm month-1)
-	vo['ETp']=GetETp(vi,'Sparse grid',par['ETp Method'],'Month')
+	vo['etp']=GetETp(vi,'Sparse grid',par['ETp Method'],'Month')
 
-	vo['ETa']=np.zeros(N_s)
-	vo['R']=np.zeros(N_s)
-	vo['M']=np.zeros(N_s)
+	vo['eta']=np.zeros(N_s)
+	vo['runoff']=np.zeros(N_s)
+	vo['melt']=np.zeros(N_s)
 
 	# Canopy interception as a function of leaf area (Landsberg et al. 2005)
 	# Maximum proportion of rainfall evaporated from canopy MaxIntcptn – 0.15
@@ -444,11 +446,11 @@ def WBM_SparseGrid(par,vi):
 
 	# Actual evaporation of intercepted precipiration, defined as the minimum
 	# between the energy-limited rate, and the water-limited rate (mm month-1)
-	Ei_Actual=np.minimum(vo['ETp'],Ei_Potential)
+	Ei_Actual=np.minimum(vo['etp'],Ei_Potential)
 
 	# Transpiration at energy-limited rate, i.e. prior to adding surface
 	# constraints (mm month-1)
-	Et_EnergyLimited=vo['ETp']-Ei_Actual
+	Et_EnergyLimited=vo['etp']-Ei_Actual
 
 	# Throughfall (mm month-1)
 	P_Throughfall=vi['prcp']-Ei_Actual
@@ -459,10 +461,10 @@ def WBM_SparseGrid(par,vi):
 	Pr=fT*P_Throughfall
 	Ps=P_Throughfall-Pr
 
-	# Set inititial daily water pools at level sfromt he end of the last
+	# Set inititial daily water pools at levels from the end of the last
 	# month
-	Ws_d=vo['Ws']
-	Wsp_d=vo['Wsp']
+	ws_d=vo['ws']
+	wsp_d=vo['wsp']
 
 	# Daily fluxes (mm d-1)
 	Ps_d=Ps/(30/par['Daily_Interval'])
@@ -476,51 +478,51 @@ def WBM_SparseGrid(par,vi):
 		M_d=2.63+2.55*vi['tmean']+0.0912*vi['tmean']*Pr_d
 
 		# Actual snowmelt (mm d-1)
-		M_d=np.maximum(np.zeros((1,N_s)),np.minimum(M_d,Wsp_d+Ps_d))
+		M_d=np.maximum(0,np.minimum(M_d,wsp_d+Ps_d))
 
 		# Cumulative snowmelt (mm)
-		vo['M']=vo['M']+M_d
+		vo['melt']=vo['melt']+M_d
 
 		# Updated snowpack water content (mm)
-		Wsp_d=Wsp_d+Ps_d-M_d
+		wsp_d=wsp_d+Ps_d-M_d
 
 		# Update soil water content (mm)
-		Ws_d=Ws_d+M_d+Pr_d
+		ws_d=ws_d+M_d+Pr_d
 
 		# Supply function (Willmott et al. 1985)
 		# x=[0:0.1:1]' plot(x,1-exp(-6.68*(x)),'ko')
-		fWs=np.minimum(1,np.maximum(0,1-np.exp(-6.68*(Ws_d/par['Ws_max']))))
+		fws=np.minimum(1,np.maximum(0,1-np.exp(-6.68*(ws_d/par['Ws_max']))))
 
 		# Actual evaporation (mm d-1)
-		Et_Actual_d=fWs*Et_EnergyLimited_d
+		Et_Actual_d=fws*Et_EnergyLimited_d
 
 		# Cumulative actual evapotranspiration as the sum of wet-canopy
 		# evaporation and transpiration (mm)
-		vo['ETa']=vo['ETa']+Ei_Actual_d+Et_Actual_d
+		vo['eta']=vo['eta']+Ei_Actual_d+Et_Actual_d
 
 		# Remove transpiration from soil water pool (mm)
-		Ws_d=Ws_d-Et_Actual_d
+		ws_d=ws_d-Et_Actual_d
 
 		# Find any spatial units where soil water exceeds capacity and add
 		# "surplus" to monthly runoff and restrict soil water content
 		# to capacity
-		R_d=np.maximum(0,Ws_d-par['Ws_max'])
-		Ws_d=np.minimum(Ws_d,par['Ws_max'])
+		runoff_d=np.maximum(0,ws_d-par['Ws_max'])
+		ws_d=np.minimum(ws_d,par['Ws_max'])
 
 		# Update monthly runoff (mm)
-		vo['R']=vo['R']+R_d
+		vo['runoff']=vo['runoff']+runoff_d
 
-	# Update water pools
-	vo['Ws']=Ws_d
-	vo['Wsp']=Wsp_d
+	# Update water pools (mm)
+	vo['ws']=ws_d
+	vo['wsp']=wsp_d
 
 	# Constrain pools to be positive
-	vo['Ws']=np.maximum(0,vo['Ws'])
-	vo['Wsp']=np.maximum(0,vo['Wsp'])
+	vo['ws']=np.maximum(0,vo['ws'])
+	vo['wsp']=np.maximum(0,vo['wsp'])
 
 	# Include rainfall fraction
 	if par['Include Rainfall Fraction']=='Yes':
-		vo['RF']=np.minimum(1,np.maximum(0,Pr/Ps))
+		vo['rainf']=np.minimum(1,np.maximum(0,Pr/Ps))
 
 	return vo
 
@@ -542,7 +544,7 @@ def WBM_SparseGrid(par,vi):
 #	 if par['Method']=='Combined':
 
 #		 # Running all time steps for a set of n locations
-#		 vo['Ws']=par['Ws_max']*np.ones((N_mo,N_s))
+#		 vo['ws']=par['Ws_max']*np.ones((N_mo,N_s))
 #		 vo['Wsp']=np.zeros((N_mo,N_s))
 #		 vo['ETp']=np.zeros((N_mo,N_s))
 #		 vo['ETa']=np.zeros((N_mo,N_s))
@@ -704,6 +706,7 @@ def WBM_SparseGrid(par,vi):
 #	 return vo
 
 #%% Hydrometerology constants
+# con=gaia.HydroMetCon()
 def HydroMetCon():
 	con={}
 
@@ -789,27 +792,8 @@ def GetDensityAir(x):
 
 #%%
 def GYModelModifier(meta,pNam,NetGrowth,vo,iT):
-	if 'Opt' in meta[pNam].keys():
-		#t0=meta[pNam]['Opt']['GrowthModifier']['t0']
-		#t1=meta[pNam]['Opt']['GrowthModifier']['t1']
-		t0=meta['Param']['BEV']['ByBGCZ']['GM t0']
-		t1=meta['Param']['BEV']['ByBGCZ']['GM t1']
-		m0=meta[pNam]['Opt']['GrowthModifier']['m0']
-		m1_young=meta[pNam]['Opt']['GrowthModifier']['m1_y']*m0
-		m1_old=meta[pNam]['Opt']['GrowthModifier']['m1_o']*m0
-		Age_young=meta[pNam]['Opt']['GrowthModifier']['Age_y']
-		Age_old=meta[pNam]['Opt']['GrowthModifier']['Age_o']
-		#mH=meta[pNam]['Opt']['GrowthModifier']['mH']
-	else:
-		t0=meta['Param']['BEV']['ByBGCZ']['GM t0']
-		t1=meta['Param']['BEV']['ByBGCZ']['GM t1']
-		m0=meta['Param']['BEV']['ByBGCZ']['GM m0']
-		m1_young=meta['Param']['BEV']['ByBGCZ']['GM m1_y']*m0
-		m1_old=meta['Param']['BEV']['ByBGCZ']['GM m1_o']*m0
-		Age_young=meta['Param']['BEV']['ByBGCZ']['GM Age_y']
-		Age_old=meta['Param']['BEV']['ByBGCZ']['GM Age_o']
-		#mH=meta['Param']['BEV']['mH']
 
+	# Demonstrate
 	flg=0
 	if flg==1:
 		t=np.arange(1850,2050,1)
@@ -822,7 +806,7 @@ def GYModelModifier(meta,pNam,NetGrowth,vo,iT):
 		t1=2000
 
 		plt.close('all')
-		A=15
+		A=0
 		m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-A)/(Age_young-Age_old),m1_old,m1_young)
 		fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(t-t0),m0,m1)
 		plt.plot(t,fG,'g-')
@@ -830,11 +814,299 @@ def GYModelModifier(meta,pNam,NetGrowth,vo,iT):
 		m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-A)/(Age_young-Age_old),m1_old,m1_young)
 		fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(t-t0),m0,m1)
 		plt.plot(t,fG,'b--')
-	
+
+	# Import parameters
+	if 'Opt' in meta[pNam].keys():
+		#t0=meta[pNam]['Opt']['GrowthModifier']['t0']
+		#t1=meta[pNam]['Opt']['GrowthModifier']['t1']
+		t0=meta['Param']['BEV']['ByBGCZ']['GM t0']
+		t1=meta['Param']['BEV']['ByBGCZ']['GM t1']
+		m0=meta[pNam]['Opt']['GrowthModifier']['m0']
+		m1_young=meta[pNam]['Opt']['GrowthModifier']['m1_y']
+		m1_old=meta[pNam]['Opt']['GrowthModifier']['m1_o']
+		Age_young=meta[pNam]['Opt']['GrowthModifier']['Age_y']
+		Age_old=meta[pNam]['Opt']['GrowthModifier']['Age_o']
+	else:
+		t0=meta['Param']['BEV']['ByBGCZ']['GM t0']
+		t1=meta['Param']['BEV']['ByBGCZ']['GM t1']
+		m0=meta['Param']['BEV']['ByBGCZ']['GM m0']
+		m1_young=meta['Param']['BEV']['ByBGCZ']['GM m1_y']
+		m1_old=meta['Param']['BEV']['ByBGCZ']['GM m1_o']
+		Age_young=meta['Param']['BEV']['ByBGCZ']['GM Age_y']
+		Age_old=meta['Param']['BEV']['ByBGCZ']['GM Age_o']
+
 	m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-vo['A'][iT,:])/(Age_young-Age_old),m1_old,m1_young)
 	fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(meta[pNam]['Year'][iT]-t0),m0,m1)
-	fG=fG*np.array(vo['A'][iT,:]>10).astype('float')
+	fG=fG*np.array(vo['A'][iT,:]>1).astype('float')
 	NetGrowth=np.tile(fG,(NetGrowth.shape[1],1)).T*NetGrowth
 
+	# Plot the modifiers in the "by BGC zone" parameters spreadsheet
+	flg=0
+	if flg==1:
+		d=gu.ReadExcel(r'G:\My Drive\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_ByBGCZ.xlsx')
+		t=np.arange(1850,2050,1)
+		for iz in range(d['Name'].size):
+			#np.where(d['Name']=='CWH')[0][0]
+			plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(10,6));
+			A=5
+			m1=(d['GM m1_y'][iz]+d['GM m1_o'][iz])-gu.Clamp(d['GM m0'][iz]+(d['GM Age_y'][iz]-A)/(d['GM Age_y'][iz]-d['GM Age_o'][iz]),d['GM m1_o'][iz],d['GM m1_y'][iz])
+			fG=gu.Clamp(d['GM m0'][iz]+(m1-d['GM m0'][iz])/(d['GM t1'][iz]-d['GM t0'][iz])*(t-d['GM t0'][iz]),d['GM m0'][iz],m1)
+			plt.plot(t,fG,'g-',lw=1.25,color=[0.6,0.9,0],label='5 years old')
+			A=175
+			m1=(d['GM m1_y'][iz]+d['GM m1_o'][iz])-gu.Clamp(d['GM m0'][iz]+(d['GM Age_y'][iz]-A)/(d['GM Age_y'][iz]-d['GM Age_o'][iz]),d['GM m1_o'][iz],d['GM m1_y'][iz])
+			fG=gu.Clamp(d['GM m0'][iz]+(m1-d['GM m0'][iz])/(d['GM t1'][iz]-d['GM t0'][iz])*(t-d['GM t0'][iz]),d['GM m0'][iz],m1)
+			plt.plot(t,fG,'b--',lw=1.25,label='175 years old')
+			ax.set(xlabel='Time, years',ylabel='Multiplier',ylim=[0,1.2])
+			ax.legend(loc='upper left',frameon=False,facecolor=None,edgecolor='w')
+			plt.tight_layout()
+			gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\fcgadgets\GY Modifiers\Modifier_' + d['Name'][iz],'png',900)
+
 	return NetGrowth
+
+#%% Import CMIP6 data
+def Process_CMIP6():
+	#scn='ssp245'
+	scn='ssp585'
+	meta=u1ha.Init()
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc5k Ref Grid'])
+	iLand=np.where(zRef['Data']==1)
+	pth=r'C:\Data\Climate\CMIP6\Monthly'
+	srs=gis.ImportSRSs()
+	lon,lat=pyproj.transform(srs['Proj']['BC1ha'],srs['Proj']['Geographic'],zRef['X'],zRef['Y'])
+	tvm=gu.tvec('m',1950,2101)
+	tvH0=gu.tvec('m',1950,2014)
+	tvF0=gu.tvec('m',2015,2100)
+	press=1013.25
+	con=HydroMetCon()
+	vL=['tmean','ea','prcp','vpd','rswd']
+	mdL=['CESM2','CNRM-CM6-1','GFDL-ESM4','HadGEM3-GC31-LL','MIROC-ES2L','MPI-ESM1-2-LR']
+	#mdL=['MIROC-ES2L','MPI-ESM1-2-LR']
+	dC={}
+	for md in mdL:
+		print(md)
+		flL=os.listdir(pth + '\\' + md)
+		def GetFileName(flL,v,period):
+			fl1=[]
+			for fl in flL:
+				if fl.startswith(v):
+					if period in fl:
+						fl1=fl
+			return fl1
+
+		# Initialize
+		dC[md]={}
+		dC[md]={}
+		for v in vL:
+			dC[md][v]=np.zeros((tvm.shape[0],zRef['m'],zRef['n']))
+
+		# Temperature
+		fl=GetFileName(flL,'tas','historical')
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		z0=d0['tas']
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
+			dC[md]['tmean'][indT[0],:,:]=z1-273.15
+		fl=GetFileName(flL,'tas',scn)
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		z0=d0['tas']
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
+			dC[md]['tmean'][indT[0],:,:]=z1-273.15
+		#plt.plot(dC[md]['tmean'][:,10,10])
+
+		# Humidity
+		fl=GetFileName(flL,'huss','historical')
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		z0=d0['huss']*press/(0.378*d0['huss']+0.622) # Convert to hPa
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
+			dC[md]['ea'][indT[0],:,:]=z1
+		fl=GetFileName(flL,'huss',scn)
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		z0=d0['huss']*press/(0.378*d0['huss']+0.622) # Convert to hPa
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
+			dC[md]['ea'][indT[0],:,:]=z1
+		#plt.plot(dC[md]['ea'][:,10,10])
+
+		# Radiation
+		fl=GetFileName(flL,'rsds','historical')
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		z0=d0['rsds']*86400/1e6 # Converted from W/m2 to MJ/m2/d-1
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
+			dC[md]['rswd'][indT[0],:,:]=z1
+		fl=GetFileName(flL,'rsds',scn)
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		z0=d0['rsds']*86400/1e6 # Converted from W/m2 to MJ/m2/d-1
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
+			dC[md]['rswd'][indT[0],:,:]=z1
+		#plt.plot(dC[md]['rswd'][:,10,10])
+
+		# Precipitation
+		fl=GetFileName(flL,'pr','historical')
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		# Convert from kg m-2 s-1 to mm/mo
+		z0=d0['pr']
+		for mo in range(12):
+			z0[mo::12,:,:]=86400*z0[mo::12,:,:]*con['DIM'][mo]
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
+			dC[md]['prcp'][indT[0],:,:]=z1
+		fl=GetFileName(flL,'pr',scn)
+		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
+		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
+		lat1=lat0[indS]; lon1=lon0[indS]
+		# Convert from kg m-2 s-1 to mm/mo
+		z0=d0['pr']
+		for mo in range(12):
+			z0[mo::12,:,:]=86400*z0[mo::12,:,:]*con['DIM'][mo]
+		for iT in range(z0.shape[0]):
+			z1=z0[iT,:,:].T
+			z1=z1[indS]
+			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
+			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
+			dC[md]['prcp'][indT[0],:,:]=z1
+		#plt.plot(dC[md]['rswd'][:,10,10])
+
+	# Add vpd
+	for md in mdL:
+		dC[md]['vpd']=np.maximum(0,GetEstar(dC[md]['tmean'])-dC[md]['ea'])
+
+	# Add water balance
+	for md in mdL:
+		vwbL=['cwd','eta','etp','melt','runoff','ws','wsp']
+		for v in vwbL:
+			dC[md][v]=np.zeros((tvm.shape[0],zRef['m'],zRef['n']))
+		par={}
+		par['Method']='Grid'
+		par['Ws_max']=200.0 # mm
+		par['Tmin']=-3.0
+		par['Tmax']=3.0
+		par['Ei_FracMax']=0.15
+		par['Ei_ALMax']=5.0
+		par['ETp Method']='Penman-Monteith'
+		par['Daily_Interval']=5
+		par['Include Rainfall Fraction']='No'
+		vi={}
+		for iT in range(tvm.shape[0]):
+			print('Year:' + str(tvm[iT,0]) + ', Month:' + str(tvm[iT,1]) )
+			mo=tvm[iT,1]
+			vi['Month']=mo
+			vi['LAI']=5.0
+			vi['Gs']=0.010
+			vi['Ga']=0.058
+			vi['tmean']=dC[md]['tmean'][iT,:,:][iLand]
+			vi['prcp']=dC[md]['prcp'][iT,:,:][iLand]
+			vi['vpd']=dC[md]['vpd'][iT,:,:][iLand]
+			vi['rswn']=dC[md]['rswd'][iT,:,:][iLand]
+			vo=WBM_SparseGrid(par,vi)
+			vi['ws']=vo['ws']
+			vi['wsp']=vo['wsp']
+			vo['cwd']=vo['etp']-vo['eta']
+			for v in vwbL:
+				dC[md][v][iT,:,:][iLand]=vo[v]
+	#plt.plot(dC[md]['ws'][:,150,150])
+
+	# Calculate seasonal indicators
+	tva=np.arange(1950,2101,1)
+	iTmu=np.where( (tva>=1971) & (tva<=2000) )[0]
+	dCS={}
+	for md in mdL:
+		dCS[md]={}
+		dCS[md]={}
+		dCS[md]['tmean']={'ann':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
+		dCS[md]['ws']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
+		dCS[md]['cwd']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
+		dCS[md]['cmi']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
+		dCS[md]['prcp']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
+		dCS[md]['etp']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
+		for iY in range(tva.size):
+			iT=np.where( (tvm[:,0]==tva[iY]) )[0]
+			dCS[md]['tmean']['ann'][iY]=np.mean(dC[md]['tmean'][iT,:,:],axis=0)
+			iT=np.where( (tvm[:,0]==tva[iY]) & (tvm[:,1]>=5) & (tvm[:,1]<=9) )[0]
+			dCS[md]['ws']['mjjas'][iY]=np.mean(dC[md]['ws'][iT,:,:],axis=0)
+			dCS[md]['cwd']['mjjas'][iY]=np.mean(dC[md]['cwd'][iT,:,:],axis=0)
+			dCS[md]['cmi']['mjjas'][iY]=np.mean(dC[md]['prcp'][iT,:,:]-dC[md]['etp'][iT,:,:],axis=0)
+			dCS[md]['prcp']['mjjas'][iY]=np.mean(dC[md]['prcp'][iT,:,:],axis=0)
+			dCS[md]['etp']['mjjas'][iY]=np.mean(dC[md]['etp'][iT,:,:],axis=0)
+
+	# Convert to anomalies
+	dCSa=copy.deepcopy(dCS)
+	for md in mdL:
+		for k in dCSa[md].keys():
+			for j in dCSa[md][k].keys():
+				mu=np.mean(dCSa[md][k][j][iTmu,:,:],axis=0)
+				for iY in range(tva.size):
+					dCSa[md][k][j][iY,:,:]=dCSa[md][k][j][iY,:,:]-mu
+
+	# Compress
+	for md in mdL:
+		for k in dCS[md].keys():
+			for j in dCS[md][k].keys():
+				dCS[md][k][j]=dCS[md][k][j]/meta['SF']['Climate'][k]
+				dCS[md][k][j]=dCS[md][k][j].astype('int16')
+				dCSa[md][k][j]=dCSa[md][k][j]/meta['SF']['Climate'][k]
+				dCSa[md][k][j]=dCSa[md][k][j].astype('int16')
+
+	# Save
+	gu.opickle(pth + '\\cmip6_actuals_' + scn + '.pkl',dCS)
+	gu.opickle(pth + '\\cmip6_anomalies' + scn + '.pkl',dCSa)
+	return
+
+#%%
+
+
 

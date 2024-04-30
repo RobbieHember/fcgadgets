@@ -93,10 +93,7 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 		#----------------------------------------------------------------------
 		for k in range(meta['Core']['Max Events Per Year']):
 
-			try:
-				ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Nutrient App Aerial']) )[0]
-			except:
-				print(list(ec.keys()))
+			ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Nutrient App Aerial']) )[0]
 
 			for i in ind:
 				Year=tv_full[i]
@@ -152,36 +149,38 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 				# Administrative costs
 				try:
 					dt=-2
-					d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Planting Admin (CAD/ha)'][it0+dt]
+					d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Stand Establishment Admin (CAD/ha)'][it0+dt]
 				except:
 					pass
 
 				# Seedling purchase
 				try:
 					dt=-1
-					d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Seedling Purchase (CAD/ha)'][it0+dt]
+					d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Stand Establishment Seed (CAD/ha)'][it0+dt]
+					d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Stand Establishment Sowing (CAD/ha)'][it0+dt]
 				except:
 					pass
 
 				# Planting
 				dt=0
-				d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Planting (CAD/ha)'][it0+dt]
+				d['Cost Planting'][it1+dt,iStand]=d['Cost Planting'][it1+dt,iStand]+dCP['Cost Stand Establishment Planting (CAD/ha)'][it0+dt]
 
 				# Survey 1
+				Num_Surveys=3
 				dt=0
-				d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Survey (CAD/ha)'][it0+dt]
+				d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Stand Establishment Surveys (CAD/ha)'][it0+dt]/Num_Surveys
 
-				# Survey 2 - this could creash if it extends beyond simulation period
+				# Survey 2 - this could crash if it extends beyond simulation period
 				try:
 					dt=+2
-					d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Survey (CAD/ha)'][it0+dt]
+					d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Stand Establishment Surveys (CAD/ha)'][it0+dt]/Num_Surveys
 				except:
 					pass
 
-				# Survey 3 - this could creash if it extends beyond simulation period
+				# Survey 3 - this could crash if it extends beyond simulation period
 				try:
 					dt=+8
-					d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Survey (CAD/ha)'][it0+dt]
+					d['Cost Survey'][it1+dt,iStand]=d['Cost Survey'][it1+dt,iStand]+dCP['Cost Stand Establishment Survey (CAD/ha)'][it0+dt]/Num_Surveys
 				except:
 					pass
 
@@ -282,24 +281,27 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 				Removed_mbf=b['Ratio bd ft Lumber per m3']*Removed_V/1000
 
 				# Log-size effect
-				if v1['LogSizeEnhancement'][it1,iStand]==0:
-					lsef_skidding=1.0
-					lsef_roads=1.0
-				elif v1['LogSizeEnhancement'][it1,iStand]==1:
-					lsef_skidding=0.98
-					lsef_roads=0.97
-				elif v1['LogSizeEnhancement'][it1,iStand]==2:
-					lsef_skidding=0.96
-					lsef_roads=0.94
-				elif v1['LogSizeEnhancement'][it1,iStand]==3:
-					lsef_skidding=0.94
-					lsef_roads=0.91
-				elif v1['LogSizeEnhancement'][it1,iStand]==4:
-					lsef_skidding=0.92
-					lsef_roads=0.88
-				else:
-					lsef_skidding=0.9
-					lsef_roads=0.85
+				lsef_roads=1.0
+				lsef_skidding=1.0
+				if 'LogSizeEnhancement' in v1.keys():
+					if v1['LogSizeEnhancement'][it1,iStand]==0:
+						lsef_skidding=1.0
+						lsef_roads=1.0
+					elif v1['LogSizeEnhancement'][it1,iStand]==1:
+						lsef_skidding=0.98
+						lsef_roads=0.97
+					elif v1['LogSizeEnhancement'][it1,iStand]==2:
+						lsef_skidding=0.96
+						lsef_roads=0.94
+					elif v1['LogSizeEnhancement'][it1,iStand]==3:
+						lsef_skidding=0.94
+						lsef_roads=0.91
+					elif v1['LogSizeEnhancement'][it1,iStand]==4:
+						lsef_skidding=0.92
+						lsef_roads=0.88
+					else:
+						lsef_skidding=0.9
+						lsef_roads=0.85
 
 				#d['Harvest Vol Merch'][it1,iStand]=Removed_V
 

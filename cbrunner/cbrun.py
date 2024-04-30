@@ -25,6 +25,14 @@ def MeepMeep(meta,pNam):
 	else:
 		ScenariosToRun=range(meta[pNam]['Project']['N Scenario'])
 
+	# Remove any modified event chronologies
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		for iBat in range(meta[pNam]['Project']['N Batch']):
+			for iEns in range(meta[pNam]['Project']['N Ensemble']):
+				pth=meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
+				if os.path.exists(pth)==True:
+					os.remove(pth)
+
 	# Loop through batches
 	for iBat in range(meta[pNam]['Project']['N Batch']):
 		
@@ -89,7 +97,7 @@ def MeepMeep(meta,pNam):
 					# Get output variables from first run of this batch
 					it=np.where(meta[pNam]['Year']==meta[pNam]['Project']['Year Start Saving']-meta['Core']['Recycle Early Record Buffer']-1)[0]
 					for k in vo.keys():
-						if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
+						if (k=='C_M_DistByAgent') | (k=='C_M_DistByAgentPct'):
 							continue
 						if vo[k].size==0:
 							continue
@@ -98,7 +106,7 @@ def MeepMeep(meta,pNam):
 					# Set future periods to zero
 					it=np.where(meta[pNam]['Year']>=meta[pNam]['Project']['Year Start Saving']-meta['Core']['Recycle Early Record Buffer'])[0]
 					for k in vo.keys():
-						if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
+						if (k=='C_M_DistByAgent') | (k=='C_M_DistByAgentPct'):
 							# Nested dictionaries
 							# *** These are already shortened time periods so set whole array to zero
 							for k2 in vo[k].keys():
@@ -138,8 +146,8 @@ def MeepMeep(meta,pNam):
 						os.remove(fin)
 						#d0=gu.ipickle(fin)
 						#vo['A']=d0['A']
-						#vo['C_Eco_Pools']=d0['C_Eco_Pools']
-						#vo['C_Pro_Pools']=d0['C_Pro_Pools']
+						#vo['C_Eco_ByPool']=d0['C_Eco_ByPool']
+						#vo['C_Pro_ByPool']=d0['C_Pro_ByPool']
 						#vi['GC']['Active']=d0['GCA']
 						#os.remove(fin)
 						#del d0
@@ -161,8 +169,8 @@ def MeepMeep(meta,pNam):
 							if iScn==meta[pNam]['Project']['Scenario Adjustment']['With Scenario']:
 								#vo_out={}
 								#vo_out['A']=vo['A']
-								#vo_out['C_Eco_Pools']=vo['C_Eco_Pools']
-								#vo_out['C_Pro_Pools']=vo['C_Pro_Pools']
+								#vo_out['C_Eco_ByPool']=vo['C_Eco_ByPool']
+								#vo_out['C_Pro_ByPool']=vo['C_Pro_ByPool']
 								#vo_out['GCA']=vi['GC']['Active']
 								#gu.opickle(fout,vo_out)
 								fout=meta['Paths'][pNam]['Output Scenario'][iScn] + '\\ScenarioAdjustment_Variables_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
@@ -228,6 +236,20 @@ def MeepMeep(meta,pNam):
 
 	return meta
 
+#%% Phase shift correction of net growth
+def PhaseShiftNG(meta,y):
+	flg=0
+	if flg==1:
+		x=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
+		xCor=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
+		iCor=np.where(x<=55)[0]
+		xCor[iCor]=0.5*x[iCor]
+		for j in range(y.shape[1]):
+			for k in range(y.shape[2]):
+				y1=np.interp(x,xCor,y[:,j,k])
+				y[:,j,k]=y1
+	return y
+
 #%% Initialize stands
 def InitializeStands(meta,pNam,iScn,iEns,iBat):
 
@@ -287,6 +309,7 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 
 		# Import growth curve 1
 		vi['GC'][1]=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\GrowthCurve1_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+		vi['GC'][1]=PhaseShiftNG(meta,vi['GC'][1])
 
 		# Set active growth curve to growth curve 1
 		vi['GC']['Active']=vi['GC'][1].copy().astype(float)*meta['Modules']['GYM']['Scale Factor']
@@ -296,16 +319,19 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 
 		# Import growth curve 2
 		vi['GC'][2]=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\GrowthCurve2_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+		vi['GC'][2]=PhaseShiftNG(meta,vi['GC'][2])
 
 		# Import growth curve 3
 		try:
 			vi['GC'][3]=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\GrowthCurve3_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+			vi['GC'][3]=PhaseShiftNG(meta,vi['GC'][3])
 		except:
 			vi['GC'][3]=0
 
 		# Import growth curve 4 (optional)
 		try:
 			vi['GC'][4]=gu.ipickle(meta['Paths'][pNam]['Input Scenario'][iScn] + '\\GrowthCurve4_Bat' + cbu.FixFileNum(iBat) + '.pkl')
+			vi['GC'][4]=PhaseShiftNG(meta,vi['GC'][4])
 		except:
 			vi['GC'][4]=0
 
@@ -369,48 +395,50 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 
 	# Carbon density of ecosystem (Mg C ha-1)
 	# -> 3-D matrix: Time x Stand x Carbon pool
-	vo['C_Eco_Pools']=np.zeros((m,n,o))
+	vo['C_Eco_ByPool']=np.zeros((m,n,o))
 
 	# Carbon density of products sector (Mg C ha-1)
 	# -> 3-D matrix: Time x Stand x Carbon pool
-	vo['C_Pro_Pools']=np.zeros((m,n,meta['Core']['N Pools Pro']))
+	vo['C_Pro_ByPool']=np.zeros((m,n,meta['Core']['N Pools Pro']))
 
 	# Aggregate pools (Mg C ha-1) (polulated upon export)
-	vo['C_Biomass_Tot']=np.array([])
-	vo['C_Stemwood_Tot']=np.array([])
-	vo['C_Foliage_Tot']=np.array([])
-	vo['C_Branch_Tot']=np.array([])
-	vo['C_Bark_Tot']=np.array([])
-	vo['C_Root_Tot']=np.array([])
-	vo['C_Piled_Tot']=np.array([])
-	vo['C_Litter_Tot']=np.array([])
-	vo['C_DeadWood_Tot']=np.array([])
-	vo['C_Soil_Tot']=np.array([])
+	vo['C_Biomass']=np.array([])
+	vo['C_Stemwood']=np.array([])
+	vo['C_Foliage']=np.array([])
+	vo['C_Branch']=np.array([])
+	vo['C_Bark']=np.array([])
+	vo['C_Root']=np.array([])
+	vo['C_Piles']=np.array([])
+	vo['C_Litter']=np.array([])
+	vo['C_DeadWood']=np.array([])
+	vo['C_Soil']=np.array([])
 	vo['C_Soil_OHorizon']=np.array([])
-	vo['C_InUse_Tot']=np.array([])
-	vo['C_DumpLandfill_Tot']=np.array([])
-	vo['C_Buildings_Tot']=np.zeros((m,n))
+	vo['C_InUse']=np.array([])
+	vo['C_DumpLandfill']=np.array([])
+	vo['C_Buildings']=np.zeros((m,n))
 
 	# Carbon flux densities (Mg C ha-1 yr-1)
-	vo['C_G_Gross']=np.zeros((m,n,o))
-	vo['C_G_Net_Reg']=np.zeros((m,n,o))
-	vo['C_M_Reg']=np.zeros((m,n,o))
-	vo['C_M_Dist']=np.zeros((m,n))
-	vo['C_M_ByAgent']={}
-	vo['C_M_Pct_ByAgent']={}
-	for k in meta['LUT']['Event'].keys():
-		id=meta['LUT']['Event'][k]
-		vo['C_M_ByAgent'][id]=np.zeros((m,n))
-		vo['C_M_Pct_ByAgent'][id]=np.zeros((m,n))
-	vo['C_LF']=np.zeros((m,n,o))
-	vo['C_RH']=np.zeros((m,n,o))
+	vo['C_G_Gross_ByPool']=np.zeros((m,n,o))
+	vo['C_G_Net_Reg_ByPool']=np.zeros((m,n,o))
+	vo['C_M_Reg_ByPool']=np.zeros((m,n,o))
+	vo['C_LF_ByPool']=np.zeros((m,n,o))
+	vo['C_RH_ByPool']=np.zeros((m,n,o))
 
 	# Aggregate pools (Mg C ha-1) (polulated upon export)
-	vo['C_G_Gross_Tot']=np.array([])
-	vo['C_G_Net_Tot']=np.array([])
-	vo['C_M_Reg_Tot']=np.array([])
-	vo['C_LF_Tot']=np.array([])
-	vo['C_RH_Tot']=np.array([])
+	vo['C_G_Gross']=np.array([])
+	vo['C_M_Reg']=np.array([])
+	vo['C_M_Dist']=np.zeros((m,n))
+	vo['C_G_Net_Reg']=np.array([])
+	vo['C_G_Net']=np.array([])
+	vo['C_LF']=np.array([])
+	vo['C_RH']=np.array([])
+
+	vo['C_M_DistByAgent']={}
+	vo['C_M_DistByAgentPct']={}
+	for k in meta['LUT']['Event'].keys():
+		id=meta['LUT']['Event'][k]
+		vo['C_M_DistByAgent'][id]=np.zeros((m,n))
+		vo['C_M_DistByAgentPct'][id]=np.zeros((m,n))
 
 	# Keep track of carbon transfers (for economics)
 	vo['C_Felled']=np.zeros((m,n))
@@ -459,50 +487,56 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 	vo['C_Gas']=np.zeros((m,n))
 	vo['C_Limestone']=np.zeros((m,n))
 
-	# LULUCF Sector: Net ecosystem exchange (polulated in load results)
-	vo['E_CO2e_LULUCF_NPP']=np.array([])
-	vo['E_CO2e_LULUCF_RH']=np.array([])
-	vo['E_CO2e_LULUCF_NEE']=np.array([])
+	# Emissions, domestic, forest sector, ecosystem
+	vo['E_Dom_FS_NPP']=np.zeros((m,n))
+	vo['E_Dom_FS_RH']=np.zeros((m,n))
+	vo['E_Dom_FS_NEE']=np.zeros((m,n))
+	vo['E_Dom_FS_Wildfire']=np.zeros((m,n))
+	vo['E_Dom_FS_OpenBurning']=np.zeros((m,n))
+	vo['E_Dom_FS_Denit']=np.zeros((m,n))
+	vo['E_Dom_FS_Other']=np.zeros((m,n))
+	vo['E_Dom_FS_HWP']=np.zeros((m,n))
 
-	# LULUCF Sector: Net ecosystem production (polulated upon export)
-	vo['E_CO2e_LULUCF_Wildfire']=np.array([])
+	# Emissions, international, forest sector, ecosystem
+	vo['E_Int_FS_NPP']=np.zeros((m,n))
+	vo['E_Int_FS_RH']=np.zeros((m,n))
+	vo['E_Int_FS_NEE']=np.zeros((m,n))
+	vo['E_Int_FS_Wildfire']=np.zeros((m,n))
+	vo['E_Int_FS_OpenBurning']=np.zeros((m,n))
+	vo['E_Int_FS_Denit']=np.zeros((m,n))
+	vo['E_Int_FS_Other']=np.zeros((m,n))
+	vo['E_Int_FS_HWP']=np.zeros((m,n))
 
-	# LULUCF Sector: Net ecosystem production (polulated upon export)
-	vo['E_CO2e_LULUCF_OpenBurning']=np.array([])
+	# Emissions, domestic, energy stationary combustion, bioenergy
+	vo['E_ESC_Bioenergy']=np.zeros((m,n))
+	vo['E_Dom_ESC_BioenergyPowerFacility']=np.zeros((m,n))
+	vo['E_Dom_ESC_BioenergyPowerGrid']=np.zeros((m,n))
+	vo['E_Dom_ESC_BioenergyPelletGrid']=np.zeros((m,n))
+	vo['E_Dom_ESC_BioenergyPelletRNG']=np.zeros((m,n))
+	vo['E_Dom_ESC_BioenergyPelletHydrogen']=np.zeros((m,n))
+	vo['E_Dom_ESC_BioenergyFirewood']=np.zeros((m,n))
 
-	# LULUCF Sector: Denitrification
-	vo['E_CO2e_LULUCF_Denit']=np.zeros((m,n))
+	# Emissions, internationl, energy stationary combustion, bioenergy
+	vo['E_Int_ESC_BioenergyPowerFacility']=np.zeros((m,n))
+	vo['E_Int_ESC_BioenergyPelletGrid']=np.zeros((m,n))
+	vo['E_Int_ESC_BioenergyPelletRNG']=np.zeros((m,n))
+	vo['E_Int_ESC_BioenergyPelletHydrogen']=np.zeros((m,n))
+	vo['E_Int_ESC_BioenergyFirewood']=np.zeros((m,n))
 
-	# LULUCF Sector: valatilization and deposition of N
-	vo['E_CO2e_LULUCF_Other']=np.zeros((m,n))
+	# Emissions, domestic, energy stationary combustion, forestry operations
+	vo['E_Dom_ESC_ForOpsBurnCoal']=np.zeros((m,n))
+	vo['E_Dom_ESC_ForOpsBurnOil']=np.zeros((m,n))
+	vo['E_Dom_ESC_ForOpsBurnGas']=np.zeros((m,n))
 
-	# LULUCF Sector: RH from dumps and landfills
-	vo['E_CO2e_LULUCF_HWP']=np.zeros((m,n))
+	# Emissions, domestic, energy transporation, forestry operations
+	vo['E_Dom_ET_ForOpsBurnCoal']=np.zeros((m,n))
+	vo['E_Dom_ET_ForOpsBurnOil']=np.zeros((m,n))
+	vo['E_Dom_ET_ForOpsBurnGas']=np.zeros((m,n))
 
-	# Energy - Stationary Combustion Sector
-	vo['E_CO2e_ESC_Bioenergy']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyPowerFacilityDom']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyPowerFacilityExport']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyPowerGrid']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyPelletExport']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyPelletDomGrid']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyPelletDomRNG']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyFirewoodDom']=np.zeros((m,n))
-	vo['E_CO2e_ESC_BioenergyFirewoodExport']=np.zeros((m,n))
-
-	vo['E_CO2e_ESC_OperForBurnCoal']=np.zeros((m,n))
-	vo['E_CO2e_ESC_OperForBurnOil']=np.zeros((m,n))
-	vo['E_CO2e_ESC_OperForBurnGas']=np.zeros((m,n))
-
-	# Energy - Transporation Sector
-	vo['E_CO2e_ET_OperForBurnCoal']=np.zeros((m,n))
-	vo['E_CO2e_ET_OperForBurnOil']=np.zeros((m,n))
-	vo['E_CO2e_ET_OperForBurnGas']=np.zeros((m,n))
-
-	# Industrial Produciton and Product Use Sector
-	vo['E_CO2e_IPPU_OperForBurningCoal']=np.zeros((m,n))
-	vo['E_CO2e_IPPU_OperForBurningOil']=np.zeros((m,n))
-	vo['E_CO2e_IPPU_OperForBurningGas']=np.zeros((m,n))
+	# Emissions, domestic, industrial Produciton and Product Use, forestry operations
+	vo['E_Dom_IPPU_ForOpsBurningCoal']=np.zeros((m,n))
+	vo['E_Dom_IPPU_ForOpsBurningOil']=np.zeros((m,n))
+	vo['E_Dom_IPPU_ForOpsBurningGas']=np.zeros((m,n))
 
 	if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
@@ -526,7 +560,7 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 		vo['TreeMean_Csw_G']=np.zeros((m,n))
 
 		# Needed to supply affected carbon to disturbance module
-		vo['C_M_Tot']=np.zeros((m,n,o))
+		#vo['C_M_Tot']=np.zeros((m,n,o))
 
 		# Needed to track dead merch volume
 		vo['V_Merch_M']=np.zeros((m,n))
@@ -901,7 +935,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 		vo_full={}
 		for k in vo.keys():
 
-			if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
+			if (k=='C_M_DistByAgent') | (k=='C_M_DistByAgentPct'):
 				continue
 
 			if vo[k].size==0:
@@ -926,12 +960,12 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 		vo[k]=vo[k][it,:]
 
 	# Mortality summaries
-	for k in vo['C_M_ByAgent'].keys():
-		vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k][it,:]/meta['Core']['Scale Factor C_M_ByAgent']
-		vo['C_M_Pct_ByAgent'][k]=vo['C_M_Pct_ByAgent'][k][it,:]/meta['Core']['Scale Factor C_M_ByAgent']
+	for k in vo['C_M_DistByAgent'].keys():
+		vo['C_M_DistByAgent'][k]=vo['C_M_DistByAgent'][k][it,:]/meta['Core']['Scale Factor C_M_DistByAgent']
+		vo['C_M_DistByAgentPct'][k]=vo['C_M_DistByAgentPct'][k][it,:]/meta['Core']['Scale Factor C_M_DistByAgent']
 
-		vo['C_M_ByAgent'][k]=vo['C_M_ByAgent'][k].astype('int16')
-		vo['C_M_Pct_ByAgent'][k]=vo['C_M_Pct_ByAgent'][k].astype('int16')
+		vo['C_M_DistByAgent'][k]=vo['C_M_DistByAgent'][k].astype('int16')
+		vo['C_M_DistByAgentPct'][k]=vo['C_M_DistByAgentPct'][k].astype('int16')
 
 	# Emissions from wildfire:
 
@@ -953,7 +987,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 	CO2e_E_AsCO=bB['GWP_CO_AR5']*E_CO
 	CO2e_E_AsN2O=bB['GWP_N2O_AR5']*E_N2O
 
-	vo['E_CO2e_LULUCF_Wildfire']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
+	vo['E_Dom_FS_Wildfire']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
 
 	# Add to atmosphere
 	vo['Atm_CO2_In']=vo['Atm_CO2_In']+E_CO2
@@ -980,7 +1014,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 	CO2e_E_AsCO=bB['GWP_CO_AR5']*E_CO
 	CO2e_E_AsN2O=bB['GWP_N2O_AR5']*E_N2O
 
-	vo['E_CO2e_LULUCF_OpenBurning']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
+	vo['E_Dom_FS_OpenBurning']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
 
 	# Add to atmosphere
 	vo['Atm_CO2_In']=vo['Atm_CO2_In']+E_CO2
@@ -998,54 +1032,41 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 	del vo['C_E_OpenBurningAsN2O']
 
 	# Calculate carbon content of dead wood, organic and mineral soil horizons following Shaw et al. (2017)
-	vo['C_Soil_OHorizon']=vo['C_Eco_Pools'][:,:,iEP['LitterVF']]+vo['C_Eco_Pools'][:,:,iEP['LitterS']]
+	vo['C_Soil_OHorizon']=vo['C_Eco_ByPool'][:,:,iEP['LitterVF']]+vo['C_Eco_ByPool'][:,:,iEP['LitterS']]
 
-	# Sum pools and fluxes if "Save Biomass Pools" is Off
-	# These variables only need to be saved to file if the indiviudal pools are
-	# not being stored.
-	vo['C_Stemwood_Tot']=vo['C_Eco_Pools'][:,:,iEP['StemMerch']]+vo['C_Eco_Pools'][:,:,iEP['StemNonMerch']]
-	vo['C_Foliage_Tot']=vo['C_Eco_Pools'][:,:,iEP['Foliage']]
-	vo['C_Branch_Tot']=vo['C_Eco_Pools'][:,:,iEP['Branch']]
-	vo['C_Bark_Tot']=vo['C_Eco_Pools'][:,:,iEP['Bark']]
-	vo['C_Root_Tot']=vo['C_Eco_Pools'][:,:,iEP['RootFine']]+vo['C_Eco_Pools'][:,:,iEP['RootCoarse']]
+	# Aggregate pools
+	vo['C_Biomass']=np.sum(vo['C_Eco_ByPool'][:,:,iEP['BiomassTotal']],axis=2)
+	vo['C_Stemwood']=vo['C_Eco_ByPool'][:,:,iEP['StemMerch']]+vo['C_Eco_ByPool'][:,:,iEP['StemNonMerch']]
+	vo['C_Foliage']=vo['C_Eco_ByPool'][:,:,iEP['Foliage']]
+	vo['C_Branch']=vo['C_Eco_ByPool'][:,:,iEP['Branch']]
+	vo['C_Bark']=vo['C_Eco_ByPool'][:,:,iEP['Bark']]
+	vo['C_Root']=vo['C_Eco_ByPool'][:,:,iEP['RootFine']]+vo['C_Eco_ByPool'][:,:,iEP['RootCoarse']]
+	vo['C_Piles']=np.sum(vo['C_Eco_ByPool'][:,:,iEP['Piled']],axis=2)
+	vo['C_Litter']=np.sum(vo['C_Eco_ByPool'][:,:,iEP['Litter']],axis=2)
+	vo['C_DeadWood']=np.sum(vo['C_Eco_ByPool'][:,:,iEP['DeadWood']],axis=2)
+	vo['C_Soil']=np.sum(vo['C_Eco_ByPool'][:,:,iEP['Soil']],axis=2)
+	vo['C_InUse']=np.sum(vo['C_Pro_ByPool'][:,:,meta['Core']['iPP']['InUse']],axis=2)
+	vo['C_Buildings']=np.sum(vo['C_Pro_ByPool'][:,:,meta['Core']['iPP']['Buildings'] ],axis=2)
+	vo['C_DumpLandfill']=np.sum(vo['C_Pro_ByPool'][:,:,meta['Core']['iPP']['DumpLandfill']],axis=2)
+	del vo['C_Eco_ByPool']
+	del vo['C_Pro_ByPool']
 
-	if meta[pNam]['Project']['Save Biomass Pools']!='On':
-
-		# Aggregate pools
-		vo['C_Biomass_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['BiomassTotal']],axis=2)
-		vo['C_Piled_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Piled']],axis=2)
-		vo['C_Litter_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Litter']],axis=2)
-		vo['C_DeadWood_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['DeadWood']],axis=2)
-		vo['C_Soil_Tot']=np.sum(vo['C_Eco_Pools'][:,:,iEP['Soil']],axis=2)
-		vo['C_InUse_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['InUse']],axis=2)
-		vo['C_Buildings_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['Buildings'] ],axis=2)
-		vo['C_DumpLandfill_Tot']=np.sum(vo['C_Pro_Pools'][:,:,meta['Core']['iPP']['DumpLandfill']],axis=2)
-
-		# Remove pools
-		del vo['C_Eco_Pools']
-		del vo['C_Pro_Pools']
-
-		# Aggregate fluxes
-		vo['C_G_Gross_Tot']=np.sum(vo['C_G_Gross'],axis=2)
-		vo['C_G_Net_Reg_Tot']=np.sum(vo['C_G_Net_Reg'],axis=2)
-		vo['C_M_Reg_Tot']=np.sum(vo['C_M_Reg'],axis=2)
-		vo['C_LF_Tot']=np.sum(vo['C_LF'],axis=2)
-		vo['C_RH_Tot']=np.sum(vo['C_RH'],axis=2)
-
-		# Remove fluxes
-		del vo['C_G_Gross']
-		del vo['C_G_Net_Reg']
-		del vo['C_M_Reg']
-		del vo['C_LF']
-		del vo['C_RH']
-
-	# Fix net growth by adding disturbance mortality
-	vo['C_G_Net_Tot']=vo['C_G_Net_Reg_Tot']-vo['C_M_Dist']
+	# Aggregate fluxes
+	vo['C_G_Gross']=np.sum(vo['C_G_Gross_ByPool'],axis=2)
+	vo['C_G_Net_Reg']=np.sum(vo['C_G_Net_Reg_ByPool'],axis=2)
+	vo['C_M_Reg']=np.sum(vo['C_M_Reg_ByPool'],axis=2)
+	vo['C_LF']=np.sum(vo['C_LF_ByPool'],axis=2)
+	vo['C_RH']=np.sum(vo['C_RH_ByPool'],axis=2)
+	del vo['C_G_Gross_ByPool']
+	del vo['C_G_Net_Reg_ByPool']
+	del vo['C_M_Reg_ByPool']
+	del vo['C_LF_ByPool']
+	del vo['C_RH_ByPool']
 
 	# Apply scale factor to data
 	for k in vo.keys():
 		# Skip mortality summary by agent
-		if (k=='C_M_ByAgent') | (k=='C_M_Pct_ByAgent'):
+		if (k=='C_M_DistByAgent') | (k=='C_M_DistByAgentPct'):
 			continue
 		if vo[k].size==0:
 			continue
@@ -1053,7 +1074,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 			continue
 
 		# These variable needs a larger scale factor
-		if (k=='E_CO2e_LULUCF_HWP') | (k=='E_CO2e_ESC_Comb') | (k=='E_CO2e_ET_Comb') | (k=='E_CO2e_IPPU_Comb'):
+		if (k=='E_Dom_FS_HWP') | (k=='E_ESC_Comb') | (k=='E_ET_Comb') | (k=='E_IPPU_Comb'):
 			vo[k]=vo[k]/meta['Core']['Scale Factor Export Big']
 		else:
 			vo[k]=vo[k]/meta['Core']['Scale Factor Export Small']
@@ -1064,12 +1085,12 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 			vo[k]=vo[k].astype('int32')
 
 	# Mortality summary by agent
-	for k in vo['C_M_ByAgent'].keys():
-		idx=np.where(vo['C_M_ByAgent'][k]>0)
-		M=vo['C_M_ByAgent'][k][idx].copy()
-		vo['C_M_ByAgent'][k]={}
-		vo['C_M_ByAgent'][k]['idx']=idx
-		vo['C_M_ByAgent'][k]['M']=M
+	for k in vo['C_M_DistByAgent'].keys():
+		idx=np.where(vo['C_M_DistByAgent'][k]>0)
+		M=vo['C_M_DistByAgent'][k][idx].copy()
+		vo['C_M_DistByAgent'][k]={}
+		vo['C_M_DistByAgent'][k]['idx']=idx
+		vo['C_M_DistByAgent'][k]['M']=M
 
 	# Save data
 	fout=meta['Paths'][pNam]['Output Scenario'][iScn] + '\\Data_Scn' + cbu.FixFileNum(iScn) + \
@@ -1078,15 +1099,16 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 
 	# Save disturbance/management event chronology
 	# If events are added on the fly, they will only be accessable if resaved.
-	if (meta[pNam]['Scenario'][iScn]['Harvest Status Historical']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Wind Status Future']=='On') | (meta[pNam]['Scenario'][iScn]['Wind Status Historical']=='On'):
-		# If it was input as compressed, output as re-compressed
-		if 'idx' in vi['EC']:
-			# Revise index
-			vi['EC']['idx']=np.where(vi['EC']['ID Event Type']>0)
-			vi['EC']['ID Event Type']=vi['EC']['ID Event Type'][vi['EC']['idx']]
-			vi['EC']['Mortality Factor']=np.array(100*vi['EC']['Mortality Factor'][vi['EC']['idx']],dtype='int16')
-			vi['EC']['Growth Factor']=vi['EC']['Growth Factor'][vi['EC']['idx']]
-			vi['EC']['ID Growth Curve']=vi['EC']['ID Growth Curve'][vi['EC']['idx']]
+	if (meta[pNam]['Scenario'][iScn]['Harvest Sim Historical Status']=='On') | (meta[pNam]['Scenario'][iScn]['Harvest Sim Future Status']=='On') | \
+		(meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Status']=='On') | (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Status']=='On') | \
+		(meta[pNam]['Scenario'][iScn]['IBM Sim Pre-obs Status']=='On') | (meta[pNam]['Scenario'][iScn]['IBM Sim Future Status']=='On') | \
+		(meta[pNam]['Scenario'][iScn]['Disease Sim Historical Status']=='On') | (meta[pNam]['Scenario'][iScn]['Disease Sim Future Status']=='On') | \
+		(meta[pNam]['Scenario'][iScn]['Wind Sim Historical Status']=='On') | (meta[pNam]['Scenario'][iScn]['Wind Sim Future Status']=='On'):
+		vi['EC']['idx']=np.where(vi['EC']['ID Event Type']>0)
+		vi['EC']['ID Event Type']=vi['EC']['ID Event Type'][vi['EC']['idx']]
+		vi['EC']['Mortality Factor']=np.array(100*vi['EC']['Mortality Factor'][vi['EC']['idx']],dtype='int16')
+		vi['EC']['Growth Factor']=vi['EC']['Growth Factor'][vi['EC']['idx']]
+		vi['EC']['ID Growth Curve']=vi['EC']['ID Growth Curve'][vi['EC']['idx']]
 		fout=meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
 		gu.opickle(fout,vi['EC'])
 
@@ -1112,11 +1134,11 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 		# Check conservation of mass (stock change = NEBP)
 		# *** only done for the first stand ***
 		NPP=np.sum(vo['C_NPP'][:,0,0:7],axis=1)
-		RH=np.sum(vo['C_RH'][:,0,7:16],axis=1)
+		RH=np.sum(vo['C_RH_ByPool'][:,0,7:16],axis=1)
 		E=vo['C_E_FireAsCO2'][:,0]+vo['C_E_FireAsCO'][:,0]+vo['C_E_FireAsCH4'][:,0]+vo['C_E_FireAsN2O'][:,0]
 		R=vo['C_ToMillMerch'][:,0]+vo['C_ToMillNonMerch'][:,0]
-		x=np.sum(vo['C_Eco_Pools'][:,0,0:16],axis=1)
-		y=np.sum(vo['C_Eco_Pools'][0,0,0:16],axis=0)+np.cumsum(NPP-RH-R-E)
+		x=np.sum(vo['C_Eco_ByPool'][:,0,0:16],axis=1)
+		y=np.sum(vo['C_Eco_ByPool'][0,0,0:16],axis=0)+np.cumsum(NPP-RH-R-E)
 		D_abs=np.mean(np.abs(y-x))
 		D_rel=np.mean(np.abs(y-x)/np.maximum(0.000001,x)*100)
 		df.loc[3]=[D_abs,'Mean absolute difference between stock change and NECB (MgC/ha)']
@@ -1133,8 +1155,8 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 				y[ctr]=np.sum(x[ctr:(ctr+N)])
 			return y/N
 
-		#plt.plot(runningMean(vo['C_Eco_Pools[:,0,15],150))
-		#x=np.diff(vo['C_Eco_Pools'][:,0,15])/vo['C_Eco_Pools'][0:-1,0,15]*100
+		#plt.plot(runningMean(vo['C_Eco_ByPool[:,0,15],150))
+		#x=np.diff(vo['C_Eco_ByPool'][:,0,15])/vo['C_Eco_ByPool'][0:-1,0,15]*100
 		#rmx=runningMean(x,150)
 		#plt.figure(33)
 		#plt.plot(rmx)

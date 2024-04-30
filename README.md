@@ -13,7 +13,7 @@ The repository was developed to:
 * Benefit from the diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
 <br>
-fcgadgets is written in the Python 3/Jupyter environment, benefitting from integrated libraries for simulation modelling, 
+fcgadgets is written in the Python programming language, benefitting from integrated libraries for simulation modelling, 
 geographical information systems, data analytics, and application deployment (Downey, 2017). 
 
 ## PLUG-AND-PLAY MODULARITY
@@ -28,33 +28,33 @@ nutrient applications.
 ![image info](./images/fcgadgets_annual_processes.png)
 
 The model achieves this with a set of plug-and-play functions fund in **cbrun_annproc.py**:
-### Biomass_FromTIPSYorTASS: 
+### Tree Biomass Dynamics (from Growht and Yield models): 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the [TASS/TIPSY growth and yield software application](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling).
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
 * Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using 
 allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced 
 with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period 
 will match that originally predicted by the GY model.
-### Biomass_FromSawtooth:
+### Tree Biomass Dynamics (from Sawtooth):
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
 * Driven by equations of annual aboveground biomass growth, annual probability of recruitment, and annual probability of mortality
 * Equations are fitted against species/region samples
-### DOM_FromCBM08: 
+### Dead Wood, Litter and Soil Dynamics
 * Simulates cycling of organic carbon through:
 	* Dead wood (snags and coarse woody debris);
 	* Litter (organic soil horizon); 
 	* Soil (mineral soil horizon);
 	* Felled & piled materials
 * Based on methods described by Kurz et al. (2009) and Shaw et al. (2014)
-### Events_FromTaz: 
+### Disturbance and Management Events: 
 * This method imposes changes caused by natural disturbances and management events
 * All events are defined by an event ID, decimal year, mortality factor, growth factor, and the ID of the growth curve that represents the new stand
 * It is driven by the event chronology, which has two potential sources:
 	* Prescribed by the user as input variables in the Disturbance and Management Event Chronology (DMEC)
 	* Optional on-the-fly simulation of natural disturbances or management activities (based on functions of age or merchantable volume at the beginning of the year)
 
-### HWP_Update21: 
+### Product Dynamics
 * Representation of the annual GHG fluxes that arise from fibre that is removed from forest ecosystems
 
 ### Organizational structure of cbrunner

@@ -95,7 +95,7 @@ u1ha.GenerateSparseInputs(meta,1,'BCFCS_EvalAtCN')
 u1ha.GenerateSparseInputs(meta,1,'BCFCS_EvalCoast')
 u1ha.GenerateSparseInputs(meta,1,'BCFCS_Eval')
 u1ha.GenerateSparseInputs(meta,50,'BCFCS_LUC')
-u1ha.GenerateSparseInputs(meta,100,'NOSE')
+u1ha.GenerateSparseInputs(meta,10,'NOSE')
 u1ha.GenerateSparseInputs(meta,10,'BCFCS_NMC')
 u1ha.GenerateSparseInputs(meta,1,'TSA_DawsonCreek')
 u1ha.GenerateSparseInputs(meta,50,'BCFCS_CWH')
@@ -189,19 +189,169 @@ u1ha.DeriveHarvestCompilation(meta)
 u1ha.DeriveHarvest_SILV_SYSTEM_CODE(meta)
 
 #%% Rasterize planting
-u1ha.RasterizePlanting(meta)
+u1ha.RasterizePlanting(meta) # Compile location, SBC, STC from various sources
+u1ha.DeriveASETComp1(meta) # Derive artificial stand establishment type (ASET)
+u1ha.RasterizePlantingLayer(meta) # Get attributes from planting layer (to get species and genetic worth)
+u1ha.DerivePlantingStatsByTime(meta) # AIL summary
+u1ha.DeriveLastASET(meta) # Derive last instance of Artificial Stand Establishment Type (ASET)
+u1ha.MaskPlantingNonOb(meta,zRef) # Derive non-obligation planting mask
 
-#%% Derive non-obligation planting mask
-u1ha.MaskPlantingNonOb(meta,zRef)
+#%%
+def DerivePlantingStatsByTime(meta):
+	# ASET is not included here because a summary time series is created during production
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	iMask=np.where(zRef['Data']==1)
+	zBGC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BEC_ZONE_CODE.tif')['Data'][iMask]
 
-#%% Derive Regen Type (used for non-ob stand establishment)
-u1ha.DeriveASETComp1(meta)
+	ds={}
+	ds['Year']=np.arange(1960,2023,1)
+	ds['Global']={}
+	ds['Global']['GW Mean']=np.zeros(ds['Year'].size)
+	ds['Global']['SPH Mean']=np.zeros(ds['Year'].size)
+	ds['ByFSC']={}
+	ds['ByFSC']['FSC']=np.array(list(meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'].keys()))
+	ds['ByFSC']['Area']=np.zeros((ds['Year'].size,ds['ByFSC']['FSC'].size))
 
-#%% Derive last instance of Artificial Stand Establishment Type (ASET)
-u1ha.DeriveLastASET(meta)
+	ds['ByBGC']={}
+	ds['ByBGC']['ZONE']=np.array(list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys()))
+	ds['ByBGC']['GW Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+	ds['ByBGC']['SPH Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
 
-#%% Planting layer (to get species and genetic worth)
-u1ha.RasterizePlantingLayer(meta)
+	# Need to track average over 6 compacted files and then calculate weighted average at the end
+	trackG=[None]*6
+	for i in range(6):
+		trackG[i]={}
+		trackG[i]['GW Mean']=np.zeros(ds['Year'].size)
+		trackG[i]['SPH Mean']=np.zeros(ds['Year'].size)
+		trackG[i]['N']=np.zeros(ds['Year'].size)
+	trackBGC=[None]*6
+	for i in range(6):
+		trackBGC[i]={}
+		trackBGC[i]['GW Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+		trackBGC[i]['SPH Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+		trackBGC[i]['N']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+
+	for i in range(6):
+		print(i)
+		z={}
+		z['yr']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_Year.tif')['Data'][iMask]
+		ikp=np.where(z['yr']>0)
+		z['yr']=z['yr'][ikp]
+		z['BGC']=zBGC[ikp]
+		z['FSC']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SILV_FUND_SOURCE_CODE.tif')['Data'][iMask][ikp]
+		z['SPH']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SPH_Planted.tif')['Data'][iMask][ikp]
+		z['S1']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD1.tif')['Data'][iMask][ikp]
+		z['P1']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT1.tif')['Data'][iMask][ikp]
+		z['GW1']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW1.tif')['Data'][iMask][ikp]
+		z['S2']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD2.tif')['Data'][iMask][ikp]
+		z['P2']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT2.tif')['Data'][iMask][ikp]
+		z['GW2']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW2.tif')['Data'][iMask][ikp]
+		z['S3']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD3.tif')['Data'][iMask][ikp]
+		z['P3']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT3.tif')['Data'][iMask][ikp]
+		z['GW3']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW3.tif')['Data'][iMask][ikp]
+		z['S4']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD4.tif')['Data'][iMask][ikp]
+		z['P4']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT4.tif')['Data'][iMask][ikp]
+		z['GW4']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW4.tif')['Data'][iMask][ikp]
+
+		for iT in range(ds['Year'].size):
+			indT=np.where( (z['yr']==ds['Year'][iT]) )[0]
+
+			# By Funding Source
+			fsc0=z['FSC'][indT]
+			uFSC=np.unique(fsc0)
+			uFSC=uFSC[uFSC>0]
+			for iFSC in range(uFSC.size):
+				ind1=np.where( (fsc0==uFSC[iFSC]) )[0]
+				ind2=np.where(ds['ByFSC']['FSC']==u1ha.lut_n2s(meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'],uFSC[iFSC])[0])[0]
+				ds['ByFSC']['Area'][iT,ind2]=ds['ByFSC']['Area'][iT,ind2]+ind1.size
+
+			# Global
+			f1=z['P1'][indT].astype('float')/100
+			f2=z['P2'][indT].astype('float')/100
+			f3=z['P3'][indT].astype('float')/100
+			f4=z['P4'][indT].astype('float')/100
+			gw1=np.nan_to_num(z['GW1'][indT].astype('float'))
+			gw2=np.nan_to_num(z['GW2'][indT].astype('float'))
+			gw3=np.nan_to_num(z['GW3'][indT].astype('float'))
+			gw4=np.nan_to_num(z['GW4'][indT].astype('float'))
+			trackG[i]['GW Mean'][iT]=np.nanmean(( (f1*gw1)+(f2*gw2)+(f3*gw3)+(f4*gw4) )/(f1+f2+f3+f4))
+			trackG[i]['SPH Mean'][iT]=np.nanmean(z['SPH'][indT].astype('float'))
+			trackG[i]['N'][iT]=indT.size
+
+			# By BGC zone
+			bgc0=z['BGC'][indT]
+			sph0=z['SPH'][indT]
+			uBGC=np.unique(bgc0)
+			uBGC=uBGC[uBGC>0]
+			for iBGC in range(uBGC.size):
+				ind1=np.where( (bgc0==uBGC[iBGC]) )[0]
+				ind2=np.where(ds['ByBGC']['ZONE']==u1ha.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],uBGC[iBGC])[0])[0]
+				trackBGC[i]['GW Mean'][iT,ind2]=np.mean(( (f1[ind1]*gw1[ind1])+(f2[ind1]*gw2[ind1])+(f3[ind1]*gw3[ind1])+(f4[ind1]*gw4[ind1]) )/(f1[ind1]+f2[ind1]+f3[ind1]+f4[ind1]))
+				trackBGC[i]['SPH Mean'][iT,ind2]=np.mean(sph0[ind1].astype('float'))
+				trackBGC[i]['N'][iT,ind2]=ind1.size
+
+	# Calculate global mean genetic worth
+	gw_sum=np.zeros(ds['Year'].size)
+	sph_sum=np.zeros(ds['Year'].size)
+	n=np.zeros(ds['Year'].size)
+	for i in range(6):
+		gw_sum=gw_sum+trackG[i]['N']*trackG[i]['GW Mean']
+		sph_sum=sph_sum+trackG[i]['N']*trackG[i]['SPH Mean']
+		n=n+trackG[i]['N']
+	ds['Global']['GW Mean']=gw_sum/n
+	ds['Global']['SPH Mean']=sph_sum/n
+
+	# Calculate mean genetic worth by BGC zone
+	gw_sum=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+	sph_sum=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+	n=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+	for i in range(6):
+		gw_sum=gw_sum+trackBGC[i]['N']*trackBGC[i]['GW Mean']
+		sph_sum=sph_sum+trackBGC[i]['N']*trackBGC[i]['SPH Mean']
+		n=n+trackBGC[i]['N']
+	ds['ByBGC']['GW Mean']=gw_sum/n
+	ds['ByBGC']['SPH Mean']=sph_sum/n
+
+	flg=0
+	if flg==1:
+		iT=np.where( (ds['Year']>=1985) )[0]
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,6.5)); ms=2; lw=0.5
+		ax.plot(ds['Year'][iT],ds['Global']['GW Mean'][iT],'-ko',ms=ms,lw=lw,label='Province')
+		ind=np.where(ds['ByBGC']['ZONE']=='CWH')[0]
+		iGF=np.where(np.isnan(ds['ByBGC']['GW Mean'][iT,ind])==False)[0]
+		y=np.interp(ds['Year'][iT],ds['Year'][iT[iGF]],ds['ByBGC']['GW Mean'][iT[iGF],ind])
+		ax.plot(ds['Year'][iT],y,'-gs',ms=ms,lw=lw,label='CWH')
+		ind=np.where(ds['ByBGC']['ZONE']=='SBS')[0]
+		ax.plot(ds['Year'][iT],ds['ByBGC']['GW Mean'][iT,ind],'-c^',ms=ms,lw=lw,label='SBS')
+		ax.set(xticks=np.arange(0,3000,5),yticks=np.arange(0,3000,2),ylabel='Average genetic worth (%)',xlabel='Time, years',xlim=[1985,2023],ylim=[0,18])
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax.legend(loc='upper left',facecolor=[1,1,1],frameon=False);
+		gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\GeneticWorth_ts','png',900)
+
+		iT=np.where( (ds['Year']>=1985) )[0]
+		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,6.5)); ms=2; lw=0.5
+		ax.plot(ds['Year'][iT],ds['Global']['SPH Mean'][iT],'-ko',ms=ms,lw=lw,label='Province')
+		ind=np.where(ds['ByBGC']['ZONE']=='CWH')[0]
+		iGF=np.where(np.isnan(ds['ByBGC']['SPH Mean'][iT,ind])==False)[0]
+		y=np.interp(ds['Year'][iT],ds['Year'][iT[iGF]],ds['ByBGC']['SPH Mean'][iT[iGF],ind])
+		#np.mean(y[-10:])
+		ax.plot(ds['Year'][iT],y,'-gs',ms=ms,lw=lw,label='CWH')
+		ind=np.where(ds['ByBGC']['ZONE']=='SBS')[0]
+		#np.mean(ds['ByBGC']['SPH Mean'][iT,ind][-10:])
+		ax.plot(ds['Year'][iT],ds['ByBGC']['SPH Mean'][iT,ind],'-c^',ms=ms,lw=lw,label='SBS')
+		ax.set(xticks=np.arange(0,3000,5),yticks=np.arange(0,3000,100),ylabel='Planting density (SPH)',xlabel='Time, years',xlim=[1985,2023],ylim=[0,1600])
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+		ax.legend(loc='lower right',facecolor=[1,1,1],frameon=False);
+		gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\PlantingDensity_ts','png',900)
+
+	# Remove FSCs with no activity
+	ind=np.where(np.sum(ds['ByFSC']['Area'],axis=0)>0)[0]
+	ds['Area Unique']=ds['ByFSC']['Area'][:,ind]
+	ds['FSC Unique']=ds['ByFSC']['FSC'][ind]
+
+	# Save
+	gu.opickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PlantingSummaryByTime.pkl',ds)
+	return
 
 #%% Rasterize fertilization
 u1ha.RasterizeSilviculture(meta,np.array(['FE']),np.array(['CA']),np.array([]),np.array([]),'FE-CA')
@@ -247,8 +397,8 @@ u1ha.DeriveDistanceFromRoads(meta)
 #%% Rasterize distance from timber facilities
 u1ha.DeriveDistanceFromFacility(meta)
 
-#%% Derive harvest retention compilation 1
-u1ha.DeriveHarvestRetentionComp1(meta)
+#%% Derive Forest Cover Reserve compilation 1
+u1ha.DeriveForestCoverReserveComp1(meta)
 
 #%% Rasterize aerial spray treatment
 u1ha.RasterizeBTKSpray(meta)
@@ -259,8 +409,26 @@ u1ha.RasterizeGFC_LossYear(meta)
 #%% Filter Global Forest Change Loss Year (to remove known disturbances)
 u1ha.FilterGFC_LossYear(meta)
 
+#%% Climate data
+u1ha.ImportNormalsFromClimateNA(meta)
+u1ha.CalcSaturationVapourPressureNormal(meta)
+u1ha.CalcActualVapourPressureNormalFromTemps(meta)
+u1ha.CalcActualVapourPressureNormalBiasCorrected(meta)
+u1ha.CalcVapourPressureDeficitNormal(meta)
+u1ha.CalcSurfaceWaterBalanceNormals(meta)
+
 #%% Extract mean climate data by BGC zone
 u1ha.ClimateStatsByBGCZone(meta)
+
+#%% Plot climate space
+vX='tmean_ann_n'
+vY='ws_mjjas_n'
+def ClimateSpace(meta,vX,vY):
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	z0=u1ha.Import_Raster(meta,[],['lc_comp1_2019',vX,vY],'Extract Grid')
+	pX=np.percentile(z0[vX],[0.25,99.75])
+	pY=np.percentile(z0[vY],[0.25,99.75])
+	return
 
 #%% Deciduous fraction
 u1ha.DeriveBroadleafDeciduousFraction(meta)
@@ -270,112 +438,6 @@ u1ha.DeriveAccessZones(meta)
 
 #%% Species groups
 z0=u1ha.Import_Raster(meta,[],['refg','lc_comp1_2019','fire_yr','bsr_sc','spc1_vri23','geomorph'],'Extract Grid')
-
-#%% Import climate from old BC1ha project in matlab
-
-# Annual summary
-z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\Terrain\BC_1ha_twi.tif')
-z=gis.ClipRaster(z,[zS['xmin'],zS['xmax']],[zS['ymin'],zS['ymax']])
-gis.SaveGeoTiff(z,meta['Paths']['bc1ha'] + '\Terrain\bc1ha_twi.tif')
-del z
-garc.collect()
-
-# Annual summary
-z=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmin_ann_norm_1971to2000_si_hist_v1_c.tif')
-z=gis.ClipRaster(z,[zS['xmin'],zS['xmax']],[zS['ymin'],zS['ymax']])
-gis.SaveGeoTiff(z,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\BC1ha_tmin_ann_norm_1971to2000_si_hist_v1.tif')
-del z; garc.collect()
-
-#%% Convert old BC1ha .mat files to new BC1ha geotiffs with standardized extent
-def ConvertClimateNormals():
-	z2=zRef.copy()
-	z2['Data']=np.zeros(zRef['Data'].shape,dtype='float')
-	for mo in range(12):
-		print(mo+1)
-		fin=r'E:\Data\Climate\Canada\BC\Grids\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat'
-		z=spio.loadmat(fin,squeeze_me=True)
-		idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
-		iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
-		z0=np.flip(z['z'][()][idat],axis=0) # #.astype(float)*z['z'][()][iSF]
-		z1=zRef.copy()
-		z1['Data']=z0.astype('int16')
-		z1=gis.ClipToRaster(z1,zRef)
-		gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1\BC1ha_tmean_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
-		z2['Data']=z2['Data']+z1['Data'].astype('float')
-	z2['Data']=z2['Data']/12
-	z2['Data']=z2['Data'].astype('int16')
-	gis.SaveGeoTiff(z2,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_tmean_ann_norm_1971to2000_si_hist_v1.tif')
-
-	z2=zRef.copy()
-	z2['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
-	for mo in range(12):
-		print(mo+1)
-		fin=r'E:\Data\Climate\Canada\BC\Grids\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat'
-		z=spio.loadmat(fin,squeeze_me=True)
-		idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
-		iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
-		z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
-		z1=zRef.copy()
-		z1['Data']=z0.astype('int16')
-		z1=gis.ClipToRaster(z1,zRef)
-		gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1\BC1ha_prcp_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
-		z2['Data']=z2['Data']+np.maximum(0,z1['Data'])
-	gis.SaveGeoTiff(z2,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Seasonal\BC1ha_prcp_ann_norm_1971to2000_si_hist_v1.tif')
-
-	for mo in range(12):
-		print(mo+1)
-		z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
-		idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
-		iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
-		z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
-		z1=zRef.copy()
-		z1['Data']=z0
-		z1=gis.ClipToRaster(z1,zRef)
-		gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1\BC1ha_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
-
-	for mo in range(12):
-		print(mo+1)
-		z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
-		idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
-		iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
-		z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
-		z1=zRef.copy()
-		z1['Data']=z0
-		z1=gis.ClipToRaster(z1,zRef)
-		gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1\BC1ha_vpd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
-
-	for mo in range(12):
-		print(mo+1)
-		z=spio.loadmat(r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_etp_tmw_norm_1971to2000_comp_hist_v1\BC1ha_etp_mon_norm_1971to2000_comp_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
-		idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
-		iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
-		z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
-		z0=z0*100
-		z1=zRef.copy()
-		z1['Data']=z0.astype('int16')
-		z1=gis.ClipToRaster(z1,zRef)
-		gis.SaveGeoTiff(z1,r'C:\Users\rhember\Documents\Data\BC1ha\Climate\Monthly\BC1ha_etp_tmw_norm_1971to2000_comp_hist_v1\BC1ha_etp_mon_norm_1971to2000_comp_hist_v1_' + str(mo+1) + '.tif')
-
-	return
-
-#%% Convert old NACID .mat files to new BC1ha geotiffs with standardized extent
-def ConvertClimateNormals():
-	zRef=gis.OpenGeoTiff(r'E:\Data\Climate\NACID\Geotiff\NACID\grid.tif')
-	for mo in range(12):
-		print(mo+1)
-		z=spio.loadmat(r'E:\Data\Climate\NACID\Grids\NACID_rswd_mon_norm_1971to2000_si_hist_v1\NACID_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.mat',squeeze_me=True)
-		idat=np.where(np.asarray(z['z'].dtype.names)=='Data')[0][0]
-		iSF=np.where(np.asarray(z['z'].dtype.names)=='ScaleFactor')[0][0]
-		z0=np.flip(z['z'][()][idat].astype(float)*z['z'][()][iSF],axis=0)
-		z1=zRef.copy()
-		z1['Data']=10*z0
-		z1['Data']=z1['Data'].astype('int16')
-		#z1=gis.ClipToRaster(z1,zRef)
-		gis.SaveGeoTiff(z1,r'E:\Data\Climate\NACID\Geotiff\NACID\NACID_rswd_mon_norm_1971to2000_si_hist_v1\NACID_rswd_mon_norm_1971to2000_si_hist_v1_' + str(mo+1) + '.tif')
-
-	return
-
-z=gis.OpenGeoTiff(r'E:\Data\Climate\NACID\Geotiff\NACID\NACID_rswd_mon_norm_1971to2000_si_hist_v1\NACID_rswd_mon_norm_1971to2000_si_hist_v1_1.tif')
 
 #%%
 
