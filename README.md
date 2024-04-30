@@ -1,6 +1,6 @@
 ﻿# fcgadgets
 ## INTRODUCTION
-The **fcgadgets** repository supports estimation, accounting, and reporting of greenhouse 
+The <b>fcgadgets</b> repository supports estimation, accounting, and reporting of greenhouse 
 gas (GHG) emissions in British Columbia’s forest sector. The repository is a toolbox that 
 offers flexible processing and outputs the variables required to meet international 
 reporting standards for the forest sector, or complete life cycle assessments.
@@ -13,7 +13,6 @@ science standards
 * Promote a diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
 <br>
-<br>
 The <b>fcgadgets</b> repository was written in the Python programming language, benefitting 
 from integrated libraries for simulation modelling, geographical information systems, data 
 analytics, and application deployment (Downey, 2017). 
@@ -23,13 +22,12 @@ modelling full time. Users must be fluent in the Python language. Trying to appl
 fcgadgets without assistance is not advised. That said, it is relatively straightforward 
 to set up small projects that demonstrate dynamics for a single site. 
 <br>
-<br>
 ## PLUG-AND-PLAY MODULARITY
 The repository allows for comprehensive representation of processes and new science by connecting a constellation of supporting modules.
 ![image info](./images/fcgadgets_constellation.png)
 
 ## CBRUNNER
-**cbrunner** is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
+<b>cbrunner</b> is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
 wood products. The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the 
 biomass dynamics of trees, the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and 
 nutrient applications. 
@@ -75,7 +73,7 @@ This method represents annual GHG fluxes associated with:
 * Substitution of fossil fuels and cement for wood products 
 
 ### Organizational Structure of cbrunner
-The **cbrunner** model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
+The <b>cbrunner</b> model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
 
 N<sub>Simulation</sub> = N<sub>Stands</sub> × N<sub>Batches</sub> × N<sub>Scenarios</sub> × N<sub>Ensembles</sub>
 
@@ -92,13 +90,13 @@ Projects that explore climate change impacts or mitigation activities invariably
 therefore built around running and comparing multiple scenarios.
 
 ### Uncertainty and Ensemble Forecasting
-The **cbrunner** model adopts a probabilistic framework to accommodate processes with both deterministic and random components, as well as uncertainty analysis. Multiple ensembles
+The <b>cbrunner</b> model adopts a probabilistic framework to accommodate processes with both deterministic and random components, as well as uncertainty analysis. Multiple ensembles
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
 ### Working with Growth & Yield models
 
-The **cbrunner** model can be driven with output from [TASS/TIPSY growth and yield (GY) modelling applications](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling) using automated functions in **cbrun_utilities.py**.
+The <b>cbrunner</b> model can be driven with output from [TASS/TIPSY growth and yield (GY) modelling applications](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling) using automated functions in **cbrun_utilities.py**.
 * Prepare input parameters that are required to run BatchTIPSY.exe in a spreadsheet with **Write_BatchTIPSY_Input_Spreadsheet**
 * Convert the spreadsheet of input parameters to the format expected by BatchTIPSY.exe using **Write_BatchTIPSY_Input_File**
 * Convert the output from BatchTIPSY.exe to pickle files that will be read by cbrunner using **PostProcessBatchTIPSY**
@@ -113,7 +111,7 @@ Once simulations are complete, use a series of functions in **cbrun_util.py** to
 * When projects have been run for multi-polygon openings from RESULTS, model outputs can be summarized while preserving the exact treatment area that is specified for each multi-polygon using **MosByMultipolygon**
 
 ## MACGYVER
-The **macgyver** toolbox contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
+The <b>macgyver</b> toolbox contains custom scripts that compile information sources and prepare projects that use **cbrunner**. If pre-processing steps are similar among a wide range of project types, the goal is to store the scripts here for shared useage. 
 * Pre-processing script template to prepare **cbrunner** inputs for a:
 	* Sample of points
 	* Sample of polygons
@@ -128,7 +126,7 @@ The **macgyver** toolbox contains custom scripts that compile information source
 	* Growth and yield models
 
 ### util_inventory.py
-The general workflow of **cbrunner** projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb.
+The general workflow of <b>cbrunner</b> projects rely on the use of look-up tables (LUTs) for each variable in the inventory layers within Results.gdb, VRI.gdb, Disturbance.gdb, and LandUse.gdb.
 
 ### util_general.py
 This module contains general utilities for workflow in Python.
@@ -149,7 +147,7 @@ scenarios, consistent across project studies, and supported by documentation.
 * Spatially explicit simulations of events based on annual probability of onset and spread
 
 ## HARDHAT
-The **hardhat** toolbox contains resources for representing effects of forest management on forest sector GHG balance.
+The <b>hardhat</b> toolbox contains resources for representing effects of forest management on forest sector GHG balance.
 ### nutrient_application.py
 The nutrient_application module contains functions that update annual nutrient status called by the cbrunner model and a function that schedules hypothetical nutrient applications (during the future period of simulation).
 * Representation of GHG balance responses to aerial applications of Urea
