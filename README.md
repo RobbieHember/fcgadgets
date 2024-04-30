@@ -5,7 +5,6 @@ gas (GHG) emissions in British Columbia’s forest sector. The repository is a t
 offers flexible processing and outputs the variables required to meet international 
 reporting standards for the forest sector, or complete life cycle assessments.
 <br>
-<br> 
 The repository was developed to: 
 * Achieve transparency and reproduceability as commitments to open government and open 
 science standards
@@ -15,14 +14,15 @@ science standards
 * Support complex policy decisions in land resource management
 <br>
 <br>
-**fcgadgets** is written in the Python programming language, benefitting from integrated libraries for simulation modelling, 
-geographical information systems, data analytics, and application deployment (Downey, 2017). 
+The **fcgadgets** repository was written in the Python programming language, benefitting 
+from integrated libraries for simulation modelling, geographical information systems, data 
+analytics, and application deployment (Downey, 2017). 
 <br>
+The **fcgadgets** repository was designed for a community that conducts forest carbon 
+modelling full time. Users must be fluent in the Python language. Trying to apply 
+fcgadgets without assistance is not advised. That said, it is relatively straightforward 
+to set up small projects that demonstrate dynamics for a single site. 
 <br>
-**fcgadgets** was designed for a community who conducts forest carbon modelling full time. 
-Users must be fluent in the Python language. Trying to apply fcgadgets without assistance 
-is not advised. That said, it is relatively straightforward to set up small projects that 
-demonstrate dynamics for a single site. 
 <br>
 ## PLUG-AND-PLAY MODULARITY
 The repository allows for comprehensive representation of processes and new science by connecting a constellation of supporting modules.
