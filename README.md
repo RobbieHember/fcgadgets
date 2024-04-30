@@ -1,9 +1,6 @@
-Ôªø# fcgadgets
+# fcgadgets
 ## INTRODUCTION
-The <b>fcgadgets</b> repository supports estimation, accounting, and reporting of greenhouse 
-gas (GHG) emissions in British Columbia‚Äôs forest sector. The repository is a toolbox that 
-offers flexible processing and outputs the variables required to meet international 
-reporting standards for the forest sector, or complete life cycle assessments.
+The Forest Carbon Gadgets (<b>fcgadgets</b>) repository supports estimation, accounting, and reporting of greenhouse gas (GHG) emissions in British Columbiaís forest sector. The repository is a toolbox that offers flexible processing. It exports the variables required to meet international reporting standards for the forest sector, or complete life cycle assessments.
 <br>
 <br>
 The repository was developed to: 
@@ -13,25 +10,15 @@ science standards
 * Automate and streamline workflow
 * Promote a diverse ecosystem of existing and new modelling approaches
 * Support complex policy decisions in land resource management
-<br>
-The <b>fcgadgets</b> repository was written in the Python programming language, benefitting 
-from integrated libraries for simulation modelling, geographical information systems, data 
-analytics, and application deployment (Downey, 2017). 
-<br>
-The <b>fcgadgets</b> repository was designed for a community that conducts forest carbon 
-modelling full time. Users must be fluent in the Python language. Trying to apply 
-fcgadgets without assistance is not advised. That said, it is relatively straightforward 
-to set up small projects that demonstrate dynamics for a single site. 
-<br>
+
+The <b>fcgadgets</b> repository was written in the Python programming language, benefitting from integrated libraries for simulation modelling, geographical information systems, data analytics, and application deployment (Downey, 2017). The <b>fcgadgets</b> repository was designed for a community that conducts forest carbon modelling on a full-time time basis. Users must be fluent in the Python language. Trying to apply <b>fcgadgets</b> without assistance is not advised. That said, it is possible for novice users to set up small projects that demonstrate dynamics for a single site. 
 
 ## PLUG-AND-PLAY MODULARITY
 The repository allows for comprehensive representation of processes and new science by connecting a constellation of supporting modules.
 ![image info](./images/fcgadgets_constellation.png)
 
 ## CBRUNNER
-<b>cbrunner</b> is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and 
-wood products. The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the 
-biomass dynamics of trees, the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and 
+<b>cbrunner</b> is a computer simulation model that estimates the greenhouse gas (GHG) balance of the forest sector, including forest ecosystems and wood products. The annual net flux of GHGs between the forest sector and the atmosphere is estimated by simulating several biophysical processes each year, including the biomass dynamics of trees, the decay and physical transformation of dead organic matter, the impact of natural disturbances, harvest removals, silvicultural treatments, and 
 nutrient applications. 
 ![image info](./images/fcgadgets_annual_processes.png)
 
@@ -39,10 +26,7 @@ The model achieves this with a set of plug-and-play functions found in **cbrun_a
 ### Tree Biomass Dynamics (from Growth and Yield models): 
 * Simulates tree biomass dynamics on an annual basis based on inputs of net biomass growth from the [TASS/TIPSY growth and yield software application](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling).
 * Default settings assume inputs generated with BatchTIPSY.exe, but this can be overridden to input tables generated with TASS
-* Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using 
-allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced 
-with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period 
-will match that originally predicted by the GY model.
+* Total stemwood growth is frequently zero for as much as 25 years during early stand development. This leads to underestimation of early biomass production when using allometric relationships between stemwood and other biomass pools. To avoid this, initial inputs of stemwood growth for the first 30 years of stand development are replaced with exponential increase in total stemwood biomass from 0 to the prediction at age 30. The exponential coefficient is solved such that net growth over the 30-year period will match that originally predicted by the GY model.
 ### Tree Biomass Dynamics (from Sawtooth):
 * Simulates biomass dynamics of individual trees (Hember et al., 2019; Hember and Kurz, 2018)
 * Distance-independent representation of resource competition
@@ -74,18 +58,14 @@ This method represents annual GHG fluxes associated with:
 * Forest sector operations (e.g., use of fossil fuels during hauling)
 * Substitution of fossil fuels and cement for wood products 
 
-### Organizational Structure of cbrunner
+### Model Structure
 The <b>cbrunner</b> model has a hierarchical structure of forest stands, batches, scenarios, and ensembles:
 
-N<sub>Simulation</sub> = N<sub>Stands</sub> √ó N<sub>Batches</sub> √ó N<sub>Scenarios</sub> √ó N<sub>Ensembles</sub>
+N<sub>Simulation</sub> = N<sub>Stands</sub> ◊ N<sub>Batches</sub> ◊ N<sub>Scenarios</sub> ◊ N<sub>Ensembles</sub>
 
-Forest stands are the primary modelling unit in GHG estimation methods, and define an area of homogeneous conditions at the time a project is established 
-(i.e., treatment area). Each stand is described by an inventory record, disturbance and management event chronology (DMEC), and age response functions of forest growth 
-(if using a GY model). 
+Forest stands are the primary modelling unit in GHG estimation methods, and define an area of homogeneous conditions at the time a project is established (i.e., treatment area). Each stand is described by an inventory record, disturbance and management event chronology (DMEC), and age response functions of forest growth (if using a GY model). 
 
-Projects with N<sub>Stands</sub> > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual 
-work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and 
-ensemble. 
+Projects with N<sub>Stands</sub> > 1,500 are segmented internally into batches that are run in sequence in order to work within the memory limits of individual work machines. Batch size (e.g., 1,500) is adjustable, but the batch size that optimizes simulation runtime, tends to be ~1,500 stands per unique combination of scenario and ensemble. 
 
 ### Scenarios Comparisons
 Projects that explore climate change impacts or mitigation activities invariably consider multiple hypothetical scenarios for each forest stand. The hierarchical structure and post-processing scripts are
@@ -96,8 +76,7 @@ The <b>cbrunner</b> model adopts a probabilistic framework to accommodate proces
 occur when project configuration specifies a stochastic component to simulations. This generally only occurs if users incorporate simulations of the annual 
 probability of tree mortality or annual probability of tree recruitment. 
 
-### Working with Growth & Yield models
-
+### Working with Growth & Yield Models
 The <b>cbrunner</b> model can be driven with output from [TASS/TIPSY growth and yield (GY) modelling applications](https://www2.gov.bc.ca/gov/content/industry/forestry/managing-our-forest-resources/forest-inventory/growth-and-yield-modelling) using automated functions in **cbrun_utilities.py**.
 * Prepare input parameters that are required to run BatchTIPSY.exe in a spreadsheet with **Write_BatchTIPSY_Input_Spreadsheet**
 * Convert the spreadsheet of input parameters to the format expected by BatchTIPSY.exe using **Write_BatchTIPSY_Input_File**
@@ -138,8 +117,7 @@ This module contains utilities for performing spatial analysis in Python.
 
 ## TAZ
 Forest sector GHG balance simulations depend on realistic variation of natural disturbances over space and time. While inventory records provide much of the information needed 
-to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. The **taz** subpackage was developed to improve representation of disturbances in carbon models. It consists of statistics and scenarios of disturbance that were developed using a combination of observed constraints and probabilistic models. Despite 
-high prediction uncertainty, using the pre-defined scenarios ensures that representation of natural disturbances is grounded by available observations and science-informed 
+to represent natural disturbances over the modern era, additional simulations are needed to represent disturbances over the pre-inventory and future periods. The <b>taz</b> subpackage was developed to improve representation of disturbances in carbon models. It consists of statistics and scenarios of disturbance that were developed using a combination of observed constraints and probabilistic models. Despite high prediction uncertainty, using the pre-defined scenarios ensures that  representation of natural disturbances is grounded by available observations and science-informed 
 scenarios, consistent across project studies, and supported by documentation.
 ### aspatial_stat_models.py 
 * Statistical models of breakup as a function of stand age
@@ -155,7 +133,7 @@ The nutrient_application module contains functions that update annual nutrient s
 * Representation of GHG balance responses to aerial applications of Urea
 * Schedule aerial nutrient applications with specified stand selection criteria
 #### Update nutrient status
-All effects of nutrient application were expressed in cbrunner by prescribing a ‚ÄúFertilization Areal‚Äù event during a specified calendar year in the disturbance and management event chronology (DMEC) ‚Äì a set of variables that are input to cbrunner for each site. The occurrence of ‚ÄúFertilization Aerial‚Äù events triggered the function, UpdateStatus, which:
+All effects of nutrient application were expressed in cbrunner by prescribing a ìFertilization Arealî event during a specified calendar year in the disturbance and management event chronology (DMEC) ñ a set of variables that are input to cbrunner for each site. The occurrence of ìFertilization Aerialî events triggered the function, UpdateStatus, which:
 1.	Started a timer that eventually terminates stimulus at the specified response duration; 
 2.	Modified emissions to account for manufacture and transport;
 3.	Modified emissions to account for nitrous oxide (N2O) fluxes; 
@@ -175,29 +153,29 @@ Historically, the public forest fertilization program split operations evenly be
 * Calculate cashflow from implementation of forest management events
 
 ## BC1HA
-The BC1ha toolbox supports raster processing on a 1 hectare regular grid of British Columbia<br>
+The <b>bc1ha</b> repository supports raster processing on a 1 hectare regular grid of British Columbia.<br>
 
 ## PROJECT WORKFLOW
-There are four ways to apply **cbrunner** depending on the nature of the desired project. Small projects ‚Äì with fewer than 1,500 combinations of locations or scenarios ‚Äì can be run from a Jupyter Notebook. The work simply involves populating two Excel spreadsheets with the input variables and parameters. Bigger projects are scripted in Python and can adopt existing templates for projects that focus on running simulations at point locations, or across scattered polygons, or across continuous regular grids.
+There are two ways to apply <b>cbrunner</b>. In small projects, the land surface attributes and disturbance and management event chronology are specified in the project configuration spreadsheet by the user. This approach is suitable for projects with less than 20 stands or less than 20 scenarios. In bigger georeferenced projects, where modelling is conducted over thousands of hectares, the model is run from a python script. Big projects can subsample from landscapes to reduce computation time.
 ![image info](./images/fcgadgets_project_types.png)
 
 ## SMALL PROJECTS (WITH JUPYTER NOTEBOOKS)
-When projects consist of fewer than 20 stands, or 20 scenarios for one stand, **cbrunner** can be controlled by spreadsheet and run within Jupyter Notebooks. Assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
+When projects consist of fewer than 20 stands, or 20 scenarios for one stand, <b>cbrunner</b> can be controlled by spreadsheet and run within Jupyter Notebooks (https://jupyter.org/). Assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
 
 When the number of ensembles exceeds one, the model knows to treat stands like ensembles (i.e. N_Stand = N_Ensemble for each scenario). This makes it lightning fast to run 1,000s of ensembles. Even if some scenarios have no stochastic simulations, N_Ensemble is a project-level parameter that cannot be differentatied among scenarios.
 
 ## REFERENCES
-Downey, A.B., 2017. Modeling and Simulation in Python ‚Äì Green Tea Press, 2.3. ed. Green Tea Press, Needham, Massaschusetts.
+Downey, A.B., 2017. Modeling and Simulation in Python ñ Green Tea Press, 2.3. ed. Green Tea Press, Needham, Massaschusetts.
 
-Dymond, C.C., 2012. Forest carbon in North America: annual storage and emissions from British Columbia‚Äôs harvest, 1965-2065. Carbon Balance and Management 7, (24 July 2012)-(24 July 2012).
+Dymond, C.C., 2012. Forest carbon in North America: annual storage and emissions from British Columbiaís harvest, 1965-2065. Carbon Balance and Management 7, (24 July 2012)-(24 July 2012).
 
 Hember, R.A., Kurz, W.A., 2018. Low tree-growth elasticity of forest biomass indicated by an individual-based model. Forests 9, 21. https://doi.org/10.3390/f9010021
 
-Hember, R.A., Kurz, W.A., Girardin, M.P., 2019. Tree Ring Reconstructions of Stemwood Biomass Indicate Increases in the Growth Rate of Black Spruce Trees Across Boreal Forests of Canada. Journal of Geophysical Research: Biogeosciences 124, 2460‚Äì2480. https://doi.org/10.1029/2018JG004573
+Hember, R.A., Kurz, W.A., Girardin, M.P., 2019. Tree Ring Reconstructions of Stemwood Biomass Indicate Increases in the Growth Rate of Black Spruce Trees Across Boreal Forests of Canada. Journal of Geophysical Research: Biogeosciences 124, 2460ñ2480. https://doi.org/10.1029/2018JG004573
 
-Kurz, W.A., Dymond, C.C., White, T.M., Stinson, G., Shaw, C.H., Rampley, G.J., Smyth, C., Simpson, B.N., Neilson, E.T., Trofymow, J.A., Metsaranta, J., Apps, M.J., 2009. CBM-CFS3: A model of carbon-dynamics in forestry and land-use change implementing IPCC standards. Ecological Modelling 220, 480‚Äì504. https://doi.org/10.1016/j.ecolmodel.2008.10.018 
+Kurz, W.A., Dymond, C.C., White, T.M., Stinson, G., Shaw, C.H., Rampley, G.J., Smyth, C., Simpson, B.N., Neilson, E.T., Trofymow, J.A., Metsaranta, J., Apps, M.J., 2009. CBM-CFS3: A model of carbon-dynamics in forestry and land-use change implementing IPCC standards. Ecological Modelling 220, 480ñ504. https://doi.org/10.1016/j.ecolmodel.2008.10.018 
 
-Shaw, C.H., Hilger, A.B., Metsaranta, J., Kurz, W.A., Russo, G., Eichel, F., Stinson, G., Smyth, C., Filiatrault, M., 2014. Evaluation of simulated estimates of forest ecosystem carbon stocks using ground plot data from Canada‚Äôs National Forest Inventory. Ecological Modelling 272, 323‚Äì347.
+Shaw, C.H., Hilger, A.B., Metsaranta, J., Kurz, W.A., Russo, G., Eichel, F., Stinson, G., Smyth, C., Filiatrault, M., 2014. Evaluation of simulated estimates of forest ecosystem carbon stocks using ground plot data from Canadaís National Forest Inventory. Ecological Modelling 272, 323ñ347.
 
 ## License
 
