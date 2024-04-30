@@ -159,10 +159,29 @@ The <b>bc1ha</b> repository supports raster processing on a 1 hectare regular gr
 There are two ways to apply <b>cbrunner</b>. In small projects, the land surface attributes and disturbance and management event chronology are specified in the project configuration spreadsheet by the user. This approach is suitable for projects with less than 20 stands or less than 20 scenarios. In bigger georeferenced projects, where modelling is conducted over thousands of hectares, the model is run from a python script. Big projects can subsample from landscapes to reduce computation time.
 ![image info](./images/fcgadgets_project_types.png)
 
-## SMALL PROJECTS (WITH JUPYTER NOTEBOOKS)
-When projects consist of fewer than 20 stands, or 20 scenarios for one stand, <b>cbrunner</b> can be controlled by spreadsheet and run within Jupyter Notebooks (https://jupyter.org/). Assumptions about the event chronology for each scenario can be set manualy in the ProjectConfig.xlsx spreadsheet, while assumptions about stand growth from BatchTIPSY.exe can be manually set in GrowthCurvesTIPSY_Parameters.xlsx. 
+A filing system needs to accommodate three information sources:
+![image info](./images/fcgadgets_filingsystem.png)
 
-When the number of ensembles exceeds one, the model knows to treat stands like ensembles (i.e. N_Stand = N_Ensemble for each scenario). This makes it lightning fast to run 1,000s of ensembles. Even if some scenarios have no stochastic simulations, N_Ensemble is a project-level parameter that cannot be differentatied among scenarios.
+## RUNNING SMALL PROJECTS
+* If users only want to run a few stands, or a few scenarios or a small number of combinations, projects can be controlled entirely by the ProjectConfig.xlsx spreadsheet. To do so, “Scenario Source” in the Project Parameter tab must be set to “Spreadsheet” (as opposed to “Script”). 
+* In this configuration, users must manually specify inventory variables in the “Scenario Parameters” tab and in the BatchTIPSY Parameters spreadsheet. 
+* Users must manually specify the disturbance and management event chronologies in the Scenario Parameters tab.
+
+## RUNNING BIG (GEOSPATIAL) PROJECTS
+* <b>fcgadgets</b> is designed to run geospatial projects within a raster framework. All existing projects are connected to a code repository (<b>bc1ha</b>) and accompanying database of 1-hectare raster geotiffs. Projects that wish to run at a higher resolution can copy the bc1ha and emulate its functionality at a different desired resolution.
+* To run geospatial projects, “Scenario Source” in the Project Parameter tab must be set to “Script” (as opposed to “Spreadsheet”).
+* The spatial boundaries of a project are defined by a region of interest (ROI). The ROI is defined by parameters in the Project Parameters tab of the project configuration spreadsheet. Example:
+       * “Name Project”: User specified
+       * “ROI Source”: Options include “TSA”, “BGC Zone”, “Regional District”, or Custom name
+       * “ROI Elements”: This allows one to specify multiple TSAs, or multiple BGC Zones
+* The ROI is defined by binary mask spanning the extent of a regular grid. Simulation will be confined to any irregular shapes defined by the binary mask. 
+* While the native spatial resolution of the bc1ha raster framework is 1 hectare, users can specify the “regular grid sampling frequency (RGSF)” in the Project Parameters tab. For example, setting RGSF = 50 will set up a project that runs simulations at every 50th hectare grid cell across the ROI. The project automatically records the Area expansion factor (AEF), which is used in post-processing to scale carbon reservoirs and fluxes to the native 1-hectare resolution.
+* Every time a user specifies a new RGSF (e.g., 50 ha), the user must run a script from the bc1ha repository that creates ‘sparse’ samples by subsetting the native 1-hectare geotiffs and storing them as .pkl files in “BC1ha/Sparse” folder for subsequent use. This step takes time, but once it is done once, all subsequent projects working at that RGSF will run faster because they only need to open the smaller .pkl files instead of the native 1-hectare grids. (Remember to keep sparse files updated to match annual updates of bc1ha.)
+* In the Project Parameters tab, the “Batch Interval” value specifies the number of spatial units that will be run in each batch. The default is 1500, which was found to optimize run time. 
+* Without special measures taken during pre-processing to identify reporting strata, the model output statistics (MOS) that are calculated during post processing of a project will only report values representing the full ROI. User can specify “Reporting Strata” during pre-processing, telling fcgadgets to calculate MOS for specific stratifications of the data. Currently, there is flexibility to stratify MOS in three different ways:
+       * Project Type: Use this stratum to generate MOS by various attributes (e.g. obligation vs. non-obligation silviculture).
+       * Year: Use this stratum to generate MOS by calendar year (e.g. results specific to events that occurred in 2023).
+       * Spatial: Use this stratum to generate MOS by subregion of the ROI (e.g., timber supply areas)
 
 ## REFERENCES
 Downey, A.B., 2017. Modeling and Simulation in Python – Green Tea Press, 2.3. ed. Green Tea Press, Needham, Massaschusetts.
