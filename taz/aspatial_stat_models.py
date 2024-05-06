@@ -12,61 +12,85 @@ import warnings
 warnings.filterwarnings("ignore")
 
 #%%
-def PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,Age):
+def PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event):
+
+	if (meta[pNam]['Year'][iT]>=meta[pNam]['Project']['Year Project']) & (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']==-9999):
+		# No future wildfire
+		return vi
+
 	# Occurrence
-	flg=0
-	if flg==1:
-		beta=[-0.035,100]
-		Age=np.arange(1,500)
-		Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
-		fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
-		ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
-		ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Age, years',ylabel='Annual probability of disease')
-		ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
-		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
+	sH='H' + str(meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Scn ID'])
+	sF='F' + str(meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID'])
 
-	if 'Opt' in meta[pNam].keys():
-		meta[pNam]['Opt']['GrowthModifier']
-		Po=(meta[pNam]['Opt']['GrowthModifier']['Disease Po Sat Pct']/100)*(1/(1+np.exp(-meta[pNam]['Opt']['GrowthModifier']['Disease Po Shape']*(Age-meta[pNam]['Opt']['GrowthModifier']['Disease Po Inf']))))
-	else:
-		Po=(meta['Param']['BEV']['ByBGCZ']['Disease Po Sat Pct']/100)*(1/(1+np.exp(-meta['Param']['BEV']['ByBGCZ']['Disease Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Disease Po Inf']))))
+	if (meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Scn ID']==-9999) & (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']!=-9999):
+		# The project is trying to include the future but it crashes because no history was set. 
+		# Just hardwire the historical scenario - it will not actually be used.
+		sH='H2'
 
-	# Control disturbances before harvest
-	if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
-		yr=meta[pNam]['Year'][iT]
-		yrH=vi['lsat']['Year Harvest First']
-		dY=yr-yrH
-		ind=np.where( (dY>-300) & (dY<=0) )[0]
-		Po[ind]=0
+	if (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']==-9999):
+		# If future is turned off, still need something so that pre-obs doesn't crash
+		sF='F2'
 
-	rn=np.random.random(Age.size)
+	iT_wf=np.where(meta['Modules']['Taz']['wfss']['tv_scn']==meta[pNam]['Year'][iT])[0]
+	if iT_wf.size==0:
+		iT_wf=np.where(meta['Modules']['Taz']['wfss']['tv_scn']==meta['Modules']['Taz']['wfss']['tv_scn'][-1])[0]
+
+	#Wildfire Sim Pre-obs Scn ID
+	Po=np.zeros(meta[pNam]['Project']['indBat'].size)
+	for zone in vi['lsat']['bgcz idx'].keys():
+		Po_Det=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Po Det Scenarios'][sH][sF][iT_wf]
+		beta=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Beta_Pareto_Cal'].copy()
+		b0=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Pareto_scale_to_match_Po_mu'][0]
+		b1=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Pareto_scale_to_match_Po_mu'][1]
+		Scale=b1*Po_Det+b0
+		beta[1]=-np.abs(Scale)
+		beta[2]=np.abs(Scale)
+		N_t=1
+		Po[vi['lsat']['bgcz idx'][zone]]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
+	rn=np.random.random(meta[pNam]['Project']['indBat'].size)
 	iOccur=np.where(rn<Po)[0]
 
 	if iOccur.size>0:
 
+		# Update simulated event tracking flag
+		flag_sim_event[iOccur]=1
+
 		# Severity
-		# Severity (Uniform distribution)
-		#Severity=np.random.random(1)[0] # Uniform distribution
-
-		# Severity (Beta distribution)
-		if 'Opt' in meta[pNam].keys():
-			Severity=meta[pNam]['Opt']['GrowthModifier']['Disease Severity']*np.ones(Age.size)
-		else:
-			Severity=meta['Param']['BEV']['ByBGCZ']['Disease Severity']
-			#Severity=np.random.beta(meta['Param']['BEV']['ByBGCZ']['Disease Sev Alpha'],meta['Param']['BEV']['ByBGCZ']['Disease Sev Beta'],size=1)[0]
-
+		rnS=np.random.random(meta[pNam]['Project']['indBat'].size)
+		Severity=np.ones(rnS.size)
+		Severity[(rnS<=0.15)]=meta['Param']['BE']['ByBurnSevClass']['Unburned']
+		Severity[(rnS>0.15) & (rnS<=0.37)]=meta['Param']['BE']['ByBurnSevClass']['Low']
+		Severity[(rnS>0.37) & (rnS<=0.87)]=meta['Param']['BE']['ByBurnSevClass']['Medium']
+		Severity[(rnS>0.87)]=meta['Param']['BE']['ByBurnSevClass']['High']
 		# Populate
-		for iA in iOccur:
-			iAvailable=np.where(vi['EC']['ID Event Type'][iT,iA,:]==0)[0]
+		for i in range(iOccur.size):
+			iAvailable=np.where(vi['EC']['ID Event Type'][iT,iOccur[i],:]==0)[0]
 			if iAvailable.size>0:
 				iE=iAvailable[0]+0
-				vi['EC']['ID Event Type'][iT,iA,iE]=meta['LUT']['Event']['Disease Root']
-				vi['EC']['Mortality Factor'][iT,iA,iE]=Severity[iA]
-				vi['EC']['ID Growth Curve'][iT,iA,iE]=1
-			else:
-				print('No space left in event chronology for on-the-fly event!')
+				vi['EC']['ID Event Type'][iT,iOccur[i],iE]=meta['LUT']['Event']['Wildfire']
+				vi['EC']['Mortality Factor'][iT,iOccur[i],iE]=Severity[i]
+				vi['EC']['ID Growth Curve'][iT,iOccur[i],iE]=1
+	return vi,flag_sim_event
 
-	return vi
+#%%
+def PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event):
+	Po=meta['Modules']['Taz']['IBM Pareto']['Po'][iT,iEns]
+	rn=np.random.random(meta[pNam]['Project']['indBat'].size)
+	iOccur=np.where( (rn<Po) & (flag_sim_event==0) )[0]
+	if iOccur.size>0:
+
+		# Update simulated event tracking flag
+		flag_sim_event[iOccur]=1
+
+		for i in range(iOccur.size):
+			iAvailable=np.where(vi['EC']['ID Event Type'][iT,iOccur[i],:]==0)[0]
+			if iAvailable.size>0:
+				iE=iAvailable[0]+0
+				vi['EC']['ID Event Type'][iT,iOccur[i],iE]=meta['LUT']['Event']['Mountain Pine Beetle']
+				vi['EC']['Mortality Factor'][iT,iOccur[i],iE]=meta['Modules']['Taz']['IBM Pareto']['Mortality Fraction']
+				vi['EC']['ID Growth Curve'][iT,iOccur[i],iE]=1
+
+	return vi,flag_sim_event
 
 #%%
 def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
@@ -138,7 +162,7 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 			Po_H_Sat=(meta[pNam]['Scenario'][iScn]['Po Harvest Sat Pct']/100)*vi['lsat']['Harvest Index']
 		else:
 			# Use BGC zone-specific defaults
-			Po_H_Sat=(meta['Param']['BEV']['ByBGCZ']['Harvest Po Sat Pct'])*vi['lsat']['Harvest Index']
+			Po_H_Sat=(meta['Param']['BEV']['ByBGCZ']['Harvest Po Sat Pct']/100)*vi['lsat']['Harvest Index']
 
 		# QA - Plot function:
 		flg=0
@@ -158,6 +182,9 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 
 	# Annual probability of occurrence
 	Po=Po_H_Sat*(1/(1+np.exp(-Po_H_Shape*(V_Merch-Po_H_Inf))))
+
+	# Don't allow harvesting below a specific volume
+	Po[V_Merch<150]=0
 
 	# Random number
 	rn=np.random.random(V_Merch.size)
@@ -216,79 +243,71 @@ def PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,V_Merch,Period):
 	return vi
 
 #%%
-def PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns):
-	Po=meta['Modules']['Taz']['IBM Pareto']['Po'][iT,iEns]
-	rn=np.random.random(meta[pNam]['Project']['indBat'].size)
-	indS=np.where(rn<Po)[0]
-	if indS.size>0:
-		for i in range(indS.size):
-			iAvailable=np.where(vi['EC']['ID Event Type'][iT,indS[i],:]==0)[0]
-			if iAvailable.size>0:
-				iE=iAvailable[0]+0
-				vi['EC']['ID Event Type'][iT,indS[i],iE]=meta['LUT']['Event']['Mountain Pine Beetle']
-				vi['EC']['Mortality Factor'][iT,indS[i],iE]=meta['Modules']['Taz']['IBM Pareto']['Mortality Fraction']
-				vi['EC']['ID Growth Curve'][iT,indS[i],iE]=1	
-	return vi
-
-#%%
-def PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns):
-
-	if (meta[pNam]['Year'][iT]>=meta[pNam]['Project']['Year Project']) & (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']==-9999):
-		# No future wildfire
-		return vi
-
+def PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,Age,flag_sim_event):
 	# Occurrence
-	sH='H' + str(meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Scn ID'])
-	sF='F' + str(meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID'])
+	flg=0
+	if flg==1:
+		beta=[-0.035,100]
+		Age=np.arange(1,500)
+		Po=1/(1+np.exp(beta[0]*(Age-beta[1])))
+		fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+		ax.plot(Age,Po,'k-',linewidth=0.75,label='Default model')
+		ax.set(position=[0.11,0.11,0.88,0.88],xlim=[0,500],xticks=np.arange(0,550,50),xlabel='Age, years',ylabel='Annual probability of disease')
+		ax.legend(loc='upper left',bbox_to_anchor=(0.06,0.92),frameon=False,facecolor='w')
+		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
 
-	if (meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Scn ID']==-9999) & (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']!=-9999):
-		# The project is trying to include the future but it crashes because no history was set. 
-		# Just hardwire the historical scenario - it will not actually be used.
-		sH='H2'
+	if 'Opt' in meta[pNam].keys():
+		meta[pNam]['Opt']['GrowthModifier']
+		Po=(meta[pNam]['Opt']['GrowthModifier']['Disease Po Sat Pct']/100)*(1/(1+np.exp(-meta[pNam]['Opt']['GrowthModifier']['Disease Po Shape']*(Age-meta[pNam]['Opt']['GrowthModifier']['Disease Po Inf']))))
+	else:
+		Po=(meta['Param']['BEV']['ByBGCZ']['Disease Po Sat Pct']/100)*(1/(1+np.exp(-meta['Param']['BEV']['ByBGCZ']['Disease Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Disease Po Inf']))))
 
-	if (meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Scn ID']==-9999):
-		# If future is turned off, still need something so that pre-obs doesn't crash
-		sF='F2'
+	# Control disturbances before harvest
+	if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
+		yr=meta[pNam]['Year'][iT]
+		yrH=vi['lsat']['Year Harvest First']
+		dY=yr-yrH
+		ind=np.where( (dY>-300) & (dY<=0) )[0]
+		Po[ind]=0
 
-	iT_wf=np.where(meta['Modules']['Taz']['wfss']['tv_scn']==meta[pNam]['Year'][iT])[0]
-	if iT_wf.size==0:
-		iT_wf=np.where(meta['Modules']['Taz']['wfss']['tv_scn']==meta['Modules']['Taz']['wfss']['tv_scn'][-1])[0]
+	# Don't simulate where there has already been a major disturbance event
+	Po[flag_sim_event==1]=0
 
-	#Wildfire Sim Pre-obs Scn ID
-	Po=np.zeros(meta[pNam]['Project']['indBat'].size)
-	for zone in vi['lsat']['bgcz idx'].keys():
-		Po_Det=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Po Det Scenarios'][sH][sF][iT_wf]
-		beta=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Beta_Pareto_Cal'].copy()
-		b0=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Pareto_scale_to_match_Po_mu'][0]
-		b1=meta['Modules']['Taz']['wfss']['ByZone'][zone]['Pareto_scale_to_match_Po_mu'][1]
-		Scale=b1*Po_Det+b0
-		beta[1]=-np.abs(Scale)
-		beta[2]=np.abs(Scale)
-		N_t=1
-		Po[vi['lsat']['bgcz idx'][zone]]=stats.pareto.rvs(beta[0],loc=beta[1],scale=beta[2],size=N_t)
-	rn=np.random.random(meta[pNam]['Project']['indBat'].size)
+	rn=np.random.random(Age.size)
 	iOccur=np.where(rn<Po)[0]
 
 	if iOccur.size>0:
+
+		# Update simulated event tracking flag
+		flag_sim_event[iOccur]=1
+
 		# Severity
-		rnS=np.random.random(meta[pNam]['Project']['indBat'].size)
-		Severity=np.ones(rnS.size)
-		Severity[(rnS<=0.15)]=meta['Param']['BE']['ByBurnSevClass']['Unburned']
-		Severity[(rnS>0.15) & (rnS<=0.37)]=meta['Param']['BE']['ByBurnSevClass']['Low']
-		Severity[(rnS>0.37) & (rnS<=0.87)]=meta['Param']['BE']['ByBurnSevClass']['Medium']
-		Severity[(rnS>0.87)]=meta['Param']['BE']['ByBurnSevClass']['High']
+		# Severity (Uniform distribution)
+		#Severity=np.random.random(1)[0] # Uniform distribution
+
+		# Severity (Beta distribution)
+		if 'Opt' in meta[pNam].keys():
+			Severity=meta[pNam]['Opt']['GrowthModifier']['Disease Severity']*np.ones(Age.size)
+		else:
+			Severity=meta['Param']['BEV']['ByBGCZ']['Disease Severity']
+			#Severity=np.random.beta(meta['Param']['BEV']['ByBGCZ']['Disease Sev Alpha'],meta['Param']['BEV']['ByBGCZ']['Disease Sev Beta'],size=1)[0]
+
 		# Populate
-		for i in range(iOccur.size):
-			iAvailable=np.where(vi['EC']['ID Event Type'][iT,iOccur[i],:]==0)[0]
+		for iA in iOccur:
+			iAvailable=np.where(vi['EC']['ID Event Type'][iT,iA,:]==0)[0]
 			if iAvailable.size>0:
 				iE=iAvailable[0]+0
-				vi['EC']['ID Event Type'][iT,iOccur[i],iE]=meta['LUT']['Event']['Wildfire']
-				vi['EC']['Mortality Factor'][iT,iOccur[i],iE]=Severity[i]
-				vi['EC']['ID Growth Curve'][iT,iOccur[i],iE]=1
-	return vi
+				vi['EC']['ID Event Type'][iT,iA,iE]=meta['LUT']['Event']['Disease Root']
+				vi['EC']['Mortality Factor'][iT,iA,iE]=Severity[iA]
+				vi['EC']['ID Growth Curve'][iT,iA,iE]=1
+			else:
+				print('No space left in event chronology for on-the-fly event!')
+
+	return vi,flag_sim_event
 
 #%%
-def PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,Age):
+def PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,Age,flag_sim_event):
+
 	# Occurrence
 	flg=0
 	if flg==1:
@@ -310,6 +329,9 @@ def PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 		dY=yr-yrH
 		ind=np.where( (dY>-300) & (dY<=0) )[0]
 		Po[ind]=0
+
+	# Don't simulate where there has already been a major disturbance event
+	Po[flag_sim_event==1]=0
 
 	rn=np.random.random(Age.size)
 	iOccur=np.where(rn<Po)[0]
@@ -335,27 +357,10 @@ def PredictWind_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 			else:
 				print('No space left in event chronology for on-the-fly event!')
 
-	return vi
-
-#%% Modelling severity of wind and disease
-# Import modules
-flg=0
-if flg==1:
-	x=np.linspace(0,1,100)
-	plt.close('all'); fig,ax=plt.subplots(1)
-	a=2;b=8; ax.plot(x,beta.pdf(x,a,b),'b-',lw=1,label='beta pdf')
-	a=4.7;b=3.3; ax.plot(x,beta.pdf(x,a,b),'g-',lw=1,label='beta pdf')
-	a=8;b=2; ax.plot(x,beta.pdf(x,a,b),'r-',lw=1,label='beta pdf')
-
-# 	a=4;b=4; yhat=beta.pdf(x,a,b);
-# 	ind=np.where(np.abs(yhat-np.mode(yhat))==np.min(np.abs(yhat-np.mode(yhat))))[0]
-# 	print(x[ind])
-
-	r=np.random.beta(a,b,size=1000)
-	plt.hist(r)
+	return vi,flag_sim_event
 
 #%%
-def PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,Age):
+def PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,Age,flag_sim_event):
 
 	# Occurrence
 	flg=0
@@ -370,6 +375,10 @@ def PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both')
 
 	Po=(meta['Param']['BEV']['ByBGCZ']['Frost Po Sat Pct']/100)*(1/(1+np.exp(meta['Param']['BEV']['ByBGCZ']['Frost Po Shape']*(Age-meta['Param']['BEV']['ByBGCZ']['Frost Po Inf']))))
+
+	# Don't simulate where there has already been a major disturbance event
+	Po[flag_sim_event==1]=0
+
 	rn=np.random.random(Age.size)
 	iOccur=np.where(rn<Po)[0]
 
@@ -402,4 +411,22 @@ def PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,Age):
 			else:
 				print('No space left in event chronology for on-the-fly event!')
 
-	return vi
+	return vi,flag_sim_event
+
+#%% Modelling severity of wind and disease
+# Import modules
+flg=0
+if flg==1:
+	x=np.linspace(0,1,100)
+	plt.close('all'); fig,ax=plt.subplots(1)
+	a=2;b=8; ax.plot(x,beta.pdf(x,a,b),'b-',lw=1,label='beta pdf')
+	a=4.7;b=3.3; ax.plot(x,beta.pdf(x,a,b),'g-',lw=1,label='beta pdf')
+	a=8;b=2; ax.plot(x,beta.pdf(x,a,b),'r-',lw=1,label='beta pdf')
+
+# 	a=4;b=4; yhat=beta.pdf(x,a,b);
+# 	ind=np.where(np.abs(yhat-np.mode(yhat))==np.min(np.abs(yhat-np.mode(yhat))))[0]
+# 	print(x[ind])
+
+	r=np.random.beta(a,b,size=1000)
+	plt.hist(r)
+

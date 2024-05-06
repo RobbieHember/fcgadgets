@@ -2032,7 +2032,6 @@ def RasterizePlanting(meta):
 	return
 
 #%% Rasterize direct seeding
-
 def RasterizeDirectSeeding(meta):
 	
 	tv=np.arange(1960,2024,1)
@@ -2357,7 +2356,6 @@ def RasterizeDirectSeeding(meta):
 
 #%% Planting (Non-obligation by project type)
 # Dabbled in doing it this way and then went back to doing it on the fly
-
 def MaskPlantingNonOb(meta,zRef):
 	zMask=copy.deepcopy(zRef)
 	zMask['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
@@ -2370,7 +2368,6 @@ def MaskPlantingNonOb(meta,zRef):
 
 #%%
 def RasterizeSilviculture(meta,sbc,stc,smc,soc1,vNam):
-	
 	#sbc=meta,np.array(['SP']),np.array(['BU']),np.array(['BROAD']),np.array([]),np.array(['SP-BU-BROAD'])
 	sbc=np.array(['SP'])
 	stc=np.array(['ME'])
@@ -3941,8 +3938,7 @@ def HarvestSalvageMaskFromCruise(meta):
 #%% Generate sparse inputs
 # This should speed import by an order of magnitude
 def GenerateSparseInputs(meta,rgsf,mask):
-	 
-	z=Import_Raster(meta,[],['refg','lc_comp1_2019'])   
+	z=Import_Raster(meta,[],['refg','lc_comp1_2019'])
 	
 	if mask=='Province':
 		zMask=z['refg']
@@ -4066,7 +4062,7 @@ def GenerateSparseInputs(meta,rgsf,mask):
 		d[iY]=z0['Data'][iMask]
 	gu.opickle(meta['Paths']['bc1ha'] + '\\Sparse\\RGSF' + str(rgsf) + '_Mask' + mask + '_VEG_CONSOLIDATED_CUT_BLOCKS_SP_Year.pkl',d)
 	
-	# Planting	   
+	# Planting
 	N_Year=6
 	d=[None]*N_Year
 	for iY in range(N_Year):
@@ -4155,7 +4151,6 @@ def GenerateSparseInputs(meta,rgsf,mask):
 
 #%% Rasterize OPENING ID from OPENING LAYER (1 hour)
 def RasterizeOpeningID(meta):
-	
 	# Import opening ID with spatial
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 	RasterizeFromSource(meta,zRef,'RSLT_OPENING_SVW','OPENING_ID')
@@ -4670,8 +4665,6 @@ def CalculateStatsByTDC(meta):
 	#df=df.rename(columns={'index':'Tree Density Class'})
 	df.to_excel(meta['Paths']['Model']['Parameters'] + '\\Parameters_ByTreeDensityClass.xlsx')
 	return df
-
-
 
 #%% Rasterize Watersheds (Named)
 def RasterizeWatersheds(meta):

@@ -303,8 +303,8 @@ def CarbonPoolBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 def CarbonFluxesBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 	#list(mos[pNam]['Scenarios'][0]['Sum'].keys())
 
-	nam=np.array(['E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy','E_CO2e_OperForTot', \
-				  'E_CO2E_Sub_E','E_CO2E_Sub_M','E_CO2E_Sub','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub'])
+	nam=np.array(['E_Dom_FS_NEE','E_Dom_FS_Wildfire','E_Dom_FS_OpenBurning','E_Dom_FS_HWP','E_ESC_Bioenergy','E_Dom_ForOps', \
+				  'E_Sub_E','E_Sub_M','E_Sub','E_AGHGB_WSub','E_AGHGB_WOSub'])
 
 	xlab=['Net\necosystem\nexchange','Wildfire\nemissions','Open\nburning\nemissions','Wood\nproduct\nemissions','Bioenergy\nemissions','Operational\nemissions', \
 		  'Energy\nsubst.','Material\nsubst.','Total\nsubst.','Net GHG\nbalance\n(with subs.)','Net GHG\nbalance\n(w/o subs.)']
@@ -340,7 +340,10 @@ def CarbonFluxesBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 		yh[i]=np.mean((mos[pNam]['Scenarios'][iScn]['Sum'][nam[i]]['Ensemble P750'][iT2,iPS,iSS,iYS])/1e6*meta[pNam]['Project']['AEF'])
 	ax.bar(np.arange(1,y.size+1,1)+bw2,y,bw,color=[0.8,0.4,1],label='2023-2100')
 	if meta[pNam]['Project']['N Ensemble']>1:
-		ax.errorbar(np.arange(1,y.size+1,1)+bw2,y,yerr=[y-yl,yh-y],color=[0.6,0.2,0.8],ls='',capsize=2)
+		try:
+			ax.errorbar(np.arange(1,y.size+1,1)+bw2,y,yerr=[y-yl,yh-y],color=[0.6,0.2,0.8],ls='',capsize=2)
+		except:
+			pass
 
 	ax.set(xlim=[0.5,nam.size+.5],xticks=np.arange(1,nam.size+1,1),xticklabels=xlab, \
 		   ylabel='Mean GHG flux (MtCO$_2$e yr$^-$$^1$)') # ylim=[-70,70],yticks=np.arange(-100,100,10)
@@ -354,12 +357,13 @@ def CarbonFluxesBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 		nam_ss=meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]
 		nam_ys=meta[pNam]['Project']['Strata']['Year']['Unique CD'][iYS]
 		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_CarbonFluxesBarChart_Scn' + str(iScn+1),'png',900)
+	return
 
 #%% flux summary
 def ScenarioComp_ForcingBarChart(meta,pNam,mos,tv,cNam,iPS,iSS,iYS):
 
-	nam=np.array(['E_CO2e_LULUCF_NEE','E_CO2e_LULUCF_Wildfire','E_CO2e_LULUCF_OpenBurning','E_CO2e_LULUCF_HWP','E_CO2e_ESC_Bioenergy','E_CO2e_OperForTot', \
-				  'E_CO2E_Sub_E','E_CO2E_Sub_M','E_CO2E_Sub','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub'])
+	nam=np.array(['E_Dom_FS_NEE','E_Dom_FS_Wildfire','E_Dom_FS_OpenBurning','E_Dom_FS_HWP','E_ESC_Bioenergy','E_Dom_ForOps', \
+				  'E_Sub_E','E_Sub_M','E_Sub','E_AGHGB_WSub','E_AGHGB_WOSub'])
 
 	xlab=['Net\necosystem\nexchange','Wildfire\nemissions','Open\nburning\nemissions','Wood\nproduct\nemissions','Bioenergy\nemissions','Operational\nemissions', \
 		  'Energy\nsubst.','Material\nsubst.','Total\nsubst.','Net GHG\nbalance\n(with subs.)','Net GHG\nbalance\n(w/o subs.)']
@@ -569,34 +573,34 @@ def HarvestVolumePerHectareTimeSeries(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS,dH_By
 #%% Plot net sector GHG balance
 def GHGBalance(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS):
 
-	v='E_CO2e_AGHGB_WSub'
-	v2='E_CO2e_AGHGB_WOSub'
+	v='E_AGHGB_WSub'
+	v2='E_AGHGB_WOSub'
 
 	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15.5,11)); wd=1;
 	ax.add_patch(Rectangle([1920,-1000],103,2000,fc=[0.94,0.94,0.94],ec="none"))
 	ax.plot(tv[iT],np.zeros(iT.size),'k-',color=meta['Graphics']['gp']['cla'])
 
-	y_hwp=mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
+	y_hwp=mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
 	ax.bar(tv[iT],y_hwp,wd,label='Product emissions',facecolor=[0.75,0.85,1])
 
-	y_op=mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_OperForTot']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
+	y_op=mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_ForOps']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
 	ax.bar(tv[iT],y_op,wd,bottom=y_hwp,label='Fossil fuel emissions',facecolor=[0,0,0.7])
 
-	y_ob=mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
+	y_ob=mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
 	ax.bar(tv[iT],y_ob,wd,bottom=y_hwp+y_op,label='Open burning emissions',facecolor=[1,0.1,0.1])
 
-	y_wf=mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
+	y_wf=mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']
 	ax.bar(tv[iT],y_wf,wd,bottom=y_hwp+y_op+y_ob,label='Wildfire emissions',facecolor=[1,0.7,0.7])
 
 	# Negative harvest removals
 	#ax.bar(tv[iT],-1*(mos[pNam]['Scenarios'][iScn]['Sum']['C_ToMill']['Ensemble Mean'][iT,iPS,iSS,iYS])*3.667/1e6*meta[pNam]['Project']['AEF'],wd,facecolor=[0.65,.85,0.2],label='Removals (ecosystem to HWP)')
-	ax.bar(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2E_Sub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],wd,facecolor=[0.65,.85,0.2],label='Maximum substitution effects')
+	ax.bar(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Sub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],wd,facecolor=[0.65,.85,0.2],label='Maximum substitution effects')
 
 	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum'][v]['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'k--',color=[0.5,0.5,0.5],mfc='w',mew=0.5,ms=2,label='GHG balance (with maximum substitution effects)')
 	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum'][v2]['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'k-.',color=[0.5,0.5,0.5],mfc='w',mew=0.5,ms=2,label='GHG balance (w/o substitution effects)')
 	ax.plot(tv[iT],(mos[pNam]['Scenarios'][iScn]['Sum'][v2]['Ensemble Mean'][iT,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum'][v]['Ensemble Mean'][iT,iPS,iSS,iYS])/2/1e6*meta[pNam]['Project']['AEF'],'k-',color=[0,0,0],mfc='w',mew=0.5,ms=2,label='GHG balance (average substitution effects)')
 
-	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'k-.',color=[0.4,0.6,0.15],mfc='w',ms=2,mew=0.5,label='Net ecosystem exchange')
+	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'k-.',color=[0.4,0.6,0.15],mfc='w',ms=2,mew=0.5,label='Net ecosystem exchange')
 
 	if tv[iT[0]]>=1800:
 		ax.set(xticks=np.arange(tv[iT[0]],2200,20),yticks=np.arange(-500,500,25),ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',ylim=[-350,250],xlim=[tv[iT[0]],tv[iT[-1]]])
@@ -619,8 +623,8 @@ def GHGBalance(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS):
 
 #%% Plot net sector GHG balance (simple)
 def GHGBalanceSimple(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
-	v1='E_CO2e_AGHGB_WSub'
-	v2='E_CO2e_AGHGB_WOSub'
+	v1='E_AGHGB_WSub'
+	v2='E_AGHGB_WOSub'
 	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(13,7.5));
 	ax.plot(tv[iT],np.zeros(iT.size),color=meta['Graphics']['gp']['cla'],lw=0.5)
 	ylo1=(mos[pNam]['Scenarios'][iScn]['Sum'][v1]['Ensemble P250'][iT,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum'][v2]['Ensemble P250'][iT,iPS,iSS,iYS])/2/1e6*meta[pNam]['Project']['AEF']
@@ -658,9 +662,9 @@ def ScenarioComp_GHGBalanceAnnualPlusCumu(meta,pNam,mos,cNam,iT,iPS,iSS,iYS):
 	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 	iB=mos[pNam]['Delta'][cNam]['iB']
 	iP=mos[pNam]['Delta'][cNam]['iP']
-	v1=['E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub']
-	v2=['E_CO2e_AGHGB_WSub_cumu_from_tref','E_CO2e_AGHGB_WOSub_cumu_from_tref']
-	#v2='E_CO2e_AGHGB_WSub_cumu'
+	v1=['E_AGHGB_WSub','E_AGHGB_WOSub']
+	v2=['E_AGHGB_WSub_cumu_from_tref','E_AGHGB_WOSub_cumu_from_tref']
+	#v2='E_AGHGB_WSub_cumu'
 	for iV in range(len(v1)):
 		plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(18.8,10))
 		ax[0,0].plot(tv[iT],np.zeros(iT.size),color=meta['Graphics']['gp']['cla'])
@@ -764,7 +768,7 @@ def ScenarioComp_GHGBalanceAnnualPlusCumu(meta,pNam,mos,cNam,iT,iPS,iSS,iYS):
 #%% GHG benefit (with Subs)
 def ScenarioComp_GHGBalanceAnnual(meta,pNam,mos,tv,cNam,iT,iPS,iSS,iYS):
 
-	vL=['E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub']
+	vL=['E_AGHGB_WSub','E_AGHGB_WOSub']
 	lab=['WithSub','WithoutSub']
 
 	iB=mos[pNam]['Delta'][cNam]['iB']
@@ -829,23 +833,23 @@ def ComparisonWithPIR(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
 	fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(15,8.5)); cl=np.array([[0.27,0.47,0.79],[0,1,1]]);
 	ax[0,0].plot(tv[iT],np.zeros(iT.size),'k-',color=meta['Graphics']['gp']['cla'])
 
-	ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='FCS')
+	ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='FCS')
 	ax[0,0].plot(dPIR['Year'],dPIR['Forest Growth Minus Decay']/1e3,'rs-',mfc=[1,1,1],ms=2,mew=0.5,lw=meta['Graphics']['gp']['lw1'],label='PIR')
 	ax[0,0].set(xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-300,300,50),
 		   ylabel='Growth - Decay (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-250,100])
 	ax[0,0].legend(loc='best',frameon=False,facecolor='w',edgecolor='w')
 	ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 
-	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='Net ecosystem exchange')
+	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='Net ecosystem exchange')
 	ax[0,1].plot(dPIR['Year'],dPIR['Wildfires']/1e3,'rs-',mfc=[1,1,1],mew=0.5,ms=2,lw=meta['Graphics']['gp']['lw1'],label='PIR')
 	ax[0,1].set(xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(0,300,25),
 		   ylabel='Wildfire (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,220])
 	ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 
-	#ax[1,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',mfc='w',mew=0.5,ms=2,label='Net ecosystem exchange')
+	#ax[1,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',mfc='w',mew=0.5,ms=2,label='Net ecosystem exchange')
 	#ax[1,0].plot(dPIR['Year'],dPIR['Slash Pile Burning']/1e3,'rs-',mfc=[1,1,1],label='PIR')
-	ax[1,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='HWP decay (FCS)')
-	ax[1,0].plot(tv[iT],(mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_ESC_Bioenergy']['Ensemble Mean'][iT,iPS,iSS,iYS])/1e6*meta[pNam]['Project']['AEF'],'oc-',mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='HWP decay + bioenergy (FCS)')
+	ax[1,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='HWP decay (FCS)')
+	ax[1,0].plot(tv[iT],(mos[pNam]['Scenarios'][iScn]['Sum']['E_Dom_FS_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['E_ESC_Bioenergy']['Ensemble Mean'][iT,iPS,iSS,iYS])/1e6*meta[pNam]['Project']['AEF'],'oc-',mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='HWP decay + bioenergy (FCS)')
 	#ax[1,0].plot(tv[iT],gu.movingave(mos[pNam]['Scenarios'][iScn]['Sum']['C_ToMill']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF']*3.667,10,'center'),'og-',mfc='w',mew=0.5,ms=2,label='Harvest removals (FCAST)')
 	ax[1,0].plot(dPIR['Year'],dPIR['Decomposition of Harvested Wood Products']/1e3,'rs-',mfc=[1,1,1],mew=0.5,lw=meta['Graphics']['gp']['lw1'],ms=2,label='HWP decay (PIR)')
 	ax[1,0].set(xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-120,300,20),
@@ -857,8 +861,8 @@ def ComparisonWithPIR(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
 	#ax.plot(H_HBS['Year'],H_HBS['V All m3']/1e6,'-cd')
 
 	ax[1,1].plot(tv[iT],np.zeros(iT.size),'k-',color=meta['Graphics']['gp']['cla'])
-	ax[1,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='With subs. (FCS)')
-	ax[1,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'sb-',color='c',mec='c',mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='W/O subs. (FCS)')
+	ax[1,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='With subs. (FCS)')
+	ax[1,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'],'sb-',color='c',mec='c',mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='W/O subs. (FCS)')
 	ax[1,1].plot(dPIR['Year'],dPIR['Forest Management']/1e3,'rs-',ms=2,mfc='w',mew=0.5,lw=meta['Graphics']['gp']['lw1'],label='Forest Management (PIR)')
 	ax[1,1].set(xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(-350,300,50),
 		   ylabel='GHG balance (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[-250,250])
@@ -874,7 +878,7 @@ def ComparisonWithPIR(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
 		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_ComparisonWithPIR_Scn' + str(iScn+1),'png',900)
 
 #%%
-def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS):
+def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS,**kwargs):
 	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 	A=cbu.SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT)
 	yr_start=tv[iT[0]]
@@ -883,8 +887,14 @@ def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS):
 	else:
 		xtivl=50
 
-	#plt.close('all');
-	fig,ax=plt.subplots(2,1,figsize=gu.cm2inch(15,10));
+	if 'multi' in kwargs.keys():
+		multi=kwargs['multi']
+		ylab='Area affected (ha)'
+	else:
+		multi=1e6
+		ylab='Area affected (Mha)'
+
+	plt.close('all'); fig,ax=plt.subplots(2,1,figsize=gu.cm2inch(15,10));
 	#ax[0].plot([2020,2020],[0,3400],'k--')
 	#ax[0].fill_between([1920,2020],[0,0],[11000,11000],color=[0.9,0.9,0.9],lw=0)
 	pl_d=[None]*len(A['Nat Dist']); nams_d=[None]*len(A['Nat Dist']);
@@ -892,11 +902,11 @@ def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS):
 		bottom=0;
 		if i!=0:
 			for j in range(i):
-				bottom=bottom+A['Nat Dist'][j]['Data']/1000000
-		pl_d[i]=ax[0].bar(A['tv'],A['Nat Dist'][i]['Data']/1000000,ivlT,color=A['Nat Dist'][i]['Color'],bottom=bottom)
+				bottom=bottom+A['Nat Dist'][j]['Data'][iT]/multi
+		pl_d[i]=ax[0].bar(A['tv'][iT],A['Nat Dist'][i]['Data'][iT]/multi,ivlT,color=A['Nat Dist'][i]['Color'],bottom=bottom)
 		nams_d[i]=A['Nat Dist'][i]['Name']
 	ax[0].legend(pl_d,nams_d,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False,ncols=1,fontsize=6);
-	ax[0].set(yscale='linear',xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,xtivl),ylabel='Area affected (Mha)',xlim=[yr_start,np.max(A['tv'])]);
+	ax[0].set(yscale='linear',xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,xtivl),ylabel=ylab,xlim=[yr_start,np.max(A['tv'])]);
 	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
 	#ax[0].text((2020+1920)/2,1050,'Observation Period',ha='center',fontsize=6,style='normal',weight='normal',color=[0,0,0])
 
@@ -906,12 +916,12 @@ def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS):
 		bottom=0;
 		if i!=0:
 			for j in range(i):
-				bottom=bottom+A['Management'][j]['Data']/1000000
-		pl_m[i]=ax[1].bar(A['tv'],A['Management'][i]['Data']/1000000,ivlT,color=A['Management'][i]['Color'],bottom=bottom)
+				bottom=bottom+A['Management'][j]['Data'][iT]/multi
+		pl_m[i]=ax[1].bar(A['tv'][iT],A['Management'][i]['Data'][iT]/multi,ivlT,color=A['Management'][i]['Color'],bottom=bottom)
 		nams_m[i]=A['Management'][i]['Name']
 	#ax[1].plot([2020,2020],[0,5500],'k--')
 	ax[1].legend(pl_m,nams_m,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False,ncols=1,fontsize=6)
-	ax[1].set(yscale='linear',xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,xtivl),xlabel='Time, years',ylabel='Area affected (Mha)',xlim=[yr_start,np.max(A['tv'])]);
+	ax[1].set(yscale='linear',xticks=np.arange(np.min(A['tv']),np.max(A['tv'])+1,xtivl),xlabel='Time, years',ylabel=ylab,xlim=[yr_start,np.max(A['tv'])]);
 	ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
 	ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
 	gu.axletters(ax,plt,0.014,0.91,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
@@ -1006,9 +1016,9 @@ def CarbonFluxTimeSeries(meta,pNam,mos,iT,iScn,iPS,iSS,iYS):
 	mu=(mos[pNam]['Scenarios'][iScn]['Mean']['C_G_Gross']['Ensemble Mean'][iT,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Mean']['C_LF']['Ensemble Mean'][iT,iPS,iSS,iYS])*3.667
 	ax[0,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[0,0].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_NEE']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_NEE']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[0,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[0,0].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[0,0].set(xticks=xt,xlabel='Time, years',ylabel='NPP\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
@@ -1021,23 +1031,23 @@ def CarbonFluxTimeSeries(meta,pNam,mos,iT,iScn,iPS,iSS,iYS):
 	mu=mos[pNam]['Scenarios'][iScn]['Mean']['C_RH']['Ensemble Mean'][iT,iPS,iSS,iYS]*3.667
 	ax[0,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[0,1].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[0,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[0,1].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[0,1].set(xticks=xt,xlabel='Time, years',ylabel='RH\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
 	ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 	
 	ax[1,0].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.75)
-	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble P025'][iT,iPS,iSS,iYS]
-	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble P975'][iT,iPS,iSS,iYS]
-	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_NEE']['Ensemble P025'][iT,iPS,iSS,iYS]
+	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_NEE']['Ensemble P975'][iT,iPS,iSS,iYS]
+	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	ax[1,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[1,0].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_NEE']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_NEE']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[0,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[0,0].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[1,0].set(xticks=xt,xlabel='Time, years',ylabel='NEE\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
@@ -1045,42 +1055,42 @@ def CarbonFluxTimeSeries(meta,pNam,mos,iT,iScn,iPS,iSS,iYS):
 	ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 
 	ax[1,1].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.75)
-	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
-	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
-	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
+	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
+	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	ax[1,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[1,1].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[0,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[0,1].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[1,1].set(xticks=xt,xlabel='Time, years',ylabel='Wildfire emissions\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
 	ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 
 	ax[2,0].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.75)
-	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_OpenBurning']['Ensemble P025'][iT,iPS,iSS,iYS]
-	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_OpenBurning']['Ensemble P975'][iT,iPS,iSS,iYS]
-	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_OpenBurning']['Ensemble P025'][iT,iPS,iSS,iYS]
+	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_OpenBurning']['Ensemble P975'][iT,iPS,iSS,iYS]
+	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	ax[2,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[2,0].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_OpenBurning']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_OpenBurning']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_OpenBurning']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_OpenBurning']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[1,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[1,0].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[2,0].set(xticks=xt,xlabel='Time, years',ylabel='Open burning\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
 	ax[2,0].yaxis.set_ticks_position('both'); ax[2,0].xaxis.set_ticks_position('both'); ax[2,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 
 	ax[2,1].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.75)
-	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_HWP']['Ensemble P025'][iT,iPS,iSS,iYS]
-	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_HWP']['Ensemble P975'][iT,iPS,iSS,iYS]
-	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_HWP']['Ensemble P025'][iT,iPS,iSS,iYS]
+	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_HWP']['Ensemble P975'][iT,iPS,iSS,iYS]
+	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_Dom_FS_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	ax[2,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[2,1].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_HWP']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_HWP']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_CO2e_LULUCF_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_HWP']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_HWP']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Dom_FS_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[1,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[1,1].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[2,1].set(xticks=xt,xlabel='Time, years',ylabel='Product emissions\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
@@ -1269,7 +1279,7 @@ def MortalitySpectrum(meta,pNam,iEns,iScn):
 		d1=cbu.LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat)
 		for v in vInc:
 			id=meta['LUT']['Event'][v]
-			M[v][:,indBat]=d1['C_M_Pct_ByAgent'][id].astype('float32')*meta['Core']['Scale Factor C_M_ByAgent']
+			M[v][:,indBat]=d1['C_M_DistByAgentPct'][id].astype('float32')*meta['Core']['Scale Factor C_M_DistByAgent']
 		M['Reg'][1::,indBat]=np.nan_to_num(d1['C_M_Reg'][1::,:]/d1['C_Biomass'][0::-1,:]*100)
 
 	# Frequency distribution
@@ -1356,16 +1366,16 @@ def CompareAnthropogenicComponentWithCFS(meta,pNam,mos,iT,iPS,iSS,iYS):
 	ax.text(1,np.mean(dfCFS['BC FLFL+HWP Anthropogenic (NIR22)'])-48,'National\nGHG inventory\n(BC CFS)',fontsize=7,style='italic',weight='bold',color=[0.5,0.7,1],ha='center')
 	#ax.text(2,np.mean(dfCFS['NEW'])-45,'National\nGHG inventory\n(BC CFS new)',fontsize=9,style='italic',weight='bold',color=[0.2,0.4,1],ha='center')
 	iT=np.where( (tv>=1990) & (tv<=2020) )[0]
-	y1=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
+	y1=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
 	ax.bar(2,y1,wd,label='BC FCS W/O\nsubstitution\neffects',facecolor=[1,0.7,0.5])
-	y_lo=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble P025'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
-	y_hi=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble P975'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
+	y_lo=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_AGHGB_WOSub']['Ensemble P025'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
+	y_hi=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_AGHGB_WOSub']['Ensemble P975'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
 	if meta[pNam]['Project']['N Ensemble']>1:
 		ax.errorbar(2,y1,yerr=y_hi-y1,color=[0.8,0.5,0.2],ls='',lw=1.5,capsize=2)
 	ax.text(2,y1+25,'BC FCS\nW/O\nsubstitution',fontsize=7,style='italic',weight='bold',color=[1,0.7,0.5],ha='center')
-	y2=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
-	y_lo=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_CO2e_AGHGB_WSub']['Ensemble P025'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
-	y_hi=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_CO2e_AGHGB_WSub']['Ensemble P975'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
+	y2=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_AGHGB_WSub']['Ensemble Mean'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
+	y_lo=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_AGHGB_WSub']['Ensemble P025'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
+	y_hi=np.mean(mos[pNam]['Delta']['TDAF']['ByStrata']['Sum']['E_AGHGB_WSub']['Ensemble P975'][iT,iPS,iSS,iYS]/1e6*meta[pNam]['Project']['AEF'])
 	ax.bar(3,y2,wd,label='BC FCS with\nsubstitution\neffects',facecolor=[1,0.4,0.2])
 	if meta[pNam]['Project']['N Ensemble']>1:
 		ax.errorbar(3,y2,yerr=y2-y_lo,color=[0.4,0.2,0],ls='',lw=1.5,capsize=2)
@@ -1873,7 +1883,7 @@ def Plot_MitigationValue(meta,mos,pNamC,pNam,cNam,iPS,iSS,iYS):
 		ax.plot([0,-10000],[0,-10000/cpt[iB]],'k-',color=[0.8,0.8,0.8])
 	#ax.text(xC,-y_new,int(cpt[iB]),fontsize=fs2)
 
-	dghgCF=(mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_CO2e_AGHGB_WOSub_cumu']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_CO2e_AGHGB_WSub_cumu']['Ensemble Mean'][:,iPS,iSS,iYS])/2/1e6
+	dghgCF=(mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_AGHGB_WOSub_cumu']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_AGHGB_WSub_cumu']['Ensemble Mean'][:,iPS,iSS,iYS])/2/1e6
 	dcostCF=mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['Cost Nutrient Management_cumu']['Ensemble Mean'][:,iPS,iSS,iYS]/1e6
 	drnCF=mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['Revenue Net_cumu']['Ensemble Mean'][:,iPS,iSS,iYS]/1e6
 
@@ -2814,7 +2824,7 @@ def NM_ImportMOS():
 	
 #	 vL=['A','C_Biomass','C_Litter','C_Soil','C_Soil_OHorizon','C_DeadWood','C_G_Gross',
 #		 'C_G_Net','C_M_Reg','C_M_Dist','C_LF','C_ToMillMerch',
-#		 'C_ToMillNonMerch', 'C_ToMillSnagStem', 'C_ToSlashpileBurnTot','E_CO2e_AGHGB_WSub','E_CO2e_AGHGB_WOSub']
+#		 'C_ToMillNonMerch', 'C_ToMillSnagStem', 'C_ToSlashpileBurnTot','E_AGHGB_WSub','E_AGHGB_WOSub']
 #	 flg_FromScratch=1
 #	 if flg_FromScratch==1:
 #		 mu_mod=cbu.Calc_MOS_MapMean(meta,pNam,iScn,[2000,2020],VariablesToKeep=vL)
@@ -2823,7 +2833,7 @@ def NM_ImportMOS():
 #		 mu_mod=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MapData_iScn' + str(iScn) + '.pkl')
 
 #	 gdf=u1ha.Import_GDBs_ProvinceWide(meta)
-#	 #ufcs.PlotMap(meta,pNam,mu_mod,'E_CO2e_AGHGB_WSub')
+#	 #ufcs.PlotMap(meta,pNam,mu_mod,'E_AGHGB_WSub')
 
 #	 zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 #	 zRef['Data']=zRef['Data'][0::meta['Geos']['RGSF'],0::meta['Geos']['RGSF']]	
@@ -2833,7 +2843,7 @@ def NM_ImportMOS():
 	
 #	 if v=='C_Biomass':
 #		 bw=50; bin=np.arange(0,500+bw,bw)
-#	 elif v=='E_CO2e_AGHGB_WSub':
+#	 elif v=='E_AGHGB_WSub':
 #		 bw=2; bin=np.arange(-10,20+bw,bw)   
 	
 #	 z1=(bin.size)*np.ones(z0.shape)
@@ -2886,14 +2896,14 @@ def NM_PlotSummary(meta,mos,pNamC,pNamF,cNam):
 	plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(22,9));
 	# Annual
 	pNam=pNamC
-	v='E_CO2e_AGHGB_WSub'
+	v='E_AGHGB_WSub'
 	yC=mos[pNam]['Delta'][cNam]['ByStrata']['Sum'][v]['Ensemble Mean'][:,0,0,0]*meta[pNam]['Project']['AEF']/1e6
 	yC[(tv<1971)]=0
 	v='V_ToMillMerchTotal'
 	vC=mos[pNam]['Delta'][cNam]['ByStrata']['Sum'][v]['Ensemble Mean'][:,0,0,0]*meta[pNam]['Project']['AEF']/1e6
 	vC[(tv<1971)]=0
 	pNam=pNamF
-	v='E_CO2e_AGHGB_WSub'
+	v='E_AGHGB_WSub'
 	yF=gu.movingave(mos[pNam]['Delta'][cNam]['ByStrata']['Sum'][v]['Ensemble Mean'][:,0,0,0]*meta[pNam]['Project']['AEF']/1e6,50,'center')
 	yF[(tv<2023)]=0
 	v='V_ToMillMerchTotal'
@@ -2912,14 +2922,14 @@ def NM_PlotSummary(meta,mos,pNamC,pNamF,cNam):
 	ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 	# Cumulative
 	pNam=pNamC
-	v='E_CO2e_AGHGB_WSub'
+	v='E_AGHGB_WSub'
 	yC=mos[pNam]['Delta'][cNam]['ByStrata']['Sum'][v]['Ensemble Mean'][:,0,0,0]*meta[pNam]['Project']['AEF']/1e6
 	yC[(tv<1971)]=0
 	v='V_ToMillMerchTotal'
 	vC=mos[pNam]['Delta'][cNam]['ByStrata']['Sum'][v]['Ensemble Mean'][:,0,0,0]*meta[pNam]['Project']['AEF']/1e6
 	vC[(tv<1971)]=0
 	pNam=pNamF
-	v='E_CO2e_AGHGB_WSub'
+	v='E_AGHGB_WSub'
 	yF=gu.movingave(mos[pNam]['Delta'][cNam]['ByStrata']['Sum'][v]['Ensemble Mean'][:,0,0,0]*meta[pNam]['Project']['AEF']/1e6,50,'center')
 	yF[(tv<2023)]=0
 	v='V_ToMillMerchTotal'
@@ -2997,7 +3007,7 @@ def NOSE_PlotEmissionsAnn(meta,mos,pNam,cNam):
 		iSS=np.where(meta[pNam]['Project']['Strata']['Spatial']['Unique CD']==nSS)[0][0]
 		iYS=np.where(meta[pNam]['Project']['Strata']['Year']['Unique CD']==nYS)[0][0]
 		iPS=np.where(meta[pNam]['Project']['Strata']['Project Type']['Unique CD']==nPS)[0][0]
-		y=((mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_CO2e_AGHGB_WOSub']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][:,iPS,iSS,iYS])/2)*meta[pNam]['Project']['AEF']/1e6
+		y=((mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_AGHGB_WOSub']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_AGHGB_WSub']['Ensemble Mean'][:,iPS,iSS,iYS])/2)*meta[pNam]['Project']['AEF']/1e6
 		y=np.mean(y[1:].reshape(-1,10),axis=1)
 		ysum=ysum+y
 		ind=np.where(meta['LUT']['Raw']['ASET']['Name']==nPS)[0][0]
@@ -3007,7 +3017,7 @@ def NOSE_PlotEmissionsAnn(meta,mos,pNam,cNam):
 	plt.plot(tm[iT2],ysum[iT2],'-o',ms=3,color=[0.65,0.65,0.65],mec=[0.65,0.65,0.65],mfc='w',lw=1.25,mew=1.25,label='All Non-obligation Stand Establishment')
 	flg=0
 	if flg==1:
-		yNM=mos[pNamNMC]['Delta'][cNam]['ByStrata']['Sum']['E_CO2e_AGHGB_WSub']['Ensemble Mean'][:,0,0,0]*meta[pNamNMC]['Project']['AEF']/1e6
+		yNM=mos[pNamNMC]['Delta'][cNam]['ByStrata']['Sum']['E_AGHGB_WSub']['Ensemble Mean'][:,0,0,0]*meta[pNamNMC]['Project']['AEF']/1e6
 		yNM=np.mean(yNM[1:].reshape(-1,10),axis=1)
 		plt.plot(tm[iT2],yNM[iT2],'-^',ms=3,color=[0.5,0,1],mec=[0.5,0,1],mfc='w',lw=0.75,mew=0.75,label='Nutrient Management')
 		plt.plot(tm[iT2],yNM[iT2]+ysum[iT2],'-s',ms=3,color='k',mec='k',mfc='k',lw=0.75,mew=0.75,label='Total')
@@ -3032,7 +3042,7 @@ def NOSE_PlotEmissionsCumu(meta,mos,pNam,cNam):
 		iSS=np.where(meta[pNam]['Project']['Strata']['Spatial']['Unique CD']==nSS)[0][0]
 		iYS=np.where(meta[pNam]['Project']['Strata']['Year']['Unique CD']==nYS)[0][0]
 		iPS=np.where(meta[pNam]['Project']['Strata']['Project Type']['Unique CD']==nPS)[0][0]
-		y[:,i]=((mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_CO2e_AGHGB_WOSub_cumu_from_tref']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_CO2e_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][:,iPS,iSS,iYS])/2)*meta[pNam]['Project']['AEF']/1e6
+		y[:,i]=((mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_AGHGB_WOSub_cumu_from_tref']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Delta'][cNam]['ByStrata']['Sum']['E_AGHGB_WSub_cumu_from_tref']['Ensemble Mean'][:,iPS,iSS,iYS])/2)*meta[pNam]['Project']['AEF']/1e6
 		ind=np.where(meta['LUT']['Raw']['ASET']['Name']==nPS)[0][0]
 		cl=[meta['LUT']['Raw']['ASET']['c1'][ind],meta['LUT']['Raw']['ASET']['c2'][ind],meta['LUT']['Raw']['ASET']['c3'][ind]]
 		plt.plot(tv,y[:,i],'-',ms=3,color=cl,mec=cl,mfc='w',lw=1.5,mew=0.75,label=nPS)
@@ -3059,8 +3069,8 @@ def NOSE_PlotEmissionsCumuSingleYear(meta,mos,pNam,cNam,year):
 			indY=np.where(metaNM[pNamNMC]['Project']['Strata']['Year']['ID'][indBat]==2022)[0]
 			d0=cbu.LoadSingleOutputFile(metaNM,pNamNMC,0,0,iBat)
 			d1=cbu.LoadSingleOutputFile(metaNM,pNamNMC,1,0,iBat)
-			y0=(d0['E_CO2e_AGHGB_WOSub'][:,indY]+d0['E_CO2e_AGHGB_WSub'][:,indY])/2
-			y1=(d1['E_CO2e_AGHGB_WOSub'][:,indY]+d1['E_CO2e_AGHGB_WSub'][:,indY])/2
+			y0=(d0['E_AGHGB_WOSub'][:,indY]+d0['E_AGHGB_WSub'][:,indY])/2
+			y1=(d1['E_AGHGB_WOSub'][:,indY]+d1['E_AGHGB_WSub'][:,indY])/2
 			yNM[:,indBat[indY]]=y1-y0
 	
 	vStat='Ensemble Mean'
@@ -3076,7 +3086,7 @@ def NOSE_PlotEmissionsCumuSingleYear(meta,mos,pNam,cNam,year):
 	for nPS in psL:
 		iPS=np.where(meta[pNam]['Project']['Strata']['Project Type']['Unique CD']==nPS)[0][0]
 		iStrat=np.where(meta[pNam]['Project']['Strata']['Year']['Unique CD']=='2022')[0][0]
-		y=((mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_CO2e_AGHGB_WOSub'][vStat][:,iPS,0,iStrat]+mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_CO2e_AGHGB_WSub'][vStat][:,iPS,0,iStrat])/2)*meta[pNam]['Project']['AEF']/1e6
+		y=((mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_AGHGB_WOSub'][vStat][:,iPS,0,iStrat]+mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_AGHGB_WSub'][vStat][:,iPS,0,iStrat])/2)*meta[pNam]['Project']['AEF']/1e6
 		ysum=ysum+y
 		ind=np.where(meta['LUT']['Raw']['ASET']['Name']==nPS)[0][0]
 		cl=[meta['LUT']['Raw']['ASET']['c1'][ind],meta['LUT']['Raw']['ASET']['c2'][ind],meta['LUT']['Raw']['ASET']['c3'][ind]]	
@@ -3087,7 +3097,7 @@ def NOSE_PlotEmissionsCumuSingleYear(meta,mos,pNam,cNam,year):
 	if flg==1:
 		#pNam=pNamNMC
 		#iStrat=np.where(meta[pNam]['Project']['Strata']['Year']['Unique CD']=='2022')[0][0]
-		#y=((mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_CO2e_AGHGB_WOSub'][vStat][:,0,0,iStrat]+mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_CO2e_AGHGB_WSub'][vStat][:,0,0,iStrat])/2)*meta[pNam]['Project']['AEF']/1e6
+		#y=((mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_AGHGB_WOSub'][vStat][:,0,0,iStrat]+mos[pNam]['Delta'][cNam]['ByStrata'][oper]['E_AGHGB_WSub'][vStat][:,0,0,iStrat])/2)*meta[pNam]['Project']['AEF']/1e6
 		mu=np.nanmean(yNM,axis=1)
 		iT3=np.where(tv<2022)[0]
 		mu[iT3]=0

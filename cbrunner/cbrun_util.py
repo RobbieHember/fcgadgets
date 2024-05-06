@@ -493,10 +493,6 @@ def ImportProjectConfig(meta,pNam,**kwargs):
 
 		print('Number of stands = ' + str(meta['Geos']['Sparse']['X'].size))
 
-		# Save mask as geotiff
-		#gis.SaveGeoTiff(z,meta['Paths'][pNam]['Data'] + '\\geos_grid.tiff')
-		#plt.matshow(meta['Geos']['Mask'])
-
 		# Save sparse points to geojson
 		flg=1
 		if flg==1:
@@ -510,17 +506,16 @@ def ImportProjectConfig(meta,pNam,**kwargs):
 		# Plot map
 		ufc.PlotMapOfSparseXYSample(meta,pNam)
 
+	else:
+		# From spreadsheet - a few graphics require AEF, set to 1.0
+		meta[pNam]['Project']['AEF']=1
+
 	#--------------------------------------------------------------------------
 	# Dimensions of simulation
 	#--------------------------------------------------------------------------
 	# Number of stands
 	if meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
 		meta[pNam]['Project']['N Stand']=meta[pNam]['Project']['Batch Interval']
-# 		if 'Number of stands' in meta[pNam]['Project']:
-# 			# Override!
-# 			meta[pNam]['Project']['N Stand']=meta[pNam]['Project']['Number of stands']
-# 		else:
-# 			meta[pNam]['Project']['N Stand']=1
 	elif meta[pNam]['Project']['Scenario Source']=='Portfolio':
 		meta[pNam]['Project']['N Stand']=meta[pNam]['Project']['N Stand per Activity Type']*meta[pNam]['Project']['AIL']['N AT']*meta[pNam]['Project']['AIL']['N Years']
 	elif meta[pNam]['Project']['Scenario Source']=='Script':
@@ -1417,6 +1412,16 @@ def ImportProjectConfig(meta,pNam,**kwargs):
 			meta[pNam]['Scenario'][iScn]['Nutrient Application Status']='Off'
 
 	#--------------------------------------------------------------------------
+	# Remove any modified event chronologies
+	#--------------------------------------------------------------------------
+	for iScn in range(meta[pNam]['Project']['N Scenario']):
+		for iBat in range(meta[pNam]['Project']['N Batch']):
+			for iEns in range(meta[pNam]['Project']['N Ensemble']):
+				pth=meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl'
+				if os.path.exists(pth)==True:
+					os.remove(pth)
+
+	#--------------------------------------------------------------------------
 	# Grassland module
 	#--------------------------------------------------------------------------
 	for iScn in range(meta[pNam]['Project']['N Scenario']):
@@ -1636,7 +1641,6 @@ def LoadSingleOutputFile(meta,pNam,iScn,iEns,iBat):
 
 	# Open batch results
 	pth=meta['Paths'][pNam]['Data'] + '\\Outputs\\Scenario' + FixFileNum(iScn) + '\\Data_Scn' + FixFileNum(iScn) + '_Ens' + FixFileNum(iEns) + '_Bat' + FixFileNum(iBat) + '.pkl'
-	#pth=meta['Paths'][pNam]['Data'] + '\\Outputs\\Scenario0001\\Data_Scn0001_Ens0001_Bat0001.pkl'
 	v0=gu.ipickle(pth)
 
 	# Convert to float and apply scale factor
@@ -2086,7 +2090,7 @@ def Calc_MOS_GHG(meta,pNam,**kwargs):
 			for oper in ['Mean','Sum']:
 				ghg1[oper]={}
 				for k in v2include:
-					ghg1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size,uYS_size) ,dtype='float64')
+					ghg1[oper][k]=np.zeros((tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size,uYS_size))
 		else:
 			# Using stands as ensembles for spreadsheet runs
 			oper='Mean'
@@ -2116,7 +2120,7 @@ def Calc_MOS_GHG(meta,pNam,**kwargs):
 			# Initialize temporary data structure for full simulation
 			ghg0={}
 			for k in v2include:
-				ghg0[k]=np.nan*np.empty( (tv_saving.size,meta[pNam]['Project']['N Stand']) ,dtype='float64')
+				ghg0[k]=np.nan*np.empty((tv_saving.size,meta[pNam]['Project']['N Stand']))
 
 			# Initialize age class distribution for this ensemble
 			Age0=np.zeros( (acd['binT'].size,meta[pNam]['Project']['N Stand']) )
@@ -2139,10 +2143,7 @@ def Calc_MOS_GHG(meta,pNam,**kwargs):
 					if (d1[k].ndim>2):
 						# Skip C pools with more than 2 dims
 						continue
-					try:
-						ghg0[k][:,indBat[iKeepStands]]=d1[k][:,iKeepStands].copy()
-					except:
-						print(k)
+					ghg0[k][:,indBat[iKeepStands]]=d1[k][:,iKeepStands].copy()
 
 				# Populate land cover / land use area
 				if meta[pNam]['Project']['Save List Type']!='Basic':
@@ -2178,11 +2179,11 @@ def Calc_MOS_GHG(meta,pNam,**kwargs):
 			del d1
 			garc.collect()
 
-			# *** Fix bad RH - something wrong happens 1 in 500 simulations ***
-			if 'C_RH' in ghg0:
-				iBad=np.where(ghg0['C_RH']<0)
-				if iBad[0].size>0:
-					ghg0['C_RH'][iBad]=0
+# 			# *** Fix bad RH - something wrong happens 1 in 500 simulations ***
+# 			if 'C_RH' in ghg0:
+# 				iBad=np.where(ghg0['C_RH']<0)
+# 				if iBad[0].size>0:
+# 					ghg0['C_RH'][iBad]=0
 
 			# Summarize by project type, region, and time
 			if 'StandsToInclude' in kwargs.keys():
@@ -2230,7 +2231,9 @@ def Calc_MOS_GHG(meta,pNam,**kwargs):
 								else:
 									# Don't use nanmean and nansum - too slow
 									ghg1['Mean'][k][:,iEns,iPS,iSS,iYS]=np.mean(ghg0[k][:,iKeepS[indStrat]],axis=1)
+
 								ghg1['Sum'][k][:,iEns,iPS,iSS,iYS]=np.sum(ghg0[k][:,iKeepS[indStrat]],axis=1)
+
 						elif meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
 							# Treat stands as ensembles
 							for iEnsAsStand in range(meta[pNam]['Project']['N Stand']):
@@ -2493,7 +2496,6 @@ def Calc_MOS_Econ(meta,pNam,**kwargs):
 #%% Calculate model output statistics for area from points
 # Notes: Unlike the GHG and Econ scripts, the area can calculate the statistics
 # in this scripts (scenario comparisons don't need to include area)
-
 def Calc_MOS_Area(meta,pNam,**kwargs):
 
 	print('Calculating model output statistics for event areas')
@@ -2515,11 +2517,16 @@ def Calc_MOS_Area(meta,pNam,**kwargs):
 		uYS_size=meta[pNam]['Project']['Strata']['Year']['Unique ID'].size
 
 		Area1={}
-		for oper in ['Mean','Sum']:
-			Area1[oper]={}
+		if meta[pNam]['Project']['Scenario Source']=='Script':
+			for oper in ['Mean','Sum']:
+				Area1[oper]={}
+				for k in meta['LUT']['Event'].keys():
+					Area1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size,uYS_size) ,dtype='float64')
+		else:
+			# Using stands as ensembles for spreadsheet runs
+			Area1['Mean']={}
 			for k in meta['LUT']['Event'].keys():
-				Area1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size,uYS_size) ,dtype='float64')
-				Area1[oper][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Ensemble'],uPS_size,uSS_size,uYS_size) ,dtype='float64')
+				Area1['Mean'][k]=np.zeros( (tv_saving.size,meta[pNam]['Project']['N Stand'],uPS_size,uSS_size,uYS_size) ,dtype='float64')
 
 		# An option to skip economic calculations. The file will still be created, but all zeros
 		#if meta[pNam]['Project']['Skip Economics']=='Off':
@@ -2617,13 +2624,26 @@ def Calc_MOS_Area(meta,pNam,**kwargs):
 						else:
 							continue
 
-						for k in meta['LUT']['Event'].keys():
-							Area1['Mean'][k][:,iEns,iPS,iSS,iYS]=np.mean(Area0[k][:,iKeepS[indStrat]],axis=1)
-							Area1['Sum'][k][:,iEns,iPS,iSS,iYS]=np.sum(Area0[k][:,iKeepS[indStrat]],axis=1)
+						if meta[pNam]['Project']['Scenario Source']=='Script':
+							for k in meta['LUT']['Event'].keys():
+								Area1['Mean'][k][:,iEns,iPS,iSS,iYS]=np.mean(Area0[k][:,iKeepS[indStrat]],axis=1)
+								Area1['Sum'][k][:,iEns,iPS,iSS,iYS]=np.sum(Area0[k][:,iKeepS[indStrat]],axis=1)
+						elif meta[pNam]['Project']['Scenario Source']=='Spreadsheet':
+							# Treat stands as ensembles
+							for k in meta['LUT']['Event'].keys():
+								for iEnsAsStand in range(meta[pNam]['Project']['N Stand']):
+									Area1['Mean'][k][:,iEnsAsStand,iPS,iSS,iYS]=Area0[k][:,iEnsAsStand]
+						else:
+							pass
 
 		# Calculate statistics
+		if meta[pNam]['Project']['Scenario Source']=='Script':
+			operL=['Mean','Sum']
+		else:
+			operL=['Mean']
+
 		Area2={}
-		for oper in ['Mean','Sum']:
+		for oper in operL:
 			Area2[oper]={}
 			for k in Area1[oper].keys():
 				Area2[oper][k]={}
@@ -2648,7 +2668,6 @@ def Calc_MOS_Area(meta,pNam,**kwargs):
 	return
 
 #%% Calculate mortality by agent (from points)
-
 def Calc_MOS_MortByAgent(meta,pNam,**kwargs):
 
 	t0=time.time()
@@ -3047,7 +3066,6 @@ def Import_MOS_ByScnComparisonAndStrata(meta,pNam,mos):
 	return mos
 
 #%% Import future scenario comparison
-
 def Import_MOS_ByScnComparisonAndStrata_AcrossProjects(meta,mos,sc):
 
 	# Initialize
@@ -3103,16 +3121,15 @@ def Import_MOS_ByScnComparisonAndStrata_AcrossProjects(meta,mos,sc):
 #%% Import model output statistics for area (from points)
 # Area isn't considered in scenario comparisons so the model output statistics
 # have already been calculated and just need to be imported.
-
 def Import_MOS_ByScnAndStrata_Area(meta,pNam,mos):
-
 	for iScn in range(meta[pNam]['Project']['N Scenario']):
-
 		d=gu.ipickle(meta['Paths'][pNam]['Data'] + '\\Outputs\\MOS_ByStrata_Area_Scn' + str(iScn+1) + '.pkl')
-
 		for oper in ['Mean','Sum']:
-			for k in d[oper].keys():
-				mos[pNam]['Scenarios'][iScn][oper]['Area_' + k]=d[oper][k]
+			try:
+				for k in d[oper].keys():
+					mos[pNam]['Scenarios'][iScn][oper]['Area_' + k]=d[oper][k]
+			except:
+				pass
 
 	return mos
 
@@ -4618,6 +4635,8 @@ def Import_GraphicsParameters(x):
 
 #%% Prepare inventory from spreadsheet
 def PrepareInventoryFromSpreadsheet(meta,pNam):
+	dGY=gu.ReadExcel(meta['Paths'][pNam]['Data'] + '\\Inputs\\GrowthCurvesTIPSY_Parameters.xlsx','Sheet1',6)
+
 	for iScn in range(0,meta[pNam]['Project']['N Scenario']):
 		for iBat in range(0,meta[pNam]['Project']['N Batch']):
 			lsat={}
@@ -4645,8 +4664,48 @@ def PrepareInventoryFromSpreadsheet(meta,pNam):
 			#mat=meta['Param']['BE']['ByBGCZ'][cd]['MAT']
 			#lsat['MAT']=mat*np.ones((1,N_StandsInBatch))
 
-			lsat['Wood Density']=meta['Param']['BE']['Biophysical']['Density Wood']*np.ones((1,N_StandsInBatch))
-			if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
+			# Species
+			if meta[pNam]['Project']['Biomass Module']!='Sawtooth':
+
+				for iS in range(5):
+					lsat['Spc' + str(int(iS+1)) + '_ID']=np.zeros((1,N_StandsInBatch),dtype='int16')
+					lsat['Spc' + str(int(iS+1)) + '_P']=np.zeros((1,N_StandsInBatch),dtype='int16')
+
+				ind=np.where( (dGY['ID_Scenario']==iScn+1) & (dGY['ID_GC']==1) )[0]
+				cd=dGY['s1'][ind[0]]
+				id=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'][cd]
+				lsat['Spc1_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
+				lsat['Spc1_P']=dGY['p1'][ind]*np.ones((1,N_StandsInBatch),dtype='int16')
+
+				cd=dGY['s2'][ind[0]]
+				try:
+					id=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'][cd]
+					lsat['Spc2_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
+					lsat['Spc2_P']=dGY['p2'][ind]*np.ones((1,N_StandsInBatch),dtype='int16')
+				except:
+					pass
+				cd=dGY['s3'][ind[0]]
+				try:
+					id=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'][cd]
+					lsat['Spc3_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
+					lsat['Spc3_P']=dGY['p3'][ind]*np.ones((1,N_StandsInBatch),dtype='int16')
+				except:
+					pass
+				cd=dGY['s4'][ind[0]]
+				try:
+					id=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'][cd]
+					lsat['Spc4_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
+					lsat['Spc4_P']=dGY['p4'][ind]*np.ones((1,N_StandsInBatch),dtype='int16')
+				except:
+					pass
+				cd=dGY['s5'][ind[0]]
+				try:
+					id=meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1'][cd]
+					lsat['Spc5_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
+					lsat['Spc5_P']=dGY['p5'][ind]*np.ones((1,N_StandsInBatch),dtype='int16')
+				except:
+					pass
+			else:
 				ind=np.where( meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_CD']==meta[pNam]['Scenario'][iScn]['SRS1_CD'])[0]
 				id=meta['Param']['BE']['Sawtooth']['SRS Key']['SRS_ID'][ind]
 				lsat['SRS1_ID']=id*np.ones((1,N_StandsInBatch),dtype='int16')
@@ -4655,6 +4714,9 @@ def PrepareInventoryFromSpreadsheet(meta,pNam):
 				lsat['SRS2_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
 				lsat['SRS3_ID']=np.ones((1,N_StandsInBatch),dtype='int16')
 				lsat['SRS3_PCT']=0*np.ones((1,N_StandsInBatch),dtype='int16')
+
+			# Wood density
+			lsat['Wood Density']=meta['Param']['BE']['Biophysical']['Density Wood']*np.ones((1,N_StandsInBatch))
 
 			lsat['Harvest Index']=1.0*np.ones(N_StandsInBatch)
 
@@ -4777,31 +4839,31 @@ def SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT):
 
 	A={}
 	A['Nat Dist']=[None]*11; c=-1
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Wildfire']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain pine beetle'; A['Nat Dist'][c]['Color']=[0.3,0.8,0.2]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Mountain Pine Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Balsam beetle'; A['Nat Dist'][c]['Color']=[1,0.9,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Balsam Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.15,0.4,0.1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Douglas-fir Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.8,1,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Spruce Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Diseases'; A['Nat Dist'][c]['Color']=[0.75,0.55,1]; A['Nat Dist'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Root']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Foliage']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Disease Stem']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Defoliators'; A['Nat Dist'][c]['Color']=[1,0.6,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Western Spruce Budworm']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wind'; A['Nat Dist'][c]['Color']=[0.03,0.1,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Wind']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Frost, snow, ice and hail'; A['Nat Dist'][c]['Color']=[0.25,0.8,1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Frost Snow Ice Hail']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Flooding, lightning and slides'; A['Nat Dist'][c]['Color']=[0.2,0.4,0.7]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Flooding Lightning Slides']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Drought'; A['Nat Dist'][c]['Color']=[1,0.85,0.7]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Drought']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wildfire'; A['Nat Dist'][c]['Color']=[0.75,0,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Wildfire']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Mountain pine beetle'; A['Nat Dist'][c]['Color']=[0.3,0.8,0.2]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Mountain Pine Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Balsam beetle'; A['Nat Dist'][c]['Color']=[1,0.9,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Balsam Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Douglas-fir beetle'; A['Nat Dist'][c]['Color']=[0.15,0.4,0.1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Douglas-fir Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Spruce beetle'; A['Nat Dist'][c]['Color']=[0.8,1,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Spruce Beetle']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Diseases'; A['Nat Dist'][c]['Color']=[0.75,0.55,1]; A['Nat Dist'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Mean']['Area_Disease Root']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']+mos[pNam]['Scenarios'][iScn]['Mean']['Area_Disease Foliage']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']+mos[pNam]['Scenarios'][iScn]['Mean']['Area_Disease Stem']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand'])*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Defoliators'; A['Nat Dist'][c]['Color']=[1,0.6,0]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Western Spruce Budworm']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Wind'; A['Nat Dist'][c]['Color']=[0.03,0.1,0.5]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Wind']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Frost, snow, ice and hail'; A['Nat Dist'][c]['Color']=[0.25,0.8,1]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Frost Snow Ice Hail']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Flooding, lightning and slides'; A['Nat Dist'][c]['Color']=[0.2,0.4,0.7]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Flooding Lightning Slides']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Nat Dist'][c]={}; A['Nat Dist'][c]['Name']='Drought'; A['Nat Dist'][c]['Color']=[1,0.85,0.7]; A['Nat Dist'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Drought']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
 	A['Nat Dist']=A['Nat Dist'][0:c+1]
 
 	A['Management']=[None]*9; c=-1
-	#c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0.25,0.85,1]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0.25,0.85,1]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Knockdown'; A['Management'][c]['Color']=[0.15,0.35,0.65]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Knockdown']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[1,0.85,0.7]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Slashpile Burn']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Prescribed Burn']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']	
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Mechanical Site Prep']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning'; A['Management'][c]['Color']=[0.3,0.55,1]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Thinning']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']	
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Sum']['Area_Planting']['Ensemble Mean'][:,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['Area_Direct Seeding']['Ensemble Mean'][:,iPS,iSS,iYS])*meta[pNam]['Project']['AEF']
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[0.66,0.96,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Aerial BTK Spray']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Fertilization'; A['Management'][c]['Color']=[0.75,0.55,1]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Nutrient App Aerial']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
-	#c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Sum']['Area_Dwarf Mistletoe Control']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['AEF']
+	#c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0.25,0.85,1]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Mean']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']+mos[pNam]['Scenarios'][iScn]['Mean']['Area_Harvest Salvage']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand'])*meta[pNam]['Project']['AEF']
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Harvest'; A['Management'][c]['Color']=[0.25,0.85,1]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Mean']['Area_Harvest']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand'])*meta[pNam]['Project']['AEF']
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Knockdown'; A['Management'][c]['Color']=[0.15,0.35,0.65]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Knockdown']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Slashpile burn'; A['Management'][c]['Color']=[1,0.85,0.7]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Slashpile Burn']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Prescribed burn'; A['Management'][c]['Color']=[0.5,0,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Prescribed Burn']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']	
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Site preparation'; A['Management'][c]['Color']=[1,0.7,0]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Mean']['Area_Mechanical Site Prep']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand'])*meta[pNam]['Project']['AEF']
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Thinning'; A['Management'][c]['Color']=[0.3,0.55,1]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Thinning']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']	
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Planting'; A['Management'][c]['Color']=[0.3,0.8,0.2]; A['Management'][c]['Data']=(mos[pNam]['Scenarios'][iScn]['Mean']['Area_Planting']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']+mos[pNam]['Scenarios'][iScn]['Mean']['Area_Direct Seeding']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand'])*meta[pNam]['Project']['AEF']
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Foliage protection'; A['Management'][c]['Color']=[0.66,0.96,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Aerial BTK Spray']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Fertilization'; A['Management'][c]['Color']=[0.75,0.55,1]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Nutrient App Aerial']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
+	#c=c+1; A['Management'][c]={}; A['Management'][c]['Name']='Dwarf Mistletoe control'; A['Management'][c]['Color']=[1,0.5,0]; A['Management'][c]['Data']=mos[pNam]['Scenarios'][iScn]['Mean']['Area_Dwarf Mistletoe Control']['Ensemble Mean'][:,iPS,iSS,iYS]*meta[pNam]['Project']['N Stand']*meta[pNam]['Project']['AEF']
 	A['Management']=A['Management'][0:c+1]
 
 	# Convert to x-year intervals
@@ -5734,7 +5796,7 @@ def CombineProjectMOSs(meta,mos,pNamNew,pNamL):
 	return mos
 
 #%% Net-down insect mortality to reflect spcecies composition
-def PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,lsat,iBat):		
+def PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,lsat,iBat):
 	lsat['Insect Mortality Percent Tree Species Affected']={}
 	for iPest in range(meta['Param']['Raw']['DisturbanceSpeciesAffected']['Insect Name'].size):
 		namPest=meta['Param']['Raw']['DisturbanceSpeciesAffected']['Insect Name'][iPest]
@@ -5749,7 +5811,7 @@ def PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,lsat,iBat):
 		for iSpc in range(1,5):
 			ind=np.where(np.isin(lsat['Spc' + str(iSpc) + '_ID'][0,:],idSpcL)==True)[0]
 			PercentAffected[ind]=PercentAffected[ind]+lsat['Spc' + str(iSpc) + '_P'][0,ind]
-		lsat['Insect Mortality Percent Tree Species Affected'][namPest]=PercentAffected		
+		lsat['Insect Mortality Percent Tree Species Affected'][namPest]=np.minimum(100,PercentAffected)
 	return lsat
 
 #%%

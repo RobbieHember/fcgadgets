@@ -25,14 +25,6 @@ def MeepMeep(meta,pNam):
 	else:
 		ScenariosToRun=range(meta[pNam]['Project']['N Scenario'])
 
-	# Remove any modified event chronologies
-	for iScn in range(meta[pNam]['Project']['N Scenario']):
-		for iBat in range(meta[pNam]['Project']['N Batch']):
-			for iEns in range(meta[pNam]['Project']['N Ensemble']):
-				pth=meta['Paths'][pNam]['Input Scenario'][iScn] + '\\Modified_Events_Ens' + cbu.FixFileNum(iEns) + '_Bat' + cbu.FixFileNum(iBat) + '.pkl'
-				if os.path.exists(pth)==True:
-					os.remove(pth)
-
 	# Loop through batches
 	for iBat in range(meta[pNam]['Project']['N Batch']):
 		
@@ -238,7 +230,7 @@ def MeepMeep(meta,pNam):
 
 #%% Phase shift correction of net growth
 def PhaseShiftNG(meta,y):
-	flg=0
+	flg=1
 	if flg==1:
 		x=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 		xCor=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
@@ -288,9 +280,8 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 		# Was it harvested (yes=1, no=0)
 		vi['lsat']['Harvest Flag']=np.minimum(1,vi['lsat']['Year Harvest First'])
 
-	if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
-		# Species-specific adjustments to insect mortality based on % species comp
-		vi['lsat']=cbu.PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,vi['lsat'],iBat)
+	# Species-specific adjustments to insect mortality based on % species comp
+	vi['lsat']=cbu.PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,vi['lsat'],iBat)
 
 	# Update number of stands for batch
 	meta[pNam]['Project']['N Stand Batch']=vi['lsat']['ID_BGCZ'].shape[1]
@@ -1063,7 +1054,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 	del vo['C_LF_ByPool']
 	del vo['C_RH_ByPool']
 
-	# Apply scale factor to data
+	# Apply scale factor and convert to integer
 	for k in vo.keys():
 		# Skip mortality summary by agent
 		if (k=='C_M_DistByAgent') | (k=='C_M_DistByAgentPct'):

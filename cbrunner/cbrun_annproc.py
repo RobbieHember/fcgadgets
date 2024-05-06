@@ -419,6 +419,22 @@ def DeadWoodLitterAndSoilDynamics(meta,pNam,iT,iBat,vi,vo,iEP):
 	#--------------------------------------------------------------------------
 	vo['V_MerchDead'][iT,:]=vi['lsat']['Biomass to Volume CF']*vo['C_Eco_ByPool'][iT,:,iEP['SnagStem']]
 
+	# Fixing
+	flg=0
+	if flg==1:
+		if iT<500:
+			ind=np.where(np.isnan(vo['C_Eco_ByPool'][iT,:,iEP['SnagStem']])==True)[0]
+			if ind.size>0:
+				print(iT)
+				print(ind[0])
+				plt.plot(vi['tv'][0:iT+1],np.sum(vo['C_Eco_ByPool'][0:iT+1,ind[0],iEP['BiomassTotal']],axis=1),'-go')
+				plt.plot(vi['tv'][0:iT+1],vo['C_Eco_ByPool'][0:iT+1,ind[0],iEP['SnagStem']],'-b.')
+				plt.plot(vi['tv'][0:iT+1],vo['C_M_DistByAgent'][1][0:iT+1,ind[0]],'rs')
+				for j in range(1,len(vo['C_M_DistByAgent'])+1):
+					if np.sum(vo['C_M_DistByAgent'][j][iT-3:iT+1,ind[0]])>0:
+						plt.plot(vi['tv'][0:iT+1],vo['C_M_DistByAgent'][j][0:iT+1,ind[0]],'-c.')
+						print(j)
+
 	return vo
 
 #%% Disturbance and management events
@@ -427,43 +443,36 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 	# Update total (live+dead) stemwood merchantable volume
 	vo['V_MerchTotal'][iT,:]=vo['V_MerchLive'][iT,:]+vo['V_MerchDead'][iT,:]
 
+	# Keep tabs on whether a catastrophic event has been added
+	flag_sim_event=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
+
 	# Predict wildfire (on the fly)
 	if meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Status']=='On':
 		if vi['tv'][iT]<1920:
-			vi=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+			vi,flag_sim_event=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 	if meta[pNam]['Scenario'][iScn]['Wildfire Sim Pre-obs Status']=='On':
 		if (vi['tv'][iT]>=1920) & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']): 
-			vi=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+			vi,flag_sim_event=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 	if meta[pNam]['Scenario'][iScn]['Wildfire Sim Future Status']=='On':
 		if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:
-			vi=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+			vi,flag_sim_event=asm.PredictWildfire_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 
 	# Predict mountain pine beetle (on the fly)
 	if meta[pNam]['Scenario'][iScn]['IBM Sim Pre-obs Status']=='On':
 		if vi['tv'][iT]<1950:
-			vi=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+			vi,flag_sim_event=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 	if meta[pNam]['Scenario'][iScn]['IBM Sim Obs Status']=='On':
 		if (vi['tv'][iT]>=1950) & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']):
-			vi=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
+			vi,flag_sim_event=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 	if meta[pNam]['Scenario'][iScn]['IBM Sim Future Status']=='On':
 		if vi['tv'][iT]>=meta[pNam]['Project']['Year Project']:
-			vi=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns)
-
-	# Predict harvesting (on the fly)
-	if meta[pNam]['Scenario'][iScn]['Harvest Sim Historical Status']=='On':
-		if vi['tv'][iT]<meta[pNam]['Scenario'][iScn]['Harvest Sim Year Transition']:
-			Period='Historical'
-			vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
-	if meta[pNam]['Scenario'][iScn]['Harvest Sim Future Status']=='On':
-		if vi['tv'][iT]>=meta[pNam]['Scenario'][iScn]['Harvest Sim Year Transition']:
-			Period='Future'
-			vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
+			vi,flag_sim_event=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 
 	# Predict disease (on the fly)
 	if (meta[pNam]['Scenario'][iScn]['Disease Sim Historical Status']=='On') & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']):
-		vi=asm.PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+		vi,flag_sim_event=asm.PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:],flag_sim_event)
 	if (meta[pNam]['Scenario'][iScn]['Disease Sim Future Status']=='On') & (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
-		vi=asm.PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+		vi,flag_sim_event=asm.PredictDisease_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:],flag_sim_event)
 
 	# Predict wind (on the fly)
 	if (meta[pNam]['Scenario'][iScn]['Wind Sim Historical Status']=='On') & (meta[pNam]['Scenario'][iScn]['Wind Sim Future Status']=='On'):
@@ -480,6 +489,16 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 		vi=asm.PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
 	if (meta[pNam]['Scenario'][iScn]['Frost Sim Future Status']=='On') & (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
 		vi=asm.PredictFrost_OnTheFly(meta,pNam,vi,iT,iEns,vo['A'][iT,:])
+
+	# Predict harvesting (on the fly)
+	if meta[pNam]['Scenario'][iScn]['Harvest Sim Historical Status']=='On':
+		if vi['tv'][iT]<meta[pNam]['Scenario'][iScn]['Harvest Sim Year Transition']:
+			Period='Historical'
+			vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
+	if meta[pNam]['Scenario'][iScn]['Harvest Sim Future Status']=='On':
+		if vi['tv'][iT]>=meta[pNam]['Scenario'][iScn]['Harvest Sim Year Transition']:
+			Period='Future'
+			vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
 
 	# Predict future nutrient application (on the fly)
 	if meta[pNam]['Scenario'][iScn]['Nutrient App Sim Status']=='On':
@@ -571,13 +590,12 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 		#----------------------------------------------------------------------
 		# Net-down insect mortality to reflect the proportion of host species
 		#----------------------------------------------------------------------
-		if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
-			for nam in meta['Param']['Raw']['DisturbanceSpeciesAffected']['Insect Name']:
-				id=meta['LUT']['Event'][nam]
-				if id in idx_Type.keys():
-					ndf=vi['lsat']['Insect Mortality Percent Tree Species Affected'][nam].astype('float')/100
-					ind=idx_Type[id]
-					MortalityFactor[ind]=MortalityFactor[ind]*ndf[ind]
+		for nam in meta['Param']['Raw']['DisturbanceSpeciesAffected']['Insect Name']:
+			id=meta['LUT']['Event'][nam]
+			if id in idx_Type.keys():
+				ndf=vi['lsat']['Insect Mortality Percent Tree Species Affected'][nam].astype('float')/100
+				ind=idx_Type[id]
+				MortalityFactor[ind]=MortalityFactor[ind]*ndf[ind]
 		
 		#----------------------------------------------------------------------
 		# Define the amount of each pool that is affected by the event
@@ -599,6 +617,13 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 			Affected_Bark=MortalityFactor*vo['C_Eco_ByPool'][iT,:,iEP['Bark']]
 			Affected_RootCoarse=MortalityFactor*vo['C_Eco_ByPool'][iT,:,iEP['RootCoarse']]
 			Affected_RootFine=MortalityFactor*vo['C_Eco_ByPool'][iT,:,iEP['RootFine']]
+
+		# Fixing
+		ind=np.where(MortalityFactor>1)[0]
+		if ind.size>0:
+			print(ind[0])
+			print(iT)
+			print(ID_Type[ind[0]])
 
 		# Partition bark into merch and non-merch components
 		#Affected_BarkMerch=0.85*Affected_Bark
@@ -639,6 +664,7 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 			if k==0:
 				continue
 			ind=idx_Type[k]
+			vo['C_M_DistByAgent'][k][iT,ind]=vo['C_M_DistByAgent'][k][iT,ind]+Affected_BiomassTotal[ind]
 
 		#----------------------------------------------------------------------
 		# Remove affected amount from each pool

@@ -146,12 +146,12 @@ def PlotSchematicAtmoGHGBal(meta,pNam,mos,**kwargs):
 	y_d={}
 	for k in mos[pNam]['Scenarios'][0]['Mean'].keys():
 		if (k=='C_Forest') | (k=='C_HWP') | (k=='C_ToMill'):
-			y_b[k]=mos[pNam]['Scenarios'][iB]['Mean']['Mean'][k]['Ensemble Mean'][iT[-1],iPS,iSS,iYS]-mos[pNam]['Scenarios'][iB]['Mean']['Mean'][k]['Ensemble Mean'][iT[0],iPS,iSS,iYS]
-			y_p[k]=mos[pNam]['Scenarios'][iP]['Mean']['Mean'][k]['Ensemble Mean'][iT[-1],iPS,iSS,iYS]-mos[pNam]['Scenarios'][iP]['Mean']['Mean'][k]['Ensemble Mean'][iT[0],iPS,iSS,iYS]
+			y_b[k]=mos[pNam]['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT[-1],iPS,iSS,iYS]-mos[pNam]['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT[0],iPS,iSS,iYS]
+			y_p[k]=mos[pNam]['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT[-1],iPS,iSS,iYS]-mos[pNam]['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT[0],iPS,iSS,iYS]
 			y_d[k]=y_p[k]-y_b[k]
 		else:
-			y_b[k]=np.sum(mos[pNam]['Scenarios'][iB]['Mean']['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS])
-			y_p[k]=np.sum(mos[pNam]['Scenarios'][iP]['Mean']['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS])
+			y_b[k]=np.sum(mos[pNam]['Scenarios'][iB]['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS])
+			y_p[k]=np.sum(mos[pNam]['Scenarios'][iP]['Mean'][k]['Ensemble Mean'][iT,iPS,iSS,iYS])
 			y_d[k]=y_p[k]-y_b[k]
 
 		# Round
@@ -762,6 +762,18 @@ def PlotDeltaGHGB(meta,mos,pNam,**kwargs):
 	else:
 		iPS=0; iSS=0; iYS=0
 
+	if 'ScenarioLabels' in kwargs.keys():
+		lab1=kwargs['ScenarioLabels'][0]
+		lab2=kwargs['ScenarioLabels'][1]
+	else:
+		lab1='Baseline'
+		lab2='Action'
+
+	if 'FigSize' in kwargs.keys():
+		FigSize=kwargs['FigSize']
+	else:
+		FigSize=[20,12]
+
 	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
 	iT=np.where( (tv>=kwargs['t0']) & (tv<=kwargs['t1']) )[0]
 
@@ -774,20 +786,20 @@ def PlotDeltaGHGB(meta,mos,pNam,**kwargs):
 
 	clD=np.array([0.6,0.1,1])
 
-	fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(20,9)); Alpha1=0.06; Alpha2=0.08; Alpha3=0.11
+	fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(FigSize[0],FigSize[1])); Alpha1=0.06; Alpha2=0.08; Alpha3=0.11
 	for i in range(0,2):
 		for j in range(0,2):
 			ax[i,j].yaxis.set_ticks_position('both'); ax[i,j].xaxis.set_ticks_position('both')
 			ax[i,j].plot(tv[iT],0*np.ones(tv[iT].shape),'-',lw=3,color=(0.8,0.8,0.8),label='')
 
-	ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iB]['Mean'][operS]['E_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0,0.5,1),label='Baseline')
-	ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iP]['Mean'][operS]['E_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=(0,0.6,0),label='Project (With Subs.)')
+	ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iB][operS]['E_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0,0.5,1),label=lab1)
+	ax[0,0].plot(tv[iT],mos[pNam]['Scenarios'][iP][operS]['E_AGHGB_WOSub']['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=(0,0.6,0),label=lab2)
 	ax[0,0].legend(loc="upper right",frameon=False,facecolor=None,edgecolor='w')
 	ax[0,0].set(ylabel='Annual E (tCO$_2$e ha$^-$$^1$ yr$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
 	ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 	
-	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iB]['Mean'][operS]['E_AGHGB_WOSub_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0,0.5,1),label='Baseline SR')
-	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iP]['Mean'][operS]['E_AGHGB_WOSub_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=(0,0.6,0),label='Baseline NSR')
+	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iB][operS]['E_AGHGB_WOSub_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS],'-',color=(0,0.5,1),label='Baseline SR')
+	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iP][operS]['E_AGHGB_WOSub_cumu']['Ensemble Mean'][iT,iPS,iSS,iYS],'--',color=(0,0.6,0),label='Baseline NSR')
 	ax[0,1].set(ylabel='Cumulative E (tCO$_2$e ha$^-$$^1$)',xlim=[tv[iT[0]],tv[iT[-1]]],xlabel='Time, years');
 	ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 
@@ -825,7 +837,7 @@ def PlotDeltaGHGB(meta,mos,pNam,**kwargs):
 	if 'yLimPad' in kwargs.keys():
 		ax[1,1].set(ylim=[-kwargs['yLimPad']*np.max(np.abs(mu)),kwargs['yLimPad']*np.max(np.abs(mu))])
 	ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
-	gu.axletters(ax,plt,0.025,0.9,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
+	gu.axletters(ax,plt,0.035,0.9,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
 	if meta['Graphics']['Print Figures']=='On':
 		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\GHG_Balance_' + cnam,'png',900)
 
