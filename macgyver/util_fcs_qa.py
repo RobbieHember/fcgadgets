@@ -1,4 +1,3 @@
-
 #%% Import modules
 import numpy as np
 import pandas as pd
@@ -14,10 +13,9 @@ import copy
 from scipy import stats
 import matplotlib.colors
 import matplotlib.ticker as ticker
-#from matplotlib import animation
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
-import fcgadgets.bc1ha.bc1ha_util as u1ha
+import fcgadgets.bc1ha.bc1ha_utils as u1ha
 import fcgadgets.cbrunner.cbrun_util as cbu
 import fcexplore.field_plots.Processing.fp_util as ufp
 
@@ -97,7 +95,7 @@ def QA_FullCompareAgeByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		yo=d['obs mu']
 		Dp=(yp-yo)/yo*100
 		
-		cl=meta['Graphics']['GP Comp']; barw=0.32
+		cl=meta['Graphics']['Field Plot Comparison']; barw=0.32
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
 		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
@@ -134,8 +132,8 @@ def QA_FullCompareBiomassByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		d['mod mu']=np.zeros(d['obs mu'].size)
 		d['mod se']=np.zeros(d['obs se'].size)
 		for i in range(dObs['code'].size):
-			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_Biomass_Tot'][iT])
-			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_Biomass_Tot'][iT])/np.sqrt(iT.size)
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_Biomass'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_Biomass'][iT])/np.sqrt(iT.size)
 		
 		# Put in order
 		ord=np.argsort(d['obs mu'])
@@ -159,7 +157,7 @@ def QA_FullCompareBiomassByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		yo=d['obs mu']
 		Dp=(yp-yo)/yo*100
 		
-		cl=meta['Graphics']['GP Comp']; barw=0.32
+		cl=meta['Graphics']['Field Plot Comparison']; barw=0.32
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
 		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
@@ -196,8 +194,8 @@ def QA_FullCompareGrowthGrossByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		d['mod mu']=np.zeros(d['obs mu'].size)
 		d['mod se']=np.zeros(d['obs se'].size)
 		for i in range(dObs['code'].size):
-			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_G_Gross_Tot'][iT])
-			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_G_Gross_Tot'][iT])/np.sqrt(iT.size)
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_G_Gross'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_G_Gross'][iT])/np.sqrt(iT.size)
 		
 		# Put in order
 		ord=np.argsort(np.nan_to_num(d['obs mu']))
@@ -221,7 +219,7 @@ def QA_FullCompareGrowthGrossByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		yo=d['obs mu']
 		Dp=(yp-yo)/yo*100
 		
-		cl=meta['Graphics']['GP Comp']; barw=0.32
+		cl=meta['Graphics']['Field Plot Comparison']; barw=0.32
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
 		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
@@ -260,8 +258,8 @@ def QA_FullCompareGrowthNetByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		d['mod mu']=np.zeros(d['obs mu'].size)
 		d['mod se']=np.zeros(d['obs se'].size)
 		for i in range(dObs['code'].size):
-			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_G_Net_Tot'][iT])
-			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_G_Net_Tot'][iT])/np.sqrt(iT.size)
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_G_Net'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_G_Net'][iT])/np.sqrt(iT.size)
 		
 		# Put in order
 		tmp=d['obs mu'].copy()
@@ -288,7 +286,7 @@ def QA_FullCompareGrowthNetByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		yo=d['obs mu']
 		Dp=(yp-yo)/yo*100
 		
-		cl=meta['Graphics']['GP Comp']; barw=0.32
+		cl=meta['Graphics']['Field Plot Comparison']; barw=0.32
 		
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
 		ax.plot([-1,100],[0,0],'k-',lw=1)
@@ -329,8 +327,8 @@ def QA_FullCompareMortalityByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		d['mod mu']=np.zeros(d['obs mu'].size)
 		d['mod se']=np.zeros(d['obs se'].size)
 		for i in range(dObs['code'].size):
-			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_M_Tot'][iT])
-			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_M_Tot'][iT])/np.sqrt(iT.size)
+			d['mod mu'][i]=np.mean(dMod[iScn][dObs['code'][i]]['C_M'][iT])
+			d['mod se'][i]=2*np.std(dMod[iScn][dObs['code'][i]]['C_M'][iT])/np.sqrt(iT.size)
 		
 		# Put in order
 		ord=np.argsort(np.nan_to_num(d['obs mu']))
@@ -354,7 +352,7 @@ def QA_FullCompareMortalityByBGC_CN(meta,pNam,tv,dObs0,dMod0):
 		yo=d['obs mu']
 		Dp=(yp-yo)/yo*100
 		
-		cl=meta['Graphics']['GP Comp']; barw=0.32
+		cl=meta['Graphics']['Field Plot Comparison']; barw=0.32
 		plt.close('all');fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['obs mu'],barw,facecolor=cl['bl'],label='Ground plots')
 		ax.bar(np.arange(u.size)+barw/2+0.01,d['mod mu'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
@@ -396,10 +394,10 @@ def QA_FullCompareSOCByBGC(meta,pNam,tv,dObs0,dMod0):
 		dM['Org_se']=np.zeros(lab.size)
 		dM['Min_se']=np.zeros(lab.size)
 		for i in range(lab.size):
-			dM['Tot_mu'][i]=np.mean(dMod[iScn][lab[i]]['C_Soil_Tot'][iT])
+			dM['Tot_mu'][i]=np.mean(dMod[iScn][lab[i]]['C_Soil'][iT])
 			dM['Org_mu'][i]=np.mean(dMod[iScn][lab[i]]['C_Soil_OHorizon'][iT])
 			dM['Min_mu'][i]=dM['Tot_mu'][i]-dM['Org_mu'][i]
-			dM['Tot_se'][i]=2*np.std(dMod[iScn][lab[i]]['C_Soil_Tot'][iT])/np.sqrt(iT.size)
+			dM['Tot_se'][i]=2*np.std(dMod[iScn][lab[i]]['C_Soil'][iT])/np.sqrt(iT.size)
 			dM['Org_se'][i]=2*np.std(dMod[iScn][lab[i]]['C_Soil_OHorizon'][iT])/np.sqrt(iT.size)
 			dM['Min_se'][i]=dM['Tot_se'][i]-dM['Org_se'][i]
 
@@ -430,7 +428,7 @@ def QA_FullCompareSOCByBGC(meta,pNam,tv,dObs0,dMod0):
 		yo=dObs['data']['Soil']['TOT_C_THA']['mu']
 		Dp=(yp-yo)/yo*100
 		
-		cl=meta['Graphics']['GP Comp']; barw=0.32
+		cl=meta['Graphics']['Field Plot Comparison']; barw=0.32
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,dObs['data']['Soil']['MIN_C_THA']['mu'],barw,facecolor=cl['bl'],label='Ground plot observations, mineral horizon (Shaw et al. 2018)')
 		ax.bar(np.arange(u.size)-barw/2-0.01,dObs['data']['Soil']['ORG_C_THA']['mu'],barw,facecolor=cl['bd'],bottom=dObs['data']['Soil']['MIN_C_THA']['mu'],label='Ground plot observations, organic horizon (Shaw et al. 2018)')
@@ -489,13 +487,13 @@ def QA_FullCompareBiomassDynamicsAve_CN(meta,pNam,tv,dObs0,dMod0):
 			dM_se[v]=np.sum(Area*se)/np.sum(Area)
 
 		lab=['Gross\ngrowth','Natural\nmortality','Harvest\nmortality','Net\ngrowth'] #,'Harvest\nmortality'
-		cl=meta['Graphics']['GP Comp']; barw=0.38
+		cl=meta['Graphics']['Field Plot Comparison']; barw=0.38
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(9,7))
 		ax.plot([0,5],[0,0],'k-',color=meta['Graphics']['gp']['cla'],lw=meta['Graphics']['gp']['lw1'])
 		ax.bar(1-barw/2-0.01,dO_mu['Ctot G Tot'],barw,facecolor=cl['bl'],label='Ground plot observations')
-		ax.bar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
+		ax.bar(1+barw/2+0.01,dM_mu['C_G_Gross'],barw,facecolor=cl['gl'],label='Predictions (FCS)')
 		ax.errorbar(1-barw/2-0.01,dO_mu['Ctot G Tot'],yerr=dO_se['Ctot G Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax.errorbar(1+barw/2+0.01,dM_mu['C_G_Gross_Tot'],yerr=dM_se['C_G_Gross_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(1+barw/2+0.01,dM_mu['C_G_Gross'],yerr=dM_se['C_G_Gross'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
 		
 		ax.bar(2-barw/2-0.01,-dO_mu['Ctot Mort Nat'],barw,facecolor=cl['bl'])
 		ax.bar(2+barw/2+0.01,-dM_mu['C_M_Nat'],barw,facecolor=cl['gl'])
@@ -508,9 +506,9 @@ def QA_FullCompareBiomassDynamicsAve_CN(meta,pNam,tv,dObs0,dMod0):
 		ax.errorbar(3+barw/2+0.01,-dM_mu['C_M_Harv'],yerr=dM_se['C_M_Harv'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
 		
 		ax.bar(4-barw/2-0.01,dO_mu['Ctot Net'],barw,facecolor=cl['bl'])
-		ax.bar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],barw,facecolor=cl['gl'])
+		ax.bar(4+barw/2+0.01,dM_mu['C_G_Net'],barw,facecolor=cl['gl'])
 		ax.errorbar(4-barw/2-0.01,dO_mu['Ctot Net'],yerr=dO_se['Ctot Net'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax.errorbar(4+barw/2+0.01,dM_mu['C_G_Net_Tot'],yerr=dM_se['C_G_Net_Tot'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax.errorbar(4+barw/2+0.01,dM_mu['C_G_Net'],yerr=dM_se['C_G_Net'],color=meta['Graphics']['gp']['cla'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
 		
 		ax.set(position=[0.14,0.12,0.84,0.86],xticks=np.arange(1,len(lab)+1),xticklabels=lab,yticks=np.arange(-2,3,0.5),ylabel='Carbon balance of trees (tC ha$^{-1}$ yr$^{-1}$)',xlim=[0.5,4.5],ylim=[-1.5,2])
 		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
@@ -521,18 +519,18 @@ def QA_FullCompareBiomassDynamicsAve_CN(meta,pNam,tv,dObs0,dMod0):
 
 #%%
 def QA_FullComparison_AgeResponsesBiomassAndNetGrowth_ByReg_CNY(meta,pNam,dObs,dMod):
-	lw=0.5; ms=3; cl=meta['Graphics']['GP Comp']
+	lw=0.5; ms=3; cl=meta['Graphics']['Field Plot Comparison']
 	ptf='PTF CN'
 	for iScn in range(meta[pNam]['Project']['N Scenario']):
 		plt.close('all'); fig,ax1=plt.subplots(1,2,figsize=gu.cm2inch(22,7))
 		reg='Coast'
 		ax1[0].plot(dObs['bin'],dObs['data'][ptf][reg]['Ctot L t0']['mu'],'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],label='Observed biomass',zorder=1)
-		ax1[0].plot(dObs['bin'],dMod[iScn][reg]['C_Biomass_Tot']['mu'],'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],label='Predicted biomass',zorder=1)
+		ax1[0].plot(dObs['bin'],dMod[iScn][reg]['C_Biomass']['mu'],'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],label='Predicted biomass',zorder=1)
 		ax1[0].set(ylabel='Biomass (tC ha$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(0,500,50),xlim=[0,250+dObs['bw']],ylim=[0,250])
 		ax1[0].yaxis.set_ticks_position('both'); ax1[0].xaxis.set_ticks_position('both'); ax1[0].tick_params(length=meta['Graphics']['gp']['tickl'])
 		ax2=ax1[0].twinx()
 		ax2.bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot Net']['mu'],0.45*dObs['bw'],ec='none',fc=cl['bl'],zorder=-1,label='Observed net growth')
-		ax2.bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Net_Tot']['mu'] ,0.45*dObs['bw'],ec='none',fc=cl['gl'],zorder=-1,label='Predicted net growth')
+		ax2.bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Net_Reg']['mu'] ,0.45*dObs['bw'],ec='none',fc=cl['gl'],zorder=-1,label='Predicted net growth')
 		ax2.plot([0,500],[0,0],'-k',lw=lw)
 		ax2.set(ylabel='Net growth (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='',ylim=[-1.75,5.5])
 		ax1[0].set_zorder(ax2.get_zorder()+1)
@@ -540,12 +538,12 @@ def QA_FullComparison_AgeResponsesBiomassAndNetGrowth_ByReg_CNY(meta,pNam,dObs,d
 		ax2.tick_params(length=meta['Graphics']['gp']['tickl'])
 		reg='Interior'
 		ax1[1].plot(dObs['bin'],dObs['data'][ptf][reg]['Ctot L t0']['mu'],'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],zorder=1)
-		ax1[1].plot(dObs['bin'],dMod[iScn][reg]['C_Biomass_Tot']['mu'],'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],zorder=1)
+		ax1[1].plot(dObs['bin'],dMod[iScn][reg]['C_Biomass']['mu'],'--ks',ms=ms,lw=lw,mew=lw,color=cl['gd'],mfc='w',mec=cl['gd'],zorder=1)
 		ax1[1].set(ylabel='Biomass (tC ha$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(0,500,50),xlim=[0,250+dObs['bw']],ylim=[0,250])
 		ax1[1].yaxis.set_ticks_position('both'); ax1[1].xaxis.set_ticks_position('both'); ax1[1].tick_params(length=meta['Graphics']['gp']['tickl'])
 		ax3=ax1[1].twinx()
 		ax3.bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot Net']['mu'],0.45*dObs['bw'],ec='none',fc=cl['bl'],label='Observed net growth',zorder=-1)
-		ax3.bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Net_Tot']['mu'],0.45*dObs['bw'],ec='none',fc=cl['gl'],label='Predicted net growth',zorder=-1)
+		ax3.bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Net_Reg']['mu'],0.45*dObs['bw'],ec='none',fc=cl['gl'],label='Predicted net growth',zorder=-1)
 		ax3.plot([0,500],[0,0],'-k',lw=lw)
 		ax3.set(ylabel='Net growth (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='',ylim=[-1.75,5.5])
 		ax1[1].set_zorder(ax3.get_zorder()+1)
@@ -561,20 +559,20 @@ def QA_FullComparison_AgeResponsesBiomassAndNetGrowth_ByReg_CNY(meta,pNam,dObs,d
 
 #%%
 def QA_FullComparison_AgeResponsesGrossGrowthAndMortality_ByReg_CNY(meta,pNam,dObs,dMod):
-	cl=meta['Graphics']['GP Comp']
+	cl=meta['Graphics']['Field Plot Comparison']
 	ptf='PTF CN'
 	for iScn in range(meta[pNam]['Project']['N Scenario']):
 		plt.close('all'); fig,ax1=plt.subplots(1,2,figsize=gu.cm2inch(22,7.25))
 		reg='Coast'
 		ax1[0].bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bl'],label='Observed gross growth')
 		ax1[0].errorbar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],yerr=dObs['data'][ptf][reg]['Ctot G Surv']['se']+dObs['data'][ptf][reg]['Ctot G Recr']['se'],color=0.5*cl['bl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax1[0].bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gl'],label='Predicted gross growth')
-		ax1[0].errorbar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],yerr=dMod[iScn][reg]['C_G_Gross_Tot']['se'],color=0.5*cl['gl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[0].bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gl'],label='Predicted gross growth')
+		ax1[0].errorbar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross']['mu'],yerr=dMod[iScn][reg]['C_G_Gross']['se'],color=0.5*cl['gl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
 		
 		ax1[0].bar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bd'],label='Observed mortality')
 		ax1[0].errorbar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],yerr=dObs['data'][ptf][reg]['Ctot Mort']['se'],color=0.5*cl['bd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax1[0].bar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gd'],label='Predicted mortality')
-		ax1[0].errorbar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],yerr=dMod[iScn][reg]['C_M_Tot']['se'],color=0.5*cl['gd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[0].bar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gd'],label='Predicted mortality')
+		ax1[0].errorbar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M']['mu'],yerr=dMod[iScn][reg]['C_M']['se'],color=0.5*cl['gd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
 		ax1[0].plot([0,300],[0,0],'k-',lw=0.5)
 		ax1[0].set(ylabel='Biomass flux (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(-10,500,1),xlim=[0,250+dObs['bw']],ylim=[-3,7])
 		ax1[0].yaxis.set_ticks_position('both'); ax1[0].xaxis.set_ticks_position('both'); ax1[0].tick_params(length=meta['Graphics']['gp']['tickl'])
@@ -583,13 +581,13 @@ def QA_FullComparison_AgeResponsesGrossGrowthAndMortality_ByReg_CNY(meta,pNam,dO
 		reg='Interior'
 		ax1[1].bar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bl'])
 		ax1[1].errorbar(dObs['bin']-(0.45*dObs['bw']/2),dObs['data'][ptf][reg]['Ctot G Surv']['mu']+dObs['data'][ptf][reg]['Ctot G Recr']['mu'],yerr=dObs['data'][ptf][reg]['Ctot G Surv']['se']+dObs['data'][ptf][reg]['Ctot G Recr']['se'],color=0.5*cl['bl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax1[1].bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gl'])
-		ax1[1].errorbar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross_Tot']['mu'],yerr=dMod[iScn][reg]['C_G_Gross_Tot']['se'],color=0.5*cl['gl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[1].bar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gl'])
+		ax1[1].errorbar(dObs['bin']+(0.45*dObs['bw']/2),dMod[iScn][reg]['C_G_Gross']['mu'],yerr=dMod[iScn][reg]['C_G_Gross']['se'],color=0.5*cl['gl'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
 
 		ax1[1].bar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],0.4*dObs['bw'],ec='none',fc=cl['bd'])
 		ax1[1].errorbar(dObs['bin']-(0.45*dObs['bw']/2),-dObs['data'][ptf][reg]['Ctot Mort']['mu'],yerr=dObs['data'][ptf][reg]['Ctot Mort']['se'],color=0.5*cl['bd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
-		ax1[1].bar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gd'])
-		ax1[1].errorbar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M_Tot']['mu'],yerr=dMod[iScn][reg]['C_M_Tot']['se'],color=0.5*cl['gd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
+		ax1[1].bar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M']['mu'],0.4*dObs['bw'],ec='none',fc=cl['gd'])
+		ax1[1].errorbar(dObs['bin']+(0.45*dObs['bw']/2),-dMod[iScn][reg]['C_M']['mu'],yerr=dMod[iScn][reg]['C_M']['se'],color=0.5*cl['gd'],fmt='none',capsize=1.5,lw=0.25,markeredgewidth=0.5)
 		ax1[1].plot([0,300],[0,0],'k-',lw=0.5)
 		ax1[1].set(ylabel='Biomass flux (tC ha$^-$$^1$ yr$^-$$^1$)',xlabel='Age, years',xticks=np.arange(0,400,dObs['bw']),yticks=np.arange(-10,500,1),xlim=[0,250+dObs['bw']],ylim=[-3,7])
 		ax1[1].yaxis.set_ticks_position('both'); ax1[1].xaxis.set_ticks_position('both'); ax1[1].tick_params(length=meta['Graphics']['gp']['tickl'])
@@ -651,7 +649,7 @@ def QA_AgeResponseBiomassNetGrowth_CN(meta,pNam,iScn,gpt):
 	#E[3]=np.nanmedian((mu8[ikp]-mu7[ikp])/mu7[ikp]*100)
 	
 	if 'Just get errors' not in meta[pNam].keys():			
-		lw=0.5; ms=3; cl=meta['Graphics']['GP Comp']
+		lw=0.5; ms=3; cl=meta['Graphics']['Field Plot Comparison']
 		plt.close('all'); fig,ax1=plt.subplots(1,2,figsize=gu.cm2inch(15,6))
 		# Coast	
 		ax1[0].plot(bin,mu1,'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],label='Observed biomass',zorder=1)	
@@ -766,7 +764,7 @@ def EvalAtPlots_AgeByBGCZ_CNV(meta,pNam,gpt):
 		yo=d['Age VRI t0']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		plt.close('all')
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
@@ -870,7 +868,7 @@ def EvalAtPlots_BiomassByBGC_CNV(meta,pNam,gpt):
 		yo=d['Ctot L t0']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 	
 		plt.close('all')
@@ -950,7 +948,7 @@ def EvalAtPlots_BiomassByBGC_CNV(meta,pNam,gpt):
 		yo=d['Ctot L t0']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 	
 		plt.close('all')
@@ -1054,7 +1052,7 @@ def EvalAtPlots_BiomassByBGC_YSM(meta,pNam,gpt):
 		yo=d['Ctot L t0']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		plt.close('all')
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
@@ -1154,7 +1152,7 @@ def EvalAtPlots_StemwoodFromTIPSYByBGC_CNV(meta,pNam,gpt):
 		# lab=np.append(lab,'Weighted\naverage')
 		# u=np.append(u,0.0)
 	
-		# cl=meta['Graphics']['GP Comp']
+		# cl=meta['Graphics']['Field Plot Comparison']
 		# barw=0.32
 		# plt.close('all')
 		# fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
@@ -1257,7 +1255,7 @@ def EvalAtPlots_BiomassDynamicsAve_TotCO2e_CN(meta,pNam,gpt):
 		#A_Tot=ind[0].size/1e6*3.67
 		A_Tot=62000000/1e6*3.67
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		lab=['Gross\ngrowth','Mortality','Net\ngrowth'] #,'Harvest\nmortality'
 	
 		barw=0.38
@@ -1341,7 +1339,7 @@ def EvalAtPlots_BiomassDynamicsAve_CN(meta,pNam,gpt):
 		#wa['Ctot G Tot']['mu']=wa['Ctot G Surv']['mu']+wa['Ctot G Recr']['mu']
 	
 		lab=['Gross\ngrowth','Natural\nmortality','Harvest\nmortality','Net\ngrowth'] #,'Harvest\nmortality'
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.38
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(9,7))
 		ax.plot([0,5],[0,0],'k-',color=meta['Graphics']['gp']['cla'],lw=meta['Graphics']['gp']['lw1'])
@@ -1418,7 +1416,7 @@ def EvalAtPlots_BiomassDynamicsAve_YSM(meta,pNam,gpt):
 		lab=np.append(lab,'Weighted\naverage')
 		u=np.append(u,0.0)
 	
-		cl=meta['Graphics']['GP Comp']['cl']
+		cl=meta['Graphics']['Field Plot Comparison']['cl']
 		cle=[0.05,0.2,0.45]
 		lab=['Gross\ngrowth','Natural\nmortality','Net\ngrowth'] #,'Harvest\nmortality'
 	
@@ -1531,7 +1529,7 @@ def EvalAtPlots_GrossGrowthByBGC_CN(meta,pNam,gpt):
 		yo=d['Ctot G Tot']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['Ctot G Tot']['mu'],barw,facecolor=cl['bl'],label='Ground plot observations')
@@ -1638,7 +1636,7 @@ def EvalAtPlots_GrossGrowthByBGC_YSM(meta,pNam,gpt):
 		yo=d['Ctot G Tot']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['Ctot G Tot']['mu'],barw,facecolor=cl['bl'],label='Ground plot observations')
@@ -1743,7 +1741,7 @@ def EvalAtPlots_MortalityByBGC_CN(meta,pNam,gpt):
 		yo=d['Ctot Mort+Lost']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['Ctot Mort+Lost']['mu'],barw,facecolor=cl['bl'],label='Ground plot observations')
@@ -1849,7 +1847,7 @@ def EvalAtPlots_MortalityByBGC_YSM(meta,pNam,gpt):
 		yo=d['Ctot Mort+Lost']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['Ctot Mort+Lost']['mu'],barw,facecolor=cl['bl'],label='Ground plot observations')
@@ -1955,7 +1953,7 @@ def EvalAtPlots_GrowthNetByBGC_CN(meta,pNam,gpt):
 		yo=d['Ctot Net']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
 		ax.plot([-1,20],[0,0],'k-',lw=0.5)
@@ -2065,7 +2063,7 @@ def EvalAtPlots_GrowthNetByBGC_YSM(meta,pNam,gpt):
 		yo=d['Ctot Net']['mu']
 		Dp=(yp-yo)/yo*100
 	
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 		barw=0.32
 		fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
 		ax.plot([-1,20],[0,0],'k-',lw=0.5)
@@ -2274,7 +2272,7 @@ def EvalAtPlots_SOCByBGC_ShawComp(meta,pNam,gpt):
 		Dp=(yp-yo)/yo*100
 	
 		barw=0.32
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 	
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15,6))
 		ax.bar(np.arange(u.size)-barw/2-0.01,d['MIN_C_THA']['mu'],barw,facecolor=cl['bl'],label='Ground plot observations, mineral horizon (Shaw et al. 2018)')
@@ -2352,7 +2350,7 @@ def EvalAtPlots_AgeResponsesBiomassAndNetGrowth_ByReg_CN(meta,pNam,iScn,gpt,E):
 	#E[3]=np.nanmedian((mu8[ikp]-mu7[ikp])/mu7[ikp]*100)
 	
 	if 'Just get errors' not in meta[pNam].keys():			
-		lw=0.5; ms=3; cl=meta['Graphics']['GP Comp']
+		lw=0.5; ms=3; cl=meta['Graphics']['Field Plot Comparison']
 		plt.close('all'); fig,ax1=plt.subplots(1,2,figsize=gu.cm2inch(15,6))
 		# Coast	
 		ax1[0].plot(bin,mu1,'-ko',ms=ms,lw=lw,mew=lw,color=cl['bd'],mfc='w',mec=cl['bd'],label='Observed biomass',zorder=1)	
@@ -2468,7 +2466,7 @@ def QA_Mortality_Regression(meta,pNam,gpt):
 		b2[-2]=0.65*b2[-2]
 	
 		barw=0.32
-		cl=meta['Graphics']['GP Comp']
+		cl=meta['Graphics']['Field Plot Comparison']
 	
 		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,9))
 		ax.plot([-1,b1.size+1],[0,0],'k-',lw=0.5)
@@ -2841,4 +2839,21 @@ def QA_ProfileWildfire(meta,pNam,gpt,iScn):
 	gu.axletters(ax,plt,0.04,0.92,FontColor=gp['cla'],LetterStyle='Caps',FontWeight='Bold')
 	plt.tight_layout()
 	gu.PrintFig(meta['Paths']['Figures'] + '\\QA_Wildfire_Profiles_' + str(iScn+1),'png',900)
+	return
+
+#%%
+def Plot_CompareCarbonAndVolume(meta,pNam,iScn,mos):
+	x=mos[pNam]['Scenarios'][iScn]['Mean']['V_MerchTotal']['Ensemble Mean'][:,0,0,0]
+	y=mos[pNam]['Scenarios'][iScn]['Mean']['C_StemMerch']['Ensemble Mean'][:,0,0,0]
+	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+	ax.plot([-10000,10000],[-10000,10000],'k-',lw=2,color=[0.8,0.8,0.8])
+	ax.plot(x,y,'o',ms=5,mec='w',mfc='k',mew=0.5)
+	rs,txt=gu.GetRegStats(x,y)
+	ax.plot(rs['xhat Line'],rs['yhat Line'],'r-')
+	ax.text(10,370,rs['txt'],fontsize=7,ha='left')
+	ax.text(400,400,'1:1',fontsize=7,ha='center')
+	ax.set(xlabel='Merch volume (m3/ha)',ylabel='Carbon, merch. stemwood (tC/ha)',xticks=np.arange(-3000,3000,100),yticks=np.arange(-3000,3000,100),xlim=[0,500],ylim=[0,500])
+	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+	plt.tight_layout()
+	#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Name','png',900)
 	return

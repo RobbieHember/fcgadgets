@@ -16,9 +16,9 @@ bB=meta['Param']['BE']['Biophysical']
 # Import atmospheric GHG concentration data
 dA=gu.ReadExcel(meta[pNam]['Paths']['Model Code'] + '\\Parameters\\Parameters_RCP_GHG_Abundance_AR5.xlsx')
 for k in dA.keys():
-    if k=='Year':
-        continue
-    dA[k]=np.interp(tv,dA['Year'],dA[k])
+	if k=='Year':
+		continue
+	dA[k]=np.interp(tv,dA['Year'],dA[k])
 
 #%% Radiative forcing
 

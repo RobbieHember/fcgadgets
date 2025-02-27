@@ -12,8 +12,7 @@ from fcgadgets.macgyver import util_general as gu
 gp=gu.SetGraphics('Manuscript')
 
 #%% Import BaseCase HWP parameters
-path=r'G:\My Drive\Code_Python\fcgadgets\cbrunner\Parameters'
-dDef0=gu.ReadExcel(path + '\\Parameters_ProductTypes.xlsx')
+dDef0=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_ProductTypes.xlsx')
 
 # Variables to keep
 vrL=list(dDef0['Name'])
@@ -539,5 +538,5 @@ for reg in regL:
         plt.plot(tv,y,'-')
 
 #%% Save
-gu.opickle(path + '\\Variables_ProductTypes.pkl',d)
+gu.opickle(meta['Paths']['DB']['Harvest'] + '\\Variables_ProductTypes.pkl',d)
 

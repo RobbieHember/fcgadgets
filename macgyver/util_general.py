@@ -144,19 +144,87 @@ def GetRegStats(x,y,*args):
 		fl=' - '
 	else:
 		fl=' + '
-	if 'No Intercept' in args:
-		txt='y = ' + str(np.round(rs['B'][0],decimals=3)) + 'x' + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np < ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+
+	if rs['P']<0.01:
+		psmb='<'
 	else:
-		txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np < ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+		psmb='='
+
+	if 'No Intercept' in args:
+		txt='y = ' + str(np.round(rs['B'][0],decimals=3)) + 'x' + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np ' + psmb + ' ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+	else:
+		txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np ' + psmb + ' ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+	rs['txt']=txt
+
+	return rs,txt
+
+#%%
+# rs,txt=gu.PolynomialFit(x,y,2)
+def PolynomialFit(x,y,ord):
+
+	# Remove nans
+	ikp=np.where(np.isnan(x+y)==False)[0]
+	x=x[ikp]
+	y=y[ikp]
+
+	x0=x.copy()
+
+	# Initialize data structure
+	rs={}
+
+	if ord==2:
+		x=np.column_stack((x,x**2))
+	else:
+		x=np.column_stack((x,x**2))
+
+	x=sm.tools.tools.add_constant(x)
+	md=sm.OLS(y,x).fit()
+	#yhat=md.predict(x)
+	
+	rs['N']=x.shape[0]
+	rs['DF']=x.size-md.params.size
+	rs['B']=md.params
+	rs['pValues']=md.pvalues
+	rs['r']=np.sqrt(md.rsquared)
+	rs['R2']=md.rsquared
+	rs['R2 Adjusted']=md.rsquared_adj
+	rs['AIC']=md.aic
+	rs['P']=md.f_pvalue
+
+	rs['xhat Line']=np.linspace(np.min(x0),np.max(x0),10)
+	rs['yhat Line']=md.predict(np.c_[np.ones(rs['xhat Line'].size),rs['xhat Line'],rs['xhat Line']**2])
+
+	#--------------------------------------------------------------------------
+	# Text string
+	#--------------------------------------------------------------------------
+	
+	if rs['B'][0]<0:
+		fl=' - '
+	else:
+		fl=' + '
+
+	if rs['P']<0.01:
+		psmb='<'
+	else:
+		psmb='='
+
+
+	txt=''
 	rs['txt']=txt
 
 	return rs,txt
 
 #%% Import CSV file and add to dictionary
-def ReadCSV(fin):
-	d=pd.read_csv(fin).to_dict('list')
+def ReadCSV(fin,skip_rows):
+	if skip_rows==0:
+		d=pd.read_csv(fin).to_dict('list')
+	else:
+		# *** USE THIS TO SKIP ROWS: ***
+		d=pd.read_csv(fin,skiprows=[skip_rows],encoding='unicode_escape').to_dict('list')
+
 	for k in d.keys():
 		d[k]=np.array(d[k])
+
 	return d
 
 #%% PICKLE INPUT AND OUTPUT
@@ -174,7 +242,7 @@ def opickle(path,data):
 	fout.close()
 	return
 
-#%% PRINT FIGURE
+#%%
 def PrintFig(fin,type,dpi):
 	if type=='emf':
 		plt.savefig(fin+'.svg',format='svg')
@@ -188,11 +256,13 @@ def PrintFig(fin,type,dpi):
 	elif type=='png':
 		plt.savefig(fin+'.png',format='png',dpi=dpi)
 	elif (type=='all') | (type=='All'):
-		path_to_inkscape='C:\Program Files\Inkscape\inkscape.exe'
+		# *** this method of printing emf does not work, do it manually in Inkscape ***
+		#path_to_inkscape=r'C:\Program Files\Inkscape\bin\inkscape.exe'
 		plt.savefig(fin+'.svg',format='svg')
-		call([path_to_inkscape,'--file',fin+'.svg','--export-emf',fin+'.emf'])
-		os.remove(fin+'.svg')
+		#call([path_to_inkscape,'--file',fin+'.svg','--export-emf',fin+'.emf'])
+		#os.remove(fin+'.svg')
 		plt.savefig(fin+'.png',format='png',dpi=dpi)
+	return
 
 #%% IMPORT EXCEL SPREADSHEET AND CONVERT TO DICTIONARY
 def ReadExcel(*args):
@@ -211,6 +281,75 @@ def ReadExcel(*args):
 		d[k]=np.array(d[k])
 
 	return d
+
+#%%
+def ReadExcelToLine(pthin,n):
+	df=pd.read_excel(pthin,nrows=n)
+	d=df.to_dict('list')
+	for k in d.keys():
+		d[k]=np.array(d[k])
+	return d
+
+#%% Save dictionary to excel spreadsheet
+# Example: gu.PrintDict(d,pth,SheetName='Sheet1')
+def PrintDict(d,pth,**kwargs):
+
+	if 'SheetName' in kwargs.keys():
+		sn=kwargs['SheetName']
+	else:
+		sn='Sheet1'
+
+	# Convert to dataframe
+	df=pd.DataFrame.from_dict(d)
+
+	# Export
+	writer=pd.ExcelWriter(pth,engine="xlsxwriter")
+	df.style.set_properties(**{'text-align':'left'}).to_excel(writer,sheet_name=sn,startrow=0,header=True,index=False)
+
+	workbook=writer.book
+	worksheet=writer.sheets[sn]
+	
+	header_format=workbook.add_format({'bold':True,'text_wrap':False,'valign':'top','align':'left','border':0}) # ,'fg_color':'#D7E4BC'
+	
+	for col_num,value in enumerate(df.columns.values):
+		worksheet.write(0,col_num,value,header_format)
+
+	for column in df:
+		column_length=max(df[column].astype(str).map(len).max(),len(column))
+		col_idx=df.columns.get_loc(column)
+		writer.sheets[sn].set_column(col_idx,col_idx,column_length)
+
+	writer.close()
+	return
+
+#%% Save dataframe to excel spreadsheet
+# Example: gu.PrintDict(d,pth,SheetName='Sheet1')
+def PrintDF(df,pth,**kwargs):
+
+	if 'SheetName' in kwargs.keys():
+		sn=kwargs['SheetName']
+	else:
+		sn='Sheet1'
+
+	# Export
+	writer=pd.ExcelWriter(pth,engine="xlsxwriter")
+	df.style.set_properties(**{'text-align':'left'}).to_excel(writer,sheet_name=sn,startrow=0,header=True,index=False)
+
+	workbook=writer.book
+	worksheet=writer.sheets[sn]
+	
+	header_format=workbook.add_format({'bold':True,'text_wrap':False,'valign':'top','align':'left','border':0}) # ,'fg_color':'#D7E4BC'
+	
+	for col_num,value in enumerate(df.columns.values):
+		worksheet.write(0,col_num,value,header_format)
+
+	for column in df:
+		column_length=max(df[column].astype(str).map(len).max(),len(column))
+		col_idx=df.columns.get_loc(column)
+		writer.sheets[sn].set_column(col_idx,col_idx,column_length)
+
+	writer.close()
+	return
 
 #%% CONVERT DATAFRAME TO DICTIONARY
 def DataFrameToDict(df):
@@ -244,10 +383,14 @@ def axletters(ax,plt,rx,ry,**kwargs):
 	Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)']
 	if 'LetterStyle' in kwargs.keys():
 		if kwargs['LetterStyle']=='Caps':
-			Letter=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P']
+			Letter=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 		elif kwargs['LetterStyle']=='NoPar':
 			Letter=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p']
-			
+		elif kwargs['LetterStyle']=='Default':
+			Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)']
+		else:
+			pass
+
 	# Font size
 	fs=plt.rcParams.get('font.size')
 	if 'FontSize' in kwargs.keys():
@@ -285,7 +428,7 @@ def axletters(ax,plt,rx,ry,**kwargs):
 		c=kwargs['StartLetterIndex']
 	else:
 		c=0
-		
+
 	if len(ax.shape)>1:
 		for i in range(ax.shape[0]):
 			for j in range(ax.shape[1]):
@@ -312,7 +455,7 @@ def axletters(ax,plt,rx,ry,**kwargs):
 
 	elif len(ax.shape)==1:
 
-		for i in range(ax.shape[0]):
+		for i in range(ax.size):
 			
 			if Skip_Flag[i]==1:
 				continue
@@ -346,7 +489,7 @@ def cm2inch(*tupl):
 		return tuple(i/inch for i in tupl)
 
 #%% Count By Category
-# u,N=gu.CountByCategories(z,'Percent')
+# d=gu.CountByCategories(z,'Percent')
 def CountByCategories(z,*args):
 	z=z.flatten()
 	u=np.unique(z)
@@ -362,7 +505,12 @@ def CountByCategories(z,*args):
 		pass
 
 	N=np.round(N,2)
-	return u,N
+
+	d={}
+	for i in range(u.size):
+		d[u[i]]=N[i]
+
+	return d
 
 #%% Stats By Category
 # sts=gu.StatsByCategories(vCat,vStat)
@@ -377,6 +525,20 @@ def StatsByCategories(vCat,vStat):
 		sts['mu'][i]=np.nanmean(vStat[ind])
 		sts['sum'][i]=np.nansum(vStat[ind])
 		sts['N'][i]=ind.size
+	return sts
+
+#%% Stats By Category (Dictionary)
+# sts=gu.DictStatsByCategories(vCat,lutCat,vStat)
+def DictStatsByCategories(vCat,lutCat,vStat):
+	sts={}
+	sts['N']={}
+	sts['mu']={}
+	sts['sum']={}
+	for k in lutCat.keys():
+		ind=np.where(vCat==lutCat[k])[0]
+		sts['mu'][k]=np.round(np.nanmean(vStat[ind]),decimals=2)
+		sts['sum'][k]=np.round(np.nansum(vStat[ind]),decimals=2)
+		sts['N'][k]=ind.size
 	return sts
 
 #%% IMPORT MATLAB .MAT FILE AND ADD TO DICTIONARY
@@ -431,15 +593,31 @@ def movingave(y0,period,meth):
 		ma=ma.flatten()
 	return ma
 
-#%% PARTIAL CORRELATION
+#%% Correlation coefficient (mimmicing MATLAB)
+def corrcoef(dframe):
+	fmatrix = dframe.values
+	rows, cols = fmatrix.shape
+	r = np.ones((cols, cols), dtype=float)
+	p = np.ones((cols, cols), dtype=float)
+	for i in range(cols):
+		for j in range(cols):
+			if i == j:
+				r_, p_ = 1., 1.
+			else:
+				r_, p_ = stats.pearsonr(fmatrix[:,i], fmatrix[:,j])
+			r[j][i] = r_
+			p[j][i] = p_
+	return r, p
+
+#%%
 def PartialCorrelation(C):
 	C=np.asarray(C)
 	p=C.shape[1]
-	P_corr=np.zeros((p, p), dtype=np.float)
+	P_corr=np.zeros((p, p), dtype='float')
 	for i in range(p):
 		P_corr[i, i]=1
 		for j in range(i+1, p):
-			idx=np.ones(p, dtype=np.bool)
+			idx=np.ones(p, dtype='bool')
 			idx[i]=False
 			idx[j]=False
 			beta_i=linalg.lstsq(C[:, idx], C[:, j])[0]
@@ -454,6 +632,7 @@ def PartialCorrelation(C):
 	return P_corr
 
 #%% Time vector
+# tv=gu.tvec('m',1945,2100)
 def tvec(res,year1,year2):
 	yr=np.arange(year1,year2+1,1)
 	if res=='m':
@@ -463,7 +642,7 @@ def tvec(res,year1,year2):
 			for j in range(12):
 				tv[cnt,0]=yr[i]
 				tv[cnt,1]=j+1
-				cnt=cnt+1	
+				cnt=cnt+1
 	elif res=='d':
 		tv=np.zeros((1000000,4),dtype='int16')
 		cnt=0
@@ -930,11 +1109,11 @@ def ReadNC(fin):
 #%% Sum over interval
 def BlockSum(x,ivl):
 	if x.ndim==1:
-		m=x.size
-		x1=np.append(x,np.nan*np.ones(ivl))
-		y=x[0::ivl]
-		for i in range(1,ivl):
-			y=y+x1[i::ivl]
+		y=np.zeros(int(x.size/ivl))
+		cnt=0
+		for i in range(0,x.size,ivl):
+			y[cnt]=np.sum(x[i:i+ivl])
+			cnt=cnt+1
 	elif x.ndim==2:
 		y=np.zeros((int(x.shape[0]/ivl),x.shape[1]))
 		cnt=0
@@ -1276,5 +1455,30 @@ def ScatterDensity(x,y,limX,limY,nBx,nBy):
 			ind=np.where( (np.abs(x-binX[i])<dX/2) & (np.abs(y-binY[j])<dY/2) )[0]
 			Z[i,j]=ind.size
 	return binX,binY,Z
+
+#%% Get mean values of y for unique values of x
+def mean_ucat(xcat,y):
+	u=np.unique(xcat)
+	yU=np.zeros(u.size)
+	for i in range(u.size):
+		ind=np.where(xcat==u[i])[0]
+		yU[i]=np.mean(y[ind])
+	return u,yU
+
+#%%
+def Month2DOY(month):
+	dim=np.array([31,28,31,30,31,30,31,31,30,31,30,31])
+	cdim=np.cumsum(dim)
+	doy=cdim[month-1]
+	return doy
+
+#%% Used to unpack bits from floating point Geotiff from MODIS USGS
+def unpackbits(x, num_bits):
+	if np.issubdtype(x.dtype, np.floating):
+		raise ValueError("numpy data type needs to be int-like")
+	xshape = list(x.shape)
+	x = x.reshape([-1, 1])
+	mask = 2**np.arange(num_bits, dtype=x.dtype).reshape([1, num_bits])
+	return (x & mask).astype(bool).astype(int).reshape(xshape + [num_bits])
 
 #%%

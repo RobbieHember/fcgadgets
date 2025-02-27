@@ -81,7 +81,7 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 	d['Cost Knockdown']=np.zeros(v1['A'].shape)
 	d['Cost Ripping']=np.zeros(v1['A'].shape)
 	d['Cost PAS Deactivation']=np.zeros(v1['A'].shape)
-	d['Cost Slashpile Burn']=np.zeros(v1['A'].shape)
+	d['Cost Pile Burn']=np.zeros(v1['A'].shape)
 	d['Cost Aerial BTK Spray']=np.zeros(v1['A'].shape)
 	#d['Harvest Vol Merch']=np.zeros(v1['A'].shape)
 	#d['Harvest Vol Resid']=np.zeros(v1['A'].shape)
@@ -217,6 +217,8 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 
 			if ind.size==0:
 				continue
+			if ind.size>1:
+				ind=ind[0]
 
 			Year=tv_full[ind]
 			it0=np.where(dCP['Year']==Year)[0]
@@ -275,7 +277,7 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 					continue
 
 				# Merchantable wood volume
-				Removed_V=v1['V_ToMillMerchTotal'][it1,iStand]
+				Removed_V=v1['V_ToMill_MerchTotal'][it1,iStand]
 
 				# Merchantable wood thousand board feet (mbf is thousand)
 				Removed_mbf=b['Ratio bd ft Lumber per m3']*Removed_V/1000
@@ -326,14 +328,14 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 				d['Cost Milling'][it1,iStand]=dCP['Cost Milling (CAD/mbf)'][it0]*Removed_mbf
 
 				# Residual fibre
-				d['Cost Harvest Residuals'][it1,iStand]=dCP['Cost Residual Haul and Grind (CAD/m3)'][it0]*v1['V_ToMillNonMerch'][it1,iStand]
+				d['Cost Harvest Residuals'][it1,iStand]=dCP['Cost Residual Haul and Grind (CAD/m3)'][it0]*(v1['V_ToMill_NonMerchGreen'][it1,iStand]+v1['V_ToMill_NonMerchDead'][it1,iStand])
 
 		#----------------------------------------------------------------------
-		# Slashpile burning
+		# Pile burning
 		#----------------------------------------------------------------------
 		for k in range(meta['Core']['Max Events Per Year']):
 
-			ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Slashpile Burn']) )[0]
+			ind=np.where( (ec['ID Event Type'][:,iStand,k]==meta['LUT']['Event']['Pile Burn']) )[0]
 
 			if ind.size==0:
 				continue
@@ -350,9 +352,9 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 				if it1.size==0:
 					continue
 
-				Burned_C=v1['C_ToSlashpileBurnTot'][it1,iStand]
+				Burned_C=v1['C_ToPileBurnTot'][it1,iStand]
 				Burned_V=Burned_C/b['Carbon Content Wood']/b['Density Wood']
-				d['Cost Slashpile Burn'][it1,iStand]=(dCP['Cost Slashpile Burn (CAD/m3)'][it0])*Burned_V
+				d['Cost Pile Burn'][it1,iStand]=(dCP['Cost Pile Burn (CAD/m3)'][it0])*Burned_V
 
 	# Total cost
 	d['Cost Total']=d['Cost Roads']+ \
@@ -366,7 +368,7 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 		d['Cost Survey']+ \
 		d['Cost Ripping']+ \
 		d['Cost PAS Deactivation']+ \
-		d['Cost Slashpile Burn']+ \
+		d['Cost Pile Burn']+ \
 		d['Cost Knockdown']+ \
 		d['Cost Aerial BTK Spray']
 
@@ -377,21 +379,21 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 		d['Cost Survey']+ \
 		d['Cost Ripping']+ \
 		d['Cost PAS Deactivation']+ \
-		d['Cost Slashpile Burn']+ \
+		d['Cost Pile Burn']+ \
 		d['Cost Knockdown']+ \
 		d['Cost Aerial BTK Spray']
 
 	# Thousand board feet lumber / ha
-	mbf_Lumber=b['Ratio bd ft Lumber per m3']*v1['ODT Lumber']/b['Density Wood']/1000
+	mbf_Lumber=b['Ratio bd ft Lumber per m3']*v1['ODT_Lumber']/b['Density Wood']/1000
 
 	# Thousand sq ft plywood / ha
-	Thousand_sq_ft_Plywood=b['Ratio sq ft Plywood per m3']*v1['ODT Plywood']/b['Density Wood']/1000
+	Thousand_sq_ft_Plywood=b['Ratio sq ft Plywood per m3']*v1['ODT_Plywood']/b['Density Wood']/1000
 
 	# Thousand sq ft OSB / ha
-	Thousand_sq_ft_OSB=b['Ratio sq ft OSB per m3']*v1['ODT OSB']/b['Density Wood']/1000
+	Thousand_sq_ft_OSB=b['Ratio sq ft OSB per m3']*v1['ODT_OSB']/b['Density Wood']/1000
 
 	# Thousand sq ft MDF / ha
-	Thousand_sq_ft_MDF=b['Ratio sq ft MDF per m3']*v1['ODT MDF']/b['Density Wood']/1000
+	Thousand_sq_ft_MDF=b['Ratio sq ft MDF per m3']*v1['ODT_MDF']/b['Density Wood']/1000
 
 	# Gross revenue from sale of lumber: (CAD/ha) = (USD/mbf) * (CAD/USD) * (000 bd ft/ha)
 	d['Revenue Lumber']=d['Price Lumber']*(1/d['Exchange Rate US'])*mbf_Lumber
@@ -406,24 +408,24 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 	d['Revenue MDF']=d['Price MDF']*Thousand_sq_ft_MDF
 
 	# Revenue from sale of newsprint = (USD/ODT) * (CAD/USD) * (ODT/ha)
-	d['Revenue Paper']=d['Price Newsprint']*(1/d['Exchange Rate US'])*v1['ODT Paper']
+	d['Revenue Paper']=d['Price Newsprint']*(1/d['Exchange Rate US'])*v1['ODT_Paper']
 
 	# Revenue from domestic facility power
-	d['Revenue PowerFacilityDom']=d['Price PowerFacilityDom']*b['Ratio MWh per GJ']*v1['GJ PowerFacilityDom']
+	d['Revenue PowerFacilityDom']=d['Price PowerFacilityDom']*b['Ratio MWh per GJ']*v1['GJ_PowerFacilityDom']
 
 	# Revenue from IPP sales
-	d['Revenue PowerGrid']=d['Price PowerGrid']*b['Ratio MWh per GJ']*v1['GJ PowerGrid']
+	d['Revenue PowerGrid']=d['Price PowerGrid']*b['Ratio MWh per GJ']*v1['GJ_PowerGrid']
 
 	# Revenue from sale of pellets (CAD/ha) = (Euro$/MWh) * (CAD/Euro$) * (MWh/ha)
-	d['Revenue PelletExport']=d['Price PelletExport']*(1/d['Exchange Rate Euro'])*b['Ratio MWh per GJ']*v1['GJ PelletExport']
+	d['Revenue PelletExport']=d['Price PelletExport']*(1/d['Exchange Rate Euro'])*b['Ratio MWh per GJ']*v1['GJ_PelletExport']
 
-	d['Revenue PelletDom']=d['Price PelletDom']*b['Ratio MWh per GJ']*(v1['GJ PelletDomGrid']+v1['GJ PelletDomRNG'])
+	d['Revenue PelletDom']=d['Price PelletDom']*b['Ratio MWh per GJ']*(v1['GJ_PelletDomGrid']+v1['GJ_PelletDomRNG'])
 
 	# Revenue from sale of firewood (CAD/ha) = (CAD/ODT) * (ODT/ha)
-	d['Revenue FirewoodDom']=d['Price FirewoodDom']*v1['ODT FirewoodDom']
+	d['Revenue FirewoodDom']=d['Price FirewoodDom']*v1['ODT_FirewoodDom']
 
 	# Revenue from sale of log Export (CAD/ha) = (CAD/m3) * (m3/ha)
-	d['Revenue LogExport']=d['Price LogExport']*v1['ODT LogExport']/b['Density Wood']
+	d['Revenue LogExport']=d['Price LogExport']*v1['ODT_LogExport']/b['Density Wood']
 
 	# Remove all NaNs
 	for k in d.keys():
@@ -450,8 +452,8 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 		  'Revenue Gross','Revenue Gross Disc', \
 		  'Revenue Net','Revenue Net Disc']
 	for vnam in List:
-		d[vnam + '_cumu']=np.zeros(d[vnam].shape)
-		d[vnam + '_cumu'][iT,:]=np.cumsum(d[vnam][iT,:],axis=0)
+		d[vnam + '_Cumulative']=np.zeros(d[vnam].shape)
+		d[vnam + '_Cumulative'][iT,:]=np.cumsum(d[vnam][iT,:],axis=0)
 
 	return d
 

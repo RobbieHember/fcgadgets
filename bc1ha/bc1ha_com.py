@@ -2,67 +2,63 @@
 import os
 import numpy as np
 import time
-import copy
 import matplotlib.pyplot as plt
 import pandas as pd
-import pyproj
 import fiona
-import geopandas as gpd
-import scipy.io as spio
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
-import fcgadgets.macgyver.util_query_gdb as qgdb
-import fcgadgets.bc1ha.bc1ha_util as u1ha
+import fcgadgets.bc1ha.bc1ha_utils as u1ha
+import fcgadgets.bc1ha.bc1ha_update as up1ha
+import fcgadgets.bc1ha.bc1ha_climate as c1ha
 gp=gu.SetGraphics('Manuscript')
 
 #%% Import paths and look-up-tables
 meta=u1ha.Init()
 zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
+#%%
+#d=gu.ReadExcel(r'G:\My Drive\Code_Python\fcgadgets\cbrunner\Parameters\Workbook_BCForestSector.xlsx')
+#plt.plot(d['Year'],d['Production Electricity Total BC (PJ/yr)'],'-bo')
+
 #%% Build look up tables (only do this once a year, takes 8 hours)
-flg=0
-if flg==1:
-	u1ha.BuildLUTsFromSourceGDBs(meta)
+up1ha.BuildLUTsFromSourceGDBs(meta)
 
 #%% Major rivers
 u1ha.GetRiversMajor(meta)
 
 #%% Simplify geometry of provincial geodatabases (faster useage)
-flg=0
-if flg==1:
-	u1ha.SimplifyProvincialGDBs(meta)
+u1ha.SimplifyProvincialGDBs(meta)
 
 #%% Create land mask for BC
 u1ha.GenerateLandMaskBC(meta)
 
 #%% Digitize the boundary of TSAs
 # The original is organized at the sub-TSA level so need to aggregate and then digitize
-u1ha.DigitizeTSABoundaries(meta)
+up1ha.DigitizeTSABoundaries(meta)
+
+#%% Rasterize VRI
+up1ha.RasterizeVRI(meta,2024)
 
 #%% Rasterize variables from source
-# *** VRI and Forest Cover Inventory area too big - crash ***
-
-# prp=u1ha.GetVariablesFromGDB(meta,'VEG_COMP_LYR_R1_POLY')
-# prp=u1ha.GetVariablesFromGDB(meta,'OATS_ALR_POLYS')
-# prp=u1ha.GetVariablesFromGDB(meta,'NRC_POPULATED_PLACES_1M_SP')
-# prp=u1ha.GetVariablesFromGDB(meta,'F_OWN')
-u1ha.RasterizeFromSource(meta,zRef,'F_OWN','OWNERSHIP_DESCRIPTION')
-u1ha.RasterizeFromSource(meta,zRef,'NRC_POPULATED_PLACES_1M_SP','NAME')
-u1ha.RasterizeFromSource(meta,zRef,'BC_MAJOR_CITIES_POINTS_500M','NAME')
-u1ha.RasterizeFromSource(meta,zRef,'GBA_TRANSMISSION_LINES_SP','TRANSMISSION_LINE_ID')
-u1ha.RasterizeFromSource(meta,zRef,'HSP_MJR_MINES_PERMTTD_AREAS_SP','STATUS_TYPE')
-u1ha.RasterizeFromSource(meta,zRef,'FWA_MANMADE_WATERBODIES_POLY','WATERBODY_TYPE')
-u1ha.RasterizeFromSource(meta,zRef,'TA_MUNICIPALITIES_SVW','MUNICIPALITY_NAME')
-u1ha.RasterizeFromSource(meta,zRef,'OATS_ALR_POLYS','ALR_POLY_ID')
-u1ha.RasterizeFromSource(meta,zRef,'DRA_DGTL_ROAD_ATLAS_MPAR_SP','DIGITAL_ROAD_ATLAS_LINE_ID')
-u1ha.RasterizeFromSource(meta,zRef,'FTEN_ROAD_SEGMENT_LINES_SVW','LIFE_CYCLE_STATUS_CODE')
-u1ha.RasterizeFromSource(meta,zRef,'FTEN_ROAD_SEGMENT_LINES_SVW','RETIREMENT_DATE')
+# *** VRI and Forest Cover Inventory are too big - crash ***
+u1ha.RasterizeFromSource(meta,zRef,'FADM_TSA','TSA_NUMBER_DESCRIPTION')
+u1ha.RasterizeFromSource(meta,zRef,'FADM_TFL','FOREST_FILE_ID')
 u1ha.RasterizeFromSource(meta,zRef,'BEC_BIOGEOCLIMATIC_POLY','ZONE')
 u1ha.RasterizeFromSource(meta,zRef,'BEC_BIOGEOCLIMATIC_POLY','SUBZONE')
 u1ha.RasterizeFromSource(meta,zRef,'BEC_NATURAL_DISTURBANCE_SV','NATURAL_DISTURBANCE_TYPE_CODE')
+u1ha.RasterizeFromSource(meta,zRef,'BC_MAJOR_CITIES_POINTS_500M','NAME')
+u1ha.RasterizeFromSource(meta,zRef,'F_OWN','OWNERSHIP_DESCRIPTION')
+u1ha.RasterizeFromSource(meta,zRef,'FTEN_ROAD_SEGMENT_LINES_SVW','LIFE_CYCLE_STATUS_CODE')
+u1ha.RasterizeFromSource(meta,zRef,'FTEN_ROAD_SEGMENT_LINES_SVW','RETIREMENT_DATE')
 u1ha.RasterizeFromSource(meta,zRef,'FTEN_CUT_BLOCK_POLY_SVW','TIMBER_MARK')
 u1ha.RasterizeFromSource(meta,zRef,'FTEN_CUT_BLOCK_POLY_SVW','CUT_BLOCK_ID')
 u1ha.RasterizeFromSource(meta,zRef,'FWA_WETLANDS_POLY','WATERBODY_TYPE')
+u1ha.RasterizeFromSource(meta,zRef,'FWA_MANMADE_WATERBODIES_POLY','WATERBODY_TYPE')
+u1ha.RasterizeFromSource(meta,zRef,'DRA_DGTL_ROAD_ATLAS_MPAR_SP','DIGITAL_ROAD_ATLAS_LINE_ID')
+u1ha.RasterizeFromSource(meta,zRef,'GBA_TRANSMISSION_LINES_SP','TRANSMISSION_LINE_ID')
+u1ha.RasterizeFromSource(meta,zRef,'HSP_MJR_MINES_PERMTTD_AREAS_SP','STATUS_TYPE')
+u1ha.RasterizeFromSource(meta,zRef,'NRC_POPULATED_PLACES_1M_SP','NAME')
+u1ha.RasterizeFromSource(meta,zRef,'OATS_ALR_POLYS','ALR_POLY_ID')
 u1ha.RasterizeFromSource(meta,zRef,'OGSR_TAP_PRIORITY_DEF_AREA_SP','OGSR_TPDA_SYSID')
 u1ha.RasterizeFromSource(meta,zRef,'OGSR_TAP_PRIORITY_DEF_AREA_SP','PRIORITY_DEFERRAL_ID')
 u1ha.RasterizeFromSource(meta,zRef,'RMP_OGMA_LEGAL_ALL_SVW','LEGAL_OGMA_PROVID')
@@ -71,35 +67,35 @@ u1ha.RasterizeFromSource(meta,zRef,'RSLT_ACTIVITY_TREATMENT_SVW','OPENING_ID')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_BASE_CODE')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_ACTIVITY_TREATMENT_SVW','SILV_TECHNIQUE_CODE')
 u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_RESERVE_SVW','SILV_RESERVE_CODE')
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','SILV_RESERVE_CODE')
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','SILV_RESERVE_OBJECTIVE_CODE')
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','STOCKING_TYPE_CODE') # takes 100 min
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','TREE_COVER_PATTERN_CODE')
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','I_TOTAL_STEMS_PER_HA')
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','I_TOTAL_WELL_SPACED_STEMS_HA')
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','I_CROWN_CLOSURE_PERCENT')
-u1ha.RasterizeFromSource(meta,zRef,'RSLT_FOREST_COVER_INV_SVW','REFERENCE_YEAR')
+u1ha.RasterizeFromSource(meta,zRef,'TA_MUNICIPALITIES_SVW','MUNICIPALITY_NAME')
 u1ha.RasterizeFromSource(meta,zRef,'TA_REGIONAL_DISTRICTS_SVW','REGIONAL_DISTRICT_NAME')
 u1ha.RasterizeFromSource(meta,zRef,'TA_PROTECTED_LANDS_SV','PROTECTED_LANDS_DESIGNATION')
 u1ha.RasterizeFromSource(meta,zRef,'VEG_BURN_SEVERITY_SP','FIRE_YEAR')
 u1ha.RasterizeFromSource(meta,zRef,'VEG_BURN_SEVERITY_SP','BURN_SEVERITY_RATING')
 
 #%% Generate sparse inputs
-# This should speed import by an order of magnitude
-u1ha.GenerateSparseInputs(meta,100,'Province')
+# This speeds import by an order of magnitude
 u1ha.GenerateSparseInputs(meta,200,'Province')
+u1ha.GenerateSparseInputs(meta,100,'Province')
 u1ha.GenerateSparseInputs(meta,50,'Province')
 u1ha.GenerateSparseInputs(meta,25,'Province')
+u1ha.GenerateSparseInputs(meta,50,'BCFCS_LUC')
+u1ha.GenerateSparseInputs(meta,10,'BCFCS_NOSEC')
+u1ha.GenerateSparseInputs(meta,20,'BCFCS_NOSEC')
+u1ha.GenerateSparseInputs(meta,35,'BCFCS_NOSEC')
+u1ha.GenerateSparseInputs(meta,10,'BCFCS_NOSECs')
+u1ha.GenerateSparseInputs(meta,10,'BCFCS_NMC')
+u1ha.GenerateSparseInputs(meta,20,'BCFCS_NMC')
+u1ha.GenerateSparseInputs(meta,1,'TSA_DawsonCreek')
+u1ha.GenerateSparseInputs(meta,1,'Landscape_NicolaRiverWatershed')
+u1ha.GenerateSparseInputs(meta,50,'BCFCS_CWH')
+u1ha.GenerateSparseInputs(meta,20,'BCFCS_CWH')
+u1ha.GenerateSparseInputs(meta,10,'BCFCS_CWH')
+u1ha.GenerateSparseInputs(meta,50,'BCFCS_SBS')
+u1ha.GenerateSparseInputs(meta,1,'BCFCS_Eval')
 u1ha.GenerateSparseInputs(meta,1,'BCFCS_EvalAtPlots')
 u1ha.GenerateSparseInputs(meta,1,'BCFCS_EvalAtCN')
 u1ha.GenerateSparseInputs(meta,1,'BCFCS_EvalCoast')
-u1ha.GenerateSparseInputs(meta,1,'BCFCS_Eval')
-u1ha.GenerateSparseInputs(meta,50,'BCFCS_LUC')
-u1ha.GenerateSparseInputs(meta,10,'NOSE')
-u1ha.GenerateSparseInputs(meta,10,'BCFCS_NMC')
-u1ha.GenerateSparseInputs(meta,1,'TSA_DawsonCreek')
-u1ha.GenerateSparseInputs(meta,50,'BCFCS_CWH')
-u1ha.GenerateSparseInputs(meta,50,'BCFCS_SBS')
 
 #%% Gap-fill BGC Zone
 u1ha.GapFillBGCZ(meta)
@@ -111,7 +107,7 @@ u1ha.RasterizeEcozonesOfCanada(meta)
 u1ha.PrepareLandUseCEC(meta)
 
 #%% Prepare data from NTEMS (age, land cover, harvest year)
-u1ha.PrepareNTEMS(meta)
+up1ha.PrepareNTEMS(meta)
 
 #%% Derive land cover compilation 1 (year 2019)
 u1ha.DeriveLandCoverComp1(meta)
@@ -135,238 +131,290 @@ u1ha.DeriveLandCoverLandUseComp1_2020to2049_Scenarios(meta)
 u1ha.DeriveLandCoverLandUseComp1_DeforstationMask(meta)
 
 #%% Reclassify NTEMS and VRI according to LC Comp 1
-u1ha.ReclassifyNTEMS_LandCover(meta)
+up1ha.ReclassifyNTEMS_LandCover(meta)
 u1ha.ReclassifyVRI_LandCover(meta)
 
 #%% Upland-wetland Forest
 u1ha.DeriveUplandWetlandForstMask(meta)
-#z=u1ha.Import_Raster(meta,[],['upwetf_ntems'])
-#gu.CountByCategories(z['upwetf_ntems']['Data'],'Percent')
+#z1=u1ha.Import_Raster(meta,[],['upwetf_ntems'])#gu.CountByCategories(z['upwetf_ntems']['Data'],'Percent')
+
+
 
 #%% Rasterize OPENING ID FROM OPENING LAYER (1 hour)
-u1ha.RasterizeOpeningID(meta)
+up1ha.RasterizeOpeningID2(meta)
 
 #%% Rasterize forest cover attributes
 # Use FC ID created in ArcGIS to connect with attributes
-u1ha.RasterizeForestCoverInventory(meta)
+up1ha.RasterizeForestCoverInventory(meta)
 
-#%% Current-year wildfire
-# Current year + preveous year (sometimes missing)
-# Need to add this to historical and then re-create the condensed layers
-u1ha.RasterizeWildfireCurrentYear(meta)
+#%% Rasterize denudations in the ATU layer
+up1ha.RasterizeDenudationsFromATU(meta)
 
-#%% Rasterize hisorical wildfire
-u1ha.RasterizeWildfire(meta,zRef)
+#%% Wildfire perimiters
+YearCurrent=2023
+up1ha.RasterizeWildfirePerimitersHistorical(meta,zRef,YearCurrent) # Rasterize hisorical wildfire
+up1ha.RasterizeWildfirePerimitersCurrentYear(meta,YearCurrent) # Current year + preveous year (sometimes missing) - Need to add this to historical and then re-create the condensed layers
+up1ha.DeriveWildfireComposite(meta,zRef,YearCurrent) # Combine information sources
 
-#%% Reproject National Burn Severity data
-# Step 1) Resample in ArcGIS; 2) Clip to BC in ArcGIS using a BC1ha grid for extent; 
-# 3) export geotiff; 4) reproject and clip to ensure BC1ha grid extent (below))
-u1ha.ImportBurnSeverityCanada(meta)
-
-#%% Rasterize current-year burn severity rating
-u1ha.RasterizeBurnSeverityCurrentYear(meta)
-
-#%% Derive burn severity to pair with wildfire perimeters
-u1ha.DeriveBurnSeverityCompilation(meta)
-
-#%% Rasterize insects from AOS
-u1ha.RasterizeInsects(meta,zRef)
+#%% Burn severity rating
+# Historical is rasterized from source
+up1ha.RasterizeBurnSeverityCurrentYear(meta,2024) # Rasterize current-year burn severity rating
+#up1ha.RasterizeBurnSeverityCanada(meta) # Reproject National Burn Severity data
+u1ha.DeriveBurnSeverityCompilation(meta) # Derive burn severity to pair with wildfire perimeters
 
 #%% Rasterize insect compilation from AOS (5 hours)
-u1ha.RasterizeInsectComp1(meta)
+up1ha.RasterizeInsects(meta,zRef) # Rasterize insects from AOS (Use InsectComp1 where possible, but this is still needed)
+up1ha.RasterizeInsectComp1(meta)
 u1ha.CalcInsectComp1_TimeSeries(meta)
-
-#%% Rasterize consolidated cutblocks database
-u1ha.RasterizeHarvest_CC(meta,zRef)
-
-#%% Harvest early reconstruction
-u1ha.DeriveHarvestEarlyYears(meta)
-
-#%% Harvest consolidated (with and w/o early reconstruction)
-u1ha.DeriveHarvestCompilation(meta)
-
-#%% Harvest silviculture system code
-u1ha.DeriveHarvest_SILV_SYSTEM_CODE(meta)
-
-#%% Rasterize planting
-u1ha.RasterizePlanting(meta) # Compile location, SBC, STC from various sources
-u1ha.DeriveASETComp1(meta) # Derive artificial stand establishment type (ASET)
-u1ha.RasterizePlantingLayer(meta) # Get attributes from planting layer (to get species and genetic worth)
-u1ha.DerivePlantingStatsByTime(meta) # AIL summary
-u1ha.DeriveLastASET(meta) # Derive last instance of Artificial Stand Establishment Type (ASET)
-u1ha.MaskPlantingNonOb(meta,zRef) # Derive non-obligation planting mask
+u1ha.SummarizeInsectComp1_ByTime(meta)
 
 #%%
-def DerivePlantingStatsByTime(meta):
-	# ASET is not included here because a summary time series is created during production
+
+def SummarizeInsectComp1_ByTime(meta):
+
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-	iMask=np.where(zRef['Data']==1)
-	zBGC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BEC_ZONE_CODE.tif')['Data'][iMask]
+	zG=u1ha.Import_Raster(meta,[],['bgcz','spc1_vri02','spc2_vri02','spc3_vri02','spc1_pct_vri02','spc2_pct_vri02','spc3_pct_vri02'],'Extract Grid')
 
-	ds={}
-	ds['Year']=np.arange(1960,2023,1)
-	ds['Global']={}
-	ds['Global']['GW Mean']=np.zeros(ds['Year'].size)
-	ds['Global']['SPH Mean']=np.zeros(ds['Year'].size)
-	ds['ByFSC']={}
-	ds['ByFSC']['FSC']=np.array(list(meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'].keys()))
-	ds['ByFSC']['Area']=np.zeros((ds['Year'].size,ds['ByFSC']['FSC'].size))
+	pine_frac=np.zeros(zRef['Data'].shape)
+	pineL=[meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['PL'],meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['PLI'],meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['PY']]
+	for i in range(1,4):
+		ind=np.where( (np.isin(zG['spc' + str(i) + '_vri02'],pineL)==True) & (zG['spc' + str(i) + '_pct_vri02']>0) )
+		pine_frac[ind]=zG['spc' + str(i) + '_pct_vri02'][ind].astype('float')/100
 
-	ds['ByBGC']={}
-	ds['ByBGC']['ZONE']=np.array(list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys()))
-	ds['ByBGC']['GW Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
-	ds['ByBGC']['SPH Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+	idP=meta['Param']['Raw']['InsectComp1']['ID']
+	bugP=meta['Param']['Raw']['InsectComp1']['Insect Name']
+	sevP=meta['Param']['Raw']['InsectComp1']['Severity Code']
 
-	# Need to track average over 6 compacted files and then calculate weighted average at the end
-	trackG=[None]*6
-	for i in range(6):
-		trackG[i]={}
-		trackG[i]['GW Mean']=np.zeros(ds['Year'].size)
-		trackG[i]['SPH Mean']=np.zeros(ds['Year'].size)
-		trackG[i]['N']=np.zeros(ds['Year'].size)
-	trackBGC=[None]*6
-	for i in range(6):
-		trackBGC[i]={}
-		trackBGC[i]['GW Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
-		trackBGC[i]['SPH Mean']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
-		trackBGC[i]['N']=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
+	sevL=np.array(['L','M','S','V'])
+	mL=np.array([1,5,20,40,75])
 
-	for i in range(6):
-		print(i)
-		z={}
-		z['yr']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_Year.tif')['Data'][iMask]
-		ikp=np.where(z['yr']>0)
-		z['yr']=z['yr'][ikp]
-		z['BGC']=zBGC[ikp]
-		z['FSC']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SILV_FUND_SOURCE_CODE.tif')['Data'][iMask][ikp]
-		z['SPH']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SPH_Planted.tif')['Data'][iMask][ikp]
-		z['S1']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD1.tif')['Data'][iMask][ikp]
-		z['P1']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT1.tif')['Data'][iMask][ikp]
-		z['GW1']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW1.tif')['Data'][iMask][ikp]
-		z['S2']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD2.tif')['Data'][iMask][ikp]
-		z['P2']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT2.tif')['Data'][iMask][ikp]
-		z['GW2']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW2.tif')['Data'][iMask][ikp]
-		z['S3']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD3.tif')['Data'][iMask][ikp]
-		z['P3']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT3.tif')['Data'][iMask][ikp]
-		z['GW3']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW3.tif')['Data'][iMask][ikp]
-		z['S4']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_CD4.tif')['Data'][iMask][ikp]
-		z['P4']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_PCT4.tif')['Data'][iMask][ikp]
-		z['GW4']=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_PL_SPECIES_GW4.tif')['Data'][iMask][ikp]
+	m_cumu=np.zeros(zG['bgcz'].shape)
 
-		for iT in range(ds['Year'].size):
-			indT=np.where( (z['yr']==ds['Year'][iT]) )[0]
+	bugL=np.unique(bugP)
 
-			# By Funding Source
-			fsc0=z['FSC'][indT]
-			uFSC=np.unique(fsc0)
-			uFSC=uFSC[uFSC>0]
-			for iFSC in range(uFSC.size):
-				ind1=np.where( (fsc0==uFSC[iFSC]) )[0]
-				ind2=np.where(ds['ByFSC']['FSC']==u1ha.lut_n2s(meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'],uFSC[iFSC])[0])[0]
-				ds['ByFSC']['Area'][iT,ind2]=ds['ByFSC']['Area'][iT,ind2]+ind1.size
+	# Initialize dictionary
+	YearLast=2023
+	d={}
+	d['Year']=np.arange(1950,YearLast+1,1)
+	d['Data']={}
+	for bug in bugL:
+		d['Data'][bug]={}
+		for sev in sevL:
+			d['Data'][bug][sev]={}
+			d['Data'][bug][sev]['Province']=np.zeros(d['Year'].size)
+			d['Data'][bug][sev]['ByBGC']={}
+			for zone in meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys():
+				d['Data'][bug][sev]['ByBGC'][zone]=np.zeros(d['Year'].size)
 
-			# Global
-			f1=z['P1'][indT].astype('float')/100
-			f2=z['P2'][indT].astype('float')/100
-			f3=z['P3'][indT].astype('float')/100
-			f4=z['P4'][indT].astype('float')/100
-			gw1=np.nan_to_num(z['GW1'][indT].astype('float'))
-			gw2=np.nan_to_num(z['GW2'][indT].astype('float'))
-			gw3=np.nan_to_num(z['GW3'][indT].astype('float'))
-			gw4=np.nan_to_num(z['GW4'][indT].astype('float'))
-			trackG[i]['GW Mean'][iT]=np.nanmean(( (f1*gw1)+(f2*gw2)+(f3*gw3)+(f4*gw4) )/(f1+f2+f3+f4))
-			trackG[i]['SPH Mean'][iT]=np.nanmean(z['SPH'][indT].astype('float'))
-			trackG[i]['N'][iT]=indT.size
+	N_Year=10
+	for iY in range(N_Year):
+		print(iY)
+		yr0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\InsectComp1_' + str(iY+1) + '_Year.tif')['Data']
+		bug0=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\InsectComp1_' + str(iY+1) + '_Type.tif')['Data']
 
-			# By BGC zone
-			bgc0=z['BGC'][indT]
-			sph0=z['SPH'][indT]
-			uBGC=np.unique(bgc0)
-			uBGC=uBGC[uBGC>0]
-			for iBGC in range(uBGC.size):
-				ind1=np.where( (bgc0==uBGC[iBGC]) )[0]
-				ind2=np.where(ds['ByBGC']['ZONE']==u1ha.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],uBGC[iBGC])[0])[0]
-				trackBGC[i]['GW Mean'][iT,ind2]=np.mean(( (f1[ind1]*gw1[ind1])+(f2[ind1]*gw2[ind1])+(f3[ind1]*gw3[ind1])+(f4[ind1]*gw4[ind1]) )/(f1[ind1]+f2[ind1]+f3[ind1]+f4[ind1]))
-				trackBGC[i]['SPH Mean'][iT,ind2]=np.mean(sph0[ind1].astype('float'))
-				trackBGC[i]['N'][iT,ind2]=ind1.size
+		ind0=np.where(yr0>0)
+		yr0=yr0[ind0]
+		bug0=bug0[ind0]
+		zone0=zG['bgcz'][ind0]
+		pine_frac0=pine_frac[ind0]
 
-	# Calculate global mean genetic worth
-	gw_sum=np.zeros(ds['Year'].size)
-	sph_sum=np.zeros(ds['Year'].size)
-	n=np.zeros(ds['Year'].size)
-	for i in range(6):
-		gw_sum=gw_sum+trackG[i]['N']*trackG[i]['GW Mean']
-		sph_sum=sph_sum+trackG[i]['N']*trackG[i]['SPH Mean']
-		n=n+trackG[i]['N']
-	ds['Global']['GW Mean']=gw_sum/n
-	ds['Global']['SPH Mean']=sph_sum/n
+		uID=np.unique(bug0)
+		for uBug in uID:
+			iID=np.where(idP==uBug)[0]
+			bugName=bugP[iID[0]]
+			iSev=np.where( (sevL==sevP[iID[0]]) )[0]
+			sevName=sevL[iSev[0]]
 
-	# Calculate mean genetic worth by BGC zone
-	gw_sum=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
-	sph_sum=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
-	n=np.zeros((ds['Year'].size,ds['ByBGC']['ZONE'].size))
-	for i in range(6):
-		gw_sum=gw_sum+trackBGC[i]['N']*trackBGC[i]['GW Mean']
-		sph_sum=sph_sum+trackBGC[i]['N']*trackBGC[i]['SPH Mean']
-		n=n+trackBGC[i]['N']
-	ds['ByBGC']['GW Mean']=gw_sum/n
-	ds['ByBGC']['SPH Mean']=sph_sum/n
+			if bugName=='Mountain Pine Beetle':
+				ind1=np.where( (bug0==uBug) & (pine_frac0>0.25) )[0]
+			else:
+				ind1=np.where( (bug0==uBug) )[0]
+			yr1=yr0[ind1]
+			idx=gu.IndicesFromUniqueArrayValues(yr1)
+			for i in idx.keys():
+				iT=np.where(d['Year']==i)[0]
+				d['Data'][ bugName ][ sevName ]['Province'][iT]=d['Data'][ bugName ][ sevName ]['Province'][iT]+idx[i].size
 
+			for zone in meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys():
+				if bugName=='Mountain Pine Beetle':
+					ind1=np.where( (bug0==uBug) & (pine_frac0>0.25) & (zone0==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'][zone]) )[0]
+				else:
+					ind1=np.where( (bug0==uBug) & (zone0==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'][zone]) )[0]
+				if ind1.size==0:
+					continue
+				yr1=yr0[ind1]
+				idx=gu.IndicesFromUniqueArrayValues(yr1)
+				for i in idx.keys():
+					iT=np.where(d['Year']==i)[0]
+					d['Data'][ bugName ][ sevName ]['ByBGC'][zone][iT]=d['Data'][ bugName ][ sevName ]['ByBGC'][zone][iT]+idx[i].size
+
+	# Check that it workded
 	flg=0
 	if flg==1:
-		iT=np.where( (ds['Year']>=1985) )[0]
-		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,6.5)); ms=2; lw=0.5
-		ax.plot(ds['Year'][iT],ds['Global']['GW Mean'][iT],'-ko',ms=ms,lw=lw,label='Province')
-		ind=np.where(ds['ByBGC']['ZONE']=='CWH')[0]
-		iGF=np.where(np.isnan(ds['ByBGC']['GW Mean'][iT,ind])==False)[0]
-		y=np.interp(ds['Year'][iT],ds['Year'][iT[iGF]],ds['ByBGC']['GW Mean'][iT[iGF],ind])
-		ax.plot(ds['Year'][iT],y,'-gs',ms=ms,lw=lw,label='CWH')
-		ind=np.where(ds['ByBGC']['ZONE']=='SBS')[0]
-		ax.plot(ds['Year'][iT],ds['ByBGC']['GW Mean'][iT,ind],'-c^',ms=ms,lw=lw,label='SBS')
-		ax.set(xticks=np.arange(0,3000,5),yticks=np.arange(0,3000,2),ylabel='Average genetic worth (%)',xlabel='Time, years',xlim=[1985,2023],ylim=[0,18])
-		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
-		ax.legend(loc='upper left',facecolor=[1,1,1],frameon=False);
-		gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\GeneticWorth_ts','png',900)
-
-		iT=np.where( (ds['Year']>=1985) )[0]
-		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(11,6.5)); ms=2; lw=0.5
-		ax.plot(ds['Year'][iT],ds['Global']['SPH Mean'][iT],'-ko',ms=ms,lw=lw,label='Province')
-		ind=np.where(ds['ByBGC']['ZONE']=='CWH')[0]
-		iGF=np.where(np.isnan(ds['ByBGC']['SPH Mean'][iT,ind])==False)[0]
-		y=np.interp(ds['Year'][iT],ds['Year'][iT[iGF]],ds['ByBGC']['SPH Mean'][iT[iGF],ind])
-		#np.mean(y[-10:])
-		ax.plot(ds['Year'][iT],y,'-gs',ms=ms,lw=lw,label='CWH')
-		ind=np.where(ds['ByBGC']['ZONE']=='SBS')[0]
-		#np.mean(ds['ByBGC']['SPH Mean'][iT,ind][-10:])
-		ax.plot(ds['Year'][iT],ds['ByBGC']['SPH Mean'][iT,ind],'-c^',ms=ms,lw=lw,label='SBS')
-		ax.set(xticks=np.arange(0,3000,5),yticks=np.arange(0,3000,100),ylabel='Planting density (SPH)',xlabel='Time, years',xlim=[1985,2023],ylim=[0,1600])
-		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
-		ax.legend(loc='lower right',facecolor=[1,1,1],frameon=False);
-		gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Reforestation\PlantingDensity_ts','png',900)
-
-	# Remove FSCs with no activity
-	ind=np.where(np.sum(ds['ByFSC']['Area'],axis=0)>0)[0]
-	ds['Area Unique']=ds['ByFSC']['Area'][:,ind]
-	ds['FSC Unique']=ds['ByFSC']['FSC'][ind]
+		#plt.close('all'); plt.plot(d['Year'],d['Data']['Mountain Pine Beetle']['S']['Province'],'-ko')
+		plt.close('all'); plt.plot(d['Year'],d['Data']['Mountain Pine Beetle']['S']['ByBGC']['SBS'],'-bo')
+		plt.close('all'); plt.plot(d['Year'],d['Data']['Mountain Pine Beetle']['S']['ByBGC']['IDF'],'-bo')
+		#plt.close('all'); plt.plot(d['Year'],d['Data']['Douglas-fir Beetle']['S']['ByBGC']['IDF'],'-go')
 
 	# Save
-	gu.opickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PlantingSummaryByTime.pkl',ds)
+	gu.opickle(meta['Paths']['DB']['Beetles'] + '\\InsectComp1_SummaryByTime.pkl',d)
+
+
 	return
 
-#%% Rasterize fertilization
-u1ha.RasterizeSilviculture(meta,np.array(['FE']),np.array(['CA']),np.array([]),np.array([]),'FE-CA')
+#%% Rasterize harvesting
+u1ha.RasterizeHarvest_CC(meta,zRef) # Rasterize consolidated cutblocks database
+u1ha.DeriveHarvestEarlyYears(meta) # Harvest early reconstruction
+u1ha.DeriveHarvestCompilation(meta) # Harvest consolidated (with and w/o early reconstruction)
+u1ha.DeriveHarvest_SILV_SYSTEM_CODE(meta,zRef) # Harvest silviculture system code
+
+#%% Tabular summary of activities - full query of RESULTS (list of everything), exports to spreadsheet (takes 10-15 min)
+YearLast=2023
+up1ha.Query_RESULTS(meta,YearLast)
+
+#%% Extract geojson files for each activity (non-obligation only, no surveys, no audits, no denudations)
+up1ha.VectorMapsByActivity_NO(meta)
 
 #%% Rasterize knockdown
-u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array([]),np.array(['CABLE','GUARD','HARV','MDOWN','PUSH']),np.array([]),'SP-KD')
+YearLast=2023
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array([]),np.array(['CABLE','GUARD','HARV','MDOWN','PUSH']),np.array([]),'SP-KD',YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,'SP-KD',YearLast)
 
-#%% Rasterize mechanical site prep
-u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['CABLE','GUARD','HARV','MDOWN','PUSH']),np.array([]),'SP-Ripping')
+#%% Rasterize road deactivation
+# *** The spatial info for this appears to be nonsense ***
+u1ha.RasterizeSilviculture(meta,np.array(['RD']),np.array(['DE']),np.array([]),np.array([]),'RD-DE',YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,'RD-DE',YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,'RD-DE',YearLast)
+
+# *** The spatial info for this appears to be nonsense ***
+# d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\RD-DE_SummaryByTimeAndFSC.pkl')
+#zRD=np.zeros(zRef['Data'].shape,dtype='int16')
+#for i in range(4):
+#	zYr=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\RD-DE_' + str(i+1) + '_Year.tif')['Data']
+#	ind=np.where(zYr>0)
+#	zRD[ind]=zYr[ind]
+#plt.matshow(zRD)
+
+#%% Rasterize direct seeding
+vNam='DS'
+YearLast=2023
+u1ha.RasterizeSilviculture(meta,np.array(['DS']),np.array([]),np.array([]),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+#d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndFSC.pkl')
+
+#%% Rasterize planting (year, funding source, composition, density, genetic worth)
+vNam='PL_All'
+YearLast=2023
+up1ha.RasterizePlanting(meta,vNam) # Compile location, SBC, STC from various sources
+up1ha.RasterizePlantingLayer(meta,zRef) # Get attributes from planting layer (to get species and genetic worth)
+up1ha.DerivePlantingYearLast(meta,zRef)
+u1ha.DerivePlantingMaskNonOb(meta,zRef) # Derive non-obligation planting mask
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast) # AIL by funding source
+u1ha.DerivePlantingStatsByTime(meta) # AIL summary
+
+#%% Derive artificial stand establishment type (ASET)
+u1ha.DeriveASETComp1(meta,YearLast)
+u1ha.DeriveASETLastYear(meta) # Derive last instance of Artificial Stand Establishment Type (ASET)
+
+#%% Rasterize nutrient management (fertilization)
+vNam='FE-CA'
+YearLast=2023
+u1ha.RasterizeSilviculture(meta,np.array(['FE']),np.array(['CA']),np.array([]),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+#d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\FE-CA_SummaryByTimeAndBGCZone.pkl')
+
+#%% Rasterize mechanical site prep (ripping)
+vNam='SP-RIP'
+YearLast=2023
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['DISC','EXCAV','MOUND','LRIP','RRIP','WING']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+
+#%% Rasterize mechanical site prep (WING and DISC)
+YearLast=2023
+vNam='SP-WING'
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['WING']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+
+vNam='SP-DISC'
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['DISC']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+
+vNam='SP-MOUND'
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['MOUND']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+
+#%% Rasterize incremental haul (fibre utilization)
+# Crashed due to lack of geometry for some reason ***
+vNam='SP-CHAUL'
+YearLast=2023
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['CHUAL']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+
+#%% Rasterize chip and leave on site
+vNam='SP-TOP'
+YearLast=2023
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['ME']),np.array(['BURY','CSCAT','MULCH']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
 
 #%% Rasterize pile burning
-u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['BU']),np.array([]),np.array([]),'SP-BU')
+vNam='SP-PBURN'
+up1ha.RasterizePileBurn(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndFSC.pkl')
+# ufcs.Plot_AIL_PileBurn(meta,pNam)
+
+#%% Rasterize piling
+YearLast=2023
+vNam='SP-PILE'
+up1ha.RasterizePiling(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+
+#%% Rasterize burn landindings
+vNam='SP-BU-LAND'
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['BU']),np.array(['LAND']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndBGCZone.pkl')
+d=gu.ipickle(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\' + vNam + '_SummaryByTimeAndFSC.pkl')
+# ufcs.Plot_AIL_PileBurn(meta,pNam)
 
 #%% Rasterize broadcast burning (237 min)
-u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['BU']),np.array(['BROAD']),np.array([]),np.array(['SP-BU-BROAD']))
+vNam='SP-BU-BROAD'
+u1ha.RasterizeSilviculture(meta,np.array(['SP']),np.array(['BU']),np.array(['BROAD']),np.array([]),vNam,YearLast)
+
+#%% Rasterize plot surveys
+vNam='SU-PLOT'
+u1ha.RasterizeSilviculture(meta,np.array(['SU']),np.array(['RA','RE','RG','SR','SU']),np.array(['PLOT']),np.array([]),vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByFSC(meta,vNam,YearLast)
+u1ha.Calc_AIL_Silv_ByBGC(meta,vNam,YearLast)
+
+
+
+#%% Rasterize aerial spray treatment
+# Wait until historical treatments entered into RESULTS
+up1ha.RasterizeBTKApplication(meta)
+YearLast=2023
+u1ha.Calc_AIL_Silv_ByFSC(meta,'PC-CA-IDW',YearLast)
+#import fcgadgets.macgyver.util_fcs_graphs as ufcs
+#ufcs.Plot_AIL_Silv(meta,'PCCA-IDW')
 
 #%% Percent dead from cruises
 u1ha.RasterizeCruisePercentDead(meta)
@@ -374,16 +422,16 @@ u1ha.RasterizeCruisePercentDead(meta)
 #%% Salvage harvest mask
 u1ha.HarvestSalvageMaskFromCruise(meta)
 
-#%% Create range tenure consolidated
+#%% Derive range tenure consolidated
 u1ha.DeriveRangeTenureMask(meta)
 
-#%% Create Crown land mask
+#%% Derive crown land mask
 u1ha.DeriveCrownLandMask(meta)
 
-#%% Create BGC Zone / NDT Combination
+#%% Derive BGC Zone / NDT Combination
 u1ha.DeriveBGCZoneNDTCombo(meta)
 
-#%% Consolidate Tree Density Class
+#%% Derive Tree Density Class Compilation
 # *** Ensure harvested areas are listed as dense ***
 u1ha.DeriveTreeDensityClass(meta)
 df=u1ha.CalculateStatsByTDC(meta) # Create a table of descriptive stats
@@ -391,17 +439,14 @@ df=u1ha.CalculateStatsByTDC(meta) # Create a table of descriptive stats
 #%% Rasterize early land use change year
 u1ha.RasterizeEaryLandUseChangeYear(meta)
 
-#%% Rasterize distance from roads
+#%% Derive distance from roads
 u1ha.DeriveDistanceFromRoads(meta)
 
-#%% Rasterize distance from timber facilities
+#%% Derive distance from timber facilities
 u1ha.DeriveDistanceFromFacility(meta)
 
 #%% Derive Forest Cover Reserve compilation 1
 u1ha.DeriveForestCoverReserveComp1(meta)
-
-#%% Rasterize aerial spray treatment
-u1ha.RasterizeBTKSpray(meta)
 
 #%% Global Forest Change Loss Year (mosaic and reproject)
 u1ha.RasterizeGFC_LossYear(meta)
@@ -409,38 +454,31 @@ u1ha.RasterizeGFC_LossYear(meta)
 #%% Filter Global Forest Change Loss Year (to remove known disturbances)
 u1ha.FilterGFC_LossYear(meta)
 
-#%% Climate data
-u1ha.ImportNormalsFromClimateNA(meta)
-u1ha.CalcSaturationVapourPressureNormal(meta)
-u1ha.CalcActualVapourPressureNormalFromTemps(meta)
-u1ha.CalcActualVapourPressureNormalBiasCorrected(meta)
-u1ha.CalcVapourPressureDeficitNormal(meta)
-u1ha.CalcSurfaceWaterBalanceNormals(meta)
-
-#%% Extract mean climate data by BGC zone
-u1ha.ClimateStatsByBGCZone(meta)
-
-#%% Plot climate space
-vX='tmean_ann_n'
-vY='ws_mjjas_n'
-def ClimateSpace(meta,vX,vY):
-	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-	z0=u1ha.Import_Raster(meta,[],['lc_comp1_2019',vX,vY],'Extract Grid')
-	pX=np.percentile(z0[vX],[0.25,99.75])
-	pY=np.percentile(z0[vY],[0.25,99.75])
-	return
+#%% Climate (1ha)
+c1ha.ImportNormalsFromClimateNA(meta)
+c1ha.CalcSaturationVapourPressureNormal(meta)
+c1ha.CalcActualVapourPressureNormalFromTemps(meta)
+c1ha.CalcActualVapourPressureNormalBiasCorrected(meta)
+c1ha.CalcVapourPressureDeficitNormal(meta)
+c1ha.CalcSurfaceWaterBalanceNormals(meta)
+c1ha.ClimateStatsByBGCZone(meta) # Extract mean climate data by BGC zone
 
 #%% Deciduous fraction
 u1ha.DeriveBroadleafDeciduousFraction(meta)
 
-#%% Access zones
+#%% Derive access zones
 u1ha.DeriveAccessZones(meta)
 
 #%% Species groups
 z0=u1ha.Import_Raster(meta,[],['refg','lc_comp1_2019','fire_yr','bsr_sc','spc1_vri23','geomorph'],'Extract Grid')
 
-#%%
+#%% Peatlands from national 250m map
+fin=r'C:\Data\BC1ha\LandCoverUse\peat3r.tif'
+fout=r'C:\Data\BC1ha\LandCoverUse\peat.tif'
+gis.ReprojectRasterAndClipToRaster(fin,fout,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])
+z=gis.OpenGeoTiff(r'C:\Data\BC1ha\LandCoverUse\peat.tif')
 
+#%%
 z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\FromBurtWilliam\\geomorphons_search50.tif')
 plt.matshow(z['Data'],clim=[0,11])
 
@@ -466,8 +504,6 @@ print(ind[0].size/1e6)
 ind=np.where( (z['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_comp1_2049s2']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lu_comp1_2049s2']==meta['LUT']['Derived']['lu_comp1']['Conservation Natural']) |
 			  (z['lc_comp1_2019']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lc_comp1_2049s2']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (z['lu_comp1_2049s2']==meta['LUT']['Derived']['lu_comp1']['Conservation Consistent']) )
 print(ind[0].size/1e6)
-
-
 
 #%%
 p=np.zeros(10)

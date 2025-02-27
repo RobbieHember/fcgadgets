@@ -19,10 +19,9 @@ from fcgadgets.macgyver import util_general as gu
 from fcgadgets.macgyver import util_gis as gis
 from fcgadgets.macgyver import util_inventory as invu
 from fcgadgets.cbrunner import cbrun_util as cbu
-from fcgadgets.bc1ha import bc1ha_util as bc1hau
+from fcgadgets.bc1ha import bc1ha_utils as bc1hau
 
 #%% Query openings
-
 def Query_Openings(meta,roi):
 
     if type(roi)==dict:
@@ -142,7 +141,7 @@ def Query_Openings(meta,roi):
                     continue
 
                 if meta['Layer']=='RSLT_ACTIVITY_TREATMENT_SVW':
-                    if prop['SILV_BASE_CODE']=='SU':
+                    if (prop['SILV_BASE_CODE']=='AU'): #  | (prop['SILV_BASE_CODE']=='DN') (prop['SILV_BASE_CODE']=='SU')
                         continue
 
                 if type(roi)==dict:

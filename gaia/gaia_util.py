@@ -1,17 +1,20 @@
 import os
 import numpy as np
+import pandas as pd
 import copy
 import matplotlib.pyplot as plt
 import numpy.matlib as mb
 import pyproj
 import rasterio
-from rasterio import features
-from rasterio.transform import from_origin
-from scipy.interpolate import griddata
+import time
+import shutil
+from fair import FAIR
+from fair.interface import fill,initialise
+from fair.io import read_properties
 from scipy.optimize import curve_fit
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
-import fcgadgets.bc1ha.bc1ha_util as u1ha
+import fcgadgets.bc1ha.bc1ha_utils as u1ha
 
 #%% Chapman-Richards difference equation
 def fA(x,a,b,c):
@@ -44,211 +47,37 @@ def AgeResponseFitTIPSY(meta):
 	plt.plot(xhat,y,'g--')
 	return
 
-#%%
-def CreateRefGrid_BC5k(meta):
-	# Manually copy the Land Mask from the bc1ha DB and then rescale it to 5k
-	fin=meta['Paths']['bc5k Ref Grid']
-	gis.ResampleRaster(fin,0.02)
-	#Check that it worked: z=gis.OpenGeoTiff(meta['Paths']['bc5k Ref Grid'])
-	return
-
 #%% Import environmental data
 def ImportEnvironment(meta,tv):
-	d={'co2':np.zeros(tv.size),'ndep':np.zeros(tv.size)}
+	d={'co2':{},'ndep':{}}
 
 	# Import CO2 (ppm), source: https://www.pik-potsdam.de/~mmalte/rcps/ (ppm)
 	dC=gu.ReadExcel(meta['Paths']['DB']['CO2'])
+	d['co2']['ssp245']=np.zeros(tv.size)
+	d['co2']['ssp585']=np.zeros(tv.size)
 	for iT in range(tv.size):
 		ind=np.where(dC['Year']==tv[iT])[0]
-		d['co2'][iT]=dC['CO2 RCP45'][ind]
+		d['co2']['ssp245'][iT]=dC['CO2 RCP45'][ind]
+		d['co2']['ssp585'][iT]=dC['CO2 RCP85'][ind]
 
 	# Import N deposition
 	zRef5=gis.OpenGeoTiff(meta['Paths']['bc5k Ref Grid'])
 	iLand=np.where(zRef5['Data']==1)
-	dN=gu.ipickle(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_60.pkl')
-	dN['ndep']['Data']=dN['ndep']['Data'].astype('float')*dN['ndep']['Scale Factor']
-	for iT in range(tv.size):
-		indT=np.where(dN['ndep']['tv']==tv[iT])[0]
-		if indT.size==0:
-			continue
-		d['ndep'][iT]=np.mean(dN['ndep']['Data'][indT[0],:,:][iLand])
-	indT=np.where(tv<dN['ndep']['tv'][0])[0]
-	d['ndep'][indT]=np.mean(dN['ndep']['Data'][0,:,:][iLand])
-	indT=np.where(tv>dN['ndep']['tv'][-1])[0]
-	d['ndep'][indT]=np.mean(dN['ndep']['Data'][-1,:,:][iLand])
-	return d
-
-#%% Import nitrogen deposition from ISIMIP
-def Process_Ndep_ISIMIP(meta):
-	tv=np.arange(1850,2101,1)
-	zRef=gis.OpenGeoTiff(meta['Paths']['bc5k Ref Grid'])
-	srs=gis.ImportSRSs()
-	lon,lat=pyproj.transform(srs['Proj']['BC1ha'],srs['Proj']['Geographic'],zRef['X'],zRef['Y'])
 	rcpL=['26','60','85']
 	for rcp in rcpL:
-		d={'ndep':{}}
-		d['ndep']['tv']=tv
-		d['ndep']['Data']=np.zeros((tv.size,zRef['m'],zRef['n']),dtype='float')
-		d['ndep']['TS Mean']=np.zeros(tv.size)
-		d['ndep']['Scale Factor']=0.01
-	
-		tv0=np.arange(1861,2006,1)
-		d0=gu.ReadNC(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_nhx_histsoc_annual_1861_2005.nc4')
-		print(np.mean(d0['nhx'][140,:,:]))
-		d1=gu.ReadNC(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_noy_histsoc_annual_1861_2005.nc4')
-		#print(np.mean(d1['noy'][140,:,:]))
-		d0['ntot']=10*(d0['nhx']+d1['noy'])
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		#print(np.mean(d0['ntot'][140,:,:]))
-		#plt.close('all'); plt.matshow(d0['ntot'][140,:,:],clim=[0,8]); plt.colorbar()
-	
-		# Isolate region
-		indS=np.where( (lat0>42) & (lat0<62) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]
-		lon1=lon0[indS]
-		iLand=np.where(zRef['Data']==1)
-	
-		indT=np.where(tv<tv0[0])[0]
-		z0=d0['ntot'][0,:,:].T # transposed to match lat and lon
-		z1=z0[indS]
-		z2=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-		for j in indT:
-			d['ndep']['Data'][j,:,:]=z2
-			d['ndep']['TS Mean'][j]=np.mean(z2[iLand])
-	
-		for iT in range(tv0.size):
-			indT=np.where(tv==tv0[iT])[0]
-			z0=d0['ntot'][iT,:,:].T # transposed to match lat and lon
-			z1=z0[indS]
-			z2=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			d['ndep']['Data'][indT,:,:]=z2
-			#plt.matshow(z2,clim=[0,8]); plt.colorbar()
-			d['ndep']['TS Mean'][indT]=np.mean(z2[iLand])
-			#print(np.mean(z2[ind]))
-
-		# Future
-		tv0=np.arange(2006,2100,1)
-		d0=gu.ReadNC(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_nhx_rcp' + rcp + 'soc_monthly_2006_2099.nc4')
-		d0['nhx']=gu.BlockSum(d0['nhx'],12)
-		d1=gu.ReadNC(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_noy_rcp' + rcp + 'soc_monthly_2006_2099.nc4')
-		d1['noy']=gu.BlockSum(d1['noy'],12)
-		d0['ntot']=10*(d0['nhx']+d1['noy'])
-		for iT in range(tv0.size):
-			indT=np.where(tv==tv0[iT])[0]
-			z0=d0['ntot'][iT,:,:].T # transposed to match lat and lon
-			z1=z0[indS]
-			z2=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			d['ndep']['Data'][indT,:,:]=z2
-			#plt.matshow(z2,clim=[0,8]); plt.colorbar()
-			d['ndep']['TS Mean'][indT]=np.mean(z2[iLand])
-	
-		indT=np.where(tv>tv0[-1])[0]
-		z0=d0['ntot'][-1,:,:].T # transposed to match lat and lon
-		z1=z0[indS]
-		z2=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-		for j in indT:
-			d['ndep']['Data'][j,:,:]=z2
-			d['ndep']['TS Mean'][j]=np.mean(z2[iLand])
-		plt.plot(tv,np.mean(np.mean(d['ndep']['Data'],axis=2),axis=1),'k-')
-		#plt.close('all'); plt.plot(tv,d['ndep']['TS Mean'],'g-.')
-		#plt.matshow(np.mean(d['ntot'],axis=0))
-		d['ndep']['Data']=d['ndep']['Data']/d['ndep']['Scale Factor']
-		d['ndep']['Data']=d['ndep']['Data'].astype('int16')
-		gu.opickle(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_' + rcp + '.pkl',d)
-	return
-
-#%%
-def Process_Ndep_FromAckerman2018(meta):
-	# Ackerman et al. (2018) (https://conservancy.umn.edu/handle/11299/197613)
-	data=pd.read_csv(r'C:\Users\rhember\Documents\Data\Nitrogen Deposition\Ackerman\inorganic_N_deposition.csv')
-	
-	zTSA=gis.OpenGeoTiff(r'C:\Users\rhember\Documents\Data\BC1ha\Admin\tsa.tif')
-
-	#nam='tot_1985'
-	nam='tot_2016'
-	
-	lat=np.unique(data['latitude'].to_numpy())
-	lon=np.unique(data['longitude'].to_numpy())
-	z0=data[nam].to_numpy()/100
-	m=lat.size
-	n=lon.size
-	z0=np.flip(z0.reshape(n,m).T,0)
-	
-	z=zTSA.copy()
-	z['Data']=z0
-	z['Data']=z['Data'].astype('float32')
-	
-	srs=gis.ImportSRSs()
-	#z['Projection']=srs['Proj']['Geographic']
-	z['Proj4_String']=srs['String']['Geographic']
-	
-	sr=osr.SpatialReference()
-	sr.ImportFromEPSG(4326)
-	z['Projection']=sr.ExportToWkt()
-	
-	z['Y']=np.tile(np.reshape(lat,(-1,1)),(1,n))
-	z['X']=np.tile(np.reshape(lon,(1,-1)),(m,1))
-	z['m']=m
-	z['n']=n
-	
-	# extent labels (left, right, bottom, top)
-	arra=np.array([np.min(lon),np.max(lat),np.min(lat),np.max(lat)])
-	z['Extent']=tuple(arra)
-	
-	# Transform
-	arra=np.array([np.min(lon),2.5,0.0,np.max(lat),0.0,-2.0])
-	z['gt']=tuple(arra)
-	
-	# Transform
-	z['Transform']=from_origin(np.min(lon),np.max(lat),2.5,2.0)
-	
-	fout=r'C:\Users\rhember\Documents\Data\Nitrogen Deposition\Ackerman\ndep_' + nam + '.tif'
-	gis.SaveGeoTiff(z,fout)
-	
-	# Clip to NA
-	fout=r'C:\Users\rhember\Documents\Data\Nitrogen Deposition\Ackerman\ndep_' + nam + '.tif'
-	z=gis.OpenGeoTiff(fout)
-	
-	#plt.close('all')
-	#fig,ax=plt.subplots(1,figsize=gu.cm2inch(16,16))
-	#im=ax.matshow(z['Data'],clim=(0,12),extent=z['Extent'])
-	
-	zC=gis.ClipRaster(z,[-140,-40],[0,90])
-	
-	fout=r'C:\Users\rhember\Documents\Data\Nitrogen Deposition\Ackerman\ndep_' + nam + '_clip.tif'
-	gis.SaveGeoTiff(zC,fout)
-	
-	plt.close('all')
-	fig,ax=plt.subplots(1,figsize=gu.cm2inch(16,16))
-	im=ax.matshow(zC['Data'],clim=(0,12),extent=zC['Extent'])
-
-	# Reproject
-	pthin=r'C:\Users\rhember\Documents\Data\Nitrogen Deposition\Ackerman\ndep_' + nam + '_clip.tif'
-	pthout=r'C:\Users\rhember\Documents\Data\Nitrogen Deposition\Ackerman\ndep_' + nam + '_clip_projected.tif'
-	gis.ReprojectGeoTiff(pthin,pthout,srs['String']['BC1ha'])
-	#gis.ReprojectGeoTiff(pthin,pthout,srs['String']['NACID'])
-	
-	z=gis.OpenGeoTiff(pthout)
-	z['X']=z['X'][:,0:-1]
-	
-	plt.close('all')
-	fig,ax=plt.subplots(1,figsize=gu.cm2inch(16,16))
-	im=ax.matshow(z['Data'],clim=(0,12),extent=z['Extent'])
-	
-	#
-	zND=zTSA.copy()
-	ivl=10
-	zND['X']=zTSA['X'][0::ivl,0::ivl]
-	zND['Y']=zTSA['Y'][0::ivl,0::ivl]
-	zND['Data']=griddata( (z['X'].flatten(),z['Y'].flatten()) ,z['Data'].flatten(),(zND['X'],zND['Y']),method='cubic')
-	
-	plt.close('all')
-	fig,ax=plt.subplots(1,figsize=gu.cm2inch(16,16))
-	im=ax.matshow(zND['Data'],clim=(0,5),extent=z['Extent'])
-	
-	# Plot
-	# See bc1ha_map_full for plots
-	return
+		d['ndep'][rcp]=np.zeros(tv.size)
+		dN=gu.ipickle(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_' + rcp + '.pkl')
+		dN['ndep']['Data']=dN['ndep']['Data'].astype('float')*meta['Climate']['SF']['ndep']
+		for iT in range(tv.size):
+			indT=np.where(dN['ndep']['tv']==tv[iT])[0]
+			if indT.size==0:
+				continue
+			d['ndep'][rcp][iT]=np.mean(dN['ndep']['Data'][indT[0],:,:][iLand])
+		indT=np.where(tv<dN['ndep']['tv'][0])[0]
+		d['ndep'][rcp][indT]=np.mean(dN['ndep']['Data'][0,:,:][iLand])
+		indT=np.where(tv>dN['ndep']['tv'][-1])[0]
+		d['ndep'][rcp][indT]=np.mean(dN['ndep']['Data'][-1,:,:][iLand])
+	return d
 
 #%% Potential evpapotranspiration
 '''============================================================================
@@ -526,185 +355,6 @@ def WBM_SparseGrid(par,vi):
 
 	return vo
 
-# def WBM(par,vi):
-#	 #--------------------------------------------------------------------------
-#	 # Set up output arguments
-#	 #--------------------------------------------------------------------------
-
-#	 vo={}
-
-#	 # If it is just one site, the user may import variables with 1d - change to 2d
-#	 if vi['tmean'].ndim==1:
-#		 for nam in vi.keys():
-#			 vi[nam]=np.reshape(vi[nam],(-1,1))
-
-#	 # Size of input variables
-#	 N_mo,N_s=vi['tmean'].shape
-
-#	 if par['Method']=='Combined':
-
-#		 # Running all time steps for a set of n locations
-#		 vo['ws']=par['Ws_max']*np.ones((N_mo,N_s))
-#		 vo['Wsp']=np.zeros((N_mo,N_s))
-#		 vo['ETp']=np.zeros((N_mo,N_s))
-#		 vo['ETa']=np.zeros((N_mo,N_s))
-#		 vo['R']=np.zeros((N_mo,N_s))
-#		 vo['M']=np.zeros((N_mo,N_s))
-
-#	 elif par['Method']=='Grid':
-
-#		 # If running one month grid at a time, set initial values beased on input
-#		 # from last run
-
-#		 # Initialize state variables with maximum levels and add previous time
-#		 # step for time steps beyond the first one
-
-#		 if 'Ws' in vi:
-#			 vo['Ws'][0,:]=vi['Ws']
-#			 vo['Wsp'][0,:]=vi['Wsp']
-#		 else:
-#			 vo['Ws']=par['Ws_max']*np.ones((1,N_mo))
-#			 vo['Wsp']=np.zeros((1,N_mo))
-
-#		 vo['ETp']=np.zeros((1,N_mo))
-#		 vo['ETa']=np.zeros((1,N_mo))
-#		 vo['R']=np.zeros((1,N_mo))
-#		 vo['M']=np.zeros((1,N_mo))
-
-#	 #--------------------------------------------------------------------------
-#	 # Constants
-#	 #--------------------------------------------------------------------------
-
-#	 con=HydroMetCon()
-
-#	 #--------------------------------------------------------------------------
-#	 # Potential evapotranspiratiom (mm month-1)
-#	 #--------------------------------------------------------------------------
-
-#	 vo['ETp']=GetETp(vi,par['ETp Method'],'Month')
-
-#	 #--------------------------------------------------------------------------
-#	 # Canopy interception as a function of leaf area (Landsberg et al. 2005)
-#	 # Maximum proportion of rainfall evaporated from canopy MaxIntcptn – 0.15
-#	 # Leaf area index for maximum rainfall interception LAImaxIntcptn – 5
-#	 #--------------------------------------------------------------------------
-
-#	 # Fraction of intercepted precipitation
-#	 FracPrecipInt=par['Ei_FracMax']*np.minimum(1.0,vi['LAI']/par['Ei_ALMax'])
-
-#	 # Potential evaporation of intercepted precipiration (mm month-1)
-#	 Ei_Potential=FracPrecipInt*vi['prcp']
-
-#	 # Actual evaporation of intercepted precipiration, defined as the minimum
-#	 # between the energy-limited rate, and the water-limited rate (mm month-1)
-#	 Ei_Actual=np.minimum(vo['ETp'],Ei_Potential)
-
-#	 # Transpiration at energy-limited rate, i.e. prior to adding surface
-#	 # constraints (mm month-1)
-#	 Et_EnergyLimited=vo['ETp']-Ei_Actual
-
-#	 # Throughfall (mm month-1)
-#	 P_Throughfall=vi['prcp']-Ei_Actual
-
-#	 # Partition total precipitation into solid and liquid components
-#	 fT=(vi['tmean']-par['Tmin'])/(par['Tmax']-par['Tmin'])
-#	 fT=np.minimum(np.maximum(0,fT),1)
-#	 Pr=fT*P_Throughfall
-#	 Ps=P_Throughfall-Pr
-
-#	 #--------------------------------------------------------------------------
-#	 # Loop through months
-#	 #--------------------------------------------------------------------------
-
-#	 for iT in range(N_mo):
-
-#		 #----------------------------------------------------------------------
-#		 # Set inititial daily water pools at level sfromt he end of the last
-#		 # month
-#		 #----------------------------------------------------------------------
-
-#		 if par['Method']=='Combined':
-
-#			 if iT==0:
-#				 Ws_d=vo['Ws'][iT,:]
-#				 Wsp_d=vo['Wsp'][iT,:]
-#			 else:
-#				 Ws_d=vo['Ws'][iT-1,:]
-#				 Wsp_d=vo['Wsp'][iT-1,:]
-
-#		 elif par['Method']=='Grid':
-
-#			 Ws_d=vo['Ws']
-#			 Wsp_d=vo['Wsp']
-
-#		 #----------------------------------------------------------------------
-#		 # Daily fluxes (mm d-1)
-#		 #----------------------------------------------------------------------
-
-#		 Ps_d=Ps[iT,:]/(30/par['Daily_Interval'])
-#		 Pr_d=Pr[iT,:]/(30/par['Daily_Interval'])
-#		 Ei_Actual_d=Ei_Actual[iT,:]/(30/par['Daily_Interval'])
-#		 Et_EnergyLimited_d=Et_EnergyLimited[iT,:]/(30/par['Daily_Interval'])
-
-#		 for iDay in range(0,30,par['Daily_Interval']):
-
-#			 # Potential snowmelt (mm d-1), equation from Thornthwaite and Mather (1955)
-#			 M_d=2.63+2.55*vi['tmean'][iT,:]+0.0912*vi['tmean'][iT,:]*Pr_d
-
-#			 # Actual snowmelt (mm d-1)
-#			 M_d=np.maximum(np.zeros((1,N_s)),np.minimum(M_d,Wsp_d+Ps_d))
-
-#			 # Cumulative snowmelt (mm)
-#			 vo['M'][iT,:]=vo['M'][iT,:]+M_d
-
-#			 # Updated snowpack water content (mm)
-#			 Wsp_d=Wsp_d+Ps_d-M_d
-
-#			 # Update soil water content (mm)
-#			 Ws_d=Ws_d+M_d+Pr_d
-
-#			 # Supply function (Willmott et al. 1985)
-#			 # x=[0:0.1:1]' plot(x,1-exp(-6.68*(x)),'ko')
-#			 fWs=np.minimum(1,np.maximum(0,1-np.exp(-6.68*(Ws_d/par['Ws_max']))))
-
-#			 # Actual evaporation (mm d-1)
-#			 Et_Actual_d=fWs*Et_EnergyLimited_d
-
-#			 # Cumulative actual evapotranspiration as the sum of wet-canopy
-#			 # evaporation and transpiration (mm)
-#			 vo['ETa'][iT,:]=vo['ETa'][iT,:]+Ei_Actual_d+Et_Actual_d
-
-#			 # Remove transpiration from soil water pool (mm)
-#			 Ws_d=Ws_d-Et_Actual_d
-
-#			 # Find any spatial units where soil water exceeds capacity and add
-#			 # "surplus" to monthly runoff and restrict soil water content
-#			 # to capacity
-#			 R_d=np.maximum(0,Ws_d-par['Ws_max'])
-#			 Ws_d=np.minimum(Ws_d,par['Ws_max'])
-
-#			 # Update monthly runoff (mm)
-#			 vo['R'][iT,:]=vo['R'][iT,:]+R_d
-
-#		 # Update water pools
-#		 vo['Ws'][iT,:]=Ws_d
-#		 vo['Wsp'][iT,:]=Wsp_d
-
-#	 #--------------------------------------------------------------------------
-#	 # Constrain pools to be positive
-#	 #--------------------------------------------------------------------------
-
-#	 vo['Ws']=np.maximum(0,vo['Ws'])
-#	 vo['Wsp']=np.maximum(0,vo['Wsp'])
-
-#	 #--------------------------------------------------------------------------
-#	 # Include rainfall fraction
-#	 #--------------------------------------------------------------------------
-
-#	 if par['Include Rainfall Fraction']=='Yes':
-#		 vo['RF']=np.minimum(1,np.maximum(0,Pr/Ps))
-#	 return vo
-
 #%% Hydrometerology constants
 # con=gaia.HydroMetCon()
 def HydroMetCon():
@@ -816,24 +466,13 @@ def GYModelModifier(meta,pNam,NetGrowth,vo,iT):
 		plt.plot(t,fG,'b--')
 
 	# Import parameters
-	if 'Opt' in meta[pNam].keys():
-		#t0=meta[pNam]['Opt']['GrowthModifier']['t0']
-		#t1=meta[pNam]['Opt']['GrowthModifier']['t1']
-		t0=meta['Param']['BEV']['ByBGCZ']['GM t0']
-		t1=meta['Param']['BEV']['ByBGCZ']['GM t1']
-		m0=meta[pNam]['Opt']['GrowthModifier']['m0']
-		m1_young=meta[pNam]['Opt']['GrowthModifier']['m1_y']
-		m1_old=meta[pNam]['Opt']['GrowthModifier']['m1_o']
-		Age_young=meta[pNam]['Opt']['GrowthModifier']['Age_y']
-		Age_old=meta[pNam]['Opt']['GrowthModifier']['Age_o']
-	else:
-		t0=meta['Param']['BEV']['ByBGCZ']['GM t0']
-		t1=meta['Param']['BEV']['ByBGCZ']['GM t1']
-		m0=meta['Param']['BEV']['ByBGCZ']['GM m0']
-		m1_young=meta['Param']['BEV']['ByBGCZ']['GM m1_y']
-		m1_old=meta['Param']['BEV']['ByBGCZ']['GM m1_o']
-		Age_young=meta['Param']['BEV']['ByBGCZ']['GM Age_y']
-		Age_old=meta['Param']['BEV']['ByBGCZ']['GM Age_o']
+	t0=meta['Param']['BEV']['ByBGCZ']['GM t0']
+	t1=meta['Param']['BEV']['ByBGCZ']['GM t1']
+	m0=meta['Param']['BEV']['ByBGCZ']['GM m0']
+	m1_young=meta['Param']['BEV']['ByBGCZ']['GM m1_y']
+	m1_old=meta['Param']['BEV']['ByBGCZ']['GM m1_o']
+	Age_young=meta['Param']['BEV']['ByBGCZ']['GM Age_y']
+	Age_old=meta['Param']['BEV']['ByBGCZ']['GM Age_o']
 
 	m1=(m1_young+m1_old)-gu.Clamp(m0+(Age_young-vo['A'][iT,:])/(Age_young-Age_old),m1_old,m1_young)
 	fG=gu.Clamp(m0+(m1-m0)/(t1-t0)*(meta[pNam]['Year'][iT]-t0),m0,m1)
@@ -863,250 +502,526 @@ def GYModelModifier(meta,pNam,NetGrowth,vo,iT):
 
 	return NetGrowth
 
-#%% Import CMIP6 data
-def Process_CMIP6():
-	#scn='ssp245'
-	scn='ssp585'
-	meta=u1ha.Init()
-	zRef=gis.OpenGeoTiff(meta['Paths']['bc5k Ref Grid'])
-	iLand=np.where(zRef['Data']==1)
-	pth=r'C:\Data\Climate\CMIP6\Monthly'
-	srs=gis.ImportSRSs()
-	lon,lat=pyproj.transform(srs['Proj']['BC1ha'],srs['Proj']['Geographic'],zRef['X'],zRef['Y'])
-	tvm=gu.tvec('m',1950,2101)
-	tvH0=gu.tvec('m',1950,2014)
-	tvF0=gu.tvec('m',2015,2100)
-	press=1013.25
-	con=HydroMetCon()
-	vL=['tmean','ea','prcp','vpd','rswd']
-	mdL=['CESM2','CNRM-CM6-1','GFDL-ESM4','HadGEM3-GC31-LL','MIROC-ES2L','MPI-ESM1-2-LR']
-	#mdL=['MIROC-ES2L','MPI-ESM1-2-LR']
-	dC={}
-	for md in mdL:
-		print(md)
-		flL=os.listdir(pth + '\\' + md)
-		def GetFileName(flL,v,period):
-			fl1=[]
-			for fl in flL:
-				if fl.startswith(v):
-					if period in fl:
-						fl1=fl
-			return fl1
+#%%
+def Calc_TOA_Reflected_RSW(rswd,a_surf):
+	# Bird et al. (Eq 5)
+	f_cloud=0.7
+	S=1-f_cloud # Sunniness (% of possible sunshine
+	k_cloud=0.15 # reflectivity of clouds (0=clouds are transparent)
+	a_cloud=k_cloud*(1-S)
+	t_cloud=0.52 # Haigh (2007)
+	rswr=rswd*(a_cloud+( (t_cloud**2*a_surf)/(1-a_cloud*a_surf) ))
+	return rswr
 
-		# Initialize
-		dC[md]={}
-		dC[md]={}
-		for v in vL:
-			dC[md][v]=np.zeros((tvm.shape[0],zRef['m'],zRef['n']))
+#%%
+def ConvertEmissionToRF(E):
+	# Input: E, emission (tCO2e/ha)
 
-		# Temperature
-		fl=GetFileName(flL,'tas','historical')
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		z0=d0['tas']
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
-			dC[md]['tmean'][indT[0],:,:]=z1-273.15
-		fl=GetFileName(flL,'tas',scn)
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		z0=d0['tas']
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
-			dC[md]['tmean'][indT[0],:,:]=z1-273.15
-		#plt.plot(dC[md]['tmean'][:,10,10])
+	# Rotenberg and Yakir (2010)
+	co2_re=5.35 # Radiative efficiency of CO2 (W m2)
+	co2_ref=385 # Base CO2 concentration ppmv
+	co2_specific_density=2.13E+12 #	Specific density of CO2 (kg C ppmv-1)
+	af=0.5 # CO2 airborne fraction
+	#M_co2=44.0065 #Molecular mass of carbon (g/mol)
+	#M_air=28.95 # Molecular mass of dry air (g/mol)
+	#m_air=5.148e15 # mass of atmosphere (Mg)
+	nanoWperW=1e9
+	sqmperha=1e4
+	kgpertonne=1e3
 
-		# Humidity
-		fl=GetFileName(flL,'huss','historical')
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		z0=d0['huss']*press/(0.378*d0['huss']+0.622) # Convert to hPa
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
-			dC[md]['ea'][indT[0],:,:]=z1
-		fl=GetFileName(flL,'huss',scn)
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		z0=d0['huss']*press/(0.378*d0['huss']+0.622) # Convert to hPa
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
-			dC[md]['ea'][indT[0],:,:]=z1
-		#plt.plot(dC[md]['ea'][:,10,10])
+	# Convert units of input emission
+	E_c=E/3.667*kgpertonne/sqmperha # kgC m-2
+	#E_c=E/3.667*kgpertonne # kgC ha-1
 
-		# Radiation
-		fl=GetFileName(flL,'rsds','historical')
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		z0=d0['rsds']*86400/1e6 # Converted from W/m2 to MJ/m2/d-1
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
-			dC[md]['rswd'][indT[0],:,:]=z1
-		fl=GetFileName(flL,'rsds',scn)
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		z0=d0['rsds']*86400/1e6 # Converted from W/m2 to MJ/m2/d-1
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
-			dC[md]['rswd'][indT[0],:,:]=z1
-		#plt.plot(dC[md]['rswd'][:,10,10])
+	# Convert emission to change in atmospheric concentration
+	co2_delta=E_c/co2_specific_density # ppmv CO2
 
-		# Precipitation
-		fl=GetFileName(flL,'pr','historical')
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		# Convert from kg m-2 s-1 to mm/mo
-		z0=d0['pr']
-		for mo in range(12):
-			z0[mo::12,:,:]=86400*z0[mo::12,:,:]*con['DIM'][mo]
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvH0[iT,0]) & (tvm[:,1]==tvH0[iT,1]) )[0]
-			dC[md]['prcp'][indT[0],:,:]=z1
-		fl=GetFileName(flL,'pr',scn)
-		d0=gu.ReadNC(pth + '\\' + md + '\\' + fl)
-		lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
-		ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
-		indS=np.where( (lat0>40) & (lat0<65) & (lon0>-140) & (lon0<-100) )
-		lat1=lat0[indS]; lon1=lon0[indS]
-		# Convert from kg m-2 s-1 to mm/mo
-		z0=d0['pr']
-		for mo in range(12):
-			z0[mo::12,:,:]=86400*z0[mo::12,:,:]*con['DIM'][mo]
-		for iT in range(z0.shape[0]):
-			z1=z0[iT,:,:].T
-			z1=z1[indS]
-			z1=griddata( (lon1,lat1),z1,(lon,lat),method='cubic')
-			indT=np.where( (tvm[:,0]==tvF0[iT,0]) & (tvm[:,1]==tvF0[iT,1]) )[0]
-			dC[md]['prcp'][indT[0],:,:]=z1
-		#plt.plot(dC[md]['rswd'][:,10,10])
+	# Radiative forcing (W m2)
+	RF=co2_re*np.log(1+(co2_delta/co2_ref))
 
-	# Add vpd
-	for md in mdL:
-		dC[md]['vpd']=np.maximum(0,GetEstar(dC[md]['tmean'])-dC[md]['ea'])
+	# Radiative forcing (nW m-2 ha-1)
+	RF=RF*nanoWperW*sqmperha
+	#RF=RF*nanoWperW
 
-	# Add water balance
-	for md in mdL:
-		vwbL=['cwd','eta','etp','melt','runoff','ws','wsp']
-		for v in vwbL:
-			dC[md][v]=np.zeros((tvm.shape[0],zRef['m'],zRef['n']))
-		par={}
-		par['Method']='Grid'
-		par['Ws_max']=200.0 # mm
-		par['Tmin']=-3.0
-		par['Tmax']=3.0
-		par['Ei_FracMax']=0.15
-		par['Ei_ALMax']=5.0
-		par['ETp Method']='Penman-Monteith'
-		par['Daily_Interval']=5
-		par['Include Rainfall Fraction']='No'
-		vi={}
-		for iT in range(tvm.shape[0]):
-			print('Year:' + str(tvm[iT,0]) + ', Month:' + str(tvm[iT,1]) )
-			mo=tvm[iT,1]
-			vi['Month']=mo
-			vi['LAI']=5.0
-			vi['Gs']=0.010
-			vi['Ga']=0.058
-			vi['tmean']=dC[md]['tmean'][iT,:,:][iLand]
-			vi['prcp']=dC[md]['prcp'][iT,:,:][iLand]
-			vi['vpd']=dC[md]['vpd'][iT,:,:][iLand]
-			vi['rswn']=dC[md]['rswd'][iT,:,:][iLand]
-			vo=WBM_SparseGrid(par,vi)
-			vi['ws']=vo['ws']
-			vi['wsp']=vo['wsp']
-			vo['cwd']=vo['etp']-vo['eta']
-			for v in vwbL:
-				dC[md][v][iT,:,:][iLand]=vo[v]
-	#plt.plot(dC[md]['ws'][:,150,150])
+	return RF
 
-	# Calculate seasonal indicators
-	tva=np.arange(1950,2101,1)
-	iTmu=np.where( (tva>=1971) & (tva<=2000) )[0]
-	dCS={}
-	for md in mdL:
-		dCS[md]={}
-		dCS[md]={}
-		dCS[md]['tmean']={'ann':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
-		dCS[md]['ws']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
-		dCS[md]['cwd']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
-		dCS[md]['cmi']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
-		dCS[md]['prcp']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
-		dCS[md]['etp']={'mjjas':np.zeros((tva.shape[0],zRef['m'],zRef['n']))}
-		for iY in range(tva.size):
-			iT=np.where( (tvm[:,0]==tva[iY]) )[0]
-			dCS[md]['tmean']['ann'][iY]=np.mean(dC[md]['tmean'][iT,:,:],axis=0)
-			iT=np.where( (tvm[:,0]==tva[iY]) & (tvm[:,1]>=5) & (tvm[:,1]<=9) )[0]
-			dCS[md]['ws']['mjjas'][iY]=np.mean(dC[md]['ws'][iT,:,:],axis=0)
-			dCS[md]['cwd']['mjjas'][iY]=np.mean(dC[md]['cwd'][iT,:,:],axis=0)
-			dCS[md]['cmi']['mjjas'][iY]=np.mean(dC[md]['prcp'][iT,:,:]-dC[md]['etp'][iT,:,:],axis=0)
-			dCS[md]['prcp']['mjjas'][iY]=np.mean(dC[md]['prcp'][iT,:,:],axis=0)
-			dCS[md]['etp']['mjjas'][iY]=np.mean(dC[md]['etp'][iT,:,:],axis=0)
+#%%
+def Run_FAIR(meta,dfConfig,dfVolcanic,path_emissions):
 
-	# Convert to anomalies
-	dCSa=copy.deepcopy(dCS)
-	for md in mdL:
-		for k in dCSa[md].keys():
-			for j in dCSa[md][k].keys():
-				mu=np.mean(dCSa[md][k][j][iTmu,:,:],axis=0)
-				for iY in range(tva.size):
-					dCSa[md][k][j][iY,:,:]=dCSa[md][k][j][iY,:,:]-mu
+	f=FAIR() # ch4_method='thornhill2021'
+	f.define_time(1750,2150,1) # Define time period
 
-	# Compress
-	for md in mdL:
-		for k in dCS[md].keys():
-			for j in dCS[md][k].keys():
-				dCS[md][k][j]=dCS[md][k][j]/meta['SF']['Climate'][k]
-				dCS[md][k][j]=dCS[md][k][j].astype('int16')
-				dCSa[md][k][j]=dCSa[md][k][j]/meta['SF']['Climate'][k]
-				dCSa[md][k][j]=dCSa[md][k][j].astype('int16')
+	# Define forcings
+	#frcL=['CO2','CH4','N2O','CO','Land use','Volcanic','Solar','Aerosol-cloud interactions','Aerosol-radiation interactions','Ozone','Stratospheric water vapour']
+	#meta['Modules']['FAIR']['Forcings']
 
-	# Save
-	gu.opickle(pth + '\\cmip6_actuals_' + scn + '.pkl',dCS)
-	gu.opickle(pth + '\\cmip6_anomalies' + scn + '.pkl',dCSa)
+	# Define scenarios
+	sL=['ssp370']
+	f.define_scenarios(sL)
+
+	# Define configs
+	models=dfConfig['model'].unique()
+	configs=[]
+	for imodel, model in enumerate(models):
+		for run in dfConfig.loc[dfConfig['model']==model,'run']:
+			configs.append(f"{model}_{run}")
+	f.define_configs(configs)
+	
+	# Define species
+	#species,properties=read_properties(path + '//species_configs_properties.csv')
+	species,properties=read_properties()
+	f.define_species(species,properties)
+	
+	# Create arrays
+	f.allocate()
+	
+	# Populate inputs
+	f.fill_species_configs()
+	
+	# Populate emissions
+	f.fill_from_rcmip()
+	f.fill_from_csv(emissions_file=path_emissions)
+	
+	# Overwrite volcanic emissions
+	dfVolcanic[1750:].head()
+	#volcanic_forcing=np.zeros(351)
+	volcanic_forcing=np.zeros(401)
+	volcanic_forcing[:271]=dfVolcanic[1749:].groupby(np.ceil(dfVolcanic[1749:].index) // 1).mean().squeeze().values
+	fill(f.forcing,volcanic_forcing[:,None,None],specie="Volcanic") # sometimes need to expand the array
+	
+	# The concentration in the first timestep will be set to the baseline concentration, which are the IPCC AR6 1750 values.
+	initialise(f.concentration,f.species_configs['baseline_concentration'])
+	initialise(f.forcing,0)
+	initialise(f.temperature,0)
+	initialise(f.cumulative_emissions,0)
+	initialise(f.airborne_emissions,0)
+	
+	# Populate climate configurations
+	models=dfConfig['model'].unique()
+	seed=1355763
+	for config in configs:
+		model, run = config.split('_')
+		condition = (dfConfig['model']==model) & (dfConfig['run']==run)
+		fill(f.climate_configs['ocean_heat_capacity'], dfConfig.loc[condition, 'C1':'C3'].values.squeeze(), config=config)
+		fill(f.climate_configs['ocean_heat_transfer'], dfConfig.loc[condition, 'kappa1':'kappa3'].values.squeeze(), config=config)
+		fill(f.climate_configs['deep_ocean_efficacy'], dfConfig.loc[condition, 'epsilon'].values[0], config=config)
+		fill(f.climate_configs['gamma_autocorrelation'], dfConfig.loc[condition, 'gamma'].values[0], config=config)
+		fill(f.climate_configs['sigma_eta'], dfConfig.loc[condition, 'sigma_eta'].values[0], config=config)
+		fill(f.climate_configs['sigma_xi'], dfConfig.loc[condition, 'sigma_xi'].values[0], config=config)
+		fill(f.climate_configs['stochastic_run'], True, config=config)
+		fill(f.climate_configs['use_seed'], True, config=config)
+		fill(f.climate_configs['seed'], seed, config=config)
+		seed = seed + 399
+	
+	# Run
+	f.run()
+
+	d={}
+	d['Time']=f.timebounds
+	for scn in sL:
+		d[scn]={}
+		d[scn]['Emissions']={}
+		for sp in species:
+			d[scn]['Emissions'][sp]=np.mean(f.emissions.loc[dict(scenario=scn,specie=sp)].to_numpy(),axis=1)
+		d[scn]['Concentrations']={}
+		for sp in species:
+			d[scn]['Concentrations'][sp]=np.mean(f.concentration.loc[dict(scenario=scn,specie=sp)].to_numpy(),axis=1)
+		d[scn]['RF']={}
+		for frc in meta['Modules']['FAIR']['Forcings']:
+			d[scn]['RF'][frc]=np.mean(f.forcing.loc[dict(scenario=scn,specie=frc)].to_numpy(),axis=1)
+		d[scn]['RF Total']=np.mean(f.forcing_sum.loc[dict(scenario=scn)].to_numpy(),axis=1)
+		d[scn]['Temperature']=np.mean(f.temperature.loc[dict(scenario=scn,layer=0)].to_numpy(),axis=1)
+
+	return d
+
+#%%
+def Calc_RF_FAIR(meta,pNam,mos):
+
+	# Only populating All and only populating mean (not applied to sum yet)
+	iPS=0
+	iSS=0
+	iYS=0
+	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
+	multi_fair=1e6
+
+	# Modelling in the time period for CMIP6
+	d0={}
+
+	# Import FAIR data
+	dfConfig=pd.read_csv(meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_4xCO2_cummins_ebm3.csv')
+	dfVolcanic=pd.read_csv(meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_volcanic_ERF_monthly_175001-201912.csv',index_col='year')
+
+	# Run the reference (CMIP6-SSP370)
+	path_emissions_ref=meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_Emissions_SSP370.csv'
+	d0['Reference']=Run_FAIR(meta,dfConfig,dfVolcanic,path_emissions_ref)
+
+	# Run each scenario
+	for iScn in range(len(mos[pNam]['Scenarios'])):
+
+		# Adjust the emissions to include deltaE
+		E_co2=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2']['Ensemble Mean'][:,iPS,iSS,iYS]/1e9 # GtCO2/year
+		E_ch4=mos[pNam]['Scenarios'][iScn]['Mean']['E_CH4']['Ensemble Mean'][:,iPS,iSS,iYS]/1e6 # MtCH4/year
+		E_n2o=mos[pNam]['Scenarios'][iScn]['Mean']['E_N2O']['Ensemble Mean'][:,iPS,iSS,iYS]/1e6 # MtN2O/year
+
+		path_emissions_adj=meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_Emissions_SSP370_adjusted.csv'
+		shutil.copyfile(path_emissions_ref,path_emissions_adj)
+		E=gu.ReadCSV(meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_Emissions_SSP370_adjusted.csv',skip_rows=0)
+		#indV=np.where( (E['Variable']=='CO2') | (E['Variable']=='CO2 AFOLU') )[0]
+		indV=np.where( (E['Variable']=='CO2 AFOLU') )[0]
+		for i,yr in enumerate(tv):
+			if yr>2149:
+				continue
+			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+multi_fair*E_co2[i]
+		indV=np.where( (E['Variable']=='CH4') )[0]
+		for i,yr in enumerate(tv):
+			if yr>2149:
+				continue
+			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+multi_fair*E_ch4[i]
+		indV=np.where( (E['Variable']=='N2O') )[0]
+		for i,yr in enumerate(tv):
+			if yr>2149:
+				continue
+			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+multi_fair*E_n2o[i]
+		pd.DataFrame(E).to_csv(path_emissions_adj)
+		d0[iScn]=Run_FAIR(meta,dfConfig,dfVolcanic,path_emissions_adj)
+
+	# Add to modelled time period
+	d1={}
+	ind1=np.where( (d0['Reference']['Time']>=tv[0]) & (d0['Reference']['Time']<=tv[-1]) )[0]
+	ind2=np.where( (tv>=d0['Reference']['Time'][0]) & (tv<=d0['Reference']['Time'][-1]) )[0]
+	ind3=np.where( (tv<meta[pNam]['Project']['Year Project']) )[0]
+	d1['Reference']={}
+	d1['Reference']['RF']={}
+	for v in d0['Reference']['ssp370']['RF'].keys():
+		d1['Reference']['RF'][v]={}
+		d1['Reference']['RF'][v]=np.zeros(tv.size)
+		d1['Reference']['RF'][v][ind2]=d0['Reference']['ssp370']['RF'][v][ind1]
+		d1['Reference']['RF'][v][ind3]=0
+
+	d1['Reference']['RF Total']=np.zeros(tv.size)
+	for v in d0['Reference']['ssp370']['RF'].keys():
+		d1['Reference']['RF Total']=d1['Reference']['RF Total']+d1['Reference']['RF'][v]
+
+	for iScn in range(len(mos[pNam]['Scenarios'])):
+		d1[iScn]['RF']={}
+		for v in d0[iScn]['ssp370']['RF'].keys():
+			d1[iScn]['RF'][v]={}
+			d1[iScn]['RF'][v]=np.zeros(tv.size)
+			if (v=='CO2_AFOLU') | (v=='CH4') | (v=='N2O'):
+				d1[iScn]['RF'][v][ind2]=d0[iScn]['ssp370']['RF'][v][ind1]/multi_fair
+			else:
+				d1[iScn]['RF'][v][ind2]=d0[iScn]['ssp370']['RF'][v][ind1]
+			d1[iScn]['RF'][v][ind3]=0
+		d1[iScn]['RF Total']=np.zeros(tv.size)
+		for v in d0[iScn]['ssp370']['RF'].keys():
+			d1[iScn]['RF Total']=d1[iScn]['RF Total']+d0[iScn]['ssp370'][v]
+
+		# Calculate RF (nW m-2 ha-1)
+		mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem']={}
+		mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem']['Ensemble Mean']=np.zeros(mos[pNam]['Scenarios'][iScn]['Mean']['A']['Ensemble Mean'].shape)
+		mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iScn]['RF Total']-d1['Reference']['RF Total'])
+
+		#mos[pNam]['Scenarios'][iScn]['Mean']['Temperature']={}
+		#mos[pNam]['Scenarios'][iScn]['Mean']['Temperature']['Ensemble Mean']=np.zeros(mos[pNam]['Scenarios'][iScn]['Mean']['A']['Ensemble Mean'].shape)
+		#mos[pNam]['Scenarios'][iScn]['Mean']['Temperature']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iScn]['Temperature']-d1['Reference']['Temperature'])
+
+		for k in d1[iScn]['RF'].keys():
+			mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem_' + k]={}
+			mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem_' + k]['Ensemble Mean']=np.zeros(mos[pNam]['Scenarios'][iScn]['Mean']['A']['Ensemble Mean'].shape)
+			mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem_' + k]['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iScn]['RF'][k]-d1['Reference']['RF'][k])
+
+	# Calculate delta (nW m-2 ha-1)
+	for scnC in mos[pNam]['Delta'].keys():
+		iB=mos[pNam]['Delta'][scnC]['iB']
+		iP=mos[pNam]['Delta'][scnC]['iP']
+		mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem']={}
+		mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem']['Ensemble Mean']=np.zeros(mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['A']['Ensemble Mean'].shape)
+		mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iP]['RF Total']-d1[iB]['RF Total'])
+
+		for k in d1[iScn]['RF'].keys():
+			mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem_' + k]={}
+			mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem_' + k]['Ensemble Mean']=np.zeros(mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['A']['Ensemble Mean'].shape)
+			mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem_' + k]['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iP]['RF'][k]-d1[iB]['RF'][k])
+
+		#mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['Temperature']={}
+		#mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['Temperature']['Ensemble Mean']=np.zeros(mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['A']['Ensemble Mean'].shape)
+		#mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['Temperature']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iP]['Temperature']-d1[iB]['Temperature'])
+
+	return mos
+
+#%% Function for predicting albedo response to harvest
+def Update_AlbedoRF_FromHarvest(tv,t_harv,beta,zone,var):
+	if var=='Albedo':
+		yhat0=beta[zone][0]+beta[zone][1]*(tv-t_harv)
+		yhat=beta[zone][2]*np.ones(tv.size)
+		yhat[tv>=t_harv]=np.maximum(beta[zone][2],yhat0[tv>=t_harv])
+		yhat=yhat-yhat[0]
+	else:
+		yhat0=beta[zone][0]+beta[zone][1]*(tv-t_harv)
+		yhat=beta[zone][2]*np.ones(tv.size)
+		yhat[tv>=t_harv]=np.minimum(beta[zone][2],yhat0[tv>=t_harv])
+		yhat=yhat-yhat[0]
+
+	return yhat
+
+#%%
+def Plot_AlbedoResponseToHarvest(meta):
+	beta_A=gu.ipickle(meta['Paths']['Model']['Parameters'] + '\\Parameters_AlbedoSurfaceShortwave_HarvestResponseByBGCZone.pkl')
+	beta_ARF=gu.ipickle(meta['Paths']['Model']['Parameters'] + '\\Parameters_AlbedoSurfaceShortwaveRF_HarvestResponseByBGCZone.pkl')
+	tv=np.arange(2000,2141,1)
+	t_harv=2022
+	lw=1.25
+	
+	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(20,6))
+	# Albedo
+	var='Albedo'
+	ax[0].plot([-10,200],[0,0],'-',lw=2,color=[0.8,0.8,0.8])
+	zone='CWH'
+	ax[0].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_A,zone,var),'-g',lw=lw,color=[0.5,1,0],label=zone)
+	zone='ICH'
+	ax[0].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_A,zone,var),'--g',lw=lw,color=[0,0.85,0],label=zone)
+	zone='SBS'
+	ax[0].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_A,zone,var),'-.c',lw=lw,label=zone)
+	zone='IDF'
+	ax[0].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_A,zone,var),':r',lw=lw,label=zone)
+	zone='BWBS'
+	ax[0].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_A,zone,var),'-b',color=[0,0,0.5],lw=lw,label=zone)
+	ax[0].set(ylabel='$\Delta$ surface shortwave albedo',xlabel='Time since harest, years',xlim=[-10,85],xticks=np.arange(-10,90,10))
+	ax[0].legend(loc='upper right',frameon=False,facecolor=None,edgecolor='w',fontsize=7)
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
+	# Albedo RF
+	var='Albedo RF'
+	ax[1].plot([-10,200],[0,0],'-',lw=2,color=[0.8,0.8,0.8])
+	zone='CWH'
+	ax[1].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_ARF,zone,var),'-g',lw=lw,color=[0.5,1,0],label=zone)
+	zone='ICH'
+	ax[1].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_ARF,zone,var),'--g',lw=lw,color=[0,0.85,0],label=zone)
+	zone='SBS'
+	ax[1].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_ARF,zone,var),'-.c',lw=lw,label=zone)
+	zone='IDF'
+	ax[1].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_ARF,zone,var),':r',lw=lw,label=zone)
+	zone='BWBS'
+	ax[1].plot(tv-t_harv,Update_AlbedoRF_FromHarvest(tv,t_harv,beta_ARF,zone,var),'-b',color=[0,0,0.5],lw=lw,label=zone)
+	
+	ax[1].set(ylabel='$\Delta$ albedo RF (nW m$^{-2}$ ha$^{-1}$)',xlabel='Time since harest, years',xlim=[-10,85],xticks=np.arange(-10,90,10))
+	#ax[1].legend(loc='lower right',frameon=False,facecolor=None,edgecolor='w',fontsize=7)
+	ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
+	#gu.axletters(ax,plt,0.015,0.88,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'],Labels=['Cold season','Warm season'],LabelSpacer=0.02)
+	plt.tight_layout()
+	if meta['Graphics']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AlbedoRF_ResponseToHarvesting','png',900)
 	return
 
 #%%
+def DownloadAlbedo_Monthly(tvm):
+	for i in range(tvm.shape[0]):
+		dt1=str(tvm[i,0]) + '-' + str(tvm[i,1]) + '-01'
+		dt2=str(tvm[i,0]) + '-' + str(tvm[i,1]) + '-28'
+		y0=ee.ImageCollection("MODIS/061/MCD43A3").select('Albedo_BSA_shortwave').filterDate(dt1,dt2)
 
+		# Mean
+		y1=y0.reduce(ee.Reducer.mean())
+	
+		# Clip
+		aoi=ee.Geometry.BBox(-139,47.25,-113,60.1) # Province wide
+		#aoi=ee.Geometry.BBox(-122.15182314190407,50.51206023665638,-120.0185403010095,51.6781353097244) # Elephant hill fire
+		y2=y1.clip(aoi)
 
+		# Reproject
+		crs='EPSG:3005'
+		scale=500
+		y3=y2.reproject(crs=crs,scale=scale)
 
+		# Define task
+		task=ee.batch.Export.image.toDrive(image=y3,description='albedo_' + str(tvm[i,0]) + '_' + str(tvm[i,1]),scale=scale,maxPixels=1e13,fileFormat="GeoTIFF")
+		task.start()
+	
+	# Status
+	# task.status()
+	return
+
+#%% Reproject albedo actual monthly variability
+def Reproject_Albedo():
+	sf_given=0.001
+	for i in range(tvm.shape[0]):
+		z=gis.OpenGeoTiff(r'D:\Albedo\Province\albedo_' + str(tvm[i,0]) + '_' + str(tvm[i,1]) + '.tif')
+		z['Data']=z['Data']*sf_given
+		z['Data']=z['Data']/meta['Climate']['SF']['Albedo']
+		z['Data']=z['Data'].astype('int16')
+		##plt.matshow(z['Data'],clim=[0,100])
+		pth2=r'D:\Albedo\Province\albedo_' + str(tvm[i,0]) + '_' + str(tvm[i,1]) + 'b.tif'
+		gis.SaveGeoTiff(z,pth2)
+		#pth3=r'C:\Data\BC1ha\Climate\Monthly\Normals\bc1ha_albedo_surf_' + str(tvm[i,0]) + str(tvm[i,1]) + '.tif'
+		pth3=r'D:\Albedo\Province\bc1ha_albedo_' + str(tvm[i,0]) + '_' + str(tvm[i,1]) + '.tif'
+		gis.ReprojectRasterAndClipToRaster(pth2,pth3,meta['Paths']['bc1ha Ref Grid'],meta['Geos']['crs'])
+	#z=gis.OpenGeoTiff(pth3);plt.matshow(z['Data'],clim=[0,1000])
+	return
+
+#%%
+def Calc_Albedo_AnnualSummary(meta):
+	meta=u1ha.Init()
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	iMask=np.where(zRef['Data']==0)
+	moL=[10,11,12,1,2,3]
+	for yr in range(2002,2024):
+		Ac=np.zeros(zRef['Data'].shape,dtype='int16')
+		Aw=np.zeros(zRef['Data'].shape,dtype='int16')
+		Aa=np.zeros(zRef['Data'].shape,dtype='int16')
+		for mo in range(12):
+			print(yr)
+			print(mo+1)
+			z=gis.OpenGeoTiff(r'D:\Albedo\Province\Albedo\Processed\bc1ha_albedo_' + str(yr) + '_' + str(mo+1) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['Albedo'] #;plt.matshow(z['Data'],clim=[0,1000])
+
+			Aa=Aa+z
+			if np.isin(mo,moL)==True:
+				Ac=Ac+z
+			else:
+				Aw=Aw+z
+
+		# Corrections
+		Aa=Aa/12
+		Ac=Ac/6
+		Aw=Aw/6
+
+		z=copy.deepcopy(zRef)
+		z['Data']=Aa
+		z['Data']=z['Data']/meta['Climate']['SF']['Albedo']
+		z['Data']=z['Data'].astype('int16')
+		z['Data'][iMask]=0
+		gis.SaveGeoTiff(z,r'D:\Albedo\Province\Albedo\Processed\bc1ha_albedo_ann_' + str(yr) + '.tif')
+
+		z=copy.deepcopy(zRef)
+		z['Data']=Ac
+		z['Data']=z['Data']/meta['Climate']['SF']['Albedo']
+		z['Data']=z['Data'].astype('int16')
+		z['Data'][iMask]=0
+		gis.SaveGeoTiff(z,r'D:\Albedo\Province\Albedo\Processed\bc1ha_albedo_coldsea_' + str(yr) + '.tif')
+
+		z=copy.deepcopy(zRef)
+		z['Data']=Aw
+		z['Data']=z['Data']/meta['Climate']['SF']['Albedo']
+		z['Data']=z['Data'].astype('int16')
+		z['Data'][iMask]=0
+		gis.SaveGeoTiff(z,r'D:\Albedo\Province\Albedo\Processed\bc1ha_albedo_warmsea_' + str(yr) + '.tif')
+
+	return
+
+#%%
+def Calc_RSW_Absorption_Annual(meta):
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	con=uga.HydroMetCon()
+	tvm=gu.tvec('m',2002,2023)
+	moL=[10,11,12,1,2,3]
+	for yr in range(2002,2024):
+		ArswC=np.zeros(zRef['Data'].shape,dtype='int16')
+		ArswW=np.zeros(zRef['Data'].shape,dtype='int16')
+		ArswA=np.zeros(zRef['Data'].shape,dtype='int16')
+		for mo in range(12):
+			zA=gis.OpenGeoTiff(r'D:\Albedo\Province\Albedo\Processed\bc1ha_albedo_' + str(yr) + '_' + str(mo+1) + '.tif') #;plt.matshow(z['Data'],clim=[0,1000])
+			zA['Data']=zA['Data'].astype('float')*meta['Climate']['SF']['Albedo']
+
+			zRg=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\Monthly\Normals\bc1ha_rswd_norm_1971to2000_' + str(mo+1) + '.tif') #;plt.matshow(z['Data'],clim=[0,1000])
+			zRg['Data']=zRg['Data'].astype('float')*meta['Climate']['SF']['rswd']
+
+			# Convert net shortwave radiation from MJ m-2 d-1 to W m-2
+			zRg['Data']=zRg['Data']*1e6/con['DayLength']
+
+			Beta=0.23 # Bernier et al. 2011, Montenegro et al. 2009
+			Arsw=(1-zA['Data'])*zRg['Data'] + Beta*zRg['Data']*zA['Data']
+
+			ArswA=ArswA+Arsw
+			if np.isin(mo,moL)==True:
+				ArswC=ArswC+Arsw
+			else:
+				ArswW=ArswW+Arsw
+		ArswA=ArswA/12
+		ArswC=ArswC/6
+		ArswW=ArswW/6
+	
+		z=copy.deepcopy(zA)
+		z['Data']=ArswA
+		z['Data']=z['Data']/meta['Climate']['SF']['AbsorptionRSW']
+		z['Data']=z['Data'].astype('int16')
+		gis.SaveGeoTiff(z,r'D:\Albedo\Province\AbsorptionRSW\bc1ha_AbsorptionRSW_ann_' + str(yr) + '.tif')
+	
+		z=copy.deepcopy(zA)
+		z['Data']=ArswC
+		z['Data']=z['Data']/meta['Climate']['SF']['AbsorptionRSW']
+		z['Data']=z['Data'].astype('int16')
+		gis.SaveGeoTiff(z,r'D:\Albedo\Province\AbsorptionRSW\bc1ha_AbsorptionRSW_coldsea_' + str(yr) + '.tif')
+	
+		z=copy.deepcopy(zA)
+		z['Data']=ArswW
+		z['Data']=z['Data']/meta['Climate']['SF']['AbsorptionRSW']
+		z['Data']=z['Data'].astype('int16')
+		gis.SaveGeoTiff(z,r'D:\Albedo\Province\AbsorptionRSW\bc1ha_AbsorptionRSW_warmsea_' + str(yr) + '.tif')
+	return
+
+#%%
+def Calc_AlbedoRF_Climatology_ByBGCZone(meta,zG,con,ivl):
+	nanoWperW=1e9
+	sqmperha=1e4
+
+	ikp={}
+	d={}
+	for zone in meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys():
+		ikp[zone]=np.where( (zG['lc_comp1_2019']==1) & (zG['bgcz']==meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'][zone]) )
+		d[zone]={}
+		d[zone]['Albedo']=np.zeros(12)
+		d[zone]['RSWD']=np.zeros(12)
+		d[zone]['AbsorptionRSW']=np.zeros(12)
+		d[zone]['Albedo RF']=np.zeros(12)
+
+	for mo in range(12):
+		zA=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\Monthly\Normals\bc1ha_albedo_surf_norm_2002to2023_' + str(mo+1) + '.tif')['Data'][0::ivl,0::ivl].astype('float')*meta['Climate']['SF']['Albedo']
+
+		# Convert net shortwave radiation from MJ m-2 d-1 to W m-2
+		zRg=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\Monthly\Normals\bc1ha_rswd_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][0::ivl,0::ivl].astype('float')*meta['Climate']['SF']['rswd']
+		zRg=zRg*1e6/con['DayLength']
+	
+		Beta=0.23 # Bernier et al. 2011, Montenegro et al. 2009
+		Arsw=(1-zA)*zRg + Beta*zRg*zA
+
+		for zone in meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys():
+			d[zone]['Albedo'][mo]=np.mean(zA[ikp[zone]])
+			d[zone]['RSWD'][mo]=np.mean(zRg[ikp[zone]])
+			d[zone]['AbsorptionRSW'][mo]=np.mean(Arsw[ikp[zone]])
+			d[zone]['Albedo RF'][mo]=np.mean(Arsw[ikp[zone]]/meta['Param']['BE']['Biophysical']['Area_EarthSurface']*nanoWperW*sqmperha)
+
+	return d
+
+#%%
+def Plot_Albedo_Climatology_ByBGCZone(meta):
+
+	d=gu.ipickle(meta['Paths']['DB']['SurfaceClimate'] + '\\Variables_AlbedoClimatology_ByBGCZone.pkl')
+
+	plt.close('all'); fig,ax=plt.subplots(1,3,figsize=gu.cm2inch(22,6)); lw=1
+	v='Albedo'
+	zone='CWH'
+	ax[0].plot(d[zone][v],'-ko',lw=lw,color=[0.5,1,0],label=zone)
+	zone='SBS'
+	ax[0].plot(d[zone][v],'-ks',lw=lw,color=[0,0,0.6],label=zone)
+	ax[0].set(ylabel='Albedo, surface shortwave',xlabel='Month',xticks=np.arange(12),xticklabels=['Jan','','Mar','','May','','Jul','','Sep','','Nov',''],xlim=[-1,12])
+	ax[0].legend(loc='lower left',frameon=False,facecolor=None,edgecolor='w',fontsize=7)
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
+	
+	v='RSWD'
+	zone='CWH'
+	ax[1].plot(d[zone][v],'-ko',lw=lw,color=[0.5,1,0],label=zone)
+	zone='SBS'
+	ax[1].plot(d[zone][v],'-ks',lw=lw,color=[0,0,0.6],label=zone)
+	ax[1].set(ylabel='Radiation, shortwave down (W m$^{-2}$)',xlabel='Month',xticks=np.arange(12),xticklabels=['Jan','','Mar','','May','','Jul','','Sep','','Nov',''],xlim=[-1,12])
+	ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
+	
+	v='Albedo RF'
+	zone='CWH'
+	ax[2].plot(d[zone][v],'-ko',lw=lw,color=[0.5,1,0],label=zone)
+	zone='SBS'
+	ax[2].plot(d[zone][v],'-ks',lw=lw,color=[0,0,0.6],label=zone)
+	ax[2].set(ylabel='Radiative forcing (nW m$^{-2}$ ha$^{-1}$)',xlabel='Month',xticks=np.arange(12),xticklabels=['Jan','','Mar','','May','','Jul','','Sep','','Nov',''],xlim=[-1,12])
+	ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].tick_params(length=meta['Graphics']['gp']['tickl'])
+	gu.axletters(ax,plt,0.0175,0.94,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
+	plt.tight_layout()
+	if meta['Graphics']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AlbedoRF_ResponseToHarvesting','png',900)
+	return

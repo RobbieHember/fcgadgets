@@ -35,13 +35,13 @@ def MetropolisHastings(thetaInit,thetaScale,thetaMin,thetaMax,SearchWidth,y,mode
 	chain[0]=thetaInit
 	ll=np.zeros(N_Iter)
 	ar=np.zeros(N_Iter)
-	for i in tqdm(range(N_Iter-1)):		
-		thetaProposed=proposal(chain[i],SearchWidth,thetaMin,thetaMax)		
-		yhatProposed,Dummy=model(thetaProposed)		
-		log_post_proposal=log_prior(thetaProposed,thetaScale)+log_likelihood(thetaProposed,y,yhatProposed)		
+	for i in tqdm(range(N_Iter-1)):
+		thetaProposed=proposal(chain[i],SearchWidth,thetaMin,thetaMax)
+		yhatProposed,Dummy=model(thetaProposed)
+		log_post_proposal=log_prior(thetaProposed,thetaScale)+log_likelihood(thetaProposed,y,yhatProposed)
 		if i==0:
 			yhatPrv,Dummy=model(chain[i])
-			log_post_prv=log_prior(chain[i],thetaScale)+log_likelihood(chain[i],y,yhatPrv)		
+			log_post_prv=log_prior(chain[i],thetaScale)+log_likelihood(chain[i],y,yhatPrv)
 		post_prob=np.exp(log_post_proposal-log_post_prv) # symmetric proposal
 		if np.random.rand() < post_prob:
 			chain[i+1]=thetaProposed
@@ -51,7 +51,7 @@ def MetropolisHastings(thetaInit,thetaScale,thetaMin,thetaMax,SearchWidth,y,mode
 			ar[i]=1
 		else:
 			chain[i+1]=chain[i]
-			ll[i+1]=log_post_prv		
+			ll[i+1]=log_post_prv
 	return chain,ll,ar
 
 #%% Metropolis Hastings version of MCMC (with model outputting yobs)
@@ -60,13 +60,13 @@ def MetropolisHastings2(thetaInit,thetaScale,thetaMin,thetaMax,SearchWidth,y,mod
 	chain[0]=thetaInit
 	ll=np.zeros(N_Iter)
 	ar=np.zeros(N_Iter)
-	for i in tqdm(range(N_Iter-1)):		
-		thetaProposed=proposal(chain[i],SearchWidth,thetaMin,thetaMax)		
-		yhatProposed,y=model(thetaProposed)		
-		log_post_proposal=log_prior(thetaProposed,thetaScale)+log_likelihood(thetaProposed,y,yhatProposed)		
+	for i in tqdm(range(N_Iter-1)):
+		thetaProposed=proposal(chain[i],SearchWidth,thetaMin,thetaMax)
+		yhatProposed,y=model(thetaProposed)
+		log_post_proposal=log_prior(thetaProposed,thetaScale)+log_likelihood(thetaProposed,y,yhatProposed)
 		if i==0:
 			yhatPrv,y=model(chain[i])
-			log_post_prv=log_prior(chain[i],thetaScale)+log_likelihood(chain[i],y,yhatPrv)		
+			log_post_prv=log_prior(chain[i],thetaScale)+log_likelihood(chain[i],y,yhatPrv)
 		post_prob=np.exp(log_post_proposal-log_post_prv) # symmetric proposal
 		if np.random.rand()<post_prob:
 			chain[i+1]=thetaProposed
@@ -101,45 +101,19 @@ def MetropolisHastings2b(thetaInit,thetaScale,thetaMin,thetaMax,SearchWidth,y,mo
 		print(ll[i+1])
 	return chain,ll,ar,E
 
-#%% Metropolis Hastings version of MCMC (with model outputting yobs,potentially not starting from scratch)
-# *** NOT WORKING ***
-def MetropolisHastings2c(thetaInit,thetaScale,thetaMin,thetaMax,SearchWidth,y,model,N_Iter,chain,ll,ar,E,iStart):
-	for i in tqdm(range(iStart,N_Iter-1)):
-		thetaProposed=proposal(chain[i],SearchWidth,thetaMin,thetaMax)
-		yhatProposed,y,E[i]=model(thetaProposed)
-		log_likelihood_custom=-1*E[i]['Total Absolute Relative Error'][0]
-		#log_post_proposal=log_prior(thetaProposed,thetaScale)+log_likelihood(thetaProposed,y,yhatProposed)
-		log_post_proposal=log_prior(thetaProposed,thetaScale)+log_likelihood_custom
-		if i==iStart:
-			yhatPrv,y,E[i]=model(chain[i])
-			log_post_prv=log_prior(chain[i],thetaScale)+log_likelihood(chain[i],y,yhatPrv)
-		post_prob=np.exp(log_post_proposal - log_post_prv) # Symmetric proposal
-		if np.random.rand() < post_prob:
-			chain[i+1]=thetaProposed
-			ll[i+1]=log_post_proposal
-			log_post_prv=log_post_proposal
-			yhatPrv=yhatProposed
-			ar[i]=1
-		else:
-			chain[i+1]=chain[i]
-			ll[i+1]=log_post_prv
-		print(ll[i+1])
-	return chain,ll,ar,E
-
 #%% Test
-
 def Test():
 	
 	global x,y,yhat
 	
 	# Training data
 	thetaTrue=[0,5,10]
-	x=np.linspace(-20,20)	
+	x=np.linspace(-20,20)
 	y=thetaTrue[0]+thetaTrue[1]*x+sc.norm.rvs(loc=0,scale=thetaTrue[-1],size=x.shape)
 	#plt.close('all'); plt.plot(x,y,'.'); plt.xlabel('x'); plt.ylabel('y'); plt.title('data')
 	
 	# our linear model a+b*x
-	def model(theta):		
+	def model(theta):
 		yhat=theta[0]+theta[1]*x
 		Dummy=[]
 		return yhat,Dummy

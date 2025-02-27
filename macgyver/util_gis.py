@@ -43,6 +43,10 @@ def ImportSRSs():
 	# BC1ha
 	srs['String']['BC1ha']='+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +no_defs +a=6378137 +rf=298.257222101 +to_meter=1'
 	srs['Proj']['BC1ha']=pyproj.Proj(srs['String']['BC1ha'])
+
+	# Robinson
+	srs['String']['Robinson']='+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs'
+	srs['Proj']['Robinson']=pyproj.Proj(srs['String']['Robinson'])
 	return srs
 
 #%% Resample raster
@@ -295,6 +299,7 @@ def ClipToRaster_ByFile(fin,fout,fref):
 
 #%% Reproject and clip raster
 def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
+	# Only outputs integers
 
 	# Grid to reproject
 	ds=gdal.Open(fin,0)
@@ -326,8 +331,10 @@ def ReprojectRasterAndClipToRaster(fin,fout,fref,crs):
 	z=ClipToRaster(z_out,z_ref)
 
 	# Save clipped and reprojected grid
-
-	z['Data']=z['Data'].astype('int16')
+	if np.max(z['Data'])>32767:
+		z['Data']=z['Data'].astype('int32')
+	else:
+		z['Data']=z['Data'].astype('int16')
 	SaveGeoTiff(z,fout)
 
 	return z
@@ -676,3 +683,20 @@ def ShuffleFill(zIn,wShuf,idMissing):
 	ind=np.where(zIn!=idMissing)
 	zOut[ind]=zIn[ind]
 	return zOut
+
+#%%
+def CreateEmptyRaster(path,xv,yv,crs):
+	z=np.random.randint(5,size=(yv.size,xv.size),dtype='int8')
+	with rasterio.open(
+		path,
+		mode="w",
+		driver="GTiff",
+		height=z.shape[0],
+		width=z.shape[1],
+		count=1,
+		dtype=z.dtype,
+		crs=crs,
+		transform=from_origin(xv[0],yv[-1],10,10), # Inputs (west,north,xsize,ysize)
+		) as new_dataset:
+		new_dataset.write(z,1)
+	return

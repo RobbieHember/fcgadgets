@@ -5,6 +5,7 @@ import gc
 import matplotlib.pyplot as plt
 import geopandas as gpd
 import pandas as pd
+import pyproj
 from scipy.interpolate import griddata
 import copy
 from shapely.geometry import Polygon,Point,box,shape
@@ -26,9 +27,9 @@ import fcgadgets.macgyver.util_query_gdb as qgdb
 import fcgadgets.gaia.gaia_util as gaia
 import fcexplore.field_plots.Processing.fp_util as ufp
 import fcgadgets.cbrunner.cbrun_util as cbu
+import fcgadgets.na1k.na1k_util as u1k
 
 #%%
-
 def ImportNormalsFromClimateNA(meta):
 	# 2024 - these are tiffs from TW because the .asc temperatures were not giving decimals
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
@@ -96,7 +97,6 @@ def ImportNormalsFromClimateNA(meta):
 			z['Data']=z['Data']/meta['Climate']['SF'][vL2[iV]]
 			z['Data']=z['Data'].astype('int16')
 			gis.SaveGeoTiff(z,fout)
-
 	return
 
 #%%
@@ -124,6 +124,21 @@ def CalcActualVapourPressureNormalFromTemps(meta):
 		z['Data']=z['Data']/meta['Climate']['SF']['ea']
 		z['Data']=z['Data'].astype('int16')
 		gis.SaveGeoTiff(z,meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_ea_fromtmin_norm_1971to2000_' + str(mo) + '.tif')
+	return
+
+#%%
+def CalcActualVapourPressureNormalFromNA1k(meta):
+	metaNA=u1k.Init()
+	fRef=meta['Paths']['bc1ha Ref Grid']
+	xlim=[-2100000,-1000000]; ylim=[1100000,3000000]
+	f1=meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\tmp.tif'
+	for mo in range(1,13):
+		z0=gis.OpenGeoTiff(metaNA['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_biasadj_norm_1971to2000_' + str(mo) + '.tif')
+		z0=gis.ClipRasterByXYLimits(z0,xlim,ylim)
+		gis.SaveGeoTiff(z0,f1)
+		f2=meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_ea_biasadj_from_na1k_norm_1971to2000_' + str(mo) + '.tif'
+		gis.ReprojectRasterAndClipToRaster(f1,f2,fRef,meta['Geos']['crs'])
+		os.remove(f1)
 	return
 
 #%%
@@ -292,7 +307,9 @@ def CalcActualVapourPressureNormalBiasCorrected(meta):
 def CalcVapourPressureDeficitNormal(meta):
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 	for mo in range(1,13):
-		zEa=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_ea_biasadj_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['ea']
+		#zEa=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_ea_biasadj_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['ea']
+		zEa=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_ea_biasadj_from_na1k_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['ea']
+
 		zEs=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_es_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['es']
 		vpd=np.maximum(0,zEs-zEa)
 
@@ -316,17 +333,6 @@ def ConvertBCElevationToGeographicForClimateNA(meta):
 	#plt.close('all'); plt.matshow(zE['Data'])
 	zE=gis.ClipRasterByXYLimits(zE,[-139.15,-114],[48.25,60.05])
 	gis.SaveGeoTiff(zE,pthout)
-	return
-
-#%%
-def SolarRadiationVsTerrain(meta):
-
-	vList=['lc_comp1_2019','rswd_gs_n','aspect','slope','elev']
-	z0=u1ha.Import_Raster(meta,[],vList,'Extract Grid')
-
-	bw=200; bin=np.arange(0,3000,bw)
-	N,mu,med,sig,se=gu.discres(x,y,bw,bin)
-
 	return
 
 #%%
@@ -361,7 +367,11 @@ def CalcSurfaceWaterBalanceNormals(meta):
 		nrms['prcp'][iM]=np.maximum(0,gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_prcp_norm_1971to2000_' + str(iM+1) + '.tif')['Data'][0::ivl,0::ivl][iMask].astype('float')*meta['Climate']['SF']['prcp'])
 		nrms['vpd'][iM]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_vpd_norm_1971to2000_' + str(iM+1) + '.tif')['Data'][0::ivl,0::ivl][iMask].astype('float')*meta['Climate']['SF']['vpd']
 
-	#a=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_rswd_norm_1971to2000_' + str(iM+1) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['rswd']
+	# QA - compare BC1ha normals with NA1k normals:
+	#iM=7
+	#z=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_vpd_norm_1971to2000_' + str(iM) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['vpd']
+	#iMask=np.where( (zRef['Data']>0) & (z>-90) )
+	#np.mean(z[iMask])
 
 	plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(14,14)) # See if it is working
 	cnt=0
@@ -440,3 +450,57 @@ def CalcSurfaceWaterBalanceNormals(meta):
 		gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\Climate\\Summaries\\Normals\\bc1ha_' + v + '_ann_norm_1971to2000.tif')
 
 	return
+
+#%%
+def SolarRadiationVsTerrain(meta):
+	vList=['lc_comp1_2019','rswd_gs_n','aspect','slope','elev']
+	z0=u1ha.Import_Raster(meta,[],vList,'Extract Grid')
+	bw=200; bin=np.arange(0,3000,bw)
+	N,mu,med,sig,se=gu.discres(x,y,bw,bin)
+	return
+
+#%% 
+def ClimateStatsByBGCZone(meta):
+	# *** Needs updating ***
+	zBGC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\becz.tif')
+	zBGC['Data']=zBGC['Data'].flatten()
+	lutBGC=gu.ReadExcel(meta['Paths']['bc1ha'] + '\\VRI 2023\\becz_lut.xlsx')
+	
+	zMAT=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\BC1ha_mat_norm_1971to2000_si_hist_v1.tif')
+	zMAT['Data']=zMAT['Data'].flatten().astype(float)/10
+	
+	zWS=gis.OpenGeoTiff(r'C:\Data\BC1ha\Climate\BC1ha_ws_gs_norm_1971to2000_comp_hist_v1.tif')
+	zWS['Data']=zWS['Data'].flatten().astype(float)
+	
+	zSI=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\si.tif')
+	zSI['Data']=zSI['Data'].flatten().astype(float)
+	
+	zA=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\proj_age_1.tif')
+	zA['Data']=zA['Data'].flatten().astype(float)
+	
+	lutBGC['MAT']=np.zeros(lutBGC['VALUE'].size)
+	lutBGC['WS']=np.zeros(lutBGC['VALUE'].size)
+	lutBGC['SI']=np.zeros(lutBGC['VALUE'].size)
+	lutBGC['Age']=np.zeros(lutBGC['VALUE'].size)
+	for i in range(lutBGC['VALUE'].size):
+		ind=np.where( (zBGC['Data']==lutBGC['VALUE'][i]) & (zMAT['Data']>=-50) & (zWS['Data']>=0) & (zWS['Data']<=200) & (zSI['Data']>0) & (zSI['Data']<100) & (zA['Data']>=0) & (zA['Data']<1000) )[0]
+		lutBGC['MAT'][i]=np.mean(zMAT['Data'][ind])
+		lutBGC['WS'][i]=np.mean(zWS['Data'][ind])
+		lutBGC['SI'][i]=np.mean(zSI['Data'][ind])
+		lutBGC['Age'][i]=np.mean(zA['Data'][ind])
+	
+	df=pd.DataFrame(lutBGC)
+	df.to_excel(r'C:\Data\BC1ha\Climate\tmp.xlsx')
+	return
+
+#%% Plot climate space
+def ClimateSpace(meta,vX,vY):
+	vX='tmean_ann_n'
+	vY='ws_mjjas_n'
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	z0=u1ha.Import_Raster(meta,[],['lc_comp1_2019',vX,vY],'Extract Grid')
+	pX=np.percentile(z0[vX],[0.25,99.75])
+	pY=np.percentile(z0[vY],[0.25,99.75])
+	return
+
+

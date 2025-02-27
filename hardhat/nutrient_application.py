@@ -8,12 +8,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 	if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
 		bNA=meta['Param']['BEV']['NutrientApp']
 	else:
-		#bNA=meta['Param']['By Ensemble']['NutrientApp']
-		try:
- 			# This crashed during harvest demo
- 			bNA=meta['Param']['By Ensemble']['NutrientApp']
-		except:
- 			bNA=meta['Param']['BEV']['NutrientApp']
+		bNA=meta['Param']['By Ensemble']['NutrientApp']
 
 	# Pull out index to applications
 	iApp=meta['Modules']['NutrientApp']['iApplication']
@@ -32,8 +27,6 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		# Start response counter
 		#----------------------------------------------------------------------
 
-		#meta['Modules']['NutrientApp']['ResponseCounter'][iApp]=meta['Modules']['NutrientApp']['ResponseCounter'][iApp]+1
-		#meta['Modules']['NutrientApp']['ResponseCounterContinuous'][iApp]=meta['Modules']['NutrientApp']['ResponseCounterContinuous'][iApp]+1
 		meta['Modules']['NutrientApp']['ResponseCounter'][iApp]=1
 		meta['Modules']['NutrientApp']['ResponseCounterContinuous'][iApp]=1
 
@@ -71,16 +64,17 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 				# Biomass response ratios (after wood density effect accounted for)
 				rr=1+(rrS-1)*rXS+f_wd
 
-				# *** SPECIAL ORDER FOR NUTRIENT MANAGEMENT DEMO - SPECIFICATION COMPARISON ***
-				if (meta[pNam]['Project']['Code Subproject']=='CompareSpecifications') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGS'):
-					rr[1::]=1
-
 				# Append biomass response with volume response
 				rr=np.append(rr,rrS)
 
 			else:
+				# From spreadsheet (stands act as ensembles!)
 
-				ResponseDuration=bNA['ResponseDuration'][iStand]
+				try:
+					ResponseDuration=bNA['ResponseDuration'][iStand]
+				except:
+					print(bNA['ResponseDuration'].shape)
+					print(iStand)
 
 				# Response ratio of stemwood (before wood density effect)
 				rrS=bNA['r_Stemwood'][iStand]
@@ -102,7 +96,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 				rr=1+(rrS-1)*rXS+f_wd
 
 				# *** SPECIAL ORDER FOR NUTRIENT MANAGEMENT DEMO - SPECIFICATION COMPARISON ***
-				if (meta[pNam]['Project']['Code Subproject']=='CompareSpecifications') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGS'):
+				if (meta[pNam]['Project']['Code Subproject']=='Compare Specifications') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGS'):
 					rr[1::]=1
 
 				# Append biomass response with volume response
@@ -144,7 +138,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		rrRF=1+(bNA['r_Stemwood']-1)*bNA['Ratio_RootF_to_Stemwood']
 
 		# *** SPECIAL ORDER FOR NUTRIENT MANAGEMENT DEMO - SPECIFICATION COMPARISON ***
-		if (meta[pNam]['Project']['Code Subproject']=='CompareSpecifications') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGS'):
+		if (meta[pNam]['Project']['Code Subproject']=='Compare Specifications') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGS'):
 			rrRC=1
 			rrRF=1
 
@@ -238,14 +232,14 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		therm_per_app=MMBtu_per_app/bNA['MMBtu_per_therm']
 		E_ProdUrea=bNA['EmissionFromUreaProduction_per_therm']*therm_per_app
 
-		vo['E_Dom_ESC_ForOpsBurnGas'][iT,iApp]=vo['E_Dom_ESC_ForOpsBurnGas'][iT,iApp] + \
+		vo['E_Domestic_EnergySC_ForestOperationsBurnGas'][iT,iApp]=vo['E_Domestic_EnergySC_ForestOperationsBurnGas'][iT,iApp] + \
 			(E_ProdNH3+E_ProdUrea)
 
 		#----------------------------------------------------------------------
 		# Emissions from transportation (tCO2e/ha)
 		#----------------------------------------------------------------------
 
-		vo['E_Dom_ET_ForOpsBurnOil'][iT,iApp]=vo['E_Dom_ET_ForOpsBurnOil'][iT,iApp] + \
+		vo['E_Domestic_EnergyT_ForestOperationsBurnOil'][iT,iApp]=vo['E_Domestic_EnergyT_ForestOperationsBurnOil'][iT,iApp] + \
 			(bNA['EmissionFromRailBargeTruck_Workbook']+bNA['EmissionFromHelicopter_SP10'])
 
 		#----------------------------------------------------------------------
@@ -253,7 +247,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		# approach, IPCC 2006, 11.4.1 (tCO2e/ha)
 		#----------------------------------------------------------------------
 
-		vo['E_Dom_FS_Denit'][iT,iApp]=vo['E_Dom_FS_Denit'][iT,iApp] + \
+		vo['E_Domestic_ForestSector_Denit'][iT,iApp]=vo['E_Domestic_ForestSector_Denit'][iT,iApp] + \
 			(bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4'])
 
 		#----------------------------------------------------------------------
@@ -267,9 +261,9 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 
 		E_vol=0.3
 
-		vo['E_Dom_IPPU_ForOpsBurningGas'][iT,iApp]=vo['E_Dom_IPPU_ForOpsBurningGas'][iT,iApp] - E_vol
+		vo['E_Domestic_IPPU_ForestOperationsBurningGas'][iT,iApp]=vo['E_Domestic_IPPU_ForestOperationsBurningGas'][iT,iApp] - E_vol
 
-		vo['E_Dom_FS_Other'][iT,iApp]=vo['E_Dom_FS_Other'][iT,iApp] + E_vol
+		vo['E_Domestic_ForestSector_Volat'][iT,iApp]=vo['E_Domestic_ForestSector_Volat'][iT,iApp] + E_vol
 
 		#----------------------------------------------------------------------
 		# Exterior area (volatilization/deposition effects)
@@ -318,26 +312,26 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 			# Subtract from ecosystem LULUCF emissions
 			# *** it will crash in the last time step ***
 			try:
-				vo['E_Dom_FS_Other'][iT+1,iApp]=vo['E_Dom_FS_Other'][iT+1,iApp]-EA_GHG_Benefit
+				vo['E_Domestic_ForestSector_Volat'][iT+1,iApp]=vo['E_Domestic_ForestSector_Volat'][iT+1,iApp]-EA_GHG_Benefit
 			except:
 				pass
 
 	elif (comp=='HeterotrophicRespiration') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
 		#----------------------------------------------------------------------
-		# Adjust rate of heterotrophic respiration
+		# Adjust rate of heterotrophic consumpion
 		#----------------------------------------------------------------------
 
 		# *** SPECIAL ORDER FOR NUTRIENT MANAGEMENT DEMO - SPECIFICATION COMPARISON ***
 		if (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']!='Project NGS') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']!='Project NGT') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']!='Project NGT+T'):
 			rr=bNA['r_Decomp']
-			meta[pNam]['Project']['R_LitterVF'][0,iApp]=rr*meta[pNam]['Project']['R_LitterVF'][0,iApp]
-			meta[pNam]['Project']['R_LitterF'][0,iApp]=rr*meta[pNam]['Project']['R_LitterF'][0,iApp]
-			meta[pNam]['Project']['R_LitterM'][0,iApp]=rr*meta[pNam]['Project']['R_LitterM'][0,iApp]
-			meta[pNam]['Project']['R_LitterS'][0,iApp]=rr*meta[pNam]['Project']['R_LitterS'][0,iApp]
-			meta[pNam]['Project']['R_SoilVF'][0,iApp]=rr*meta[pNam]['Project']['R_SoilVF'][0,iApp]
-			meta[pNam]['Project']['R_SoilF'][0,iApp]=rr*meta[pNam]['Project']['R_SoilF'][0,iApp]
-			meta[pNam]['Project']['R_SoilS'][0,iApp]=rr*meta[pNam]['Project']['R_SoilS'][0,iApp]
+			meta[pNam]['Project']['HC']['LitterVF'][0,iApp]=rr*meta[pNam]['Project']['HC']['LitterVF'][0,iApp]
+			meta[pNam]['Project']['HC']['LitterF'][0,iApp]=rr*meta[pNam]['Project']['HC']['LitterF'][0,iApp]
+			meta[pNam]['Project']['HC']['LitterM'][0,iApp]=rr*meta[pNam]['Project']['HC']['LitterM'][0,iApp]
+			meta[pNam]['Project']['HC']['LitterS'][0,iApp]=rr*meta[pNam]['Project']['HC']['LitterS'][0,iApp]
+			meta[pNam]['Project']['HC']['SoilVF'][0,iApp]=rr*meta[pNam]['Project']['HC']['SoilVF'][0,iApp]
+			meta[pNam]['Project']['HC']['SoilF'][0,iApp]=rr*meta[pNam]['Project']['HC']['SoilF'][0,iApp]
+			meta[pNam]['Project']['HC']['SoilS'][0,iApp]=rr*meta[pNam]['Project']['HC']['SoilS'][0,iApp]
 
 	return vi,vo,meta
 
@@ -351,21 +345,29 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
 	Po_Sat_Coast=meta['Param']['BEV']['NutrientApp']['ProbOccSatAppFutureCoast']
 	Po_Sat_Interior=meta['Param']['BEV']['NutrientApp']['ProbOccSatAppFutureInterior']
 
-	flg=0
-	if flg==1:
-		vi={}
-		vi['tv']=tv
-		Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.002*np.maximum(1,vi['tv']-2021) )
-		plt.close('all')
-		plt.plot(vi['tv'],Po_Coast,'r-',lw=1.5 )
+	# Introduce time trend
+	flg='Time trend'
+	if flg=='Time trend':
+		# Plot example
+		flg_eg=0
+		if flg_eg==1:
+			tv=np.arange(1901,2100,1)
+			Po_Sat_Coast=0.024
+			Rate=-0.005*Po_Sat_Coast
+			Po_Coast=np.maximum(0,Po_Sat_Coast+Rate*np.maximum(1,tv-2021))
+			plt.close('all'); plt.plot(tv,Po_Coast,'r-',lw=1.5)
 
-		Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0012*np.maximum(1,vi['tv']-2045) )
-		plt.close('all')
-		plt.plot(vi['tv'],Po_Interior,'r-',lw=1.5 )
+		Rate=-0.005*Po_Sat_Coast
+		Po_Coast=np.maximum(0,Po_Sat_Coast+Rate*np.maximum(1,vi['tv']-2021))
 
-	# Contstant
-	Po_Coast=Po_Sat_Coast*np.ones(vi['tv'].size)
-	Po_Interior=Po_Sat_Interior*np.ones(vi['tv'].size)
+		Rate=-0.005*Po_Sat_Interior
+		Po_Interior=np.maximum(0,Po_Sat_Interior+Rate*np.maximum(1,vi['tv']-2021))
+		#plt.close('all')
+		#plt.plot(vi['tv'],Po_Interior,'r-',lw=1.5 )
+	else:
+		# Contstant
+		Po_Coast=Po_Sat_Coast*np.ones(vi['tv'].size)
+		Po_Interior=Po_Sat_Interior*np.ones(vi['tv'].size)
 
 	# Time-dependent models to compensate for aging forests (paper)
 	#Po_Coast=np.maximum(Po_Sat_Coast,Po_Sat_Coast+0.0005*np.maximum(1,vi['tv']-2021) )
@@ -373,16 +375,16 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
 
 	# Find eligible coastal stands to fertilize
 	indS_Coast=np.where( (meta['Modules']['NutrientApp']['ResponseCounter']==0) & \
-			(vo['A'][iT,:]>=21) & \
-			(vo['A'][iT,:]<=120) & \
+			(vo['A'][iT,:]>=30) & \
+			(vo['A'][iT,:]<=75) & \
 			(rn<Po_Coast[iT]) & \
 			(vo['V_MerchLive'][iT,:]>10) & \
 			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApp']['BGC Zone Exclusion ID'])==False) & \
 			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApp']['Coastal Zones ID'])==True) )[0]
 
 	indS_Interior=np.where( (meta['Modules']['NutrientApp']['ResponseCounter']==0) & \
-			(vo['A'][iT,:]>=21) & \
-			(vo['A'][iT,:]<=120) & \
+			(vo['A'][iT,:]>=30) & \
+			(vo['A'][iT,:]<=75) & \
 			(rn<Po_Interior[iT]) & \
 			(vo['V_MerchLive'][iT,:]>10) & \
 			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApp']['BGC Zone Exclusion ID'])==False) & \
@@ -396,7 +398,8 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
 			if iAvailable.size>0:
 				iE=iAvailable[0]
 				vi['EC']['ID Event Type'][iT,indS[i],iE]=meta['LUT']['Event']['Nutrient App Aerial']
-				vi['EC']['Mortality Factor'][iT,indS[i],iE]=np.array(0,dtype='int16')
+				vi['EC']['Mortality Factor'][iT,indS[i],iE]=0
+				vi['EC']['Growth Factor'][iT,indS[i],iE]=0
 				#vi['EC']['ID Growth Curve'][iT,indS[i],iE]=np.max(vi['EC']['ID Growth Curve'][0:iT,indS[i],:])
 
 	return vi

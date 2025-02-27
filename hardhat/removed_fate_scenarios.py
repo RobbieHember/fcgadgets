@@ -15,8 +15,7 @@ from fcgadgets.macgyver import util_general as gu
 gp=gu.SetGraphics('Manuscript')
 
 #%% Import BaseCase HWP parameters
-
-dDef0=gu.ReadExcel(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Parameters_RemovedFate.xlsx')
+dDef0=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_RemovedFate.xlsx')
 
 # Variables to keep
 vrL=['RemovedMerchToChipperMill','RemovedMerchToPulpMill','RemovedMerchToPelletMill','RemovedMerchToLumberMill',
@@ -25,10 +24,10 @@ vrL=['RemovedMerchToChipperMill','RemovedMerchToPulpMill','RemovedMerchToPelletM
     'RemovedNonMerchToChipperMill','RemovedNonMerchToPulpMill','RemovedNonMerchToPelletMill','RemovedNonMerchToLumberMill','RemovedNonMerchToPlywoodMill',
     'RemovedNonMerchToOSBMill','RemovedNonMerchToMDFMill','RemovedNonMerchToPolePostMill','RemovedNonMerchToShakeShingleMill',
     'RemovedNonMerchToLogExport','RemovedNonMerchToIPP','RemovedNonMerchToFirewood',
-    'RemovedSnagStemToChipperMill','RemovedSnagStemToPulpMill',
-    'RemovedSnagStemToPelletMill','RemovedSnagStemToLumberMill','RemovedSnagStemToPlywoodMill','RemovedSnagStemToOSBMill',
-    'RemovedSnagStemToMDFMill','RemovedSnagStemToPolePostMill','RemovedSnagStemToShakeShingleMill','RemovedSnagStemToLogExport',
-    'RemovedSnagStemToIPP','RemovedSnagStemToFirewood']
+    'RemovedDeadStemToChipperMill','RemovedDeadStemToPulpMill',
+    'RemovedDeadStemToPelletMill','RemovedDeadStemToLumberMill','RemovedDeadStemToPlywoodMill','RemovedDeadStemToOSBMill',
+    'RemovedDeadStemToMDFMill','RemovedDeadStemToPolePostMill','RemovedDeadStemToShakeShingleMill','RemovedDeadStemToLogExport',
+    'RemovedDeadStemToIPP','RemovedDeadStemToFirewood']
 
 # *** If you change the time vector, change it consistently for other variable scenarios - it needs to be consistent ***
 tv=np.arange(1850,2101,1)
@@ -36,6 +35,9 @@ tv=np.arange(1850,2101,1)
 # Region list
 regL=['Coast',
       'Interior',
+      'CT1',
+      'CT2',
+      'CT3',
       'GFS22',
       'Energy Production',
       'Burn Uneconomic',
@@ -123,11 +125,11 @@ for reg in regL:
     d[sc][reg][nam]=d[sc][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
 
     #--------------------------------------------------------------------------
-    # Snags
+    # Deads
     #--------------------------------------------------------------------------
 
     # Assumed change in Pulp input
-    nam='RemovedSnagStemToPulpMill'
+    nam='RemovedDeadStemToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
     y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
     d[sc][reg][nam]=d[sc][reg][nam].copy()
@@ -142,7 +144,7 @@ for reg in regL:
     # plt.plot(tv,1-yDelta,'b-')
 
     # Assumed change in pellet input
-    nam='RemovedSnagStemToPelletMill'
+    nam='RemovedDeadStemToPelletMill'
     y0_Pellet=d['BaseCase'][reg][nam][0].copy()
     y1_Pellet=fChange*d['BaseCase'][reg][nam][0]
     d[sc][reg][nam]=d['BaseCase'][reg][nam].copy()
@@ -158,15 +160,15 @@ for reg in regL:
     fOSBMill=0.2
 
     # Add to LumberMill input
-    nam='RemovedSnagStemToLumberMill'
+    nam='RemovedDeadStemToLumberMill'
     d[sc][reg][nam]=d[sc][reg][nam]+fLumberMill*(yD_Pulp+yD_Pellet)
 
     # Add to Plywood input
-    nam='RemovedSnagStemToPlywoodMill'
+    nam='RemovedDeadStemToPlywoodMill'
     d[sc][reg][nam]=d[sc][reg][nam]+fPlywoodMill*(yD_Pulp+yD_Pellet)
 
     # Add to OSB input
-    nam='RemovedSnagStemToOSBMill'
+    nam='RemovedDeadStemToOSBMill'
     d[sc][reg][nam]=d[sc][reg][nam]+fOSBMill*(yD_Pulp+yD_Pellet)
 
     #--------------------------------------------------------------------------
@@ -211,11 +213,11 @@ for reg in regL:
     d[sc][reg][nam]=d[sc][reg][nam]+yD_Pulp
 
     #--------------------------------------------------------------------------
-    # Snags
+    # Deads
     #--------------------------------------------------------------------------
 
     # Assumed change in Pulp input
-    nam='RemovedSnagStemToPulpMill'
+    nam='RemovedDeadStemToPulpMill'
     y0_Pulp=d['BaseCase'][reg][nam][0].copy()
     y1_Pulp=fChange*d['BaseCase'][reg][nam][0]
     d[sc][reg][nam]=d[sc][reg][nam].copy()
@@ -226,7 +228,7 @@ for reg in regL:
     yD_Pulp=d['BaseCase'][reg][nam]-d[sc][reg][nam]
 
     # Change in pellet input
-    nam='RemovedSnagStemToPelletMill'
+    nam='RemovedDeadStemToPelletMill'
     d[sc][reg][nam]=d[sc][reg][nam]+yD_Pulp
 
     #--------------------------------------------------------------------------
@@ -249,8 +251,6 @@ for reg in regL:
     d[sc][reg][nam]=d[sc][reg][nam]+yD_Pulp
 
 #%% Save
+gu.opickle(meta['Paths']['DB']['Harvest'] + '\\Variables_RemovedFate.pkl',d)
 
-gu.opickle(r'C:\Users\rhember\Documents\Code_Python\fcgadgets\cbrunner\Parameters\Variables_RemovedFate.pkl',d)
-
-
-
+#%%
