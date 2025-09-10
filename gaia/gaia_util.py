@@ -15,6 +15,7 @@ from scipy.optimize import curve_fit
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
+import fcgadgets.cbrunner.cbrun_postprocess as post
 
 #%% Chapman-Richards difference equation
 def fA(x,a,b,c):
@@ -101,12 +102,12 @@ def GetETp(vi,Dims,Method,TimeInterval):
 
 	if Dims=='Months by sites':
 		# Dimensions (months by sites)
-		N_m,N_s=vi['rswn'].shape
+		N_m,N_s=vi['tmean'].shape
 	elif Dims=='Sparse grid':
 		N_m=1
-		N_s=vi['rswn'].size
+		N_s=vi['tmean'].size
 	elif Dims=='Single site':
-		N_m=vi['rswn'].size
+		N_m=vi['tmean'].size
 		N_s=1
 
 	# Wind speed - if not supplied, use default of 2.0 m s-1.
@@ -116,13 +117,16 @@ def GetETp(vi,Dims,Method,TimeInterval):
 	# Constants
 	con=HydroMetCon()
 
-	# Convert net shortwave radiation from MJ m-2 d-1 to W m-2
-	Rswn_conv=vi['rswn']*1e6/con['DayLength']
-
-	# Convert net shortwave radiation (W m-2) to net radiation (W m-2)
-	# Parameters from this were fitted to data at DF49 and agree roughly with
-	# Landsberg's textbook.
-	Rn=con['Rswn2Rn_Slope']*Rswn_conv+con['Rswn2Rn_AddOffset']
+	if 'rn' not in vi:
+		# Convert net shortwave radiation from MJ m-2 d-1 to W m-2
+		Rswn_conv=vi['rswn']*1e6/con['DayLength']
+	
+		# Convert net shortwave radiation (W m-2) to net radiation (W m-2)
+		# Parameters from this were fitted to data at DF49 and agree roughly with
+		# Landsberg's textbook.
+		Rn=con['Rswn2Rn_Slope']*Rswn_conv+con['Rswn2Rn_AddOffset']
+	else:
+		Rn=vi['rn']
 
 	# Psychrometric term (hPa K-1)
 	Psychro=0.01*GetPsychrometric(vi['tmean'],'Pressure')
@@ -372,6 +376,12 @@ def HydroMetCon():
 	# Preistly taylor coefficient
 	con['Alpha_PT']=1.26
 
+	# Stefan-Boltzmann constant (kg s-3 K-4)
+	con['Stefan-Boltzmann Constant']=5.67037442*10**-8
+
+	# Emissivity (dimensionless)
+	con['Emissivity Conifer Forest']=0.98
+
 	# Daylength (s)
 	con['DayLength']=86400
 
@@ -393,6 +403,9 @@ def HydroMetCon():
 
 	# Days in month
 	con['DIM']=np.array([31,28,31,30,31,30,31,31,30,31,30,31])
+
+	# Karman's constant
+	con['Karmans Constant']=0.4
 
 	return con
 
@@ -635,14 +648,164 @@ def Run_FAIR(meta,dfConfig,dfVolcanic,path_emissions):
 	return d
 
 #%%
+def CalcPulseEmissionBenchmark_RF_FAIR(meta,pNam,yrPulse):
+
+	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
+
+	# Modelling in the time period for CMIP6
+	d0={}
+
+	# Import FAIR data
+	dfConfig=pd.read_csv(meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_4xCO2_cummins_ebm3.csv')
+	dfVolcanic=pd.read_csv(meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_volcanic_ERF_monthly_175001-201912.csv',index_col='year')
+
+	# Run the reference (CMIP6-SSP370)
+	path_emissions_ref=meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_Emissions_SSP370.csv'
+	d0['Reference']=Run_FAIR(meta,dfConfig,dfVolcanic,path_emissions_ref)
+
+	 # 1 GtCO2/year, 1 MtCH4/year, 1 MtN2O/year, 1 MtCO/year
+	E_PulseCO2=1
+	E_PulseCH4=1
+	E_PulseN2O=1
+	E_PulseCO=1
+	scnName=['CO2 Pulse','CH4 Pulse','N2O Pulse','CO Pulse']
+
+	# Run each scenario
+	for iScn,scn in enumerate(scnName):
+
+		# Create a copy of SSP370 emissions
+		path_emissions_adj=meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_Emissions_SSP370_adjusted.csv'
+		shutil.copyfile(path_emissions_ref,path_emissions_adj)
+		E=gu.ReadCSV(meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_Emissions_SSP370_adjusted.csv',skip_rows=0)
+
+		# Add CO2
+		if iScn==0:
+			indV=np.where( (E['Variable']=='CO2 AFOLU') )[0]
+			for i,yr in enumerate(tv):
+				E[str(yrPulse+0.5)][indV]=E[str(yrPulse+0.5)][indV]+E_PulseCO2
+		# Add CH4
+		if iScn==1:
+			indV=np.where( (E['Variable']=='CH4') )[0]
+			for i,yr in enumerate(tv):
+				E[str(yrPulse+0.5)][indV]=E[str(yrPulse+0.5)][indV]+E_PulseCH4
+		# Add N2O
+		if iScn==2:
+			indV=np.where( (E['Variable']=='N2O') )[0]
+			for i,yr in enumerate(tv):
+				E[str(yrPulse+0.5)][indV]=E[str(yrPulse+0.5)][indV]+E_PulseN2O
+		pd.DataFrame(E).to_csv(path_emissions_adj)
+		# Add CO
+		if iScn==3:
+			indV=np.where( (E['Variable']=='CO') )[0]
+			for i,yr in enumerate(tv):
+				E[str(yrPulse+0.5)][indV]=E[str(yrPulse+0.5)][indV]+E_PulseCO
+		pd.DataFrame(E).to_csv(path_emissions_adj)
+
+		# Run adjusted emissions scenario
+		d0[scn]=Run_FAIR(meta,dfConfig,dfVolcanic,path_emissions_adj)
+
+	# Fit within timeframe of modelling project
+	d1={}
+	ind1=np.where( (d0['Reference']['Time']>=tv[0]) & (d0['Reference']['Time']<=tv[-1]) )[0]
+	ind2=np.where( (tv>=d0['Reference']['Time'][0]) & (tv<=d0['Reference']['Time'][-1]) )[0]
+
+	# Reference RF (FAIR prediction without any adjustement)
+	d1['Reference']={}
+	d1['Reference']['RF']={}
+	for v in d0['Reference']['ssp370']['RF'].keys():
+		d1['Reference']['RF'][v]={}
+		d1['Reference']['RF'][v]=np.zeros(tv.size)
+		d1['Reference']['RF'][v][ind2]=np.nan_to_num(d0['Reference']['ssp370']['RF'][v][ind1])*meta['Param']['BE']['Biophysical']['Nano Watts per Watt']#*meta['Param']['BE']['Biophysical']['Square meters per Hectare']
+	d1['Reference']['RF Total']=np.zeros(tv.size)
+	for v in d0['Reference']['ssp370']['RF'].keys():
+		d1['Reference']['RF Total']=d1['Reference']['RF Total']+np.nan_to_num(d1['Reference']['RF'][v])
+	d1['Reference']['Temperature']=np.zeros(tv.size)
+	d1['Reference']['Temperature'][ind2]=d0['Reference']['ssp370']['Temperature'][ind1]
+
+	# Add scenario RF
+	for iScn,scn in enumerate(scnName):
+		d1[scn]={'RF':{}}
+		for v in d0[scn]['ssp370']['RF'].keys():
+			d1[scn]['RF'][v]={}
+			d1[scn]['RF'][v]=np.zeros(tv.size)
+			d1[scn]['RF'][v][ind2]=np.nan_to_num(d0[scn]['ssp370']['RF'][v][ind1])*meta['Param']['BE']['Biophysical']['Nano Watts per Watt']
+		d1[scn]['RF Total']=np.zeros(tv.size)
+		for v in d0[scn]['ssp370']['RF'].keys():
+			d1[scn]['RF Total']=d1[scn]['RF Total']+np.nan_to_num(d1[scn]['RF'][v])
+		d1[scn]['Temperature']=np.zeros(tv.size)
+		d1[scn]['Temperature'][ind2]=d0[scn]['ssp370']['Temperature'][ind1]
+
+	return d1
+
+#%% Benchmark pulse from FAIR
+def FAIR_BenchmarkPulse(meta,pNam,YearPulse):
+	#YearPulse=2020
+	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
+	dFAIR_Pulse=CalcPulseEmissionBenchmark_RF_FAIR(meta,pNam,YearPulse)
+
+	cl=np.array([[0.5,0.9,0],[0.5,0,1],[0.24,0.47,0.74],[1,0,0],[0.25,0,0],[1,1,0],[0,1,1],[0,0,1],[0,1,1],[1,0.6,0.7],[0,0.25,0]])
+	xlim=[-5,110]
+	iT=np.where( (tv>=YearPulse-5) )[0]
+	plt.close('all'); fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(12,12)); lw=0.5; lw2=1
+	for i,f in enumerate(meta['Modules']['FAIR']['Forcings']):
+		y=(dFAIR_Pulse['CO2 Pulse']['RF'][f][iT]-dFAIR_Pulse['Reference']['RF'][f][iT])/1e9
+		ax[0,0].plot(tv[iT]-YearPulse,y,'k-',color=cl[i,:],lw=lw,label=f)
+		if f=='Land use':
+			yLU=y
+		if f=='CO2':
+			yCO2=y
+	print('CO2 fertilization = ' + str(np.round(np.mean(yLU)/np.mean(yCO2),decimals=2)))
+	y=(dFAIR_Pulse['CO2 Pulse']['RF Total']-dFAIR_Pulse['Reference']['RF Total'])/1e9
+	ax[0,0].plot(tv[iT]-YearPulse,y[iT],'k-',color='k',lw=lw2,label='Total')
+	ax[0,0].legend(loc='upper right',facecolor=[1,1,1],frameon=True,fontsize=4,ncol=2)
+	ax[0,0].set(ylabel='$\Delta$RF (nW m$^{-2}$ ha$^{-1}$)',xlabel='Time since pulse emission (years)',xlim=xlim)
+	y=dFAIR_Pulse['CO2 Pulse']['Temperature']-dFAIR_Pulse['Reference']['Temperature']
+	ax[0,1].plot(tv[iT]-YearPulse,y[iT],'k-',lw=lw2)
+	ax[0,1].set(ylabel=r'$\Delta$ temperature (K)',xlabel='Time since pulse emission (years)',xlim=xlim)
+
+	for i,f in enumerate(meta['Modules']['FAIR']['Forcings']):
+		y=(dFAIR_Pulse['CH4 Pulse']['RF'][f][iT]-dFAIR_Pulse['Reference']['RF'][f][iT])/1e9
+		ax[1,0].plot(tv[iT]-YearPulse,y,'k-',color=cl[i,:],lw=lw,label=f)
+	y=(dFAIR_Pulse['CH4 Pulse']['RF Total']-dFAIR_Pulse['Reference']['RF Total'])/1e9
+	ax[1,0].plot(tv[iT]-YearPulse,y[iT],'k-',color='k',lw=lw2,label='Total')
+	ax[1,0].set(ylabel='$\Delta$RF (nW m$^{-2}$ ha$^{-1}$)',xlabel='Time since pulse emission (years)',xlim=xlim)
+
+	y=dFAIR_Pulse['CH4 Pulse']['Temperature']-dFAIR_Pulse['Reference']['Temperature']
+	ax[1,1].plot(tv[iT]-YearPulse,y[iT],'k-',lw=lw2)
+	ax[1,1].set(ylabel=r'$\Delta$ temperature (K)',xlabel='Time since pulse emission (years)',xlim=xlim)
+
+	for i,f in enumerate(meta['Modules']['FAIR']['Forcings']):
+		y=(dFAIR_Pulse['N2O Pulse']['RF'][f][iT]-dFAIR_Pulse['Reference']['RF'][f][iT])/1e9
+		ax[2,0].plot(tv[iT]-YearPulse,y,'k-',color=cl[i,:],lw=lw,label=f)
+	y=(dFAIR_Pulse['N2O Pulse']['RF Total']-dFAIR_Pulse['Reference']['RF Total'])/1e9
+	ax[2,0].plot(tv[iT]-YearPulse,y[iT],'k-',color='k',lw=lw2,label='Total')
+	ax[2,0].set(ylabel='$\Delta$RF (nW m$^{-2}$ ha$^{-1}$)',xlabel='Time since pulse emission (years)',xlim=xlim)
+
+	y=dFAIR_Pulse['N2O Pulse']['Temperature']-dFAIR_Pulse['Reference']['Temperature']
+	ax[2,1].plot(tv[iT]-YearPulse,y[iT],'k-',lw=lw2)
+	ax[2,1].set(ylabel=r'$\Delta$ temperature (K)',xlabel='Time since pulse emission (years)',xlim=xlim)
+
+	gu.axletters(ax,plt,0.48,0.87,FontColor=meta['Graphics']['gp']['cla'],
+			LetterStyle='Default',FontWeight='Bold',
+			Labels=['1 tonne CO$_2$ pulse','1 tonne CO$_2$ pulse','1 tonne CH$_4$ pulse','1 tonne CH$_4$ pulse','1 tonne N$_2$O pulse','1 tonne N$_2$O pulse'],LabelSpacer=0.055)
+	plt.tight_layout()
+	gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\FAIR\FAIR_Benchmark_PulseEmissions','png',900)
+	return
+
+#%%
 def Calc_RF_FAIR(meta,pNam,mos):
 
 	# Only populating All and only populating mean (not applied to sum yet)
 	iPS=0
 	iSS=0
 	iYS=0
+	iOS=0
 	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
-	multi_fair=1e6
+
+	# Multiplier that will be applied to project emissions because single stand
+	# emissions are below the precicion. This method assumes FAIR climate sensitivity
+	# is independent of magintude
+	sf_fair=1#e9
 
 	# Modelling in the time period for CMIP6
 	d0={}
@@ -658,10 +821,15 @@ def Calc_RF_FAIR(meta,pNam,mos):
 	# Run each scenario
 	for iScn in range(len(mos[pNam]['Scenarios'])):
 
-		# Adjust the emissions to include deltaE
-		E_co2=mos[pNam]['Scenarios'][iScn]['Mean']['E_CO2']['Ensemble Mean'][:,iPS,iSS,iYS]/1e9 # GtCO2/year
-		E_ch4=mos[pNam]['Scenarios'][iScn]['Mean']['E_CH4']['Ensemble Mean'][:,iPS,iSS,iYS]/1e6 # MtCH4/year
-		E_n2o=mos[pNam]['Scenarios'][iScn]['Mean']['E_N2O']['Ensemble Mean'][:,iPS,iSS,iYS]/1e6 # MtN2O/year
+		# GHG emissions from cbrunner adjsuted to units expected by FAIR
+		E_co2=post.GetMosScnVar(meta,pNam,mos,iScn,'E_CO2',iPS,iSS,iYS,iOS)['Mean']['Ensemble Mean']/1e9 # GtCO2/year
+		E_ch4=post.GetMosScnVar(meta,pNam,mos,iScn,'E_CH4',iPS,iSS,iYS,iOS)['Mean']['Ensemble Mean']/1e6 # MtCH4/year
+		E_n2o=post.GetMosScnVar(meta,pNam,mos,iScn,'E_N2O',iPS,iSS,iYS,iOS)['Mean']['Ensemble Mean']/1e6 # MtN2O/year
+
+		# Adjust by scale factor so that it is above the precision of FAIR
+		E_co2=E_co2*sf_fair
+		E_ch4=E_ch4*sf_fair
+		E_n2o=E_n2o*sf_fair
 
 		path_emissions_adj=meta['Paths']['DB']['FAIR'] + '//Variables_FAIR_Emissions_SSP370_adjusted.csv'
 		shutil.copyfile(path_emissions_ref,path_emissions_adj)
@@ -671,82 +839,76 @@ def Calc_RF_FAIR(meta,pNam,mos):
 		for i,yr in enumerate(tv):
 			if yr>2149:
 				continue
-			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+multi_fair*E_co2[i]
+			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+E_co2[i]
 		indV=np.where( (E['Variable']=='CH4') )[0]
 		for i,yr in enumerate(tv):
 			if yr>2149:
 				continue
-			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+multi_fair*E_ch4[i]
+			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+E_ch4[i]
 		indV=np.where( (E['Variable']=='N2O') )[0]
 		for i,yr in enumerate(tv):
 			if yr>2149:
 				continue
-			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+multi_fair*E_n2o[i]
+			E[str(yr+0.5)][indV]=E[str(yr+0.5)][indV]+E_n2o[i]
 		pd.DataFrame(E).to_csv(path_emissions_adj)
+
+		# Run adjusted emissions scenario
 		d0[iScn]=Run_FAIR(meta,dfConfig,dfVolcanic,path_emissions_adj)
 
-	# Add to modelled time period
+	# Fit within timeframe of modelling project
 	d1={}
 	ind1=np.where( (d0['Reference']['Time']>=tv[0]) & (d0['Reference']['Time']<=tv[-1]) )[0]
 	ind2=np.where( (tv>=d0['Reference']['Time'][0]) & (tv<=d0['Reference']['Time'][-1]) )[0]
-	ind3=np.where( (tv<meta[pNam]['Project']['Year Project']) )[0]
+
+	# RF (nW m-2 ha-1)
+	# Reference RF (FAIR prediction without any adjustement)
 	d1['Reference']={}
 	d1['Reference']['RF']={}
 	for v in d0['Reference']['ssp370']['RF'].keys():
 		d1['Reference']['RF'][v]={}
 		d1['Reference']['RF'][v]=np.zeros(tv.size)
-		d1['Reference']['RF'][v][ind2]=d0['Reference']['ssp370']['RF'][v][ind1]
-		d1['Reference']['RF'][v][ind3]=0
-
+		d1['Reference']['RF'][v][ind2]=np.nan_to_num(d0['Reference']['ssp370']['RF'][v][ind1])*meta['Param']['BE']['Biophysical']['Nano Watts per Watt']
+		#d1['Reference']['RF'][v][ind3]=0
 	d1['Reference']['RF Total']=np.zeros(tv.size)
 	for v in d0['Reference']['ssp370']['RF'].keys():
-		d1['Reference']['RF Total']=d1['Reference']['RF Total']+d1['Reference']['RF'][v]
+		d1['Reference']['RF Total'][ind2]=d1['Reference']['RF Total'][ind2]+np.nan_to_num(d0['Reference']['ssp370']['RF'][v][ind1])*meta['Param']['BE']['Biophysical']['Nano Watts per Watt']
 
+	# Add scenario RF
 	for iScn in range(len(mos[pNam]['Scenarios'])):
-		d1[iScn]['RF']={}
+		d1[iScn]={'RF':{}}
 		for v in d0[iScn]['ssp370']['RF'].keys():
 			d1[iScn]['RF'][v]={}
 			d1[iScn]['RF'][v]=np.zeros(tv.size)
-			if (v=='CO2_AFOLU') | (v=='CH4') | (v=='N2O'):
-				d1[iScn]['RF'][v][ind2]=d0[iScn]['ssp370']['RF'][v][ind1]/multi_fair
-			else:
-				d1[iScn]['RF'][v][ind2]=d0[iScn]['ssp370']['RF'][v][ind1]
-			d1[iScn]['RF'][v][ind3]=0
+			d1[iScn]['RF'][v][ind2]=np.nan_to_num(d0[iScn]['ssp370']['RF'][v][ind1])*meta['Param']['BE']['Biophysical']['Nano Watts per Watt']
+			#d1[iScn]['RF'][v][ind3]=0
+
 		d1[iScn]['RF Total']=np.zeros(tv.size)
 		for v in d0[iScn]['ssp370']['RF'].keys():
-			d1[iScn]['RF Total']=d1[iScn]['RF Total']+d0[iScn]['ssp370'][v]
+			d1[iScn]['RF Total']=d1[iScn]['RF Total']+np.nan_to_num(d0[iScn]['ssp370']['RF'][v][ind1])*meta['Param']['BE']['Biophysical']['Nano Watts per Watt']
 
-		# Calculate RF (nW m-2 ha-1)
-		mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem']={}
-		mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem']['Ensemble Mean']=np.zeros(mos[pNam]['Scenarios'][iScn]['Mean']['A']['Ensemble Mean'].shape)
-		mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iScn]['RF Total']-d1['Reference']['RF Total'])
-
-		#mos[pNam]['Scenarios'][iScn]['Mean']['Temperature']={}
-		#mos[pNam]['Scenarios'][iScn]['Mean']['Temperature']['Ensemble Mean']=np.zeros(mos[pNam]['Scenarios'][iScn]['Mean']['A']['Ensemble Mean'].shape)
-		#mos[pNam]['Scenarios'][iScn]['Mean']['Temperature']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iScn]['Temperature']-d1['Reference']['Temperature'])
-
-		for k in d1[iScn]['RF'].keys():
-			mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem_' + k]={}
-			mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem_' + k]['Ensemble Mean']=np.zeros(mos[pNam]['Scenarios'][iScn]['Mean']['A']['Ensemble Mean'].shape)
-			mos[pNam]['Scenarios'][iScn]['Mean']['RF_Biochem_' + k]['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iScn]['RF'][k]-d1['Reference']['RF'][k])
+		for v in d0[iScn]['ssp370']['RF'].keys():
+			mos[pNam]['Scenarios'][iScn]['Mean']['RF_Chem_' + v]={'Ensemble Mean':d1[iScn]['RF'][v]}
+		mos[pNam]['Scenarios'][iScn]['Mean']['RF_Chem_Total']={'Ensemble Mean':d1[iScn]['RF Total']}
 
 	# Calculate delta (nW m-2 ha-1)
+	d2={}
 	for scnC in mos[pNam]['Delta'].keys():
+		d2[scnC]={}
 		iB=mos[pNam]['Delta'][scnC]['iB']
 		iP=mos[pNam]['Delta'][scnC]['iP']
-		mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem']={}
-		mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem']['Ensemble Mean']=np.zeros(mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['A']['Ensemble Mean'].shape)
-		mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iP]['RF Total']-d1[iB]['RF Total'])
 
-		for k in d1[iScn]['RF'].keys():
-			mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem_' + k]={}
-			mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem_' + k]['Ensemble Mean']=np.zeros(mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['A']['Ensemble Mean'].shape)
-			mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['RF_Biochem_' + k]['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iP]['RF'][k]-d1[iB]['RF'][k])
+		for v in d0[iScn]['ssp370']['RF'].keys():
+			mos[pNam]['Delta'][scnC]['Data']['Mean']['RF_Chem_' + v]={'Ensemble Mean':d1[iP]['RF'][v]-d1[iB]['RF'][v]}
+		mos[pNam]['Delta'][scnC]['Data']['Mean']['RF_Chem_Total']={'Ensemble Mean':d1[iP]['RF Total']-d1[iB]['RF Total']}
 
-		#mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['Temperature']={}
-		#mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['Temperature']['Ensemble Mean']=np.zeros(mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['A']['Ensemble Mean'].shape)
-		#mos[pNam]['Delta'][scnC]['ByStrata']['Mean']['Temperature']['Ensemble Mean'][:,iPS,iSS,iYS]=1e9*(d1[iP]['Temperature']-d1[iB]['Temperature'])
+		#d2[scnC]['RF Total']=d1[iP]['RF Total']-d1[iB]['RF Total']
+		#d2[scnC]['RF Total']=d1[iP]['RF Total']-d1[iB]['RF Total']
+		#d2[scnC]['RF Total']=d1[iP]['RF Total']-d1[iB]['RF Total']
+		#d2[scnC]['RF Total']=d1[iP]['RF Total']-d1[iB]['RF Total']
 
+	#d={}
+	#d['Scenario']=d1
+	#d['Delta']=d2
 	return mos
 
 #%% Function for predicting albedo response to harvest
@@ -1025,3 +1187,51 @@ def Plot_Albedo_Climatology_ByBGCZone(meta):
 	if meta['Graphics']['Print Figures']=='On':
 		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AlbedoRF_ResponseToHarvesting','png',900)
 	return
+
+#%%
+def wy(x):
+	y=np.append(x[10:],x[0:10])
+	return y
+
+#%%
+def AerodynamicConductance(H_Canopy,U):
+
+	# Constants
+	con=HydroMetCon()
+
+	# Reference height (m)
+	zRef=H_Canopy+2
+
+	# Zero-plane displacement height (m)
+	H_ZPD=0.75*H_Canopy
+
+	# Roughness length for heat (m)
+	RL_H_Min=0.01
+	RL_H_Max=1.00
+	RL_H=RL_H_Min+(RL_H_Max-RL_H_Min)*(1-np.exp(-2.5*(H_Canopy/50)))
+
+	# Roughness length for momentum (m)
+	RL_M=RL_H
+
+	flg=0
+	if flg==1:
+		H_Canopy=np.arange(0,50.5,0.5)
+		RL_H=0.1+(1.2-0.1)*(1-np.exp(-2.5*(H_Canopy/50)))
+		plt.close('all'); plt.plot(H_Canopy,RL_H,'b-')
+
+	# Stabilty correction factors
+	scf_M=0.6
+	scf_H=0.6
+
+	# Monin-Obukhov length (m)
+	L_MO=-50
+
+	# Terms
+	y1=con['Karmans Constant']*U
+	y2=np.log((zRef-H_ZPD)/RL_H)-scf_H*((zRef-H_ZPD)/L_MO)
+	y3=np.log((zRef-H_ZPD)/RL_M)-scf_M*((zRef-H_ZPD)/L_MO)
+
+	# Aerodynamic conductance (m s-1)
+	y=y1/y2/y3
+
+	return y

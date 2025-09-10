@@ -26,14 +26,14 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 	t_disc=np.tile(t_disc,(v1['A'].shape[1],1)).T
 
 	# Import prices
-	dCP=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_CostsAndPrices.xlsx','Data')
+	dCP=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_CostsAndPrices.xlsx',sheet_name='Sheet1',skiprows=0)
 
 	# Initialize dictionary of economic variables
 	d={}
 	
-	#----------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	# Price
-	#----------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	d['Price Lumber']=np.zeros(v1['A'].shape)
 	d['Price Plywood']=np.zeros(v1['A'].shape)
 	d['Price OSB']=np.zeros(v1['A'].shape)
@@ -66,9 +66,9 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 		d['Exchange Rate US'][it1,iStand]=dCP['Exchange Rate (US to CAD)'][it0]
 		d['Exchange Rate Euro'][it1,iStand]=dCP['Exchange Rate (Euro to CAD)'][it0]
 
-	#----------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	# Cost
-	#----------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	d['Cost Roads']=np.zeros(v1['A'].shape)
 	d['Cost Harvest Overhead']=np.zeros(v1['A'].shape)
 	d['Cost Harvest Felling and Piling']=np.zeros(v1['A'].shape)
@@ -353,7 +353,7 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 					continue
 
 				Burned_C=v1['C_ToPileBurnTot'][it1,iStand]
-				Burned_V=Burned_C/b['Carbon Content Wood']/b['Density Wood']
+				Burned_V=Burned_C/b['Carbon Content Wood']/b['Density Wood Standard']
 				d['Cost Pile Burn'][it1,iStand]=(dCP['Cost Pile Burn (CAD/m3)'][it0])*Burned_V
 
 	# Total cost
@@ -384,16 +384,16 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 		d['Cost Aerial BTK Spray']
 
 	# Thousand board feet lumber / ha
-	mbf_Lumber=b['Ratio bd ft Lumber per m3']*v1['ODT_Lumber']/b['Density Wood']/1000
+	mbf_Lumber=b['Ratio bd ft Lumber per m3']*v1['ODT_Lumber']/b['Density Wood Standard']/1000
 
 	# Thousand sq ft plywood / ha
-	Thousand_sq_ft_Plywood=b['Ratio sq ft Plywood per m3']*v1['ODT_Plywood']/b['Density Wood']/1000
+	Thousand_sq_ft_Plywood=b['Ratio sq ft Plywood per m3']*v1['ODT_Plywood']/b['Density Wood Standard']/1000
 
 	# Thousand sq ft OSB / ha
-	Thousand_sq_ft_OSB=b['Ratio sq ft OSB per m3']*v1['ODT_OSB']/b['Density Wood']/1000
+	Thousand_sq_ft_OSB=b['Ratio sq ft OSB per m3']*v1['ODT_OSB']/b['Density Wood Standard']/1000
 
 	# Thousand sq ft MDF / ha
-	Thousand_sq_ft_MDF=b['Ratio sq ft MDF per m3']*v1['ODT_MDF']/b['Density Wood']/1000
+	Thousand_sq_ft_MDF=b['Ratio sq ft MDF per m3']*v1['ODT_MDF']/b['Density Wood Standard']/1000
 
 	# Gross revenue from sale of lumber: (CAD/ha) = (USD/mbf) * (CAD/USD) * (000 bd ft/ha)
 	d['Revenue Lumber']=d['Price Lumber']*(1/d['Exchange Rate US'])*mbf_Lumber
@@ -425,7 +425,7 @@ def CashflowFromEventChronology(meta,pNam,iScn,iEns,iBat,inv,ec,v1):
 	d['Revenue FirewoodDom']=d['Price FirewoodDom']*v1['ODT_FirewoodDom']
 
 	# Revenue from sale of log Export (CAD/ha) = (CAD/m3) * (m3/ha)
-	d['Revenue LogExport']=d['Price LogExport']*v1['ODT_LogExport']/b['Density Wood']
+	d['Revenue LogExport']=d['Price LogExport']*v1['ODT_LogExport']/b['Density Wood Standard']
 
 	# Remove all NaNs
 	for k in d.keys():

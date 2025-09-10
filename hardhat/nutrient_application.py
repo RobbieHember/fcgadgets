@@ -2,33 +2,33 @@ import numpy as np
 from fcgadgets.cbrunner import cbrun_util as cbu
 
 #%% Nutrient application effects
-def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
+def NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,comp):
 
 	# Exctract parameters
 	if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
-		bNA=meta['Param']['BEV']['NutrientApp']
+		bNA=meta['Param']['BEV']['NutrientApplication']
 	else:
-		bNA=meta['Param']['By Ensemble']['NutrientApp']
+		bNA=meta['Param']['By Ensemble']['NutrientApplication']
 
 	# Pull out index to applications
-	iApp=meta['Modules']['NutrientApp']['iApplication']
+	iApp=meta['Modules']['NutrientApplication']['iApplication']
 
-	if comp=='UpdateCounter':
+	if comp=='UpdateCounterForResponse':
+		meta['Modules']['NutrientApplication']['ResponseCounter'][iApp]=meta['Modules']['NutrientApplication']['ResponseCounter'][iApp]+1
 
-		meta['Modules']['NutrientApp']['ResponseCounter'][iApp]=meta['Modules']['NutrientApp']['ResponseCounter'][iApp]+1
-		meta['Modules']['NutrientApp']['ResponseCounterContinuous'][iApp]=meta['Modules']['NutrientApp']['ResponseCounterContinuous'][iApp]+1
+	elif comp=='UpdateCounterForHarvestRestriction':
+		iHR=meta['Modules']['NutrientApplication']['iHarvestRestriction']
+		meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction'][iHR]=meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction'][iHR]+1
+		#print(np.max(meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction'][iHR]))
 
-	elif (comp=='AbovegroundNetGrowth') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
-
-		# Think about revising to be based on N
-		# r_NonUniform_Spatial_Distribution
+	elif (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner') & (comp=='AbovegroundNetGrowth'):
 
 		#----------------------------------------------------------------------
 		# Start response counter
 		#----------------------------------------------------------------------
 
-		meta['Modules']['NutrientApp']['ResponseCounter'][iApp]=1
-		meta['Modules']['NutrientApp']['ResponseCounterContinuous'][iApp]=1
+		meta['Modules']['NutrientApplication']['ResponseCounter'][iApp]=1
+		meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction'][iApp]=1
 
 		# Update log-size enhancement factor
 		vo['LogSizeEnhancement'][iT:,iApp]=vo['LogSizeEnhancement'][iT:,iApp]+1
@@ -43,6 +43,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 			AgeAtApplication=int(vo['A'][iT,iApp[iStand]])
 
 			if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
+				# Not from spreadsheet
 				ResponseDuration=bNA['ResponseDuration']
 
 				# Response ratio of stemwood (before wood density effect)
@@ -69,12 +70,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 
 			else:
 				# From spreadsheet (stands act as ensembles!)
-
-				try:
-					ResponseDuration=bNA['ResponseDuration'][iStand]
-				except:
-					print(bNA['ResponseDuration'].shape)
-					print(iStand)
+				ResponseDuration=bNA['ResponseDuration'][iStand]
 
 				# Response ratio of stemwood (before wood density effect)
 				rrS=bNA['r_Stemwood'][iStand]
@@ -116,12 +112,6 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 				print(em)
 				#print(AgeAtApplication)
 
-		# Re-apply scalefactor
-		#GCA_SP=GCA_SP/meta['Modules']['GYM']['Scale Factor']
-
-		# Convert to 16-bit integers
-		#GCA_SP=GCA_SP.astype('int16')
-
 		# Repopulate in input variable dictionary
 		vi['GC']['Active'][:,iApp,:]=GCA_SP
 
@@ -137,10 +127,12 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		rrRC=1+(bNA['r_Stemwood']-1)*bNA['Ratio_RootC_to_Stemwood']
 		rrRF=1+(bNA['r_Stemwood']-1)*bNA['Ratio_RootF_to_Stemwood']
 
-		# *** SPECIAL ORDER FOR NUTRIENT MANAGEMENT DEMO - SPECIFICATION COMPARISON ***
+		# *** SPECIAL ORDER STARTS ***
+		# For nutrient management demo - comparison of specifications
 		if (meta[pNam]['Project']['Code Subproject']=='Compare Specifications') & (meta[pNam]['Scenario'][ meta[pNam]['iScn'] ]['Scenario_CD']=='Project NGS'):
 			rrRC=1
 			rrRF=1
+		# *** SPECIAL ORDER ENDS ***
 
 		# Calculate net growth of roots from change in pools
 		#Gnet_RC=vo['C_Eco_Pools'][iT,:,iEP['RootCoarse']]-vo['C_Eco_Pools'][iT-1,:,iEP['RootCoarse']]
@@ -167,20 +159,25 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		#vo['C_G_Net_Reg'][iT,iApp,iEP['RootCoarse']]=Gnet_RC[iApp]
 		#vo['C_G_Net_Reg'][iT,iApp,iEP['RootFine']]=Gnet_RF[iApp]
 
+	elif (comp=='StopResponse') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
+
 		#----------------------------------------------------------------------
 		# Stop stimulation counter when it passes the response duration
 		#----------------------------------------------------------------------
 
-		iStop=np.where( meta['Modules']['NutrientApp']['ResponseCounter']>bNA['ResponseDuration'] )[0]
-
+		iStop=np.where( meta['Modules']['NutrientApplication']['ResponseCounter']>bNA['ResponseDuration'] )[0]
 		if iStop.size>0:
+			meta['Modules']['NutrientApplication']['ResponseCounter'][iStop]=0
 
-			meta['Modules']['NutrientApp']['ResponseCounter'][iStop]=0
+	elif (comp=='StopHarvestRestriction') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
-			#uGC=np.unique(meta['Modules']['GYM']['ID GC'][iStop])
-			#for iGC in range(uGC.size):
-			#	indGC=np.where(meta['Modules']['GYM']['ID GC'][iStop]==uGC[iGC])[0]
-			#	vi['GC']['Active'][:,iStop[indGC],:]=vi['GC'][ uGC[iGC] ][:,iStop[indGC],:]
+		#----------------------------------------------------------------------
+		# Stop harvest restrictions
+		#----------------------------------------------------------------------
+		if 'HarvestRestrictTSNA' in meta[pNam]['Scenario'][iScn].keys():
+			iStop=np.where( meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction']>meta[pNam]['Scenario'][iScn]['HarvestRestrictTSNA'] )[0]
+			if iStop.size>0:
+				meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction'][iStop]=0
 
 	elif (comp=='Mortality') & (meta[pNam]['Project']['Nutrient Application Module']=='cbrunner'):
 
@@ -232,23 +229,15 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 		therm_per_app=MMBtu_per_app/bNA['MMBtu_per_therm']
 		E_ProdUrea=bNA['EmissionFromUreaProduction_per_therm']*therm_per_app
 
-		vo['E_Domestic_EnergySC_ForestOperationsBurnGas'][iT,iApp]=vo['E_Domestic_EnergySC_ForestOperationsBurnGas'][iT,iApp] + \
+		vo['E_ForestryOps_EnergySC_Domestic_Gas'][iT,iApp]=vo['E_ForestryOps_EnergySC_Domestic_Gas'][iT,iApp] + \
 			(E_ProdNH3+E_ProdUrea)
 
 		#----------------------------------------------------------------------
 		# Emissions from transportation (tCO2e/ha)
 		#----------------------------------------------------------------------
 
-		vo['E_Domestic_EnergyT_ForestOperationsBurnOil'][iT,iApp]=vo['E_Domestic_EnergyT_ForestOperationsBurnOil'][iT,iApp] + \
+		vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iApp]=vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iApp] + \
 			(bNA['EmissionFromRailBargeTruck_Workbook']+bNA['EmissionFromHelicopter_SP10'])
-
-		#----------------------------------------------------------------------
-		# Denitrification: N2O emissions following application, Tier 1
-		# approach, IPCC 2006, 11.4.1 (tCO2e/ha)
-		#----------------------------------------------------------------------
-
-		vo['E_Domestic_ForestSector_Denit'][iT,iApp]=vo['E_Domestic_ForestSector_Denit'][iT,iApp] + \
-			(bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O_AR4'])
 
 		#----------------------------------------------------------------------
 		# Volatilization
@@ -261,9 +250,17 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 
 		E_vol=0.3
 
-		vo['E_Domestic_IPPU_ForestOperationsBurningGas'][iT,iApp]=vo['E_Domestic_IPPU_ForestOperationsBurningGas'][iT,iApp] - E_vol
+		vo['E_ForestryOps_IPPU_Domestic_Gas'][iT,iApp]=vo['E_ForestryOps_IPPU_Domestic_Gas'][iT,iApp] - E_vol
 
-		vo['E_Domestic_ForestSector_Volat'][iT,iApp]=vo['E_Domestic_ForestSector_Volat'][iT,iApp] + E_vol
+		vo['E_Volat_ForestSector_Domestic'][iT,iApp]=vo['E_Volat_ForestSector_Domestic'][iT,iApp] + E_vol
+
+		#----------------------------------------------------------------------
+		# Denitrification: N2O emissions following application, Tier 1
+		# approach, IPCC 2006, 11.4.1 (tCO2e/ha)
+		#----------------------------------------------------------------------
+
+		vo['E_Denit_ForestSector_Domestic'][iT,iApp]=vo['E_Denit_ForestSector_Domestic'][iT,iApp] + \
+			(bNA['EmissionFactor_N2O_Jassaletal2008']*(DoseN/1000)*bNA['Ratio_N2OAsN_to_N2O']*meta['Param']['BEV']['Biophysical']['GWP_N2O'])
 
 		#----------------------------------------------------------------------
 		# Exterior area (volatilization/deposition effects)
@@ -312,7 +309,7 @@ def NutrientApplicationResponse(meta,pNam,vi,vo,iT,comp):
 			# Subtract from ecosystem LULUCF emissions
 			# *** it will crash in the last time step ***
 			try:
-				vo['E_Domestic_ForestSector_Volat'][iT+1,iApp]=vo['E_Domestic_ForestSector_Volat'][iT+1,iApp]-EA_GHG_Benefit
+				vo['E_Volat_ForestSector_Domestic'][iT+1,iApp]=vo['E_Volat_ForestSector_Domestic'][iT+1,iApp]-EA_GHG_Benefit
 			except:
 				pass
 
@@ -342,8 +339,8 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
 	rn=np.random.random(meta[pNam]['Project']['Batch Size'][iBat])
 
 	# Regional probabilities
-	Po_Sat_Coast=meta['Param']['BEV']['NutrientApp']['ProbOccSatAppFutureCoast']
-	Po_Sat_Interior=meta['Param']['BEV']['NutrientApp']['ProbOccSatAppFutureInterior']
+	Po_Sat_Coast=meta['Param']['BEV']['NutrientApplication']['ProbOccSatAppFutureCoast']
+	Po_Sat_Interior=meta['Param']['BEV']['NutrientApplication']['ProbOccSatAppFutureInterior']
 
 	# Introduce time trend
 	flg='Time trend'
@@ -374,21 +371,21 @@ def ScheduleNutrientApplication(meta,pNam,vi,vo,iT,iScn,iEns,iBat):
 	#Po_Interior=np.maximum(Po_Sat_Interior,Po_Sat_Interior+0.0005*np.maximum(1,vi['tv']-2021) )
 
 	# Find eligible coastal stands to fertilize
-	indS_Coast=np.where( (meta['Modules']['NutrientApp']['ResponseCounter']==0) & \
+	indS_Coast=np.where( (meta['Modules']['NutrientApplication']['ResponseCounter']==0) & \
 			(vo['A'][iT,:]>=30) & \
 			(vo['A'][iT,:]<=75) & \
 			(rn<Po_Coast[iT]) & \
 			(vo['V_MerchLive'][iT,:]>10) & \
-			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApp']['BGC Zone Exclusion ID'])==False) & \
-			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApp']['Coastal Zones ID'])==True) )[0]
+			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApplication']['BGC Zone Exclusion ID'])==False) & \
+			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApplication']['Coastal Zones ID'])==True) )[0]
 
-	indS_Interior=np.where( (meta['Modules']['NutrientApp']['ResponseCounter']==0) & \
+	indS_Interior=np.where( (meta['Modules']['NutrientApplication']['ResponseCounter']==0) & \
 			(vo['A'][iT,:]>=30) & \
 			(vo['A'][iT,:]<=75) & \
 			(rn<Po_Interior[iT]) & \
 			(vo['V_MerchLive'][iT,:]>10) & \
-			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApp']['BGC Zone Exclusion ID'])==False) & \
-			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApp']['Coastal Zones ID'])==False) )[0]
+			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApplication']['BGC Zone Exclusion ID'])==False) & \
+			(np.isin(vi['lsat']['ID_BGCZ'][0,:],meta['Modules']['NutrientApplication']['Coastal Zones ID'])==False) )[0]
 
 	indS=np.append(indS_Coast,indS_Interior)
 

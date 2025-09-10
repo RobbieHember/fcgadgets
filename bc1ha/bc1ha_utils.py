@@ -67,12 +67,14 @@ def Init(*argv):
 	meta['Paths']['GDB']['GDB']=r'C:\Data\Geodatabases'
 	meta['Paths']['GDB']['LandCover']=meta['Paths']['GDB']['GDB'] + '\\LandCover\\20230607\\LandCover.gdb'
 	meta['Paths']['GDB']['LandUse']=meta['Paths']['GDB']['GDB'] + '\\LandUse\\20240529\\LandUse.gdb'
-	meta['Paths']['GDB']['Disturbance']=meta['Paths']['GDB']['GDB'] + '\\Disturbances\\20240529\\Disturbances.gdb'
-	meta['Paths']['GDB']['Results']=meta['Paths']['GDB']['GDB'] + '\\Results\\20240528\\Results.gdb'
+	meta['Paths']['GDB']['Disturbance']=meta['Paths']['GDB']['GDB'] + '\\Disturbances\\20250405\\Disturbances.gdb'
+	#meta['Paths']['GDB']['Results']=meta['Paths']['GDB']['GDB'] + '\\Results\\20240528\\Results.gdb'
+	meta['Paths']['GDB']['Results']=meta['Paths']['GDB']['GDB'] + '\\Results\\20250405\\Results.gdb'
 	meta['Paths']['GDB']['VRI 2002']=meta['Paths']['GDB']['GDB'] + '\\VRI\\2002\\VRI2002_VEG_COMP_LYR_R1_POLY_FINAL_DELIVERYV4.gdb'
 	meta['Paths']['GDB']['VRI 2015']=meta['Paths']['GDB']['GDB'] + '\\VRI\\2015\\VEG_COMP_LYR_R1_POLY.gdb'
 	meta['Paths']['GDB']['VRI 2023']=meta['Paths']['GDB']['GDB'] + '\\VRI\\20230401\\VRI.gdb'
 	#meta['Paths']['GDB']['VRI 2024']=meta['Paths']['GDB']['GDB'] + '\\VRI\\20240529\\VRI.gdb'
+	#meta['Paths']['GDB']['VRI 2025']=meta['Paths']['GDB']['GDB'] + '\\VRI\\20250404\\VRI.gdb'
 
 	meta['Paths']['DB']={}
 	meta['Paths']['DB']['Taz']=r'C:\Users\rhember\Government of BC\External NRS Data Science and Modelling - General\Data\Events DB'
@@ -81,7 +83,7 @@ def Init(*argv):
 	meta['Paths']['DB']['Harvest']=meta['Paths']['DB']['Taz'] + '\\Harvest'
 	meta['Paths']['DB']['Waste']=r'C:\Data\Waste Wood\FromWasteSystem'
 	meta['Paths']['DB']['HBS']=r'C:\Data\Harvest\HBS'
-	meta['Paths']['DB']['SurfaceClimate']=r'C:\Users\rhember\Government of BC\External NRS Data Science and Modelling - General\Data\Surface Climate DB'
+	meta['Paths']['DB']['Surface Climate']=r'C:\Users\rhember\Government of BC\External NRS Data Science and Modelling - General\Data\Surface Climate DB'
 	meta['Paths']['DB']['CO2']=r'C:\Data\Carbon Dioxide Concentration\Carbon Dioxide Concentration Mid Year.xlsx'
 	meta['Paths']['DB']['NDEP']=r'C:\Data\Nitrogen Deposition'
 	meta['Paths']['DB']['CMIP6']=r'C:\Data\Climate\CMIP6\Monthly'
@@ -89,12 +91,17 @@ def Init(*argv):
 	meta['Paths']['DB']['CRU']=r'C:\Data\Climate\CRU'
 	meta['Paths']['DB']['Field Plot Observations']=r'C:\Users\rhember\Government of BC\External NRS Data Science and Modelling - General\Data\FIeld Plot Observations DB'
 	meta['Paths']['DB']['FAIR']=r'C:\Users\rhember\Government of BC\External NRS Data Science and Modelling - General\Data\FAIR DB'
-	
+	meta['Paths']['DB']['Nutrient Applications']=r'C:\Users\rhember\Government of BC\External NRS Data Science and Modelling - General\Data\Forest Nutrient Addition Experiments DB'
+
 	meta['Paths']['Model']={}
-	#meta['Paths']['Model']['Code']=r'C:\Code_Python\fcgadgets\cbrunner'
 	meta['Paths']['Model']['Code']=r'G:\My Drive\Code_Python\fcgadgets\cbrunner'
 	meta['Paths']['Model']['Parameters']=meta['Paths']['Model']['Code'] + '\\Parameters'
 	meta['Paths']['Model']['gromo']=r'D:\Data\na1k\gromo'
+
+	meta['Paths']['Projects']={}
+	meta['Paths']['Projects']['Demos']=r'D:\Modelling Projects'
+	meta['Paths']['Projects']['BC-FCS']={}
+	meta['Paths']['Projects']['BC-FCS']['Documentation']=r'C:\Users\rhember\Government of BC\External Forest Carbon Estimation - Documents\General\Projects\BC-FCS\Documentation\R2025'
 
 	meta['Paths']['Field Plots']={}
 	meta['Paths']['Field Plots']['DB']=r'C:\Data\Field Plots\PSP-NADB2'
@@ -112,19 +119,21 @@ def Init(*argv):
 	meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS'
 
 	meta['Graphics']['Colours']={'rgb':{},'hex':{}}
-	meta['Graphics']['Colours']['rgb']['Blue Light']=matplotlib.colors.hex2color('#cce6ff')
+	meta['Graphics']['Colours']['rgb']['Blue Light']=matplotlib.colors.hex2color('#c5dcfa') # OLD: #e6f5ff
 	meta['Graphics']['Colours']['rgb']['Blue Dark']=matplotlib.colors.hex2color('#004f99')
 	meta['Graphics']['Colours']['rgb']['Green Light']=matplotlib.colors.hex2color('#d9ffcc')
 	meta['Graphics']['Colours']['rgb']['Green Dark']=matplotlib.colors.hex2color('#134d00')
+	meta['Graphics']['Colours']['rgb']['Green Neon']=matplotlib.colors.hex2color('#b8d911')
 	meta['Graphics']['Colours']['rgb']['Red Light']=matplotlib.colors.hex2color('#ffc2b3')
 	meta['Graphics']['Colours']['rgb']['Red Dark']=matplotlib.colors.hex2color('#801a00')
 	meta['Graphics']['Colours']['rgb']['Brown Light']=matplotlib.colors.hex2color('#ecd9c5')
 	meta['Graphics']['Colours']['rgb']['Brown Dark']=matplotlib.colors.hex2color('#4d3319')
 	meta['Graphics']['Colours']['rgb']['Purple Light']=matplotlib.colors.hex2color('#e0ccff')
 	meta['Graphics']['Colours']['rgb']['Purple Dark']=matplotlib.colors.hex2color('#5900b3')
+	meta['Graphics']['Colours']['rgb']['Orange']=matplotlib.colors.hex2color('#d99b1e')
+	meta['Graphics']['Colours']['rgb']['Hover']=matplotlib.colors.hex2color('#fffbb5')
 	for k in meta['Graphics']['Colours']['rgb'].keys():
 		meta['Graphics']['Colours']['hex'][k]=matplotlib.colors.to_hex(meta['Graphics']['Colours']['rgb'][k])
-
 
 	# Defaults assume province-wide map
 	meta['Graphics']['Map']['RGSF']=1
@@ -134,6 +143,7 @@ def Init(*argv):
 	meta['Graphics']['Map']['Map Axis Vis']='off'
 	meta['Graphics']['Map']['Map Grid Vis']=False
 	meta['Graphics']['Map']['Legend X']=0.72
+	meta['Graphics']['Map']['Legend Y']=0.75
 	meta['Graphics']['Map']['Legend Width']=0.03
 	meta['Graphics']['Map']['Legend Font Size']=7
 	meta['Graphics']['Map']['Legend Text Space']=0.035
@@ -146,6 +156,8 @@ def Init(*argv):
 	meta['Graphics']['Map']['Show Cities']='Off'
 	meta['Graphics']['Map']['Show TPFs']='Off'
 	meta['Graphics']['Map']['Show Symbol Labels']='Off'
+	meta['Graphics']['Map']['Show Inset Map']='Off'
+	meta['Graphics']['Map']['Show Scalebar']='Off'
 	meta['Graphics']['Vector Import']={'Water Management':'Off','Wetland':'Off'}
 	
 	meta['Graphics']['Flowchart']={}
@@ -166,7 +178,7 @@ def Init(*argv):
 	meta['Graphics']['Field Plot Comparison']['rd']=np.array([0.4,0.3,0.2])
 	
 	meta['Graphics']['Modelling']={}
-	meta['Graphics']['Modelling']['AxesLetterStyle']='NoPar'
+	meta['Graphics']['Modelling']['AxesLetterStyle']='Default' #'NoPar'
 	meta['Graphics']['Modelling']['AxesFontWeight']='Bold'
 	
 	# Tracking parameters
@@ -177,7 +189,7 @@ def Init(*argv):
 	meta['Geos']={}
 	
 	# Import variable info
-	meta['Geos']['Variable Info']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Table_BCFCS_BC1haRasterVariableList.xlsx')
+	meta['Geos']['Variable Info']=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Table_BCFCS_BC1haRasterVariableList.xlsx',sheet_name='Sheet1',skiprows=0)
 	
 	# Import coordinate reference system
 	meta['Geos']['crs']=gpd.read_file(meta['Paths']['GDB']['GDB'] + '//lakes.geojson').crs
@@ -215,9 +227,12 @@ def Init(*argv):
 	meta['Climate']['SF']['runoff']=0.1
 	meta['Climate']['SF']['melt']=0.1
 	meta['Climate']['SF']['ndep']=0.01
+	meta['Climate']['SF']['ndwi']=0.001
+	meta['Climate']['SF']['lst']=0.01
 	meta['Climate']['SF']['ca']=0.1
-	meta['Climate']['SF']['Albedo']=0.001
+	meta['Climate']['SF']['albedo']=0.001
 	meta['Climate']['SF']['AbsorptionRSW']=0.1
+	meta['Climate']['SF']['ndvi']=0.001
 	meta['Climate']['Missing Number']=-99
 
 	# Gromo (growth and mortality fitted against field plots)
@@ -232,7 +247,7 @@ def Init(*argv):
 	fileL=os.listdir(meta['Paths']['Model']['Parameters'])
 	for file in fileL:
 		if file[0:6]=='Table_':
-			meta['Tables'][file[6:-5]]=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\' + file)
+			meta['Tables'][file[6:-5]]=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\' + file,sheet_name='Sheet1',skiprows=0)
 
 	return meta
 
@@ -262,6 +277,10 @@ def Import_Raster(meta,roi,vList,*argv):
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_ASET_All.tif')
 		elif v=='aset_post17':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_ASET_Post2017.tif')
+		elif v=='aset_no_all':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_NonOb_ASET_All.tif')
+		elif v=='aset_no_2024':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_NonOb_ASET_2024.tif')
 		elif v=='BEC_ZONE_CODE':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\BEC_ZONE_CODE.tif')
 		elif v=='bdfrac':
@@ -349,8 +368,8 @@ def Import_Raster(meta,roi,vList,*argv):
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Global Forest Change\\bc1ha_gfc_loss.tif')
 		elif v=='gfc_gain':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Global Forest Change\\bc1ha_gfc_gain.tif')
-		elif v=='gromo_g':
-			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\gromo\\GrossGrowth_Actual_2023.tif')
+		elif v=='gromo_g_n':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\gromo\\Normals\\GrowthGross_ActualAge_1971to2000mean.tif')
 			d[v]['Data']=d[v]['Data'].astype('float')*0.01
 		elif v=='gromo_net':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\gromo\\GrowthNet_Actual_2023.tif')
@@ -389,6 +408,8 @@ def Import_Raster(meta,roi,vList,*argv):
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\HarvestSalvageMask_FromCruise.tif')
 		elif v=='harv_prob':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\HarvestProbability.tif')
+		elif v=='hlz':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Summaries\\Normals\\bc1ha_HoldridgeLifeZones_1971to2000.tif')
 		elif v=='kd_yl':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-KD_YearLast.tif')
 		elif v=='ibm_yr':
@@ -531,16 +552,18 @@ def Import_Raster(meta,roi,vList,*argv):
 		elif v=='runoff_ann_n':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Summaries\\Normals\\bc1ha_runoff_ann_norm_1971to2000.tif')
 			d[v]['Data']=d[v]['Data'].astype('float')*meta['Climate']['SF']['runoff']
-		elif v=='slope':
-			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\Slope.tif')
 		elif v=='si_vri23':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\SITE_INDEX.tif')
+		elif v=='slope':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\Slope.tif')
 		elif v=='slope':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Terrain\\slope.tif')
 		elif v=='sp_rip':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-Rip_YearLast.tif')
 		elif v=='sp_disc':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-DISC_YearLast.tif')
+		elif v=='sp_broad':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-BU-BROAD_YearLast.tif')
 		elif v=='sp_wing':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-WING_YearLast.tif')
 		elif v=='sp_mound':
@@ -709,10 +732,10 @@ def ImportLUTs(meta):
 	meta['LUT']['Raw']={}
 
 	# Peatland map
-	meta['LUT']['Raw']['Peat']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_Peatlands.xlsx')
+	meta['LUT']['Raw']['Peat']=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_Peatlands.xlsx',sheet_name='Sheet1',skiprows=0)
 
 	# Geomorphons
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_Geomorphons.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_Geomorphons.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='geomorph'
 	meta['LUT'][lNam][vNam]={}
 	for i in range(d['ID'].size):
@@ -735,7 +758,7 @@ def ImportLUTs(meta):
 	meta['LUT'][lNam][vNam]['Treed']=4
 
 	# Land Cover Compilation 1
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_comp1.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_comp1.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='lc_comp1'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -743,7 +766,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 	
 	# Upland-wetland forest mask
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_uplandwetland.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_uplandwetland.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='upwetf'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -751,7 +774,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# Land Cover Class - NTEMS
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_NTEMS.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_NTEMS.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='lc_ntems_2019'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -759,7 +782,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# Land cover 2020 (CEC Given)
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_cec.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_cec.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='lc_cec'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -767,7 +790,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# Land cover 2020 (CEC Compressed)
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_cec_Compressed.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lc_cec_Compressed.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='lc_cec_c'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -775,7 +798,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# Land Use Compilation 1
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lu_comp1.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lu_comp1.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='lu_comp1'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -783,7 +806,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# Land Cover Land Use Compilation 1
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lclu_change_comp1.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_lclu_change_comp1.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='lclu_chng_comp1'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -791,7 +814,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# Species leading - NTEMS
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_spc1_NTEMS.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_spc1_NTEMS.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='spc1_ntems'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -799,12 +822,12 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# BGC Zone / NDT Zone Combo
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_bgc_zone.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_bgc_zone.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='bgc_zone'
 	meta['LUT']['Raw'][vNam]=d
 
 	# BGC Zone / NDT Zone Combo
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_bgcz_ndt_combo.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_bgcz_ndt_combo.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='bgc-ndt'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -816,7 +839,7 @@ def ImportLUTs(meta):
 	meta['LUT'][lNam][vNam]={'Sparse':1,'Open':2,'Dense':3}
 
 	# Access zones
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_access.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_access.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='access'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -824,7 +847,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
 
 	# Forest cover reserve compilation
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_reserve_comp1.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_reserve_comp1.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='reserve_comp1'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -841,14 +864,22 @@ def ImportLUTs(meta):
 # 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
 
 	# Planting regeneration type (used in NOSE modelling)
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_ASET.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_ASET.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='ASET'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
 	for i in range(d['ID'].size):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
 
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_EcozoneCanada.xlsx')
+	# Forest nutrient management
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_FNM.xlsx',sheet_name='Sheet1',skiprows=0)
+	vNam='FNM'
+	meta['LUT']['Raw'][vNam]=d
+	meta['LUT'][lNam][vNam]={}
+	for i in range(d['ID'].size):
+		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
+
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_EcozoneCanada.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='ezcan'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -856,7 +887,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['ID'][i]
 
 	# Burn severity class compelation 1
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_burnsev_comp1.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\LUT_burnsev_comp1.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='burnsev_comp1'
 	meta['LUT']['Raw'][vNam]=d
 	meta['LUT'][lNam][vNam]={}
@@ -864,7 +895,7 @@ def ImportLUTs(meta):
 		meta['LUT'][lNam][vNam][ d['Name'][i] ]=d['Value'][i]
 
 	# Log grades
-	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_LogGrades.xlsx')
+	d=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_LogGrades.xlsx',sheet_name='Sheet1',skiprows=0)
 	vNam='LogGrade'
 	meta['LUT'][lNam][vNam]={}
 	for i in range(d['ID'].size):
@@ -1115,6 +1146,12 @@ def DefineROI(meta,roi,gdf):
 
 	# Adjust spatial extent and overlay with boundary within bounding box
 	for k in gdf.keys():
+		#print('Clipping ' + k)
+
+		if k=='road':
+			# This takes a long time, only proceed if showing roads
+			if meta['Graphics']['Map']['Show Roads']=='Off':
+				continue
 
 		# Confine extent to bounding box
 		roi['gdf'][k]=gdf[k]['gdf'].cx[roi['grd']['xmin']:roi['grd']['xmax'],roi['grd']['ymin']:roi['grd']['ymax']]
@@ -1123,9 +1160,11 @@ def DefineROI(meta,roi,gdf):
 		if (roi['Type']=='ByTSA') | (roi['Type']=='ByRegDis') | (roi['Type']=='ByWatershed') | (roi['Type']=='FromMask'):
 			# Confine extent to irregular boundary of ROI
 			try:
+				# Crashing on TSA
+				# This can be really slow for complex irregular shapse (e.g. water licenses in IDF mask)
 				roi['gdf'][k]=gpd.overlay(roi['gdf'][k],roi['gdf']['bound ROI'],how='intersection')
 			except:
-				print(k)
+				print(k + ' not working.')
 
 	# Set path for figures
 	if roi['Type']=='ByTSA':
@@ -1999,7 +2038,7 @@ def TimeSeriesOccurrenceFromPackedEvents(meta,lNam,vNam,nPack):
 
 #%% Get list of rasters
 def GetRasterListFromSpreadsheet(path):
-	d=gu.ReadExcel(path)
+	d=gu.ReadExcel(path,sheet_name='Sheet1',skiprows=0)
 	vList=[]
 	for i in range(d['Name'].size):
 		if d['Included'][i]==1:
@@ -2069,7 +2108,7 @@ def RasterizeHarvest_CC(meta,zRef):
 	zYearLast['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
 
 	uYear=df[vNam].unique()
-	tv=np.arange(np.min(uYear),np.max(uYear),1)
+	tv=np.arange(np.min(uYear),np.max(uYear)+1,1)
 
 	for iT in range(tv.size):
 
@@ -2215,7 +2254,6 @@ def RasterizeEcozonesOfCanada(meta):
 	plt.close('all'); plt.matshow(z1['Data'],clim=[0,15])
 	gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\Ecozones_Canada\\Ecozones_Canada.tif')
 	return
-
 
 
 #%%
@@ -2601,13 +2639,13 @@ def GenerateSparseInputs(meta,rgsf,mask):
 	flg=0
 	if flg==1:
 		rgsf=20
-		mask='BCFCS_NOSEC'
+		mask='BCFCS_NOSE'
 
 	z=Import_Raster(meta,[],['refg','lc_comp1_2019'])
 	
 	if mask=='Province':
 		zMask=z['refg']
-	elif mask=='BCFCS_NOSEC':
+	elif mask=='BCFCS_NOSE':
 		# Non-obligation stand establishment
 		zMask=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_NonOb_MaskAll.tif')
 	elif mask=='BCFCS_NMC':
@@ -3005,8 +3043,8 @@ def DeriveASETComp1(meta,YearLast):
 
 		# Import disturbance events (confined to the previous year)
 		# *** This may miss events that occur in the same year as planting ***
-		fire_oc=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(d['tv'][iT]) + '.tif')['Data']
-		fire_doy=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\DOY_' + str(d['tv'][iT]) + '.tif')['Data']
+		fire_oc=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\PROT_HISTORICAL_FIRE_POLYS_SP_' + str(d['tv'][iT]) + '_Year.tif')['Data']
+		fire_doy=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\PROT_HISTORICAL_FIRE_POLYS_SP_' + str(d['tv'][iT]) + '_DOY.tif')['Data']
 
 		ibm_oc=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBM_' + str(d['tv'][iT]) + '.tif')['Data']
 		ibs_oc=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PEST_INFESTATION_POLY\\PEST_SEVERITY_CODE_IBS_' + str(d['tv'][iT]) + '.tif')['Data']
@@ -3378,11 +3416,13 @@ def DeriveASETComp1(meta,YearLast):
 	return
 
 #%%
-def DeriveASETLastYear(meta):
+def RasterizeASET(meta,YearLast):
+	# Import data
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 	zH=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VEG_CONSOLIDATED_CUT_BLOCKS_SP\\HARVEST_YEAR_YearLast.tif')
 	zPD=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Disturbances\\HarvestPercentDead_FromCruise.tif')
 
+	# All stand establishment
 	z1=copy.deepcopy(zRef)
 	z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
 	for i in range(6):
@@ -3395,7 +3435,7 @@ def DeriveASETLastYear(meta):
 	z1['Data'][ind]=meta['LUT']['Derived']['ASET']['Salvage and Planting Post Beetle']
 	gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_ASET_All.tif')
 
-	# Post 2017
+	# All stand establishment (post 2017)
 	z1=copy.deepcopy(zRef)
 	z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
 	for i in range(6):
@@ -3407,6 +3447,23 @@ def DeriveASETLastYear(meta):
 	ind=np.where( (zH['Data']>=2017) & (zPD['Data']>=15) & (z1['Data']!=meta['LUT']['Derived']['ASET']['Replanting']) )
 	z1['Data'][ind]=meta['LUT']['Derived']['ASET']['Salvage and Planting Post Beetle']
 	gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_ASET_Post2017.tif')
+
+	# Non-obligation stand establishment
+	z1=copy.deepcopy(zRef)
+	z1['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+	z2=copy.deepcopy(zRef)
+	z2['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+	for i in range(6):
+		zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_Year.tif')
+		zT=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_ASET.tif')
+		zFSC=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SILV_FUND_SOURCE_CODE.tif')
+		ind=np.where( (zY['Data']>0) & (np.isin(zFSC['Data'],meta['Param']['Raw']['FSC']['NO List ID'])==True) )
+		z1['Data'][ind]=zT['Data'][ind]
+		ind=np.where( (zY['Data']>0) & (np.isin(zFSC['Data'],meta['Param']['Raw']['FSC']['NO List ID'])==True) & (zY['Data']==YearLast) )
+		z2['Data'][ind]=zT['Data'][ind]
+	gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_NonOb_ASET_All.tif')
+	gis.SaveGeoTiff(z2,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_NonOb_ASET_' + str(YearLast) + '.tif')
+
 	return
 
 #%%
@@ -3977,6 +4034,36 @@ def ExportWaterManagementToSpreadsheet(meta):
 	pd.DataFrame(d['mmwb'].drop(columns='geometry')).to_excel(meta['Paths']['GDB']['GDB'] + '\\WaterManagement_FWA_MANMADE_WATERBODIES_POLY.xlsx',index=False)
 	pd.DataFrame(d['flooda'].drop(columns='geometry')).to_excel(meta['Paths']['GDB']['GDB'] + '\\WaterManagement_WLS_NON_TRIM_FLDAREA_LINES_SP.xlsx',index=False)
 	return
+
+#%%
+def Calc_AIL_ByFSC_And_ASET(meta,YearLast):
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+	d={}
+	d['tv']=np.arange(2018,YearLast+1,1)
+	d['Data']={}
+	for fsc in meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'].keys():
+		d['Data'][fsc]={}
+		for aset in meta['LUT']['Derived']['ASET'].keys():
+			d['Data'][fsc][aset]=np.zeros(d['tv'].size)
+	
+	for i in range(6):
+		zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_Year.tif')['Data']
+		zT=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_ASET.tif')['Data']
+		zF=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(i+1) + '_SILV_FUND_SOURCE_CODE.tif')['Data']
+		for iT,yr in enumerate(d['tv']):
+			ind0=np.where( (zY==yr) )
+			zT0=zT[ind0]
+			zF0=zF[ind0]
+			for fsc in meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'].keys():
+				for aset in meta['LUT']['Derived']['ASET'].keys():
+					ind1=np.where( (zT0==meta['LUT']['Derived']['ASET'][aset]) & \
+						(zF0==meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['SILV_FUND_SOURCE_CODE'][fsc]) )
+					d['Data'][fsc][aset][iT]=d['Data'][fsc][aset][iT]+ind1[0].size
+	pthout=meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\ASET_SummaryByTimeAndFSC.pkl'
+	gu.opickle(pthout,d)
+
+	return d
 
 #%%
 # def DeriveConservationCompolation(meta):

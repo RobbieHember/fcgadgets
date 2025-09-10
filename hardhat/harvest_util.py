@@ -17,10 +17,9 @@ import fiona
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
-import fcgadgets.macgyver.util_inventory as invu
 
 #%% Import HBS
-def CompileHarvest_ByTMY(meta):
+def CompileHarvest_ByTMY(meta,YearLast):
 	# https://www2.gov.bc.ca/gov/content/industry/forestry/competitive-forest-industry/timber-pricing/harvest-billing-system
 	# The system appears to be down sometimes
 	# -> By Date of Invoice,
@@ -34,7 +33,7 @@ def CompileHarvest_ByTMY(meta):
 	#   4.	Beachcomb: volume scaled because of the beachcombing efforts of an individual or salvage logger
 
 	gradeL=list(meta['LUT']['Derived']['LogGrade'].keys())
-	binY=np.arange(2007,2023,1)
+	binY=np.arange(2007,YearLast+1,1)
 
 	# Initialize
 	n=500000
@@ -78,7 +77,7 @@ def CompileHarvest_ByTMY(meta):
 	cnt=0
 	for iY in range(binY.size):
 		print(str(binY[iY]) + ' '  + str(cnt))
-		df=pd.read_csv(meta['Paths']['DB']['Harvest'] + '\\HBS\\HBS ' + str(binY[iY]) + '.csv',header=None)
+		df=pd.read_csv(meta['Paths']['DB']['HBS'] + '\\HBS ' + str(binY[iY]) + '.csv',header=None)
 		dHB={}
 		for i in range(len(df.columns)):
 			dHB[i]=df.iloc[:,i].to_numpy()
@@ -252,6 +251,7 @@ def ImportWaste(meta,dTMY,dTM):
 	cnt=0
 	for iF in range(len(fL)):
 		df=pd.read_excel(meta['Paths']['DB']['Waste'] + '\\' + fL[iF],skiprows=list(range(0,14)))
+		#d=gu.ReadExcel(meta['Paths']['DB']['Waste'] + '\\' + fL[iF],skiprows=14 )
 		dW['TM'][cnt:cnt+len(df)]=df['TM'].to_numpy()
 		dW['Year'][cnt:cnt+len(df)]=np.array(fL[iF][4:8],dtype='float')
 		dW['Net Area Ha'][cnt:cnt+len(df)]=df['Net Area Ha'].to_numpy()
@@ -573,12 +573,11 @@ def GetVariablesFromRasterDB(meta,dTMY,dTM):
 	return dTMY,dTM
 
 #%%
-def CalcHarvest_ByYear(meta):
+def CalcHarvestTimeSeries(meta,YearLast):
 	# Area in Kha/year
 	# Volume in Mm3/year
 
 	# Initialize dictionary
-	YearLast=2023
 	d={}
 	d['Year']=np.arange(1850,YearLast+1,1)
 	d['Province']={'Area':{},'Volume':{}}
@@ -605,6 +604,8 @@ def CalcHarvest_ByYear(meta):
 	d['Province']['Area']['CC+EH']=np.nan*np.ones(d['Year'].size)
 	for iT in range(d['Year'].size):
 		ind=np.where(tv==d['Year'][iT])[0]
+		if ind.size==0:
+			continue
 		if N[ind]>0:
 			d['Province']['Area']['CC'][iT]=N[ind]/1000
 			d['Province']['Area']['CC+EH'][iT]=N[ind]/1000
@@ -672,7 +673,7 @@ def CalcHarvest_ByYear(meta):
 		d['Province']['Volume']['FLNR'][ind]=dV_FLNR['Total_harvest_millions_m3'][i]
 
 	# Harvest volume from HBS
-	dTMY=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HavestComp1_ByTMAndYear.pkl')
+	dTMY=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HavestSummary_ByTMAndYear.pkl')
 	dT=CalcStatsByTime(meta,dTMY)
 	d['Province']['Volume']['HBS']=np.nan*np.ones(d['Year'].size)
 	for i,yr in enumerate(dT['Time']):
@@ -704,7 +705,7 @@ def CalcHarvest_ByYear(meta):
 		print(d['Province']['Volume']['HBS'][iT])
 
 	# Save time series of harvest area
-	gu.opickle(meta['Paths']['DB']['Harvest'] + '\\HarvestComp1_ByTime.pkl',d)
+	gu.opickle(meta['Paths']['DB']['Harvest'] + '\\HarvestTimeSeries.pkl',d)
 
 	return
 
@@ -1135,7 +1136,7 @@ def Plot_NetVolumeComparison(meta,dTM):
 #%%
 def Plot_HarvestAreaTimeSeries(meta,tlim):
 
-	d=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestComp1_ByTime.pkl')
+	d=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestTimeSeries.pkl')
 	iT=np.where(d['Year']>=tlim[0])[0]
 
 	rat=d['Province']['Area']['Cruise']/d['Province']['Area']['CC']
@@ -1144,10 +1145,10 @@ def Plot_HarvestAreaTimeSeries(meta,tlim):
 
 	ms=2.5; cl=np.array([[0.1,0.3,0.6],[0.5,0.85,0],[1,0.5,0],[0.65,0.35,1],[0.6,1,0],[0,0,0]])
 	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,8));
-	ax.plot(d['Year'][iT],d['Province']['Area']['NFD'][iT],'-ko',mfc=cl[0,:],mec=cl[0,:],color=cl[0,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='National forestry database')
 	ax.plot(d['Year'][iT],d['Province']['Area']['CC'][iT],'-ks',mfc=cl[1,:],mec=cl[1,:],color=cl[1,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='Consolidated cutblocks database')
-	ax.plot(d['Year'][iT],d['Province']['Area']['Cruise'][iT],'--kd',mfc=cl[2,:],mec=cl[2,:],color=cl[2,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='Cruise compilation')
-	ax.plot(d['Year'][iT],d['Province']['Area']['NTEMS'][iT],'-.k^',mfc=cl[3,:],mec=cl[3,:],color=cl[3,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='NTEMS 2020')
+	#ax.plot(d['Year'][iT],d['Province']['Area']['NFD'][iT],'-ko',mfc=cl[0,:],mec=cl[0,:],color=cl[0,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='National forestry database')
+	#ax.plot(d['Year'][iT],d['Province']['Area']['Cruise'][iT],'--kd',mfc=cl[2,:],mec=cl[2,:],color=cl[2,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='Cruise compilation')
+	#ax.plot(d['Year'][iT],d['Province']['Area']['NTEMS'][iT],'-.k^',mfc=cl[3,:],mec=cl[3,:],color=cl[3,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='NTEMS 2020')
 	#ax.plot(d['Year'][iT],d['Area Planted RESULTS'],'-ks',mfc=cl[3,:],mec=cl[3,:],color=cl[3,:],lw=meta['Graphics']['gp']['lw1'],ms=3,label='Area planted (RESULTS)')
 	ax.set(xticks=np.arange(1800,2120,5),yticks=np.arange(0,400,25),ylabel='Area harvested (Kha yr$^{-1}$)',xlabel='Time, years',ylim=[0,275],xlim=[tlim[0]-0.5,tlim[1]+0.5])
 	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=1.5)
@@ -1163,30 +1164,37 @@ def Plot_HarvestVolumeTimeSeries(meta,dTMY):
 
 	d=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestComp1_ByTime.pkl')
 
-	#dT=CalcStatsByTime(meta,dTMY)
-	#H_FLNR=gu.ReadExcel(r'C:\Data\Harvest\SummaryDataChangeInTimberHarvest\bctimberharvest.xlsx')
+	dT=CalcStatsByTime(meta,dTMY)
 
-	xlim=[2006,2024]
+	xlim=[2006,np.max(d['Year'])]
+	ikp=np.where( (d['Year']>=xlim[0]) & (d['Year']<=xlim[1]) )[0]
+	ikp2=np.where( (dT['Time']>=xlim[0]) & (dT['Time']<=xlim[1]) )[0]
 
-	plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(22,7.75))
-	#ax.plot(dT['Time'],dT['Sum']['V Logs m3']/1e6,'-bo')
-	ax[0,0].plot(d['Year'],d['Province']['Volume']['HBS'],'-bo',label='Total')
-	ax[0,0].plot(d['Year'],d['Province']['Volume']['FLNR'],'r-',label='Tot. merch. vol. (FLNR)')
+	plt.close('all'); fig,ax=plt.subplots(2,1,figsize=gu.cm2inch(22,7.75))
+	ax[0].plot(dT['Time'][ikp2],(dT['Sum']['V Logs Abs m3'][ikp2])/1e6,'-bo',label='HBS')
+	#ax[0].plot(dT['Time'][ikp2],(dT['Sum']['V NonLog m3'][ikp2])/1e6,'-md',label='')
+	ax[0].plot(d['Year'][ikp],d['Province']['Volume']['FLNR'][ikp],'r-',label='Tot. merch. vol. (FLNR)')
 	#ax[0,0].plot(H_FLNR['Year'],H_FLNR['Total_harvest_millions_m3'],'r-',label='Tot. merch. vol. (FLNR)')
-	ax[0,1].plot(dT['Year'],(dT['Sum']['V NonLog m3'])/1e6,'-bo',label='Non logs')
-	ax[1,0].plot(dT['Year'],(dT['Sum']['V Logs Waste m3'])/1e6,'-bo',label='Waste')
-	ax[1,1].plot(dT['Year'],(dT['Sum']['Waste Total m3'])/1e6,'-bo',label='Waste from WS')
+	ax[0].set(xticks=np.arange(1950,2025,2),ylabel='Merchantable volume (Mm$^3$ yr$^{-1}$)',xlabel='Time, calendar year',xlim=[xlim[0]-0.5,xlim[1]+0.5],ylim=[0,80])
 
-	#ax[0,1].plot(dT['Year'],(dT['Mean']['Waste Fraction']),'-bo')
-	#ax[1,0].plot(dT['Year'],(dT['Sum']['Waste N Entries']),'-bo')
-	#ax[1,1].plot(dT['Year'],(dT['Mean']['Waste Total m3/ha']),'-bo')
+	ax[1].plot(dT['Time'][ikp2],(dT['Sum']['V Logs Waste m3'][ikp2])/1e6,'-bo',label='HBS')
+	ax[1].set(xticks=np.arange(1950,2025,2),ylabel='Waste wood volume (Mm$^3$ yr$^{-1}$)',xlabel='Time, calendar year',xlim=[xlim[0]-0.5,xlim[1]+0.5])
 
-	ax[0,0].set(xticks=np.arange(1950,2025,5),ylabel='Total',xlabel='Time, calendar year',xlim=xlim)
-	ax[0,1].set(xticks=np.arange(1950,2025,5),ylabel='Non logs',xlabel='Time, calendar year',xlim=xlim)
-	ax[1,0].set(xticks=np.arange(1950,2025,5),ylabel='Waste HBS',xlabel='Time, calendar year',xlim=xlim)
-	ax[1,1].set(xticks=np.arange(1950,2025,5),ylabel='Waste Waste system',xlabel='Time, calendar year',xlim=xlim)
-	#ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=1.5)
-	ax[0,0].legend(loc='lower left',frameon=False,facecolor=None,edgecolor='w')
+	#ax[0].legend(loc='lower left',frameon=False,facecolor=None,edgecolor='w')
+	plt.tight_layout()
+	gu.axletters(ax,plt,0.025,0.87,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
+	if meta['Graphics']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics'][ 'Print Figure Path'] + '\\VolumeHarvest_TS','png',900)
+
+	# Per hectare
+	plt.close('all'); fig,ax=plt.subplots(2,1,figsize=gu.cm2inch(22,7.75))
+	ax[0].plot(dT['Time'][ikp2],(dT['Mean']['V Logs Abs m3/ha'][ikp2])/1e6,'-bo',label='HBS')
+	ax[0].set(xticks=np.arange(1950,2025,2),ylabel='Merchantable volume (Mm$^3$ yr$^{-1}$)',xlabel='Time, calendar year',xlim=[xlim[0]-0.5,xlim[1]+0.5])
+
+	ax[1].plot(dT['Time'][ikp2],(dT['Mean']['V Logs Waste m3/ha'][ikp2])/1e6,'-bo',label='HBS')
+	ax[1].set(xticks=np.arange(1950,2025,2),ylabel='Waste wood volume (Mm$^3$ yr$^{-1}$)',xlabel='Time, calendar year',xlim=[xlim[0]-0.5,xlim[1]+0.5])
+
+	#ax[0].legend(loc='lower left',frameon=False,facecolor=None,edgecolor='w')
 	plt.tight_layout()
 	gu.axletters(ax,plt,0.025,0.87,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
 	if meta['Graphics']['Print Figures']=='On':
@@ -1477,8 +1485,7 @@ def SummarizeAgeAtHarvest(dTM):
 	meta=u1ha.Init()
 	vList=['lc_comp1_2019','age_vri02','age_vri15','age_vri23','harv_yr_comp1','bgcz','rd','v_vri02']
 	z0=u1ha.Import_Raster(meta,[],vList,'Extract Grid')
-	
-	tv=np.arange(2002,2024,1)
+	tv=np.arange(2002,2025,1)
 	d={}
 	for dr in meta['LUT']['TA_REGIONAL_DISTRICTS_SVW']['REGIONAL_DISTRICT_NAME'].keys():
 		d[dr]={}
@@ -1506,6 +1513,7 @@ def SummarizeAgeAtHarvest(dTM):
 				N50[iT]=np.sum(d0['age_vri15'][ind]<50)/ind.size*100
 		rs,txt=gu.GetRegStats(tv,N50)
 		d[dr]=rs['B'][1]
+		plt.plot(tv,N50,'-o')
 		#plt.close('all'); plt.plot(tv,A,'-bo')
 		#plt.close('all'); plt.plot(tv,V,'-bo')
 		#plt.close('all'); plt.plot(tv,N50,'-bo'); #plt.plot(tv,N200,'-gs')

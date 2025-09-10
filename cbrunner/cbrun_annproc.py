@@ -3,9 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.cbrunner.cbrun_util as cbu
+import fcgadgets.cbrunner.cbrun_special_orders as sords
 import fcgadgets.hardhat.nutrient_application as napp
 import fcgadgets.hardhat.trenchfoot as tft
-import fcgadgets.taz.aspatial_stat_models as asm
+import fcgadgets.taz.default_stat_event_sim as asm
 import fcgadgets.gaia.gaia_util as gaia
 import warnings
 import time
@@ -42,36 +43,7 @@ def TreeBiomassDynamicsFromGYModel(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
 	#--------------------------------------------------------------------------
 	# *** < SPECIAL ORDER - CT Study (Johnston 2002) > ***
-	if meta[pNam]['Project']['Code Project']=='Demo_Harv_ThinDensePine':
-		GN_Total=NetGrowth[:,iGY['StemMerch']]+NetGrowth[:,iGY['StemNonMerch']]
-		if (vi['tv'][iT]<1952):
-			# Alter the ratio of merch to non-merch
-			NetGrowth[:,iGY['StemMerch']]=0.3*GN_Total
-			NetGrowth[:,iGY['StemNonMerch']]=0.7*GN_Total
-		if (vi['tv'][iT]>1952) & (vi['tv'][iT]<=1997):
-			rBK=NetGrowth[:,iGY['Bark']]/NetGrowth[:,iGY['StemMerch']]
-			rBR=NetGrowth[:,iGY['Branch']]/NetGrowth[:,iGY['StemMerch']]
-			rF=NetGrowth[:,iGY['Foliage']]/NetGrowth[:,iGY['StemMerch']]
-			if iScn==0:
-				GG_StemMerch_SO=1.3
-				GG_StemNonMerch_SO=0.29
-				M_StemMerch_SO=0.5
-				M_StemNonMerch_SO=0.88
-				NetGrowth[:,iGY['StemMerch']]=GG_StemMerch_SO-M_StemMerch_SO
-				NetGrowth[:,iGY['StemNonMerch']]=GG_StemNonMerch_SO-M_StemNonMerch_SO
-				NetGrowth[:,iGY['Bark']]=rBK*NetGrowth[:,iGY['StemMerch']]
-				NetGrowth[:,iGY['Branch']]=rBR*NetGrowth[:,iGY['StemMerch']]
-				NetGrowth[:,iGY['Foliage']]=rF*NetGrowth[:,iGY['StemMerch']]
-			elif iScn==1:
-				GG_StemMerch_SO=1.38
-				GG_StemNonMerch_SO=0.3
-				M_StemMerch_SO=0.15
-				M_StemNonMerch_SO=0.45
-				NetGrowth[:,iGY['StemMerch']]=GG_StemMerch_SO-M_StemMerch_SO
-				NetGrowth[:,iGY['StemNonMerch']]=GG_StemNonMerch_SO-M_StemNonMerch_SO
-				NetGrowth[:,iGY['Bark']]=rBK*NetGrowth[:,iGY['StemMerch']]
-				NetGrowth[:,iGY['Branch']]=rBR*NetGrowth[:,iGY['StemMerch']]
-				NetGrowth[:,iGY['Foliage']]=rF*NetGrowth[:,iGY['StemMerch']]
+	#NetGrowth=sords.CT_Johnstone2002(meta,pNam,vi,iScn,iT,iGY,NetGrowth)
 	# *** < END SPECIAL ORDER - CT Study (Johnstone 2002) > ***
 	#--------------------------------------------------------------------------
 
@@ -83,32 +55,14 @@ def TreeBiomassDynamicsFromGYModel(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 	#NetGrowth_WholeStem=NetGrowth_WholeStem-0.01*vo['A'][iT,:]
 	# *** SPECIAL ORDER ***
 
-	flg=1
-	if flg==1:
-		# Net growth of foliage
-		NetGrowth[:,iGY['Foliage']]=NetGrowth_WholeStem*(meta['Param']['BEV']['BiomassAllometrySL']['Gf1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gf2']-meta['Param']['BEV']['BiomassAllometrySL']['Gf1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gf3']*vo['A'][iT,:]))
+	# Net growth of foliage
+	NetGrowth[:,iGY['Foliage']]=NetGrowth_WholeStem*(meta['Param']['BEV']['BiomassAllometrySL']['Gf1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gf2']-meta['Param']['BEV']['BiomassAllometrySL']['Gf1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gf3']*vo['A'][iT,:]))
 
-		# Net growth of branches
-		NetGrowth[:,iGY['Branch']]=NetGrowth_WholeStem*(meta['Param']['BEV']['BiomassAllometrySL']['Gbr1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gbr2']-meta['Param']['BEV']['BiomassAllometrySL']['Gbr1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gbr3']*vo['A'][iT,:]))
-	
-		# Net growth of bark
-		NetGrowth[:,iGY['Bark']]=NetGrowth_WholeStem*(meta['Param']['BEV']['BiomassAllometrySL']['Gbk1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gbk2']-meta['Param']['BEV']['BiomassAllometrySL']['Gbk1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gbk3']*vo['A'][iT,:]))
+	# Net growth of branches
+	NetGrowth[:,iGY['Branch']]=NetGrowth_WholeStem*(meta['Param']['BEV']['BiomassAllometrySL']['Gbr1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gbr2']-meta['Param']['BEV']['BiomassAllometrySL']['Gbr1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gbr3']*vo['A'][iT,:]))
 
-	# Exploration of spcies-specific allometry
-	flg=0
-	if flg==1:
-		# np.minimum(50,p[0]+(p[1]-p[0])*np.exp(-p[2]*dHat['Age']))
-		p=[9.79194082e-02, 2.19770107e+02,4.92025804e-01]
-		fun=np.minimum(3,p[0]+(p[1]-p[0])*np.exp(-p[2]*vo['A'][iT,:]))
-		NetGrowth[:,iGY['Bark']]=np.maximum(0.1,NetGrowth_WholeStem)*fun
-	
-		p=[0.08881094, 7.76655694, 0.22940918]
-		fun=np.minimum(3,p[0]+(p[1]-p[0])*np.exp(-p[2]*vo['A'][iT,:]))
-		NetGrowth[:,iGY['Branch']]=np.maximum(0.1,NetGrowth_WholeStem)*fun
-	
-		p=[0.05464871,47.95376571,0.35506178]
-		fun=np.minimum(3,p[0]+(p[1]-p[0])*np.exp(-p[2]*vo['A'][iT,:]))
-		NetGrowth[:,iGY['Foliage']]=np.maximum(0.1,NetGrowth_WholeStem)*fun
+	# Net growth of bark
+	NetGrowth[:,iGY['Bark']]=NetGrowth_WholeStem*(meta['Param']['BEV']['BiomassAllometrySL']['Gbk1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gbk2']-meta['Param']['BEV']['BiomassAllometrySL']['Gbk1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gbk3']*vo['A'][iT,:]))
 
 	# *** SPECIAL ORDER ***
 	# Used to force alignment with CBM25 (so that DOM pools can be compared)
@@ -121,28 +75,44 @@ def TreeBiomassDynamicsFromGYModel(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 	vo['C_G_Net_Reg_ByPool'][iT,:,0:5]=NetGrowth[:,0:5]
 
 	# Total net growth of root biomass (Li et al. 2003, Eq. 4)
-	G_Net_Root_Total=0.22*np.sum(vo['C_G_Net_Reg_ByPool'][iT,:,0:5],axis=1)
+	G_Net_Root_Total=meta['Param']['BE']['BiomassAllometryRoots']['b1']*np.sum(vo['C_G_Net_Reg_ByPool'][iT,:,0:5],axis=1)
 
 	# Fine root fraction should decline with total biomass, but estimating it 	d on
 	# size causes a lot of problems. Think about creating new equation.
-	vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootCoarse']]=(1-0.072)*G_Net_Root_Total
-	vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootFine']]=0.072*G_Net_Root_Total
+	vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootCoarse']]=(1-meta['Param']['BE']['BiomassAllometryRoots']['b2'])*G_Net_Root_Total
+	vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootFine']]=meta['Param']['BE']['BiomassAllometryRoots']['b2']*G_Net_Root_Total
 
 	#--------------------------------------------------------------------------
 	# Nutrient application effects to net growth
 	#--------------------------------------------------------------------------
 
 	if meta[pNam]['Project']['Biomass Module']!='gromo':
+
 		# Index to stands that are stimulated by nutrient application
-		meta['Modules']['NutrientApp']['iApplication']=np.where( meta['Modules']['NutrientApp']['ResponseCounter']>0 )[0]
-	
+		meta['Modules']['NutrientApplication']['iApplication']=np.where( meta['Modules']['NutrientApplication']['ResponseCounter']>0 )[0]
+
+		# Index to stands with harvest restriction following nutrient application
+		meta['Modules']['NutrientApplication']['iHarvestRestriction']=np.where( meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction']>0 )[0]
+
 		# Adjust N application response counter
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'UpdateCounter')
-	
+		if meta['Modules']['NutrientApplication']['iApplication'].size>0:
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'UpdateCounterForResponse')
+
+		# Adjust harvest restriciton counter
+		if meta['Modules']['NutrientApplication']['iHarvestRestriction'].size>0:
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'UpdateCounterForHarvestRestriction')
+
 		# Adjust root net growth
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'BelowgroundNetGrowth')
+		if meta['Modules']['NutrientApplication']['iApplication'].size>0:
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'BelowgroundNetGrowth')
+
+		# Stop counting response
+		if meta['Modules']['NutrientApplication']['iApplication'].size>0:
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'StopResponse')
+
+		# Stop counting harvest restrictions
+		if meta['Modules']['NutrientApplication']['iHarvestRestriction'].size>0:
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'StopHarvestRestriction')
 
 	#--------------------------------------------------------------------------
 	# Add net growth to biomass pools
@@ -216,10 +186,9 @@ def TreeBiomassDynamicsFromGYModel(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 	# *** SPECIAL ORDER - CT Study (Johnstone 2002) ***
 	#--------------------------------------------------------------------------
 
-	if meta[pNam]['Project']['Biomass Module']!='gromo':
-		# Adjust mortality to account for N application response
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'Mortality')
+	# Adjust mortality to account for N application response
+	if meta['Modules']['NutrientApplication']['iApplication'].size>0:
+		vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'Mortality')
 
 	#--------------------------------------------------------------------------
 	# If TIPSY indicates negative net growth (e.g., alder break-up), revise so
@@ -292,8 +261,8 @@ def TreeBiomassDynamicsFromGYModel(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
 	if meta[pNam]['Project']['Biomass Module']!='gromo':
 		# Adjust litterfall to account for N application response
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'Litterfall')
+		if meta['Modules']['NutrientApplication']['iApplication'].size>0:
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'Litterfall')
 
 	#--------------------------------------------------------------------------
 	# Update summary variables
@@ -308,257 +277,10 @@ def TreeBiomassDynamicsFromGYModel(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
 	return vo
 
-#%%
-def TreeBiomassDynamicsFromGROMO(meta,pNam,iScn,iBat,iT,vi,vo,iEP):
 
-	# Update stand age
-	vo['A'][iT,:]=vo['A'][iT-1,:]+1
-
-	# Extract incides for GY model data structure
-	iGY=meta['Modules']['GYM']['GC Input Indices']
-
-	# Predictor variables
-	A=vo['A'][iT,:]
-	Ogp=0
-	DAB=0; DAD=0; DAF=0; DAP=0
-	#Hi=1*(vi['lsat']['Harvest Year Comp2']>0)
-	Hi=0
-	PL=1
-
-	#--------------------------------------------------------------------------
-	# Gross growth of stemwood
-	#--------------------------------------------------------------------------
-
-	bG=meta['Param']['Raw']['GROMO']['gg3']['Param']['BE']
-	zs=meta['Param']['Raw']['GROMO']['gg3']['ZscoreStats']
-
-	Tn=(vi['ENV']['Tn'][iT,:]-zs['Tn']['mu'])/zs['Tn']['sig']
-	Wn=(vi['ENV']['Wn'][iT,:]-zs['Wn']['mu'])/zs['Wn']['sig']
-	Ta=(vi['ENV']['Ta'][iT,:]-zs['Ta']['mu'])/zs['Ta']['sig']
-	Wa=(vi['ENV']['Wa'][iT,:]-zs['Wa']['mu'])/zs['Wa']['sig']
-	Nd=(vi['ENV']['ND'][iT,:]-zs['Nd']['mu'])/zs['Nd']['sig']
-	Ca=(vi['ENV']['CO2'][iT]-zs['Ca']['mu'])/zs['Ca']['sig']
-
-	B1=bG['b1']+bG['Ogp1']*Ogp+bG['Hi1']*Hi+bG['pl1']*PL+ \
-		bG['dab1']*DAB+bG['dad1']*DAD+bG['daf1']*DAF+bG['dap1']*DAP+ \
-		bG['Tn1']*Tn+bG['Wn1']*Wn+bG['Ta1']*Ta+bG['Wa1']*Wa+ \
-		bG['TnTa1']*Tn*Ta+bG['WnWa1']*Wn*Wa+bG['Nd1']*Nd+bG['Ca1']*Ca
-	B2=bG['b2']
-	B3=bG['b3']
-	B4=bG['b4']
-	B5=bG['b5']+bG['Ogp5']*Ogp+bG['Hi5']*Hi+bG['pl5']*PL+bG['Tn5']*Tn+bG['Wn5']*Wn+bG['Ta5']*Ta+bG['Wa5']*Wa+bG['TnTa5']*Tn*Ta+bG['WnWa5']*Wn*Wa+bG['Nd5']*Nd+bG['Ca5']*Ca
-
-	G_Gross_StemTot=(B1*(1+((B2*(A/B3)**B4-1)/np.exp(A/B3))))+(B5*A/100)
-	#print(np.mean(G_Gross_StemTot))
-
-	G_Gross_StemTot=np.maximum(0.1,G_Gross_StemTot)
-
-	# Adjustment of stocking in harvested areas
-	#G_Gross_StemTot=G_Gross_StemTot+0.60*Hi
-
-	# Non-merch to merch ratio
-	#Vtot_lag1=(vo['C_Eco_ByPool'][iT-1,:,iEP['StemMerch']]+vo['C_Eco_ByPool'][iT-1,:,iEP['StemNonMerch']])/meta['Param']['BEV']['Biophysical']['Density Wood']/meta['Param']['BEV']['Biophysical']['Carbon Content Wood']
-	fStemNonMerch=0.08#np.minimum(1,(1-0.086)*0.086+(1/np.exp(0.012*(Vtot_lag1-14.4))))
-
-	# Update gross growth
-	vo['C_G_Gross_ByPool'][iT,:,iEP['StemMerch']]=(1-fStemNonMerch)*G_Gross_StemTot
-	vo['C_G_Gross_ByPool'][iT,:,iEP['StemNonMerch']]=fStemNonMerch*G_Gross_StemTot
-	vo['C_G_Gross_ByPool'][iT,:,iEP['Bark']]=0.14*G_Gross_StemTot
-	vo['C_G_Gross_ByPool'][iT,:,iEP['Branch']]=0.27*G_Gross_StemTot
-	vo['C_G_Gross_ByPool'][iT,:,iEP['Foliage']]=0.17*G_Gross_StemTot
-	vo['C_G_Gross_ByPool'][iT,:,iEP['RootCoarse']]=0.14*G_Gross_StemTot
-	vo['C_G_Gross_ByPool'][iT,:,iEP['RootFine']]=0.17*G_Gross_StemTot
-
-	#--------------------------------------------------------------------------
-	# Mortality of stemwood
-	#--------------------------------------------------------------------------
-
-	bM=meta['Param']['Raw']['GROMO']['m2']['Param']['BE']
-	zs=meta['Param']['Raw']['GROMO']['m2']['ZscoreStats']
-	DT=1
-
-	Csw_Tot_Lag1=vo['C_Eco_ByPool'][iT-1,:,iEP['StemMerch']]+vo['C_Eco_ByPool'][iT-1,:,iEP['StemNonMerch']]
-	A_z=(A-zs['A']['mu'])/zs['A']['sig']
-	Tn_z=(vi['ENV']['Tn'][iT,:]-zs['Tn']['mu'])/zs['Tn']['sig']
-	Wn_z=(vi['ENV']['Wn'][iT,:]-zs['Wn']['mu'])/zs['Wn']['sig']
-	Ta_z=(vi['ENV']['Ta'][iT,:]-zs['Ta']['mu'])/zs['Ta']['sig']
-	Wa_z=(vi['ENV']['Wa'][iT,:]-zs['Wa']['mu'])/zs['Wa']['sig']
-	Nd_z=(vi['ENV']['ND'][iT,:]-zs['Nd']['mu'])/zs['Nd']['sig']
-
-	M_Reg_StemTot=bM['Intercept']+bM['C(LS)[T.PL]']*PL+bM['OGP']*Ogp+bM['HI']*Hi+bM['DT']*DT+bM['B']*Csw_Tot_Lag1+bM['A_z']*A_z+ \
-		bM['Tn_z']*Tn_z+bM['Wn_z']*Wn_z+bM['Ta_z']*Ta_z+bM['Wa_z']*Wa_z+bM['Nd_z']*Nd_z+ \
-		bM['B:C(LS)[T.PL]']+bM['Tn_z:Ta_z']+bM['Wn_z:Wa_z']+bM['B:Tn_z']+bM['B:Wn_z']+bM['B:Ta_z']+bM['B:Wa_z']
-
-	M_Reg_StemTot=np.maximum(0,M_Reg_StemTot)
-
-	# Constrain mortality by the carbon pool at the start of the time step
-	M_Reg_StemTot=np.minimum(M_Reg_StemTot,Csw_Tot_Lag1)
-
-	#--------------------------------------------------------------------------
-	# Net growth
-	#--------------------------------------------------------------------------
-
-	# Net growth by pool
-	NetGrowthByPool=np.zeros( (meta[pNam]['Project']['Batch Size'][iBat],6) )
-
-	# Net growth of total stemwood
-	G_Net_StemTot=G_Gross_StemTot-M_Reg_StemTot
-
-	# Net growth of merch stemwood and non-merch stemwood
-	#Vtot_lag1=(vo['C_Eco_ByPool'][iT-1,:,iEP['StemMerch']]+vo['C_Eco_ByPool'][iT-1,:,iEP['StemNonMerch']])/meta['Param']['BEV']['Biophysical']['Density Wood']/meta['Param']['BEV']['Biophysical']['Carbon Content Wood']
-	fStemNonMerch=0.08 #np.minimum(1,(1-0.086)*0.086+(1/np.exp(0.012*(Vtot_lag1-14.4))))
-	NetGrowthByPool[:,iEP['StemMerch']]=(1-fStemNonMerch)*G_Net_StemTot
-	NetGrowthByPool[:,iEP['StemNonMerch']]=fStemNonMerch*G_Net_StemTot
-
-	# Net growth of foliage
-	NetGrowthByPool[:,iGY['Foliage']]=G_Net_StemTot*(meta['Param']['BEV']['BiomassAllometrySL']['Gf1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gf2']-meta['Param']['BEV']['BiomassAllometrySL']['Gf1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gf3']*vo['A'][iT,:]))
-
-	# Net growth of branches
-	NetGrowthByPool[:,iGY['Branch']]=G_Net_StemTot*(meta['Param']['BEV']['BiomassAllometrySL']['Gbr1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gbr2']-meta['Param']['BEV']['BiomassAllometrySL']['Gbr1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gbr3']*vo['A'][iT,:]))
-
-	# Net growth of bark
-	NetGrowthByPool[:,iGY['Bark']]=G_Net_StemTot*(meta['Param']['BEV']['BiomassAllometrySL']['Gbk1']+(meta['Param']['BEV']['BiomassAllometrySL']['Gbk2']-meta['Param']['BEV']['BiomassAllometrySL']['Gbk1'])*np.exp(-meta['Param']['BEV']['BiomassAllometrySL']['Gbk3']*vo['A'][iT,:]))
-
-	# Add net growth to output variable structure
-	# Oddly, using meta['iEP']['BiomassAboveground'] will invert the dimensions
-	# of C_G_Net - don't change it.
-	vo['C_G_Net_Reg_ByPool'][iT,:,0:5]=NetGrowthByPool[:,0:5]
-
-	# Total net growth of root biomass (Li et al. 2003, Eq. 4)
-	G_Net_Root_Total=0.22*np.sum(vo['C_G_Net_Reg_ByPool'][iT,:,0:5],axis=1)
-
-	# Fine root fraction should decline with total biomass, but estimating it based on
-	# size causes a lot of problems. Think about creating new equation.
-	vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootCoarse']]=(1-0.072)*G_Net_Root_Total
-	vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootFine']]=0.072*G_Net_Root_Total
-
-	#--------------------------------------------------------------------------
-	# Nutrient application effects to net growth
-	#--------------------------------------------------------------------------
-
-	if meta[pNam]['Project']['Biomass Module']!='gromo':
-		# Index to stands that are stimulated by nutrient application
-		meta['Modules']['NutrientApp']['iApplication']=np.where( meta['Modules']['NutrientApp']['ResponseCounter']>0 )[0]
-	
-		# Adjust N application response counter
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'UpdateCounter')
-	
-		# Adjust root net growth
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'BelowgroundNetGrowth')
-
-	#--------------------------------------------------------------------------
-	# Add net growth to biomass pools
-	#--------------------------------------------------------------------------
-
-	# Stemwood
-	vo['C_Eco_ByPool'][iT,:,iEP['StemMerch']]=np.maximum(0,vo['C_Eco_ByPool'][iT-1,:,iEP['StemMerch']]+vo['C_G_Net_Reg_ByPool'][iT,:,iEP['StemMerch']])
-	vo['C_Eco_ByPool'][iT,:,iEP['StemNonMerch']]=np.maximum(0,vo['C_Eco_ByPool'][iT-1,:,iEP['StemNonMerch']]+vo['C_G_Net_Reg_ByPool'][iT,:,iEP['StemNonMerch']])
-
-	# Foliage
-	vo['C_Eco_ByPool'][iT,:,iEP['Foliage']]=np.maximum(0,vo['C_Eco_ByPool'][iT-1,:,iEP['Foliage']]+vo['C_G_Net_Reg_ByPool'][iT,:,iEP['Foliage']])
-
-	# Branches
-	vo['C_Eco_ByPool'][iT,:,iEP['Branch']]=np.maximum(0,vo['C_Eco_ByPool'][iT-1,:,iEP['Branch']]+vo['C_G_Net_Reg_ByPool'][iT,:,iEP['Branch']])
-
-	# Bark
-	vo['C_Eco_ByPool'][iT,:,iEP['Bark']]=np.maximum(0,vo['C_Eco_ByPool'][iT-1,:,iEP['Bark']]+vo['C_G_Net_Reg_ByPool'][iT,:,iEP['Bark']])
-
-	# Coarse roots
-	vo['C_Eco_ByPool'][iT,:,iEP['RootCoarse']]=np.maximum(0,vo['C_Eco_ByPool'][iT-1,:,iEP['RootCoarse']]+vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootCoarse']])
-
-	# Fine roots
-	vo['C_Eco_ByPool'][iT,:,iEP['RootFine']]=np.maximum(0,vo['C_Eco_ByPool'][iT-1,:,iEP['RootFine']]+vo['C_G_Net_Reg_ByPool'][iT,:,iEP['RootFine']])
-
-	#--------------------------------------------------------------------------
-	# Add net growth to live merch volume and update other volume variables
-	# Notes:
-	# 1) Regualr mortality to be added to dead volume in DOM function ***
-	# 2) Total volume updated at the start of disturfance event function.
-	#--------------------------------------------------------------------------
-
-	# Update live stemwood merchantable volume
-	vo['V_MerchLive'][iT,:]=vi['lsat']['Biomass to Volume CF']*vo['C_Eco_ByPool'][iT,:,iEP['StemMerch']]
-	vo['V_WholeStemLive'][iT,:]=vi['lsat']['Biomass to Volume CF']*np.sum(vo['C_Eco_ByPool'][iT,:,iEP['StemTotal']],axis=0)
-
-	#--------------------------------------------------------------------------
-	# Biomass turnover
-	#--------------------------------------------------------------------------
-
-	# Biomass loss due to regular mortality
-	vo['C_M_Reg_ByPool'][iT,:,0:7]=vo['C_G_Gross_ByPool'][iT,:,0:7]-vo['C_G_Net_Reg_ByPool'][iT,:,0:7]
-
-	# Old:
-	# 	bBT=meta['Param']['BEV']['BiomassTurnover']
-	# 	flg=0
-	# 	if flg==1:
-	# 		b0={'b1':0.1,'b2':5,'b3':20,'b4':2.5};
-	# 		A=np.arange(0,200,1); y=(b0['b1']*(1+((b0['b2']*(A/b0['b3'])**b0['b4']-1)/np.exp(A/b0['b3']))))/100; plt.close('all'); plt.plot(A,y,'b-')
-	# 	fM=(bBT['Mreg1']*(1+((bBT['Mreg2']*(vo['A'][iT,:]/bBT['Mreg3'])**bBT['Mreg4']-1)/np.exp(vo['A'][iT,:]/bBT['Mreg3']))))/100
-	# 	vo['C_M_Reg_ByPool'][iT,:,0:7]=np.tile(fM,(7,1)).T*vo['C_Eco_ByPool'][iT,:,0:7]
-
-	# *** SPECIAL ORDER - CT Study (Johnstone 2002) ***
-	if meta[pNam]['Project']['Code Project']=='Demo_Harv_ThinDensePine':
-		if iScn==0:
-			if (vi['tv'][iT]>1952) & (vi['tv'][iT]<=1997):
-				vo['C_M_Reg_ByPool'][iT,:,iEP['StemMerch']]=1.08
-		elif iScn==1:
-			if (vi['tv'][iT]>1952) & (vi['tv'][iT]<=1997):
-				vo['C_M_Reg_ByPool'][iT,:,iEP['StemMerch']]=0.40
-
-	if meta[pNam]['Project']['Biomass Module']!='gromo':
-		# Adjust mortality to account for N application response
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'Mortality')
-
-	#--------------------------------------------------------------------------
-	# Litterfall
-	#--------------------------------------------------------------------------
-
-	# Setting turnover as a function of age will decouple NPP from net growth.
-	Aref=meta['Param']['BEV']['BiomassTurnover']['BiomassTurnoverAgeRef']
-	fA=-meta['Param']['BEV']['BiomassTurnover']['BiomassTurnoverAgeDependence']
-
-	# Calculate merch stemwood biomass turnover due to litterfall
-	# This is zero.
-	tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['BiomassTurnover']['StemMerch_RateLF'])
-	vo['C_LF_ByPool'][iT,:,iEP['StemMerch']]=tr*vo['C_Eco_ByPool'][iT,:,iEP['StemMerch']]
-
-	# Calculate non-merch stemwood biomass turnover due to litterfall
-	# This is zero.
-	tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['BiomassTurnover']['StemNonMerch_RateLF'])
-	vo['C_LF_ByPool'][iT,:,iEP['StemNonMerch']]=tr*vo['C_Eco_ByPool'][iT,:,iEP['StemNonMerch']]
-
-	# Calculate foliage biomass turnover due to litterfall
-	tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['BiomassTurnover']['Foliage_RateLF'])
-	vo['C_LF_ByPool'][iT,:,iEP['Foliage']]=tr*vo['C_Eco_ByPool'][iT,:,iEP['Foliage']]
-
-	# Calculate branch biomass turnover due to litterfall
-	tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['BiomassTurnover']['Branch_RateLF'])
-	vo['C_LF_ByPool'][iT,:,iEP['Branch']]=tr*vo['C_Eco_ByPool'][iT,:,iEP['Branch']]
-
-	# Calculate bark biomass turnover due to litterfall
-	tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['BiomassTurnover']['Bark_RateLF'])
-	vo['C_LF_ByPool'][iT,:,iEP['Bark']]=tr*vo['C_Eco_ByPool'][iT,:,iEP['Bark']]
-
-	# Calculate coarse root biomass turnover due to litterfall
-	tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['BiomassTurnover']['RootCoarse_RateLF'])
-	vo['C_LF_ByPool'][iT,:,iEP['RootCoarse']]=tr*vo['C_Eco_ByPool'][iT,:,iEP['RootCoarse']]
-
-	# Calculate fine root biomass turnover due to litterfall
-	tr=np.maximum(0.001,fA*(vo['A'][iT,:]-Aref)+meta['Param']['BEV']['BiomassTurnover']['RootFine_RateLF'])
-	vo['C_LF_ByPool'][iT,:,iEP['RootFine']]=tr*vo['C_Eco_ByPool'][iT,:,iEP['RootFine']]
-
-	if meta[pNam]['Project']['Biomass Module']!='gromo':
-		# Adjust litterfall to account for N application response
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'Litterfall')
-
-	return vo
 
 #%% Dead organic matter and soil organic matter dynamics
-def DeadWoodLitterAndSoilDynamics(meta,pNam,iT,iBat,vi,vo,iEP):
+def DeadWoodLitterAndSoilDynamics(meta,pNam,iT,iScn,iBat,vi,vo,iEP):
 
 	# Extract parameters
 	bBT=meta['Param']['BEV']['BiomassTurnover']
@@ -672,8 +394,8 @@ def DeadWoodLitterAndSoilDynamics(meta,pNam,iT,iBat,vi,vo,iEP):
 
 	if meta[pNam]['Project']['Biomass Module']!='gromo':
 		# Adjust decomposition to account for N application response
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'HeterotrophicRespiration')
+		if meta['Modules']['NutrientApplication']['iApplication'].size>0:
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'HeterotrophicRespiration')
 
 	# Remove heterotrophic consumption of carbon from source DOM pools
 	for k in meta['Core']['Name Pools Dead']:
@@ -840,7 +562,10 @@ def DeadWoodLitterAndSoilDynamics(meta,pNam,iT,iBat,vi,vo,iEP):
 	return vo
 
 #%% Disturbance and management events
-def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
+def EventDynamics(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
+
+	# Extract parameters
+	bB=meta['Param']['BEV']['Biophysical']
 
 	# Track initial carbon pools for QA purposes
 	flg=0
@@ -868,11 +593,11 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 
 	# Predict mountain pine beetle (on the fly)
 	if (meta[pNam]['Scenario'][iScn]['IBM Sim Pre-obs Status']=='On') & (vi['tv'][iT]<1950):
-		vi,flag_sim_event=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
+		vi,flag_sim_event=asm.PredictMPB_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 	if (meta[pNam]['Scenario'][iScn]['IBM Sim Obs Status']=='On') & (vi['tv'][iT]>=1950) & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']):
-		vi,flag_sim_event=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
+		vi,flag_sim_event=asm.PredictMPB_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 	if (meta[pNam]['Scenario'][iScn]['IBM Sim Future Status']=='On') & (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
-		vi,flag_sim_event=asm.PredictIBM_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
+		vi,flag_sim_event=asm.PredictMPB_OnTheFly(meta,pNam,vi,iT,iScn,iEns,flag_sim_event)
 
 	# Predict disease (on the fly)
 	if (meta[pNam]['Scenario'][iScn]['Disease Sim Historical Status']=='On') & (vi['tv'][iT]<meta[pNam]['Project']['Year Project']):
@@ -895,10 +620,10 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 	# Predict harvesting (on the fly)
 	if (meta[pNam]['Scenario'][iScn]['Harvest Sim Historical Status']=='On') & (vi['tv'][iT]<meta[pNam]['Scenario'][iScn]['Harvest Sim Year Transition']):
 		Period='Historical'
-		vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
+		vi=asm.PredictHarvest_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
 	if (meta[pNam]['Scenario'][iScn]['Harvest Sim Future Status']=='On') & (vi['tv'][iT]>=meta[pNam]['Scenario'][iScn]['Harvest Sim Year Transition']):
 		Period='Future'
-		vi=asm.PredictHarvesting_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
+		vi=asm.PredictHarvest_OnTheFly(meta,pNam,vi,iT,iScn,iEns,vo['V_MerchTotal'][iT,:],Period)
 
 	# Predict future nutrient application (on the fly)
 	if (meta[pNam]['Scenario'][iScn]['Nutrient App Sim Status']=='On') & (vi['tv'][iT]>=meta[pNam]['Project']['Year Project']):
@@ -1002,22 +727,22 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 			#--------------------------------------------------------------------------
 			pSet='AlbedoSurfaceShortwaveRF_HarvestResponseByBGCZone'
 
-			#vi['tv']=np.arange(1,2100)
-			#iT=2022
-			dt=np.tile(vi['tv']-vi['tv'][iT],(iHarvest.size,1)).T
-			b0=np.tile(meta['Param']['BEV'][pSet]['Intercept'][iHarvest],(vi['tv'].size,1))
-			b1=np.tile(meta['Param']['BEV'][pSet]['Slope'][iHarvest],(vi['tv'].size,1))
-			b2=np.tile(meta['Param']['BEV'][pSet]['Initial'][iHarvest],(vi['tv'].size,1))
-			yhat0=b0+b1*dt
-			Response=b2*np.ones(dt.shape)
-			Response[vi['tv']>=vi['tv'][iT],:]=np.minimum(b2[vi['tv']>=vi['tv'][iT],:],yhat0[vi['tv']>=vi['tv'][iT],:])
-			Response=Response-np.tile(Response[iT-1],(vi['tv'].size,1))
-			vo['RF_AlbedoSurfaceShortwave'][iT:,iHarvest]=vo['RF_AlbedoSurfaceShortwave'][iT:,iHarvest]+Response[iT:,:]
-
-# 			yhat0=beta[zone][0]+beta[zone][1]*(tv-t_harv)
-# 			yhat=beta[zone][2]*np.ones(tv.size)
-# 			yhat[tv>=t_harv]=np.minimum(beta[zone][2],yhat0[tv>=t_harv])
-# 			yhat=yhat-yhat[0]
+			# 			#vi['tv']=np.arange(1,2100)
+			# 			#iT=2022
+			# 			dt=np.tile(vi['tv']-vi['tv'][iT],(iHarvest.size,1)).T
+			# 			b0=np.tile(meta['Param']['BEV'][pSet]['Intercept'][iHarvest],(vi['tv'].size,1))
+			# 			b1=np.tile(meta['Param']['BEV'][pSet]['Slope'][iHarvest],(vi['tv'].size,1))
+			# 			b2=np.tile(meta['Param']['BEV'][pSet]['Initial'][iHarvest],(vi['tv'].size,1))
+			# 			yhat0=b0+b1*dt
+			# 			Response=b2*np.ones(dt.shape)
+			# 			Response[vi['tv']>=vi['tv'][iT],:]=np.minimum(b2[vi['tv']>=vi['tv'][iT],:],yhat0[vi['tv']>=vi['tv'][iT],:])
+			# 			Response=Response-np.tile(Response[iT-1],(vi['tv'].size,1))
+			# 			vo['RF_AlbedoSurfaceShortwave'][iT:,iHarvest]=vo['RF_AlbedoSurfaceShortwave'][iT:,iHarvest]+Response[iT:,:]
+			
+			# 			# 			yhat0=beta[zone][0]+beta[zone][1]*(tv-t_harv)
+			# 			# 			yhat=beta[zone][2]*np.ones(tv.size)
+			# 			# 			yhat[tv>=t_harv]=np.minimum(beta[zone][2],yhat0[tv>=t_harv])
+			# 			# 			yhat=yhat-yhat[0]
 
 		#----------------------------------------------------------------------
 		# Adjustments to pre-commercial thinning events
@@ -1037,9 +762,9 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 			iIBM=idx_Type[meta['LUT']['Event']['Mountain Pine Beetle']]
 
 			# Age is less affected than biomass (see field plot summary)
-			AgeCorrection[iIBM]=1-0.6*LiveImpactFactor[iIBM]
+			#AgeCorrection[iIBM]=1-0.6*LiveImpactFactor[iIBM]
 			#AgeCorrection[iIBM]=1-LiveImpactFactor[iIBM]
-			#AgeCorrection[iIBM]=1.0
+			AgeCorrection[iIBM]=1.0 # No effect on age
 
 			# MPB detection in young stands does not have impact
 			LiveImpactFactor[ iIBM[ vo['A'][iT,iIBM]<20 ] ]=0
@@ -1082,6 +807,30 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 					ndf=vi['lsat']['Insect Mortality Percent Tree Species Affected'][nam].astype('float')/100
 					ind=idx_Type[id]
 					LiveImpactFactor[ind]=LiveImpactFactor[ind]*ndf[ind]
+
+		#--------------------------------------------------------------------------
+		# Stand establishment fossil fuel emissions
+		#--------------------------------------------------------------------------
+
+		if meta['LUT']['Event']['Planting'] in idx_Type.keys():
+			iPL=idx_Type[meta['LUT']['Event']['Planting']]
+
+			SPH_Planted=1650 # Mean planting density
+			SPH_Composted=bB['Trees Composted Per Tree Planted']*SPH_Planted
+			SPH_Total=SPH_Planted+SPH_Composted
+
+			Area_Planted=1 # ha
+
+			Area_Surveyed=bB['Area Surveyed Per Area Planted']*Area_Planted # ha
+
+			# Sowing (nursery)
+			vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iPL]=vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iPL]+bB['EI Sowing (By Tree Sown)']*SPH_Total
+			
+			# Planting
+			vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iPL]=vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iPL]+bB['EI Planting (By Hectare Planted)']*Area_Planted
+			
+			# Surveying
+			vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iPL]=vo['E_ForestryOps_EnergyT_Domestic_Oil'][iT,iPL]+bB['EI Surveying (BY Hectare Surveyed)']*Area_Surveyed
 
 		#----------------------------------------------------------------------
 		# Define the amount of each pool that is affected by the event
@@ -1409,9 +1158,9 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 		vo['C_Eco_ByPool'][iT,:,iEP['PiledDeadBranch']]=vo['C_Eco_ByPool'][iT,:,iEP['PiledDeadBranch']]-DeadBranch_Burned
 
 		# Add burned pile carbon to fire emissions
-		vo['C_E_OpenBurningAsCO2'][iT,:]=vo['C_E_OpenBurningAsCO2'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO2']*Total_Burned
-		vo['C_E_OpenBurningAsCH4'][iT,:]=vo['C_E_OpenBurningAsCH4'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CH4']*Total_Burned
-		vo['C_E_OpenBurningAsCO'][iT,:]=vo['C_E_OpenBurningAsCO'][iT,:]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*Total_Burned
+		vo['C_E_OpenBurningAsCO2'][iT,:]=vo['C_E_OpenBurningAsCO2'][iT,:]+bB['Combustion Fraction CO2']*Total_Burned
+		vo['C_E_OpenBurningAsCH4'][iT,:]=vo['C_E_OpenBurningAsCH4'][iT,:]+bB['Combustion Fraction CH4']*Total_Burned
+		vo['C_E_OpenBurningAsCO'][iT,:]=vo['C_E_OpenBurningAsCO'][iT,:]+bB['Combustion Fraction CO']*Total_Burned
 
 		# If it is pile burning, record it
 		vo['C_ToPileBurnTot'][iT,:]=vo['C_ToPileBurnTot'][iT,:]+Total_Burned
@@ -1466,13 +1215,11 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 			BurnedTotal=BurnedBiomass+BurnedDeadWood+BurnedLitter+BurnedSoil
 	
 			# Used for Conservation of Mass Test
-			if (vi['tv'][iT]==2023) & (iE>=0) & (iScn==3):
-				print(BurnedTotal[0])
 			vo['C_ToFire'][iT,iWF]=vo['C_ToFire'][iT,iWF]+BurnedTotal
 	
-			vo['C_E_WildfireAsCO2'][iT,iWF]=vo['C_E_WildfireAsCO2'][iT,iWF]+meta['Param']['BEV']['Biophysical']['CombFrac_CO2']*BurnedTotal
-			vo['C_E_WildfireAsCH4'][iT,iWF]=vo['C_E_WildfireAsCH4'][iT,iWF]+meta['Param']['BEV']['Biophysical']['CombFrac_CH4']*BurnedTotal
-			vo['C_E_WildfireAsCO'][iT,iWF]=vo['C_E_WildfireAsCO'][iT,iWF]+meta['Param']['BEV']['Biophysical']['CombFrac_CO']*BurnedTotal
+			vo['C_E_WildfireAsCO2'][iT,iWF]=vo['C_E_WildfireAsCO2'][iT,iWF]+bB['Combustion Fraction CO2']*BurnedTotal
+			vo['C_E_WildfireAsCH4'][iT,iWF]=vo['C_E_WildfireAsCH4'][iT,iWF]+bB['Combustion Fraction CH4']*BurnedTotal
+			vo['C_E_WildfireAsCO'][iT,iWF]=vo['C_E_WildfireAsCO'][iT,iWF]+bB['Combustion Fraction CO']*BurnedTotal
 
 		#----------------------------------------------------------------------
 		# Update stand age
@@ -1501,7 +1248,7 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 		if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
 			for iGC in range(meta['Modules']['GYM']['N Growth Curves']):
 
-				# Don't alter growth curve for fertilization - index to non-fertilization events
+				# Don't alter growth curve for nutrient application - index to non-nutrient application events
 				ind=np.where( (vi['EC']['ID Growth Curve'][iT,:,iE]==meta['Modules']['GYM']['ID GC Unique'][iGC]) & (ID_Type!=meta['LUT']['Event']['Nutrient App Aerial']) )[0]
 
 				if ind.size>0:
@@ -1513,6 +1260,7 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 		#----------------------------------------------------------------------
 		# Impose effects on growth through growth curves
 		#----------------------------------------------------------------------
+
 		if meta[pNam]['Project']['Biomass Module']=='BatchTIPSY':
 
 			if meta['LUT']['Event']['Regen Failure'] in idx_Type.keys():
@@ -1562,61 +1310,61 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 		# +10 = 10% increase, -10 = 10% decrease
 		#----------------------------------------------------------------------
 
-		if (meta[pNam]['Project']['Biomass Module']!='Sawtooth') & (meta[pNam]['Project']['Biomass Module']!='gromo'):
+		if (meta[pNam]['Project']['Biomass Module']!='Sawtooth') & (np.isin(meta[pNam]['Project']['Biomass Module'],['gromo1','gromo2'])==False):
 
 			Age=np.arange(0,meta['Modules']['GYM']['BatchTIPSY Maximum Age']+1,1)
 
-			# Wildfire
-			if meta['LUT']['Event']['Wildfire'] in idx_Type.keys():
-				indA=idx_Type[meta['LUT']['Event']['Wildfire']]
-				if indA.size>0:
-					NetGrowth=vi['GC']['Active'].copy()
-					ResponsePeriod=25
-					ResponseRatio=0.25
-					Shape=3
-					for iA in indA:
-						iResponse=np.where( (Age>=vo['A'][iT,iA]) & (Age<=vo['A'][iT,iA]+ResponsePeriod) )[0]
-						n=iResponse.size
-						x=np.arange(1,n+1)
-						fD=ResponseRatio+(1-ResponseRatio)*(1-np.exp(-Shape*(x/ResponsePeriod)))
-						fD=np.tile(np.reshape(fD,(-1,1)),(1,6))
-						NetGrowth[iResponse,iA,:]=fD*NetGrowth[iResponse,iA,:]
+# 			# Wildfire
+# 			if meta['LUT']['Event']['Wildfire'] in idx_Type.keys():
+# 				indA=idx_Type[meta['LUT']['Event']['Wildfire']]
+# 				if indA.size>0:
+# 					NetGrowth=vi['GC']['Active'].copy()
+# 					ResponsePeriod=25
+# 					ResponseRatio=0.25
+# 					Shape=3
+# 					for iA in indA:
+# 						iResponse=np.where( (Age>=vo['A'][iT,iA]) & (Age<=vo['A'][iT,iA]+ResponsePeriod) )[0]
+# 						n=iResponse.size
+# 						x=np.arange(1,n+1)
+# 						fD=ResponseRatio+(1-ResponseRatio)*(1-np.exp(-Shape*(x/ResponsePeriod)))
+# 						fD=np.tile(np.reshape(fD,(-1,1)),(1,6))
+# 						NetGrowth[iResponse,iA,:]=fD*NetGrowth[iResponse,iA,:]
 
-				flg=0
-				if flg==1:
-					ResponsePeriod=25
-					n=5
-					GRR=0.25
-					x=np.arange(0,n)
-					plt.close('all'); plt.plot(x,GRR+(1-GRR)*(1-np.exp(-3*(x/ResponsePeriod))),'.b-')
+# 				flg=0
+# 				if flg==1:
+# 					ResponsePeriod=25
+# 					n=5
+# 					GRR=0.25
+# 					x=np.arange(0,n)
+# 					plt.close('all'); plt.plot(x,GRR+(1-GRR)*(1-np.exp(-3*(x/ResponsePeriod))),'.b-')
 
-				vi['GC']['Active']=NetGrowth
+# 				vi['GC']['Active']=NetGrowth
 
-			# Mountain pine beetle
-			if meta['LUT']['Event']['Mountain Pine Beetle'] in idx_Type.keys():
-				indA=idx_Type[meta['LUT']['Event']['Mountain Pine Beetle']]
-				if indA.size>0:
-					NetGrowth=vi['GC']['Active'].copy()
-					ResponsePeriod=20
-					ResponseRatio=0.3
-					Shape=3
-					for iA in indA:
-						iResponse=np.where( (Age>=vo['A'][iT,iA]) & (Age<=vo['A'][iT,iA]+ResponsePeriod) )[0]
-						n=iResponse.size
-						x=np.arange(1,n+1)
-						fD=ResponseRatio+(1-ResponseRatio)*(1-np.exp(-Shape*(x/ResponsePeriod)))
-						fD=np.tile(np.reshape(fD,(-1,1)),(1,6))
-						NetGrowth[iResponse,iA,:]=fD*NetGrowth[iResponse,iA,:]
-	
-				flg=0
-				if flg==1:
-					ResponsePeriod=25
-					n=5
-					GRR=0.1
-					x=np.arange(0,n)
-					plt.close('all'); plt.plot(x,GRR+(1-GRR)*(1-np.exp(-3*(x/ResponsePeriod))),'.b-')
-	
-				vi['GC']['Active']=NetGrowth
+# 			# Mountain pine beetle
+# 			if meta['LUT']['Event']['Mountain Pine Beetle'] in idx_Type.keys():
+# 				indA=idx_Type[meta['LUT']['Event']['Mountain Pine Beetle']]
+# 				if indA.size>0:
+# 					NetGrowth=vi['GC']['Active'].copy()
+# 					ResponsePeriod=20
+# 					ResponseRatio=0.3
+# 					Shape=3
+# 					for iA in indA:
+# 						iResponse=np.where( (Age>=vo['A'][iT,iA]) & (Age<=vo['A'][iT,iA]+ResponsePeriod) )[0]
+# 						n=iResponse.size
+# 						x=np.arange(1,n+1)
+# 						fD=ResponseRatio+(1-ResponseRatio)*(1-np.exp(-Shape*(x/ResponsePeriod)))
+# 						fD=np.tile(np.reshape(fD,(-1,1)),(1,6))
+# 						NetGrowth[iResponse,iA,:]=fD*NetGrowth[iResponse,iA,:]
+# 	
+# 				flg=0
+# 				if flg==1:
+# 					ResponsePeriod=25
+# 					n=5
+# 					GRR=0.1
+# 					x=np.arange(0,n)
+# 					plt.close('all'); plt.plot(x,GRR+(1-GRR)*(1-np.exp(-3*(x/ResponsePeriod))),'.b-')
+# 	
+# 				vi['GC']['Active']=NetGrowth
 
 			# Disease
 			if meta['LUT']['Event']['Disease Root'] in idx_Type.keys():
@@ -1667,15 +1415,15 @@ def DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP):
 	if meta[pNam]['Project']['Biomass Module']!='gromo':
 
 		# Generate index to stands that were fertilized
-		meta['Modules']['NutrientApp']['iApplication']=np.where(flag_nutrient_app==1)[0]
+		meta['Modules']['NutrientApplication']['iApplication']=np.where(flag_nutrient_app==1)[0]
 	
-		if meta['Modules']['NutrientApp']['iApplication'].size>0:
+		if meta['Modules']['NutrientApplication']['iApplication'].size>0:
 	
 			# Adjust net growth of aboveground biomass
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'AbovegroundNetGrowth')
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'AbovegroundNetGrowth')
 	
-			# Adjust emissions
-			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,'Emissions')
+			# Adjust fossil fuel emissions
+			vi,vo,meta=napp.NutrientApplicationResponse(meta,pNam,vi,vo,iT,iScn,'Emissions')
 
 	#--------------------------------------------------------------------------
 	# Update time since wildfire counter
@@ -2229,8 +1977,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_PowerGrid'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_PowerGrid'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Domestic_EnergySC_Bioenergy_PowerGrid'][iT,:]=vo['E_Domestic_EnergySC_Bioenergy_PowerGrid'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Domestic_ResiduesPowerGrid'][iT,:]=vo['E_BBP_ForestSector_Domestic_ResiduesPowerGrid'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Domestic'][iT,:]=vo['E_BBP_ForestSector_Domestic'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_PowerGrid'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2244,8 +1993,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_PowerFacilityDom'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_PowerFacilityDom'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Domestic_EnergySC_Bioenergy_PowerFacility'][iT,:]=vo['E_Domestic_EnergySC_Bioenergy_PowerFacility'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Domestic_ResiduesPowerFacility'][iT,:]=vo['E_BBP_ForestSector_Domestic_ResiduesPowerFacility'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Domestic'][iT,:]=vo['E_BBP_ForestSector_Domestic'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_PowerFacilityDom'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2259,8 +2009,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_PowerFacilityExport'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_PowerFacilityExport'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Internat_EnergySC_Bioenergy_PowerFacility'][iT,:]=vo['E_Internat_EnergySC_Bioenergy_PowerFacility'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Internat_ResiduesPowerFacility'][iT,:]=vo['E_BBP_ForestSector_Internat_ResiduesPowerFacility'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Internat'][iT,:]=vo['E_BBP_ForestSector_Internat'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_PowerFacilityExport'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2274,8 +2025,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_PelletExport'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_PelletExport'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Internat_EnergySC_Bioenergy_PelletGrid'][iT,:]=vo['E_Internat_EnergySC_Bioenergy_PelletGrid'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Internat_PelletsPowerGrid'][iT,:]=vo['E_BBP_ForestSector_Internat_PelletsPowerGrid'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Internat'][iT,:]=vo['E_BBP_ForestSector_Internat'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_PelletExport'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2289,8 +2041,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_PelletDomGrid'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_PelletDomGrid'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Domestic_EnergySC_Bioenergy_PelletGrid'][iT,:]=vo['E_Domestic_EnergySC_Bioenergy_PelletGrid'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Domestic_PelletsPowerGrid'][iT,:]=vo['E_BBP_ForestSector_Domestic_PelletsPowerGrid'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Domestic'][iT,:]=vo['E_BBP_ForestSector_Domestic'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_PelletDomGrid'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2304,8 +2057,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_PelletDomRNG'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_PelletDomRNG'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Domestic_EnergySC_Bioenergy_PelletRNG'][iT,:]=vo['E_Domestic_EnergySC_Bioenergy_PelletRNG'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Domestic_PelletsRNG'][iT,:]=vo['E_BBP_ForestSector_Domestic_PelletsRNG'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Domestic'][iT,:]=vo['E_BBP_ForestSector_Domestic'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_PelletDomRNG'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2319,8 +2073,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_FirewoodDom'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_FirewoodDom'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Domestic_EnergySC_Bioenergy_Firewood'][iT,:]=vo['E_Domestic_EnergySC_Bioenergy_Firewood'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Domestic_Firewood'][iT,:]=vo['E_BBP_ForestSector_Domestic_Firewood'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Domestic'][iT,:]=vo['E_BBP_ForestSector_Domestic'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_FirewoodDom'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2334,8 +2089,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*vo['C_ToBBP_FirewoodExport'][iT,:]
 	E_CH4=bB['Ratio_CH4_to_C']*(1-bPD['EnergyCombustionFracEmitCO2'])*vo['C_ToBBP_FirewoodExport'][iT,:]
-	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4_AR5']*E_CH4
-	vo['E_Internat_EnergySC_Bioenergy_Firewood'][iT,:]=vo['E_Internat_EnergySC_Bioenergy_Firewood'][iT,:] + (E_AsCO2+E_AsCH4)
+	E_AsCH4=meta['Param']['BE']['Biophysical']['GWP_CH4']*E_CH4
+	vo['E_BBP_ForestSector_Internat_Firewood'][iT,:]=vo['E_BBP_ForestSector_Internat_Firewood'][iT,:] + (E_AsCO2+E_AsCH4)
+	vo['E_BBP_ForestSector_Internat'][iT,:]=vo['E_BBP_ForestSector_Internat'][iT,:] + (E_AsCO2+E_AsCH4)
 	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+vo['C_ToBBP_FirewoodExport'][iT,:]
 
 	# Track if radiative forcing status is on
@@ -2357,13 +2113,14 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 	# Add emitted carbon to CO2 emission "pool"
 	# Emissions
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['EnergyCombustionFracEmitCO2']*C_emitted
-	vo['E_Domestic_ForestSector_HWP'][iT,:]=vo['E_Domestic_ForestSector_HWP'][iT,:] + E_AsCO2
-	vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+C_emitted
+	vo['E_RHP_ForestSector_Domestic'][iT,:]=vo['E_RHP_ForestSector_Domestic'][iT,:] + E_AsCO2
+	#vo['E_BBP_ForestSector_Domestic'][iT,:]=vo['E_BBP_ForestSector_Domestic'][iT,:] + (E_AsCO2+E_AsCH4)
+	#vo['C_BBP'][iT,:]=vo['C_BBP'][iT,:]+C_emitted
 
 	# Track if radiative forcing status is on
 	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
 		vo['E_CO2'][iT,:]=vo['E_CO2'][iT,:]+E_AsCO2
-		vo['E_CH4'][iT,:]=vo['E_CH4'][iT,:]+E_CH4
+		#vo['E_CH4'][iT,:]=vo['E_CH4'][iT,:]+E_CH4
 
 	#--------------------------------------------------------------------------
 	# Decomposition of dump wood
@@ -2379,13 +2136,13 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 	E_AsCO2=bB['Ratio_CO2_to_C']*C_emitted
 
 	# Add to emissions (CO2 emission from aerobic decomposition)
-	vo['E_Domestic_ForestSector_HWP'][iT,:]=vo['E_Domestic_ForestSector_HWP'][iT,:] + E_AsCO2
+	vo['E_RHP_ForestSector_Domestic'][iT,:]=vo['E_RHP_ForestSector_Domestic'][iT,:] + E_AsCO2
 	vo['C_RHP'][iT,:]=vo['C_RHP'][iT,:]+C_emitted
 
 	# Track if radiative forcing status is on
 	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
 		vo['E_CO2'][iT,:]=vo['E_CO2'][iT,:]+E_AsCO2
-		vo['E_CH4'][iT,:]=vo['E_CH4'][iT,:]+E_CH4
+		#vo['E_CH4'][iT,:]=vo['E_CH4'][iT,:]+E_CH4
 
 	#--------------------------------------------------------------------------
 	# Decomposition of dump paper
@@ -2401,13 +2158,13 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 	E_AsCO2=bB['Ratio_CO2_to_C']*C_emitted
 
 	# Add to emissions (CO2 emission from aerobic decomposition)
-	vo['E_Domestic_ForestSector_HWP'][iT,:]=vo['E_Domestic_ForestSector_HWP'][iT,:] + E_AsCO2
+	vo['E_RHP_ForestSector_Domestic'][iT,:]=vo['E_RHP_ForestSector_Domestic'][iT,:] + E_AsCO2
 	vo['C_RHP'][iT,:]=vo['C_RHP'][iT,:]+C_emitted
 
 	# Track if radiative forcing status is on
 	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
 		vo['E_CO2'][iT,:]=vo['E_CO2'][iT,:]+E_AsCO2
-		vo['E_CH4'][iT,:]=vo['E_CH4'][iT,:]+E_CH4
+		#vo['E_CH4'][iT,:]=vo['E_CH4'][iT,:]+E_CH4
 
 	#--------------------------------------------------------------------------
 	# Decomposition of landfill degradable wood
@@ -2423,7 +2180,7 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 	# Add to emissions
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['LandfillDegradableFracEmitCO2']*C_emitted
 
-	vo['E_Domestic_ForestSector_HWP'][iT,:]=vo['E_Domestic_ForestSector_HWP'][iT,:]+E_AsCO2
+	vo['E_RHP_ForestSector_Domestic'][iT,:]=vo['E_RHP_ForestSector_Domestic'][iT,:]+E_AsCO2
 	vo['C_RHP'][iT,:]=vo['C_RHP'][iT,:]+C_emitted
 
 	# Adjustment for proportion of degradable landfills with gas collection systems,
@@ -2435,9 +2192,9 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 
 	E_CH4=bB['Ratio_CH4_to_C']*E_C_AsCH4
 
-	E_AsCH4=bB['GWP_CH4_AR5']*E_CH4
+	E_AsCH4=bB['GWP_CH4']*E_CH4
 
-	vo['E_Domestic_ForestSector_HWP'][iT,:]=vo['E_Domestic_ForestSector_HWP'][iT,:]+E_AsCH4
+	vo['E_RHP_ForestSector_Domestic'][iT,:]=vo['E_RHP_ForestSector_Domestic'][iT,:]+E_AsCH4
 
 	# Track if radiative forcing status is on
 	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
@@ -2458,19 +2215,19 @@ def ProductDynamics(meta,pNam,iT,iBat,vi,vo):
 	# Add to emissions
 	E_AsCO2=bB['Ratio_CO2_to_C']*bPD['LandfillDegradableFracEmitCO2']*C_emitted
 
-	vo['E_Domestic_ForestSector_HWP'][iT,:]=vo['E_Domestic_ForestSector_HWP'][iT,:]+E_AsCO2
+	vo['E_RHP_ForestSector_Domestic'][iT,:]=vo['E_RHP_ForestSector_Domestic'][iT,:]+E_AsCO2
 	vo['C_RHP'][iT,:]=vo['C_RHP'][iT,:]+C_emitted
 
 	# Adjustment for proportion of degradable landfills with gas collection systems,
 	# efficiency of system, and methane oxided to CO2 from the landfill cover
 	E_C_AsCH4=C_emitted*(c1-bPD['LandfillMethaneOxidizedToCO2']*c1)+C_emitted*gcsp*(c2-bPD['LandfillMethaneOxidizedToCO2']*c1)
-	E_AsCH4=bB['GWP_CH4_AR5']*E_C_AsCH4
+	E_AsCH4=bB['GWP_CH4']*E_C_AsCH4
 
 	E_CH4=bB['Ratio_CH4_to_C']*E_C_AsCH4
 
-	E_AsCH4=bB['GWP_CH4_AR5']*E_CH4
+	E_AsCH4=bB['GWP_CH4']*E_CH4
 
-	vo['E_Domestic_ForestSector_HWP'][iT,:]=vo['E_Domestic_ForestSector_HWP'][iT,:]+E_AsCH4
+	vo['E_RHP_ForestSector_Domestic'][iT,:]=vo['E_RHP_ForestSector_Domestic'][iT,:]+E_AsCH4
 
 	# Track if radiative forcing status is on
 	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
@@ -2497,84 +2254,75 @@ def GeologicalDynamics(meta,pNam,vi,vo):
 	V_Tot=vo['V_ToMill_MerchTotal']+vo['V_ToMill_NonMerchTotal']
 
 	# Total removals (ODT/ha)
-	ODT_Tot=V_Tot*bB['Density Wood']
+	ODT_Tot=V_Tot*bB['Density Wood Standard']
 
 	#--------------------------------------------------------------------------
 	# Resource extraction
 	#--------------------------------------------------------------------------
 
 	# Construction and maintenance of roads
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Road Construction']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Road Construction']*V_Tot
 
 	# Cruising and reconnaissance
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Cruise And Recon']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Cruise And Recon']*V_Tot
 
 	# Felling and processing logs
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Felling Process Logs']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Felling Process Logs']*V_Tot
 
 	# Skidding trees to landing
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Skidding To Landing']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Skidding To Landing']*V_Tot
 
 	# Piling and sorting
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Piling And Sorting Logs']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Piling And Sorting Logs']*V_Tot
 
 	# Loading logs
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Loading Logs At Landing']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Loading Logs At Landing']*V_Tot
 
 	# Chipping (non-merch)
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Chipping']*vo['V_ToMill_NonMerchTotal']
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Chipping']*vo['V_ToMill_NonMerchTotal']
 
 	# Hauling (forest ecosystem to mill)
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+ODT_Tot/bB['Moisture Content Wood']*bB['Emission Intensity Transport Truck']*bB['Distance Forest To Mill (One Way)']
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+ODT_Tot/bB['Moisture Content Wood']*bB['Emission Intensity Transport Truck']*bB['Distance Forest To Mill (One Way)']
 
 	# Site preparation
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Site Prep']*V_Tot
-
-	# Sowing seeds
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Sowing']*V_Tot
-
-	# Planting
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Planting']*V_Tot
-
-	# Surveying
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Surveying']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Site Prep']*V_Tot
 
 	#--------------------------------------------------------------------------
 	# Mill operations
 	#--------------------------------------------------------------------------
 
 	# Unloading
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['EI Unloading At Mill']*V_Tot
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['EI Unloading At Mill']*V_Tot
 
 	# Sawing and processing lumber
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Sawing Processing Lumber']*(vo['C_ToLumber']/bB['Carbon Content Wood'])
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Sawing Processing Lumber']*(vo['C_ToLumber']/bB['Carbon Content Wood'])
 
 	# Sawing and processing plywood
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Sawing Processing Plywood']*(vo['C_ToPlywood']/bB['Carbon Content Wood'])
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Sawing Processing Plywood']*(vo['C_ToPlywood']/bB['Carbon Content Wood'])
 
 	# Sawing and processing OSB
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Sawing Processing OSB']*(vo['C_ToOSB']/bB['Carbon Content Wood'])
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Sawing Processing OSB']*(vo['C_ToOSB']/bB['Carbon Content Wood'])
 
 	# Sawing and processing MDF
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Sawing Processing MDF']*(vo['C_ToMDF']/bB['Carbon Content Wood'])
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Sawing Processing MDF']*(vo['C_ToMDF']/bB['Carbon Content Wood'])
 
 	# Sawing and processing pulp
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Processing Pulp']*(vo['C_ToPaper']/bB['Carbon Content Wood'])
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Processing Pulp']*(vo['C_ToPaper']/bB['Carbon Content Wood'])
 
 	# Pellets
 	C_Pellet=vo['C_ToBBP_PelletExport']+vo['C_ToBBP_PelletDomGrid']+vo['C_ToBBP_PelletDomRNG']
 
 	# Size reduction of pellets
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Pellet Size Reduction']*C_Pellet/bB['Carbon Content Wood']
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Pellet Size Reduction']*C_Pellet/bB['Carbon Content Wood']
 
 	# Drying pellets
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Pellet Drying']*C_Pellet/bB['Carbon Content Wood']
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Pellet Drying']*C_Pellet/bB['Carbon Content Wood']
 
 	# Pelletizing
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Pellet Pelletizing']*C_Pellet/bB['Carbon Content Wood']
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Pellet Pelletizing']*C_Pellet/bB['Carbon Content Wood']
 
 	# Pellet sieving
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=vo['E_Domestic_EnergySC_ForestOperationsBurnOil']+bB['EI Pellet Seiving']*C_Pellet/bB['Carbon Content Wood']
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=vo['E_ForestryOps_EnergySC_Domestic_Oil']+bB['EI Pellet Seiving']*C_Pellet/bB['Carbon Content Wood']
 
 	#--------------------------------------------------------------------------
 	# Transport Mill -> Distribution Hub (Vancouver)
@@ -2583,7 +2331,7 @@ def GeologicalDynamics(meta,pNam,vi,vo):
 
 	Mass=(vo['C_ToLumber']+vo['C_ToPlywood']+vo['C_ToOSB']+vo['C_ToMDF']+vo['C_ToPaper']+vo['C_ToBBP_PelletExport']+vo['C_ToBBP_PelletDomRNG'])/bB['Carbon Content Wood']/bB['Moisture Content Lumber']
 
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['Distance Mill To Distribution Hub']*bB['Emission Intensity Transport Rail']*Mass
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['Distance Mill To Distribution Hub']*bB['Emission Intensity Transport Rail']*Mass
 
 	#--------------------------------------------------------------------------
 	# Transport Hub -> Market
@@ -2605,13 +2353,13 @@ def GeologicalDynamics(meta,pNam,vi,vo):
 		bB['Fraction Solid Wood Product Truck Dest 1']*bB['Distance Solid Wood Product Truck Dest 1']*bB['Emission Intensity Transport Truck']*Mass+ \
 		bB['Fraction Solid Wood Product Truck Dest 1']*bB['Distance Solid Wood Product Truck Dest 1']*bB['Emission Intensity Transport Truck']*Mass
 
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+E_HubToMarket_Water+E_HubToMarket_Rail+E_HubToMarket_Truck
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+E_HubToMarket_Water+E_HubToMarket_Rail+E_HubToMarket_Truck
 
 	# Log exports
 
 	Mass=(vo['C_ToLogExport'])/bB['Carbon Content Wood']/bB['Moisture Content Wood']
 
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+bB['Distance LogExport Water Dest 1']*bB['Emission Intensity Transport Water (Bulk)']*Mass
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+bB['Distance LogExport Water Dest 1']*bB['Emission Intensity Transport Water (Bulk)']*Mass
 
 	# Pellets
 
@@ -2629,7 +2377,19 @@ def GeologicalDynamics(meta,pNam,vi,vo):
 	#	 bB['Fraction PelletExport Truck Dest 1']*bB['Distance PelletExport Truck Dest 1']*bB['Emission Intensity Transport Truck']*Mass+ \
 	#	 bB['Fraction PelletExport Truck Dest 1']*bB['Distance PelletExport Truck Dest 1']*bB['Emission Intensity Transport Truck']*Mass
 
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=vo['E_Domestic_EnergyT_ForestOperationsBurnOil']+E_HubToMarket_Water+E_HubToMarket_Rail
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=vo['E_ForestryOps_EnergyT_Domestic_Oil']+E_HubToMarket_Water+E_HubToMarket_Rail
+
+	#--------------------------------------------------------------------------
+	# Stand establishment
+	#--------------------------------------------------------------------------
+
+	# Updated on the fly from teh Events module
+
+	#--------------------------------------------------------------------------
+	# Aerial nutrient application
+	#--------------------------------------------------------------------------
+
+	# Updated on the fly from the Events module
 
 	#==========================================================================
 	# Substitution effects
@@ -2639,99 +2399,99 @@ def GeologicalDynamics(meta,pNam,vi,vo):
 	# Domestic facility power generation (MgC/ha) to (green tonne/ha)
 	#----------------------------------------------------------------------
 
-	Yield_PowerFacilityDom=vo['C_ToBBP_PowerFacilityDom']/bB['Density Wood']/bB['Moisture Content Wood']
+	Yield_PowerFacilityDom=vo['C_ToBBP_PowerFacilityDom']/bB['Density Wood Standard']/bB['Moisture Content Wood']
 
 	# Yield to energy (GJ/ha)
 	GJ_PowerFacilityDom=bB['Energy Content Wood (0% moisture)']*Yield_PowerFacilityDom
 
 	GJ_PowerFacilityDom=GJ_PowerFacilityDom*Ratio_EC
 
-	E_Domestic_Substitution_CoalForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerFacilityDom
-	E_Domestic_Substitution_DieselForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerFacilityDom
-	E_Domestic_Substitution_GasForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PowerFacilityDom
-	E_Domestic_Substitution_OilForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PowerFacilityDom
+	E_Substitution_Domestic_CoalForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerFacilityDom
+	E_Substitution_Domestic_DieselForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerFacilityDom
+	E_Substitution_Domestic_GasForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PowerFacilityDom
+	E_Substitution_Domestic_OilForBioenergy_PowerFacility=bS['PowerFacilityDomFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PowerFacilityDom
 
 	#----------------------------------------------------------------------
 	# International facility power generation (MgC/ha) to (green tonne/ha)
 	#----------------------------------------------------------------------
 
 	# Yield (green tonnes/ha)
-	Yield_PowerFacilityExport=vo['C_ToBBP_PowerFacilityExport']/bB['Density Wood']/bB['Moisture Content Wood']
+	Yield_PowerFacilityExport=vo['C_ToBBP_PowerFacilityExport']/bB['Density Wood Standard']/bB['Moisture Content Wood']
 
 	# Yield to energy (GJ/ha)
 	GJ_PowerFacilityExport=bB['Energy Content Wood (0% moisture)']*Yield_PowerFacilityExport
 
 	GJ_PowerFacilityExport=GJ_PowerFacilityExport*Ratio_EC
 
-	E_Internat_Substitution_CoalForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerFacilityExport
-	E_Internat_Substitution_DieselForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerFacilityExport
-	E_Internat_Substitution_GasForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PowerFacilityExport
-	E_Internat_Substitution_OilForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PowerFacilityExport
+	E_Substitution_Internat_CoalForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerFacilityExport
+	E_Substitution_Internat_DieselForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerFacilityExport
+	E_Substitution_Internat_GasForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PowerFacilityExport
+	E_Substitution_Internat_OilForBioenergy_PowerFacility=bS['PowerFacilityExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PowerFacilityExport
 
 	#----------------------------------------------------------------------
 	# Independent power producers (MgC/ha) to (green tonne/ha)
 	#----------------------------------------------------------------------
 
 	# Yield (green tonnes/ha)
-	Yield_PowerGrid=vo['C_ToBBP_PowerGrid']/bB['Density Wood']/bB['Moisture Content Wood']
+	Yield_PowerGrid=vo['C_ToBBP_PowerGrid']/bB['Density Wood Standard']/bB['Moisture Content Wood']
 
 	# Yield to energy (GJ/ha)
 	GJ_PowerGrid=bB['Energy Content Wood (0% moisture)']*Yield_PowerGrid
 
 	GJ_PowerGrid=GJ_PowerGrid*Ratio_EC
 
-	E_Domestic_Substitution_CoalForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerGrid
-	E_Domestic_Substitution_DieselForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerGrid
-	E_Domestic_Substitution_GasForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PowerGrid
-	E_Domestic_Substitution_OilForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PowerGrid
+	E_Substitution_Domestic_CoalForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PowerGrid
+	E_Substitution_Domestic_DieselForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PowerGrid
+	E_Substitution_Domestic_GasForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PowerGrid
+	E_Substitution_Domestic_OilForBioenergy_ElectricityGrid=bS['PowerGridFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PowerGrid
 
 	#----------------------------------------------------------------------
 	# Pellet exports (MgC/ha) to (kiln dried tonne/ha)
 	#----------------------------------------------------------------------
 
 	# Yield (kiln dried tonnes/ha)
-	Yield_PelletExport=vo['C_ToBBP_PelletExport']/bB['Density Wood']
+	Yield_PelletExport=vo['C_ToBBP_PelletExport']/bB['Density Wood Standard']
 
 	# Yield to energy (GJ/ha)
 	GJ_PelletExport=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletExport
 
 	GJ_PelletExport=GJ_PelletExport*Ratio_EC
 
-	E_Internat_Substitution_CoalForBioenergy_Pellet=bS['PelletExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletExport
-	E_Internat_Substitution_DieselForBioenergy_Pellet=bS['PelletExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletExport
-	E_Internat_Substitution_GasForBioenergy_Pellet=bS['PelletExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PelletExport
-	E_Internat_Substitution_OilForBioenergy_Pellet=bS['PelletExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PelletExport
+	E_Substitution_Internat_CoalForBioenergy_Pellet=bS['PelletExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletExport
+	E_Substitution_Internat_DieselForBioenergy_Pellet=bS['PelletExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletExport
+	E_Substitution_Internat_GasForBioenergy_Pellet=bS['PelletExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PelletExport
+	E_Substitution_Internat_OilForBioenergy_Pellet=bS['PelletExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PelletExport
 
 	#----------------------------------------------------------------------
 	# Pellet domestic grid (MgC/ha) to (kiln dried tonne/ha)
 	#----------------------------------------------------------------------
 
 	# Yield (kiln dired tonnes/ha)
-	Yield_PelletDomGrid=vo['C_ToBBP_PelletDomGrid']/bB['Density Wood']
+	Yield_PelletDomGrid=vo['C_ToBBP_PelletDomGrid']/bB['Density Wood Standard']
 
 	# Yield to energy (GJ/ha)
 	GJ_PelletDomGrid=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletDomGrid
 
 	GJ_PelletDomGrid=GJ_PelletDomGrid*Ratio_EC
 
-	E_Domestic_Substitution_CoalForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletDomGrid
-	E_Domestic_Substitution_DieselForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletDomGrid
-	E_Domestic_Substitution_GasForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PelletDomGrid
-	E_Domestic_Substitution_OilForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PelletDomGrid
+	E_Substitution_Domestic_CoalForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletDomGrid
+	E_Substitution_Domestic_DieselForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletDomGrid
+	E_Substitution_Domestic_GasForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PelletDomGrid
+	E_Substitution_Domestic_OilForBioenergy_PelletElectricityGrid=bS['PelletDomGridFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PelletDomGrid
 
 	#----------------------------------------------------------------------
 	# Pellet domestic RNG (MgC/ha) to (kiln dried tonne/ha)
 	#----------------------------------------------------------------------
 
 	# Yield (kiln dired tonnes/ha)
-	Yield_PelletDomRNG=vo['C_ToBBP_PelletDomRNG']/bB['Density Wood']
+	Yield_PelletDomRNG=vo['C_ToBBP_PelletDomRNG']/bB['Density Wood Standard']
 
 	# Yield to energy (GJ/ha)
 	GJ_PelletDomRNG=bB['Energy Content Wood (Kiln-dried)']*Yield_PelletDomRNG
 
-	E_Domestic_Substitution_CoalForBioenergy_PelletRNG=bS['PelletDomRNGFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletDomRNG
-	E_Domestic_Substitution_DieselForBioenergy_PelletRNG=bS['PelletDomRNGFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletDomRNG
-	E_Domestic_Substitution_GasForBioenergy_PelletRNG=bS['PelletDomRNGFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PelletDomRNG
+	E_Substitution_Domestic_CoalForBioenergy_PelletRNG=bS['PelletDomRNGFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_PelletDomRNG
+	E_Substitution_Domestic_DieselForBioenergy_PelletRNG=bS['PelletDomRNGFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_PelletDomRNG
+	E_Substitution_Domestic_GasForBioenergy_PelletRNG=bS['PelletDomRNGFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_PelletDomRNG
 	E_Substitution_OilForBioenergy_PelletDomRNG=bS['PelletDomRNGFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_PelletDomRNG
 
 	#----------------------------------------------------------------------
@@ -2739,117 +2499,117 @@ def GeologicalDynamics(meta,pNam,vi,vo):
 	#----------------------------------------------------------------------
 
 	# Yield (air dried tonnes/ha)
-	Yield_FirewoodDom=vo['C_ToBBP_FirewoodDom']/bB['Density Wood']
+	Yield_FirewoodDom=vo['C_ToBBP_FirewoodDom']/bB['Density Wood Standard']
 
 	# Yield to energy (GJ/ha)
 	GJ_FirewoodDom=bB['Energy Content Wood (0% moisture)']*Yield_FirewoodDom
 
-	E_Domestic_Substitution_CoalForBioenergy_Firewood=bS['FirewoodDomFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_FirewoodDom
-	E_Domestic_Substitution_DieselForBioenergy_Firewood=bS['FirewoodDomFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_FirewoodDom
-	E_Domestic_Substitution_GasForBioenergy_Firewood=bS['FirewoodDomFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_FirewoodDom
-	E_Domestic_Substitution_OilForBioenergy_Firewood=bS['FirewoodDomFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_FirewoodDom
+	E_Substitution_Domestic_CoalForBioenergy_Firewood=bS['FirewoodDomFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_FirewoodDom
+	E_Substitution_Domestic_DieselForBioenergy_Firewood=bS['FirewoodDomFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_FirewoodDom
+	E_Substitution_Domestic_GasForBioenergy_Firewood=bS['FirewoodDomFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_FirewoodDom
+	E_Substitution_Domestic_OilForBioenergy_Firewood=bS['FirewoodDomFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_FirewoodDom
 
 	#----------------------------------------------------------------------
 	# International firewood (MgC/ha) to (air dried tonne/ha)
 	#----------------------------------------------------------------------
 
 	# Yield (air dried tonnes/ha)
-	Yield_FirewoodExport=vo['C_ToBBP_FirewoodExport']/bB['Density Wood']
+	Yield_FirewoodExport=vo['C_ToBBP_FirewoodExport']/bB['Density Wood Standard']
 
 	# Yield to energy (GJ/ha)
 	GJ_FirewoodExport=bB['Energy Content Wood (0% moisture)']*Yield_FirewoodExport
 
-	E_Internat_Substitution_CoalForBioenergy_Firewood=bS['FirewoodExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_FirewoodExport
-	E_Internat_Substitution_DieselForBioenergy_Firewood=bS['FirewoodExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_FirewoodExport
-	E_Internat_Substitution_GasForBioenergy_Firewood=bS['FirewoodExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_FirewoodExport
-	E_Internat_Substitution_OilForBioenergy_Firewood=bS['FirewoodExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_FirewoodExport
+	E_Substitution_Internat_CoalForBioenergy_Firewood=bS['FirewoodExportFracDisplacingCoal']*bB['Emission Intensity Coal']/1000*GJ_FirewoodExport
+	E_Substitution_Internat_DieselForBioenergy_Firewood=bS['FirewoodExportFracDisplacingDiesel']*bB['Emission Intensity Diesel']/1000*GJ_FirewoodExport
+	E_Substitution_Internat_GasForBioenergy_Firewood=bS['FirewoodExportFracDisplacingNaturalGas']*bB['Emission Intensity Natural Gas']/1000*GJ_FirewoodExport
+	E_Substitution_Internat_OilForBioenergy_Firewood=bS['FirewoodExportFracDisplacingOil']*bB['Emission Intensity Oil']/1000*GJ_FirewoodExport
 
 	#--------------------------------------------------------------------------
 	# Substitution of fossil fuels for bioenergy
 	# *** Save as positive and then change sign in post-processing ***
 	#--------------------------------------------------------------------------
 
-	vo['E_Domestic_Substitution_CoalForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_CoalForBioenergy_PowerFacility + \
-		 E_Domestic_Substitution_CoalForBioenergy_ElectricityGrid + \
-		 E_Domestic_Substitution_CoalForBioenergy_PelletElectricityGrid + \
-		 E_Domestic_Substitution_CoalForBioenergy_PelletRNG + \
-		 E_Domestic_Substitution_CoalForBioenergy_Firewood)
+	vo['E_Substitution_Domestic_CoalForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_CoalForBioenergy_PowerFacility + \
+		 E_Substitution_Domestic_CoalForBioenergy_ElectricityGrid + \
+		 E_Substitution_Domestic_CoalForBioenergy_PelletElectricityGrid + \
+		 E_Substitution_Domestic_CoalForBioenergy_PelletRNG + \
+		 E_Substitution_Domestic_CoalForBioenergy_Firewood)
 
-	vo['E_Internat_Substitution_CoalForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Internat_Substitution_CoalForBioenergy_PowerFacility + \
-		 E_Internat_Substitution_CoalForBioenergy_Pellet + \
-		 E_Internat_Substitution_CoalForBioenergy_Firewood)
+	vo['E_Substitution_Internat_CoalForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Internat_CoalForBioenergy_PowerFacility + \
+		 E_Substitution_Internat_CoalForBioenergy_Pellet + \
+		 E_Substitution_Internat_CoalForBioenergy_Firewood)
 
-	vo['E_Domestic_Substitution_OilForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_OilForBioenergy_PowerFacility + \
-		 E_Domestic_Substitution_OilForBioenergy_ElectricityGrid + \
-		 E_Domestic_Substitution_OilForBioenergy_Firewood + \
-		 E_Domestic_Substitution_DieselForBioenergy_PowerFacility + \
-		 E_Domestic_Substitution_DieselForBioenergy_ElectricityGrid + \
-		 E_Domestic_Substitution_DieselForBioenergy_PelletElectricityGrid + \
-		 E_Domestic_Substitution_DieselForBioenergy_PelletRNG + \
-		 E_Domestic_Substitution_DieselForBioenergy_Firewood)
+	vo['E_Substitution_Domestic_OilForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_OilForBioenergy_PowerFacility + \
+		 E_Substitution_Domestic_OilForBioenergy_ElectricityGrid + \
+		 E_Substitution_Domestic_OilForBioenergy_Firewood + \
+		 E_Substitution_Domestic_DieselForBioenergy_PowerFacility + \
+		 E_Substitution_Domestic_DieselForBioenergy_ElectricityGrid + \
+		 E_Substitution_Domestic_DieselForBioenergy_PelletElectricityGrid + \
+		 E_Substitution_Domestic_DieselForBioenergy_PelletRNG + \
+		 E_Substitution_Domestic_DieselForBioenergy_Firewood)
 
-	vo['E_Internat_Substitution_OilForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Internat_Substitution_OilForBioenergy_PowerFacility + \
-		 E_Internat_Substitution_OilForBioenergy_Pellet + \
-		 E_Internat_Substitution_OilForBioenergy_Firewood + \
-		 E_Internat_Substitution_DieselForBioenergy_PowerFacility + \
-		 E_Internat_Substitution_DieselForBioenergy_Pellet + \
-		 E_Internat_Substitution_DieselForBioenergy_Firewood)
+	vo['E_Substitution_Internat_OilForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Internat_OilForBioenergy_PowerFacility + \
+		 E_Substitution_Internat_OilForBioenergy_Pellet + \
+		 E_Substitution_Internat_OilForBioenergy_Firewood + \
+		 E_Substitution_Internat_DieselForBioenergy_PowerFacility + \
+		 E_Substitution_Internat_DieselForBioenergy_Pellet + \
+		 E_Substitution_Internat_DieselForBioenergy_Firewood)
 
-	vo['E_Domestic_Substitution_GasForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_GasForBioenergy_PowerFacility + \
-		 E_Domestic_Substitution_GasForBioenergy_ElectricityGrid + \
-		 E_Domestic_Substitution_GasForBioenergy_PelletElectricityGrid + \
-		 E_Domestic_Substitution_GasForBioenergy_PelletRNG + \
-		 E_Domestic_Substitution_GasForBioenergy_Firewood)
+	vo['E_Substitution_Domestic_GasForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_GasForBioenergy_PowerFacility + \
+		 E_Substitution_Domestic_GasForBioenergy_ElectricityGrid + \
+		 E_Substitution_Domestic_GasForBioenergy_PelletElectricityGrid + \
+		 E_Substitution_Domestic_GasForBioenergy_PelletRNG + \
+		 E_Substitution_Domestic_GasForBioenergy_Firewood)
 
-	vo['E_Internat_Substitution_GasForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Internat_Substitution_GasForBioenergy_PowerFacility + \
-		 E_Internat_Substitution_GasForBioenergy_Pellet + \
-		 E_Internat_Substitution_GasForBioenergy_Firewood)
+	vo['E_Substitution_Internat_GasForBioenergy']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Internat_GasForBioenergy_PowerFacility + \
+		 E_Substitution_Internat_GasForBioenergy_Pellet + \
+		 E_Substitution_Internat_GasForBioenergy_Firewood)
 
-	vo['E_Domestic_Substitution_PowerFacility']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_CoalForBioenergy_PowerFacility + \
-		 E_Domestic_Substitution_OilForBioenergy_PowerFacility + \
-		 E_Domestic_Substitution_GasForBioenergy_PowerFacility)
+	vo['E_Substitution_Domestic_PowerFacility']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_CoalForBioenergy_PowerFacility + \
+		 E_Substitution_Domestic_OilForBioenergy_PowerFacility + \
+		 E_Substitution_Domestic_GasForBioenergy_PowerFacility)
 
-	vo['E_Internat_Substitution_PowerFacility']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Internat_Substitution_CoalForBioenergy_PowerFacility + \
-		 E_Internat_Substitution_OilForBioenergy_PowerFacility + \
-		 E_Internat_Substitution_GasForBioenergy_PowerFacility)
+	vo['E_Substitution_Internat_PowerFacility']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Internat_CoalForBioenergy_PowerFacility + \
+		 E_Substitution_Internat_OilForBioenergy_PowerFacility + \
+		 E_Substitution_Internat_GasForBioenergy_PowerFacility)
 
-	vo['E_Domestic_Substitution_ElectricityGrid']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_CoalForBioenergy_ElectricityGrid + \
-		 E_Domestic_Substitution_OilForBioenergy_ElectricityGrid + \
-		 E_Domestic_Substitution_GasForBioenergy_ElectricityGrid)
+	vo['E_Substitution_Domestic_ElectricityGrid']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_CoalForBioenergy_ElectricityGrid + \
+		 E_Substitution_Domestic_OilForBioenergy_ElectricityGrid + \
+		 E_Substitution_Domestic_GasForBioenergy_ElectricityGrid)
 
-	vo['E_Internat_Substitution_Pellet']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Internat_Substitution_CoalForBioenergy_Pellet + \
-		 E_Internat_Substitution_OilForBioenergy_Pellet + \
-		 E_Internat_Substitution_GasForBioenergy_Pellet)
+	vo['E_Substitution_Internat_Pellet']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Internat_CoalForBioenergy_Pellet + \
+		 E_Substitution_Internat_OilForBioenergy_Pellet + \
+		 E_Substitution_Internat_GasForBioenergy_Pellet)
 
-	vo['E_Domestic_Substitution_PelletElectricityGrid']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_CoalForBioenergy_PelletElectricityGrid + \
-		 E_Domestic_Substitution_OilForBioenergy_PelletElectricityGrid + \
-		 E_Domestic_Substitution_GasForBioenergy_PelletElectricityGrid)
+	vo['E_Substitution_Domestic_PelletElectricityGrid']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_CoalForBioenergy_PelletElectricityGrid + \
+		 E_Substitution_Domestic_OilForBioenergy_PelletElectricityGrid + \
+		 E_Substitution_Domestic_GasForBioenergy_PelletElectricityGrid)
 
-	vo['E_Domestic_Substitution_PelletRNG']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_CoalForBioenergy_PelletRNG + \
+	vo['E_Substitution_Domestic_PelletRNG']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_CoalForBioenergy_PelletRNG + \
 		 E_Substitution_OilForBioenergy_PelletDomRNG + \
-		 E_Domestic_Substitution_GasForBioenergy_PelletRNG)
+		 E_Substitution_Domestic_GasForBioenergy_PelletRNG)
 
-	vo['E_Domestic_Substitution_Firewood']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Domestic_Substitution_CoalForBioenergy_Firewood + \
-		 E_Domestic_Substitution_OilForBioenergy_Firewood + \
-		 E_Domestic_Substitution_GasForBioenergy_Firewood)
+	vo['E_Substitution_Domestic_Firewood']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Domestic_CoalForBioenergy_Firewood + \
+		 E_Substitution_Domestic_OilForBioenergy_Firewood + \
+		 E_Substitution_Domestic_GasForBioenergy_Firewood)
 
-	vo['E_Internat_Substitution_Firewood']= (1-bS['Economic Contraction Fraction'])* \
-		 (E_Internat_Substitution_CoalForBioenergy_Firewood + \
-		 E_Internat_Substitution_OilForBioenergy_Firewood + \
-		 E_Internat_Substitution_GasForBioenergy_Firewood)
+	vo['E_Substitution_Internat_Firewood']= (1-bS['Economic Contraction Fraction'])* \
+		 (E_Substitution_Internat_CoalForBioenergy_Firewood + \
+		 E_Substitution_Internat_OilForBioenergy_Firewood + \
+		 E_Substitution_Internat_GasForBioenergy_Firewood)
 
 	#----------------------------------------------------------------------
 	# Substitution for structural wood produts (tCO2e/ha)
@@ -2895,48 +2655,48 @@ def GeologicalDynamics(meta,pNam,vi,vo):
 	vo['ODT_Textile']=fS_Textile+fP_Textile#-fR
 
 	# Emissions from productoin of structural materials
-	vo['E_Internat_Substitution_Concrete']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Concrete']*vo['ODT_Concrete']
-	vo['E_Internat_Substitution_ConcreteFromCalcination']=(1-bS['Economic Contraction Fraction'])*bS['FracConcreteEmissionsFromCalcination']*vo['E_Internat_Substitution_Concrete']
-	vo['E_Internat_Substitution_ConcreteFromNonCalcination']=(1-bS['Economic Contraction Fraction'])*(1-bS['FracConcreteEmissionsFromCalcination'])*vo['E_Internat_Substitution_Concrete']
-	vo['E_Internat_Substitution_Steel']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Steel']*vo['ODT_Steel']
-	vo['E_Internat_Substitution_Aluminum']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Aluminum']*vo['ODT_Aluminum']
-	vo['E_Internat_Substitution_Plastic']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Plastic']*vo['ODT_Plastic']
-	vo['E_Internat_Substitution_Textile']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Textile']*vo['ODT_Textile']
+	vo['E_Substitution_Internat_Concrete']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Concrete']*vo['ODT_Concrete']
+	vo['E_Substitution_Internat_ConcreteFromCalcination']=(1-bS['Economic Contraction Fraction'])*bS['FracConcreteEmissionsFromCalcination']*vo['E_Substitution_Internat_Concrete']
+	vo['E_Substitution_Internat_ConcreteFromNonCalcination']=(1-bS['Economic Contraction Fraction'])*(1-bS['FracConcreteEmissionsFromCalcination'])*vo['E_Substitution_Internat_Concrete']
+	vo['E_Substitution_Internat_Steel']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Steel']*vo['ODT_Steel']
+	vo['E_Substitution_Internat_Aluminum']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Aluminum']*vo['ODT_Aluminum']
+	vo['E_Substitution_Internat_Plastic']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Plastic']*vo['ODT_Plastic']
+	vo['E_Substitution_Internat_Textile']=(1-bS['Economic Contraction Fraction'])*bB['Emission Intensity Textile']*vo['ODT_Textile']
 
 	# Emissions from sawnwood and Panel
-	vo['E_Internat_Substitution_Sawnwood']=(1-bS['Economic Contraction Fraction'])*(bB['Emission Intensity Concrete']*fS_Concrete+ \
+	vo['E_Substitution_Internat_Sawnwood']=(1-bS['Economic Contraction Fraction'])*(bB['Emission Intensity Concrete']*fS_Concrete+ \
 		bB['Emission Intensity Steel']*fS_Steel + \
 		bB['Emission Intensity Aluminum']*fS_Aluminum + \
 		bB['Emission Intensity Plastic']*fS_Plastic + \
 		bB['Emission Intensity Textile']*fS_Textile)
 
-	vo['E_Internat_Substitution_Panel']=(1-bS['Economic Contraction Fraction'])*(bB['Emission Intensity Concrete']*fP_Concrete+ \
+	vo['E_Substitution_Internat_Panel']=(1-bS['Economic Contraction Fraction'])*(bB['Emission Intensity Concrete']*fP_Concrete+ \
 		bB['Emission Intensity Steel']*fP_Steel + \
 		bB['Emission Intensity Aluminum']*fP_Aluminum + \
 		bB['Emission Intensity Plastic']*fP_Plastic + \
 		bB['Emission Intensity Textile']*fP_Textile)
 
 	# Emissions from structural matierials, tallied by feedstock (and calcination)
-	vo['E_Internat_Substitution_CoalForSolidWood']= \
-		bS['FracConcreteEmissionsFromCoal']*vo['E_Internat_Substitution_Concrete']+ \
-		bS['FracSteelEmissionsFromCoal']*vo['E_Internat_Substitution_Steel']+ \
-		bS['FracAluminumEmissionsFromCoal']*vo['E_Internat_Substitution_Aluminum']+ \
-		bS['FracPlasticEmissionsFromCoal']*vo['E_Internat_Substitution_Plastic']+ \
-		bS['FracTextileEmissionsFromCoal']*vo['E_Internat_Substitution_Textile']
+	vo['E_Substitution_Internat_CoalForSolidWood']= \
+		bS['FracConcreteEmissionsFromCoal']*vo['E_Substitution_Internat_Concrete']+ \
+		bS['FracSteelEmissionsFromCoal']*vo['E_Substitution_Internat_Steel']+ \
+		bS['FracAluminumEmissionsFromCoal']*vo['E_Substitution_Internat_Aluminum']+ \
+		bS['FracPlasticEmissionsFromCoal']*vo['E_Substitution_Internat_Plastic']+ \
+		bS['FracTextileEmissionsFromCoal']*vo['E_Substitution_Internat_Textile']
 
-	vo['E_Internat_Substitution_OilForSolidWood']= \
-		bS['FracConcreteEmissionsFromOil']*vo['E_Internat_Substitution_Concrete']+ \
-		bS['FracSteelEmissionsFromOil']*vo['E_Internat_Substitution_Steel']+ \
-		bS['FracAluminumEmissionsFromOil']*vo['E_Internat_Substitution_Aluminum']+ \
-		bS['FracPlasticEmissionsFromOil']*vo['E_Internat_Substitution_Plastic']+ \
-		bS['FracTextileEmissionsFromOil']*vo['E_Internat_Substitution_Textile']
+	vo['E_Substitution_Internat_OilForSolidWood']= \
+		bS['FracConcreteEmissionsFromOil']*vo['E_Substitution_Internat_Concrete']+ \
+		bS['FracSteelEmissionsFromOil']*vo['E_Substitution_Internat_Steel']+ \
+		bS['FracAluminumEmissionsFromOil']*vo['E_Substitution_Internat_Aluminum']+ \
+		bS['FracPlasticEmissionsFromOil']*vo['E_Substitution_Internat_Plastic']+ \
+		bS['FracTextileEmissionsFromOil']*vo['E_Substitution_Internat_Textile']
 
-	vo['E_Internat_Substitution_GasForSolidWood']= \
-		bS['FracConcreteEmissionsFromGas']*vo['E_Internat_Substitution_Concrete']+ \
-		bS['FracSteelEmissionsFromGas']*vo['E_Internat_Substitution_Steel']+ \
-		bS['FracAluminumEmissionsFromGas']*vo['E_Internat_Substitution_Aluminum']+ \
-		bS['FracPlasticEmissionsFromGas']*vo['E_Internat_Substitution_Plastic']+ \
-		bS['FracTextileEmissionsFromGas']*vo['E_Internat_Substitution_Textile']
+	vo['E_Substitution_Internat_GasForSolidWood']= \
+		bS['FracConcreteEmissionsFromGas']*vo['E_Substitution_Internat_Concrete']+ \
+		bS['FracSteelEmissionsFromGas']*vo['E_Substitution_Internat_Steel']+ \
+		bS['FracAluminumEmissionsFromGas']*vo['E_Substitution_Internat_Aluminum']+ \
+		bS['FracPlasticEmissionsFromGas']*vo['E_Substitution_Internat_Plastic']+ \
+		bS['FracTextileEmissionsFromGas']*vo['E_Substitution_Internat_Textile']
 
 	#--------------------------------------------------------------------------
 	# Back-calculate production of fossil fuel consumption from operational use

@@ -184,21 +184,27 @@ def MeepMeep(meta,pNam):
 						meta[pNam]['Project']['Run Time Summary']['Biomass from GY model']=meta[pNam]['Project']['Run Time Summary']['Biomass from GY model']+(t_Inn1-t_Inn0)
 
 					# Biomass dynamics (from GROMO)
-					if meta[pNam]['Project']['Biomass Module']=='gromo':
-						vo=annproc.TreeBiomassDynamicsFromGROMO(meta,pNam,iScn,iBat,iT,vi,vo,iEP)
+					if meta[pNam]['Project']['Biomass Module']=='gromo1':
+						vo=annproc.TreeBiomassDynamicsFromGROMO1(meta,pNam,iScn,iBat,iT,vi,vo,iEP)
 						t_Inn1=time.time()
 						meta[pNam]['Project']['Run Time Summary']['Biomass from GROMO']=meta[pNam]['Project']['Run Time Summary']['Biomass from GROMO']+(t_Inn1-t_Inn0)
+
+					if meta[pNam]['Project']['Biomass Module']=='gromo2':
+						vo=annproc.TreeBiomassDynamicsFromGROMO2(meta,pNam,iScn,iBat,iT,vi,vo,iEP)
+						t_Inn1=time.time()
+						meta[pNam]['Project']['Run Time Summary']['Biomass from GROMO']=meta[pNam]['Project']['Run Time Summary']['Biomass from GROMO']+(t_Inn1-t_Inn0)
+
 					# Grassland dynamics
 					if (meta[pNam]['Scenario'][iScn]['Grass Module Status']=='On') & (meta[pNam]['Year'][iT]>=meta[pNam]['Scenario'][iScn]['Grass Module Year Start']):
 						vo=annproc.GrassBiomassDynamics(meta,pNam,iScn,iBat,iT,vi,vo,iEP)
 
 					# Calculate annual dead organic matter dynamics
-					vo=annproc.DeadWoodLitterAndSoilDynamics(meta,pNam,iT,iBat,vi,vo,iEP)
+					vo=annproc.DeadWoodLitterAndSoilDynamics(meta,pNam,iT,iScn,iBat,vi,vo,iEP)
 					t_Inn2=time.time()
 					meta[pNam]['Project']['Run Time Summary']['DOM']=meta[pNam]['Project']['Run Time Summary']['DOM']+(t_Inn2-t_Inn1)
 
 					# Calculate effects of disturbance and management
-					vo,vi=annproc.DisturbanceAndManagementEvents(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP)
+					vo,vi=annproc.EventDynamics(meta,pNam,iT,iScn,iEns,iBat,vi,vo,iEP)
 					t_Inn3=time.time()
 					meta[pNam]['Project']['Run Time Summary']['Events']=meta[pNam]['Project']['Run Time Summary']['Events']+(t_Inn3-t_Inn2)
 
@@ -418,16 +424,18 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 	# Surface climate variables (based on land cover class)
 	vo['Albedo_SurfaceShortwave']=np.ones((m,n))
 	vo['RF_AlbedoSurfaceShortwave']=np.ones((m,n))
-	idx_LC=gu.IndicesFromUniqueArrayValues(vo['LandCover'][0,:])
-	ind_Annual=0
-	for k in idx_LC.keys():
-		cd=cbu.lut_n2s(meta['LUT']['Derived']['lc_comp1'],k)[0]
-		try:
-			vo['Albedo_SurfaceShortwave'][:,idx_LC[k]]=meta['Param']['Raw']['AlbedoSurfaceShortwave_ByLC'][cd][ind_Annual]
-		except:
-			print(cd)
-			#print(meta['Param']['Raw']['AlbedoSurfaceShortwave_ByLC'][cd][ind_Annual])
-		vo['RF_AlbedoSurfaceShortwave'][:,idx_LC[k]]=meta['Param']['Raw']['AlbedoSurfaceShortwaveRF_ByLC'][cd][ind_Annual]
+	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
+		idx_LC=gu.IndicesFromUniqueArrayValues(vo['LandCover'][0,:])
+		ind_Annual=0
+		for k in idx_LC.keys():
+			cd=cbu.lut_n2s(meta['LUT']['Derived']['lc_comp1'],k)[0]
+			try:
+				#vo['Albedo_SurfaceShortwave'][:,idx_LC[k]]=meta['Param']['Raw']['AlbedoSurfaceShortwave_ByLC'][cd][ind_Annual]
+				vo['Albedo_SurfaceShortwave'][:,idx_LC[k]]=0.07
+			except:
+				print(cd)
+				#print(meta['Param']['Raw']['AlbedoSurfaceShortwave_ByLC'][cd][ind_Annual])
+				vo['RF_AlbedoSurfaceShortwave'][:,idx_LC[k]]=meta['Param']['Raw']['AlbedoSurfaceShortwaveRF_ByLC'][cd][ind_Annual]
 
 	# Stand age (i.e. time since stand-replacing disturbance)
 	vo['A']=np.zeros((m,n))
@@ -562,67 +570,57 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 	vo['C_Limestone']=np.zeros((m,n))
 
 	# Emissions, domestic, forest sector, ecosystem
-	vo['E_Domestic_ForestSector_NPP']=np.zeros((m,n))
-	vo['E_Domestic_ForestSector_RH']=np.zeros((m,n))
-	vo['E_Domestic_ForestSector_NEE']=np.zeros((m,n))
-	vo['E_Domestic_ForestSector_Wildfire']=np.zeros((m,n))
-	vo['E_Domestic_ForestSector_OpenBurning']=np.zeros((m,n))
-	vo['E_Domestic_ForestSector_Denit']=np.zeros((m,n))
-	vo['E_Domestic_ForestSector_Volat']=np.zeros((m,n))
-	vo['E_Domestic_ForestSector_HWP']=np.zeros((m,n))
+	vo['E_NPP_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_RHE_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_NEE_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_Wildfire_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_OpenBurning_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_Denit_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_Volat_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_RHP_ForestSector_Domestic']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Domestic']=np.zeros((m,n))
 
 	# Emissions, international, forest sector, ecosystem
-	vo['E_Internat_ForestSector_NPP']=np.zeros((m,n))
-	vo['E_Internat_ForestSector_RH']=np.zeros((m,n))
-	vo['E_Internat_ForestSector_NEE']=np.zeros((m,n))
-	vo['E_Internat_ForestSector_Wildfire']=np.zeros((m,n))
-	vo['E_Internat_ForestSector_OpenBurning']=np.zeros((m,n))
-	vo['E_Internat_ForestSector_Denit']=np.zeros((m,n))
-	vo['E_Internat_ForestSector_Volat']=np.zeros((m,n))
-	vo['E_Internat_ForestSector_HWP']=np.zeros((m,n))
+	vo['E_NPP_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_RHE_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_NEE_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_Wildfire_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_OpenBurning_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_Denit_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_Volat_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_RHP_ForestSector_Internat']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Internat']=np.zeros((m,n))
 
 	# Emissions, domestic, energy stationary combustion, bioenergy
-	vo['E_Domestic_EnergySC_Bioenergy_PowerFacility']=np.zeros((m,n))
-	vo['E_Domestic_EnergySC_Bioenergy_PowerGrid']=np.zeros((m,n))
-	vo['E_Domestic_EnergySC_Bioenergy_PelletGrid']=np.zeros((m,n))
-	vo['E_Domestic_EnergySC_Bioenergy_PelletRNG']=np.zeros((m,n))
-	vo['E_Domestic_EnergySC_Bioenergy_PelletHydrogen']=np.zeros((m,n))
-	vo['E_Domestic_EnergySC_Bioenergy_Firewood']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Domestic_ResiduesPowerFacility']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Domestic_ResiduesPowerGrid']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Domestic_PelletsPowerGrid']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Domestic_PelletsRNG']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Domestic_PelletsHydrogen']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Domestic_Firewood']=np.zeros((m,n))
 
 	# Emissions, internationl, energy stationary combustion, bioenergy
-	vo['E_Internat_EnergySC_Bioenergy_PowerFacility']=np.zeros((m,n))
-	vo['E_Internat_EnergySC_Bioenergy_PelletGrid']=np.zeros((m,n))
-	vo['E_Internat_EnergySC_Bioenergy_PelletRNG']=np.zeros((m,n))
-	vo['E_Internat_EnergySC_Bioenergy_PelletHydrogen']=np.zeros((m,n))
-	vo['E_Internat_EnergySC_Bioenergy_Firewood']=np.zeros((m,n))
-
-	# Emissions, energy stationary combustion, bioenergy total
-	#vo['E_EnergySC_Bioenergy']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Internat_ResiduesPowerFacility']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Internat_ResiduesPowerGrid']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Internat_PelletsPowerGrid']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Internat_PelletsRNG']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Internat_PelletsHydrogen']=np.zeros((m,n))
+	vo['E_BBP_ForestSector_Internat_Firewood']=np.zeros((m,n))
 
 	# Emissions, domestic, energy stationary combustion, forestry operations
-	vo['E_Domestic_EnergySC_ForestOperationsBurnCoal']=np.zeros((m,n))
-	vo['E_Domestic_EnergySC_ForestOperationsBurnOil']=np.zeros((m,n))
-	vo['E_Domestic_EnergySC_ForestOperationsBurnGas']=np.zeros((m,n))
-
-	# Emissions domestic, energy transportation, biofuels
-	vo['E_Domestic_EnergyT_Bioenergy_RNG']=np.zeros((m,n))
-	vo['E_Domestic_EnergyT_Bioenergy_Ethanol']=np.zeros((m,n))
-	vo['E_Domestic_EnergyT_Bioenergy_Hydrogen']=np.zeros((m,n))
-
-	# Emissions international, energy transportation, biofuels
-	vo['E_Internat_EnergyT_Bioenergy_RNG']=np.zeros((m,n))
-	vo['E_Internat_EnergyT_Bioenergy_Ethanol']=np.zeros((m,n))
-	vo['E_Internat_EnergyT_Bioenergy_Hydrogen']=np.zeros((m,n))
+	vo['E_ForestryOps_EnergySC_Domestic_Coal']=np.zeros((m,n))
+	vo['E_ForestryOps_EnergySC_Domestic_Oil']=np.zeros((m,n))
+	vo['E_ForestryOps_EnergySC_Domestic_Gas']=np.zeros((m,n))
 
 	# Emissions, domestic, energy transporation, forestry operations
-	vo['E_Domestic_EnergyT_ForestOperationsBurnCoal']=np.zeros((m,n))
-	vo['E_Domestic_EnergyT_ForestOperationsBurnOil']=np.zeros((m,n))
-	vo['E_Domestic_EnergyT_ForestOperationsBurnGas']=np.zeros((m,n))
+	vo['E_ForestryOps_EnergyT_Domestic_Coal']=np.zeros((m,n))
+	vo['E_ForestryOps_EnergyT_Domestic_Oil']=np.zeros((m,n))
+	vo['E_ForestryOps_EnergyT_Domestic_Gas']=np.zeros((m,n))
 
 	# Emissions, domestic, industrial Produciton and Product Use, forestry operations
-	vo['E_Domestic_IPPU_ForestOperationsBurningCoal']=np.zeros((m,n))
-	vo['E_Domestic_IPPU_ForestOperationsBurningOil']=np.zeros((m,n))
-	vo['E_Domestic_IPPU_ForestOperationsBurningGas']=np.zeros((m,n))
+	vo['E_ForestryOps_IPPU_Domestic_Coal']=np.zeros((m,n))
+	vo['E_ForestryOps_IPPU_Domestic_Oil']=np.zeros((m,n))
+	vo['E_ForestryOps_IPPU_Domestic_Gas']=np.zeros((m,n))
 
 	if meta[pNam]['Project']['Biomass Module']=='Sawtooth':
 
@@ -663,8 +661,8 @@ def InitializeStands(meta,pNam,iScn,iEns,iBat):
 	#--------------------------------------------------------------------------
 
 	# Nutrient application response yearly counter
-	meta['Modules']['NutrientApp']['ResponseCounter']=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
-	meta['Modules']['NutrientApp']['ResponseCounterContinuous']=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
+	meta['Modules']['NutrientApplication']['ResponseCounter']=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
+	meta['Modules']['NutrientApplication']['ResponseCounterHarvestRestriction']=np.zeros(meta[pNam]['Project']['Batch Size'][iBat])
 
 	# Initialize flag for fixing negative net growth. When TIPSY yields negative
 	# net growth, the fluxes of gross growth and mortality need adjustment.
@@ -740,14 +738,14 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 
 	if meta[pNam]['Project']['Uncertainty Status Nutrient Application']=='On':
 		if meta[pNam]['Project']['Scenario Source']!='Spreadsheet':
-			for k in meta['Param']['BE']['NutrientApp'].keys():
-				meta['Param']['BEV']['NutrientApp'][k]=meta['Param']['By Ensemble'][iEns]['NutrientApp'][k]
+			for k in meta['Param']['BE']['NutrientApplication'].keys():
+				meta['Param']['BEV']['NutrientApplication'][k]=meta['Param']['By Ensemble'][iEns]['NutrientApplication'][k]
 
 	#--------------------------------------------------------------------------
 	# Biomass allometry (stand level)
 	#--------------------------------------------------------------------------
 	u=np.unique(vi['lsat']['ID_BGCZ'].flatten())
-	MaritimeZones=['CDF','CWH','ICH']
+	CoastZones=['CDF','CWH','ICH','MH']
 	for k in meta['Param']['BE']['BiomassAllometrySL'].keys():
 		if k=='Region':
 			continue
@@ -755,10 +753,12 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 		for iU in range(u.size):
 			cd=cbu.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],u[iU])[0]
 			ind=np.where(vi['lsat']['ID_BGCZ'].flatten()==u[iU])[0]
-			if np.isin(cd,MaritimeZones)==True:
-				meta['Param']['BEV']['BiomassAllometrySL'][k][ind]=meta['Param']['BE']['BiomassAllometrySL'][k][0]
+			if np.isin(cd,CoastZones)==True:
+				indReg=np.where(meta['Param']['BE']['BiomassAllometrySL']['Region']=='Coast')[0]
+				meta['Param']['BEV']['BiomassAllometrySL'][k][ind]=meta['Param']['BE']['BiomassAllometrySL'][k][indReg]
 			else:
-				meta['Param']['BEV']['BiomassAllometrySL'][k][ind]=meta['Param']['BE']['BiomassAllometrySL'][k][1]
+				indReg=np.where(meta['Param']['BE']['BiomassAllometrySL']['Region']=='Interior')[0]
+				meta['Param']['BEV']['BiomassAllometrySL'][k][ind]=meta['Param']['BE']['BiomassAllometrySL'][k][indReg]
 
 	#--------------------------------------------------------------------------
 	# Fate of Felled Material
@@ -1044,16 +1044,16 @@ def PrepareParametersForBatch(meta,pNam,vi,iEns,iBat,iScn):
 	#--------------------------------------------------------------------------
 	# Albedo RF harvest response parameters (by BGC zone)
 	#--------------------------------------------------------------------------
-	pSet='AlbedoSurfaceShortwaveRF_HarvestResponseByBGCZone'
-	pL=['Intercept','Slope','Initial']
-	meta['Param']['BEV'][pSet]={}
-	for p in pL:
-		meta['Param']['BEV'][pSet][p]=np.zeros(meta[pNam]['Project']['indBat'].size)
-	idx=gu.IndicesFromUniqueArrayValues(vi['lsat']['ID_BGCZ'][0,:])
-	for k in idx.keys():
-		ind=np.where(meta['Param']['Raw'][pSet]['Unnamed: 0']==cbu.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],k)[0] )
-		for p in pL:
-			meta['Param']['BEV'][pSet][p][idx[k]]=meta['Param']['Raw'][pSet][p][ind]
+	# 	pSet='AlbedoSurfaceShortwaveRF_HarvestResponseByBGCZone'
+	# 	pL=['Intercept','Slope','Initial']
+	# 	meta['Param']['BEV'][pSet]={}
+	# 	for p in pL:
+	# 		meta['Param']['BEV'][pSet][p]=np.zeros(meta[pNam]['Project']['indBat'].size)
+	# 	idx=gu.IndicesFromUniqueArrayValues(vi['lsat']['ID_BGCZ'][0,:])
+	# 	for k in idx.keys():
+	# 		ind=np.where(meta['Param']['Raw'][pSet]['Unnamed: 0']==cbu.lut_n2s(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'],k)[0] )
+	# 		for p in pL:
+	# 			meta['Param']['BEV'][pSet][p][idx[k]]=meta['Param']['Raw'][pSet][p][ind]
 
 	return meta,vi
 
@@ -1120,11 +1120,11 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 
 	# Convert fluxes to CO2e using global warming potential estimates
 	CO2e_E_AsCO2=1*E_CO2
-	CO2e_E_AsCH4=bB['GWP_CH4_AR5']*E_CH4
-	CO2e_E_AsCO=bB['GWP_CO_AR5']*E_CO
-	CO2e_E_AsN2O=bB['GWP_N2O_AR5']*E_N2O
+	CO2e_E_AsCH4=bB['GWP_CH4']*E_CH4
+	CO2e_E_AsCO=bB['GWP_CO']*E_CO
+	CO2e_E_AsN2O=bB['GWP_N2O']*E_N2O
 
-	vo['E_Domestic_ForestSector_Wildfire']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
+	vo['E_Wildfire_ForestSector_Domestic']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
 
 	# Track if radiative forcing status is on
 	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
@@ -1149,11 +1149,11 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 
 	# Convert fluxes to CO2e using global warming potential estimates
 	CO2e_E_AsCO2=1*E_CO2
-	CO2e_E_AsCH4=bB['GWP_CH4_AR5']*E_CH4
-	CO2e_E_AsCO=bB['GWP_CO_AR5']*E_CO
-	CO2e_E_AsN2O=bB['GWP_N2O_AR5']*E_N2O
+	CO2e_E_AsCH4=bB['GWP_CH4']*E_CH4
+	CO2e_E_AsCO=bB['GWP_CO']*E_CO
+	CO2e_E_AsN2O=bB['GWP_N2O']*E_N2O
 
-	vo['E_Domestic_ForestSector_OpenBurning']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
+	vo['E_OpenBurning_ForestSector_Domestic']=CO2e_E_AsCO2+CO2e_E_AsCH4+CO2e_E_AsCO+CO2e_E_AsN2O
 
 	# Track if radiative forcing status is on
 	if meta[pNam]['Project']['Radiative Forcing Status']=='On':
@@ -1235,7 +1235,7 @@ def ExportSimulation(meta,pNam,vi,vo,iScn,iEns,iBat,iEP,vo_full):
 			continue
 
 		# These variable needs a larger scale factor
-		if (k=='E_Domestic_ForestSector_HWP') | (k=='E_EnergySC_Comb') | (k=='E_EnergyT_Comb') | (k=='E_IPPU_Comb'):
+		if (k=='E_RHE_ForestSector_Domestic') | (k=='E_EnergySC_Comb') | (k=='E_EnergyT_Comb') | (k=='E_IPPU_Comb'):
 			vo[k]=vo[k]/meta['Core']['Scale Factor Export Big']
 		else:
 			vo[k]=vo[k]/meta['Core']['Scale Factor Export Small']

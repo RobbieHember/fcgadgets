@@ -165,22 +165,20 @@ def RunOutputGraphics(meta,pNam,lsat,mos,dR,iPS,iSS,iYS,tv,iT,gpt,dH_ByBGCZ):
 #%%
 def Area_HarvestTimeSeries(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 	#dA=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestArea_TS.pkl')
-	dA=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestComp1_ByTime.pkl')
+	dA=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestTimeSeries.pkl')
 
-	iT2=np.where( (tv>=1991) & (tv<=2025) )[0]
+	iT2=np.where( (tv>=1901) & (tv<=2100) )[0]
 	ivlT=1
 	A=cbu.SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT)
-	for i in range(len(A['Management'])):
-		if A['Management'][i]['Name']=='Harvest':
-			break
-	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(14,8));
-	ax.plot(dA['tv'],dA['Area Harv CC']/1e3,'ok-',color=meta['Graphics']['gp']['cl1'],label='Consolidated Cutblocks database')
-	ax.plot(tv[iT2],A['Management'][i]['Data'][iT2]/1e3,'sk--',color=meta['Graphics']['gp']['cl2'],label='Model')
-	ax.set(xticks=np.arange(1800,2200,5),yticks=np.arange(0,400,50),ylabel='Harvest area (million ha)',xlabel='Time, years',xlim=[1990,2024],ylim=[0,375])
-	ax.legend(loc='lower left',facecolor=[1,1,1],frameon=False)
+	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15.5,8));
+	ax.plot(dA['Year'],dA['Province']['Area']['CC'],'k-',color=meta['Graphics']['gp']['cl1'],ms=2,label='Consolidated Cutblocks database')
+	ax.plot(tv[iT2],A['Management']['Harvest']['Data'][iT2]/1e3,'k--',color=meta['Graphics']['gp']['cl2'],ms=2,label='Model')
+	ax.set(xticks=np.arange(1800,2200,10),yticks=np.arange(0,400,50),ylabel='Harvest area (1000 hectares)',xlabel='Time, years',
+		xlim=[1901,2100],ylim=[0,300])
+	ax.legend(loc='upper left',facecolor=[1,1,1],frameon=False)
 	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
 	if meta['Graphics']['Print Figures']=='On':
-		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_Scn' + str(iScn+1) + '_All_All_All_Area_HarvestTimeSeries','png',900)
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_Scn' + str(iScn+1) + '_All_All_All_Harvest_Area_TS','png',900)
 	return 
 
 #%% THLB
@@ -265,7 +263,7 @@ def CarbonPoolBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 		ax[0].errorbar(x,y,yerr=[y-yl,yh-y],color=0.8*cl[i,:],ls='',capsize=2)
 
 	# Dump and landfill
-	nam='C_DumpLandfill'; x0=6; x=np.array([x0-bw2,x0,x0+bw2]); y=np.zeros(3); yl=np.zeros(3); yh=np.zeros(3)
+	nam='C_WasteSystems'; x0=6; x=np.array([x0-bw2,x0,x0+bw2]); y=np.zeros(3); yl=np.zeros(3); yh=np.zeros(3)
 	for i in range(3):
 		y[i]=np.mean((mos[pNam]['Scenarios'][iScn]['Sum'][nam]['Ensemble Mean'][iT2[i],iPS,iSS,iYS])/1e9)
 		yl[i]=np.mean((mos[pNam]['Scenarios'][iScn]['Sum'][nam]['Ensemble P025'][iT2[i],iPS,iSS,iYS])/1e9)
@@ -305,7 +303,7 @@ def CarbonPoolBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 def CarbonFluxesBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 	#list(mos[pNam]['Scenarios'][0]['Sum'].keys())
 
-	nam=np.array(['E_Domestic_ForestSector_NEE','E_Domestic_ForestSector_Wildfire','E_Domestic_ForestSector_OpenBurning','E_Domestic_ForestSector_HWP','E_Bioenergy','E_ForestOperations', \
+	nam=np.array(['E_Domestic_ForestSector_NEE','E_Wildfire_ForestSector_Domestic','E_OpenBurning_ForestSector_Domestic','E_Domestic_ForestSector_HWP','E_Bioenergy','E_ForestOperations', \
 				  'E_Substitution_Energy','E_Substitution_Material','E_Substitution_Total','E_NAB','E_NSB'])
 
 	xlab=['Net\necosystem\nexchange','Wildfire\nemissions','Open\nburning\nemissions','Wood\nproduct\nemissions','Bioenergy\nemissions','Operational\nemissions', \
@@ -364,7 +362,7 @@ def CarbonFluxesBarChart(meta,pNam,mos,tv,iScn,iPS,iSS,iYS):
 #%% flux summary
 def ScenarioComp_ForcingBarChart(meta,pNam,mos,tv,cNam,iPS,iSS,iYS):
 
-	nam=np.array(['E_Domestic_ForestSector_NEE','E_Domestic_ForestSector_Wildfire','E_Domestic_ForestSector_OpenBurning','E_Domestic_ForestSector_HWP','E_Bioenergy','E_ForestOperations', \
+	nam=np.array(['E_Domestic_ForestSector_NEE','E_Wildfire_ForestSector_Domestic','E_OpenBurning_ForestSector_Domestic','E_Domestic_ForestSector_HWP','E_Bioenergy','E_ForestOperations', \
 				  'E_Substitution_Energy','E_Substitution_Material','E_Substitution_Total','E_NAB','E_NSB'])
 
 	xlab=['Net\necosystem\nexchange','Wildfire\nemissions','Open\nburning\nemissions','Wood\nproduct\nemissions','Bioenergy\nemissions','Operational\nemissions', \
@@ -425,10 +423,11 @@ def ScenarioComp_ForcingBarChart(meta,pNam,mos,tv,cNam,iPS,iSS,iYS):
 		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_ScnComp_' + cNam + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_ForcingBarChart','png',900)
 
 #%% Harvest removals
-def HarvestVolumeTimeSeries(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS,flg_ann,flg_dead,flg_hbs,dH_ByBGCZ):
+def HarvestVolumeTimeSeries(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS,iOS,flg_ann,flg_dead,flg_hbs,dH_ByBGCZ):
 
 	# Import FAIB public summary
-	H_FLNR=gu.ReadExcel(r'C:\Data\Harvest\SummaryDataChangeInTimberHarvest\bctimberharvest.xlsx')
+	#H_FLNR=gu.ReadExcel(r'C:\Data\Harvest\SummaryDataChangeInTimberHarvest\bctimberharvest.xlsx')
+	dH=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestTimeSeries.pkl')
 
 	H_HBS=gu.ipickle(r'C:\Data\Harvest\HBS\HBS_AnnualSummary.pkl')
 
@@ -436,12 +435,15 @@ def HarvestVolumeTimeSeries(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS,flg_ann,flg_dea
 	matype='center'
 
 	# Total harvest
-	y=(mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchTotal']['Ensemble Mean'][:,iPS,iSS,iYS]+
-		mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_NonMerchTotal']['Ensemble Mean'][:,iPS,iSS,iYS]+
-		mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchDead']['Ensemble Mean'][:,iPS,iSS,iYS])/meta[pNam]['Project']['Multi']
+	#y=(mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchTotal']['Ensemble Mean'][:,iPS,iSS,iYS]+
+	#	mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_NonMerchTotal']['Ensemble Mean'][:,iPS,iSS,iYS]+
+	#	mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchDead']['Ensemble Mean'][:,iPS,iSS,iYS])/meta[pNam]['Project']['Multi']
+	y_Live=cbu.GetMosScnVar(meta,pNam,mos,iScn,'V_ToMill_MerchTotal',iPS,iSS,iYS,iOS)['Sum']['Ensemble Mean']/meta[pNam]['Project']['Multi']
+	y_Dead=cbu.GetMosScnVar(meta,pNam,mos,iScn,'V_ToMill_MerchDead',iPS,iSS,iYS,iOS)['Sum']['Ensemble Mean']/meta[pNam]['Project']['Multi']
+	y=y_Live+y_Dead
 	y_ma=gu.movingave(y[iT],10,matype)
 
-	y_Dead=(mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchDead']['Ensemble Mean'][:,iPS,iSS,iYS])/meta[pNam]['Project']['Multi']
+	#y_Dead=(mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchDead']['Ensemble Mean'][:,iPS,iSS,iYS])/meta[pNam]['Project']['Multi']
 	y_Dead_ma=gu.movingave(y_Dead[iT],10,matype)
 
 	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,6));
@@ -459,8 +461,8 @@ def HarvestVolumeTimeSeries(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS,flg_ann,flg_dea
 		elif pNam=='BCFCS_SBS':
 			ax.plot(dH_ByBGCZ['Time']['SBS'],dH_ByBGCZ['Mm3/yr']['SBS'],color=[0,1,1],lw=1.25,label='Tot. merch. vol. (HBS)')
 		else:
-			ax.plot(H_FLNR['Year'],H_FLNR['Total_harvest_millions_m3'],'k-',color=meta['Graphics']['gp']['cl1'],lw=1.25,label='Tot. merch. vol. (FLNR)')
-			ax.plot(H_HBS['Year'],H_HBS['V All Abs (Mm3/yr)'],color=[0,1,1],lw=1.25,label='Tot. merch. vol. (HBS)')
+			ax.plot(dH['Year'],dH['Province']['Volume']['FLNR'],'k-',color=meta['Graphics']['gp']['cl1'],lw=1.25,label='Tot. merch. vol. (FLNR)')
+			ax.plot(dH['Year'],dH['Province']['Volume']['HBS'],color=[0,1,1],lw=1.25,label='Tot. merch. vol. (HBS)')
 
 	#ax.plot(tv[iT],y,'-',color=meta['Graphics']['gp']['cl2'],lw=0.5,label='Total')
 	ax.set(position=[0.085,0.125,0.88,0.84],xlim=[tv[iT[0]],2100],xticks=np.arange(1800,2120,20),ylabel='Volume removed (Million m$^3$ yr$^-$$^1$)',xlabel='Time, years')
@@ -473,15 +475,46 @@ def HarvestVolumeTimeSeries(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS,flg_ann,flg_dea
 		nam_ps=meta[pNam]['Project']['Strata']['Project Type']['Unique CD'][iPS]
 		nam_ss=meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]
 		nam_ys=meta[pNam]['Project']['Strata']['Year']['Unique CD'][iYS]
-		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_Scn' + str(iScn+1) + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_HarvestVolumeTimeSeries','png',900)
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_Scn' + str(iScn+1) + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_Harvest_Volume_TS','png',900)
 
-	# Error
-	iT1=np.where( (tv>=1990) & (tv<=2015) )[0]
-	iT2=np.where( (H_FLNR['Year']>=1990) & (H_FLNR['Year']<=2015) )[0]
-	x=H_FLNR['Total_harvest_millions_m3'][iT2]
-	y=y[iT1]
-	#E['Province']['Harvest Volume'],txt=gu.GetRegStats(x,y)
+	return
 
+#%% Volume per hectare of harvest
+def HarvestVolumePerHectareTimeSeries(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS,dH_ByBGCZ):
+	# Observations are relatively stable at 350 m3/ha over 1990-2018 (https://cfs.nrcan.gc.ca/statsprofile/forest/bc)
+
+	dH=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestTimeSeries.pkl')
+
+	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,6));
+
+	# Modelled
+	ivlT=1;
+	A=cbu.SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT)
+	A_Harvest=A['Management']['Harvest']['Data']
+	V_Harvest=mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchTotal']['Ensemble Mean'][:,iPS,iSS,iYS]
+	rat=np.maximum(0,V_Harvest/A_Harvest)
+	rat_ma=gu.movingave(rat,5,'historical')
+	ax.plot(tv[iT],rat_ma[iT],'-go',lw=0.5,mew=0.5,mfc=[1,1,1],mec=[0.5,0.85,0],color=[0.5,0.85,0],ms=2,label='BC-FCS')
+
+	if pNam=='BCFCS_CWH':
+		ax.plot(dH_ByBGCZ['Time']['CWH'],dH_ByBGCZ['m3/ha']['CWH']*np.ones(dH_ByBGCZ['Time']['CWH'].size),color=[0,1,1],lw=1.25,label='Tot. merch. vol. (HBS)')
+	else:
+		y1=(dH['Province']['Volume']['FLNR']*1e6)/(dH['Province']['Area']['CC']*1e3)
+		y2=(dH['Province']['Volume']['HBS']*1e6)/(dH['Province']['Area']['CC']*1e3)
+		plt.plot(dH['Year'],y1,'-bs',color=[0.27,0.49,0.79],mfc=[0.27,0.49,0.79],mec=[0.27,0.49,0.79],ms=2,lw=0.5,mew=0.5,label='Harvest observations DB')
+		plt.plot(dH['Year'],y2,'-b^',color=[0,1,1],mfc=[0.27,0.49,0.79],mec=[0.27,0.49,0.79],ms=2,lw=0.5,mew=0.5,label='Harvest observations DB (HBS)')
+
+	ax.set(xticks=np.arange(tv[iT[0]],2250,5),xlabel='Time, years',yticks=np.arange(0,2000,100),ylabel='Harvest volume (m$^3$ ha$^-$$^1$)',
+		xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,1000])
+	ax.legend(loc='lower left',frameon=False,facecolor='w',edgecolor='w');
+	ax.grid(False)
+	plt.tight_layout()
+	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+	if meta['Graphics']['Print Figures']=='On':
+		nam_ps=meta[pNam]['Project']['Strata']['Project Type']['Unique CD'][iPS]
+		nam_ss=meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]
+		nam_ys=meta[pNam]['Project']['Strata']['Year']['Unique CD'][iYS]
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_Scn' + str(iScn+1) + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_Harvest_VolumePerHectare_TS','png',900)
 	return
 
 #%% Harvest rates (Actual vs. Forest Retention Scenario)
@@ -515,71 +548,8 @@ def PlotHarvestMultipleScenarios(meta,pNam,mos,tv,iT,iPS,iSS,iYS,iScn1,iScn2,flg
 		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_HarvestVolumeMerchCompareScenarios_Scn' + str(iScn1+1) + '_vs_' + str(iScn2+1),'png',900)
 	return
 
-#%% Volume per hectare of harvest
-def HarvestVolumePerHectareTimeSeries(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS,dH_ByBGCZ):
-
-	# Observations are relatively stable at 350 m3/ha over 1990-2018 (https://cfs.nrcan.gc.ca/statsprofile/forest/bc)
-
-	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,6));
-
-	# Modelled
-	ivlT=1;
-	A=cbu.SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT)
-	A_Harvest=A['Management'][0]['Data']
-	V_Harvest=mos[pNam]['Scenarios'][iScn]['Sum']['V_ToMill_MerchTotal']['Ensemble Mean'][:,iPS,iSS,iYS]
-	rat=np.maximum(0,V_Harvest/A_Harvest)
-	rat_ma=gu.movingave(rat,5,'historical')
-	ax.plot(tv[iT],rat_ma[iT],'-go',lw=0.5,mew=0.5,mfc=[1,1,1],mec=[0.5,0.85,0],color=[0.5,0.85,0],ms=2,label='FCS prediction')
-
-	# Observations
-	d={}
-	d['Year']=np.arange(1850,2024,1)
-	d['V']=np.zeros(d['Year'].size)
-	d['A']=np.zeros(d['Year'].size)
-
-	H_FLNR=gu.ReadExcel(r'C:\Data\Harvest\SummaryDataChangeInTimberHarvest\bctimberharvest.xlsx')
-	ind=np.where( (d['Year']>=H_FLNR['Year'][0]) & (d['Year']<=H_FLNR['Year'][-1]) )[0]
-	d['V'][ind]=H_FLNR['Total_harvest_millions_m3']*1e6
-
-	H_HBS=gu.ipickle(r'C:\Data\Harvest\HBS\HBS_AnnualSummary.pkl')
-	ind=np.where( (d['Year']>=H_HBS['Year'][0]) & (d['Year']<=H_HBS['Year'][-1]) )[0]
-	d['V'][ind]=np.maximum(d['V'][ind],H_HBS['V All Abs (Mm3/yr)']*1e6)
-
-	#A_CCB=gu.ipickle(r'C:\Data\Harvest\Harvest Area\AnnualHarvestAreaFromConCutblocksDB.pkl')
-	#ind=np.where( (d['Year']>=A_CCB['Year'][0]) & (d['Year']<=A_CCB['Year'][-1]) )[0]
-	#d['A'][ind]=A_CCB['Area Harvested']
-
-	#A_RES=gu.ipickle(r'C:\Data\Harvest\Harvest Area\AnnualHarvestAreaFromRESULTS.pkl')
-	#ind=np.where( (d['Year']>=A_RES['Year'][0]) & (d['Year']<=A_RES['Year'][-1]) )[0]
-	#d['A'][ind]=np.maximum(d['A'][ind],A_RES['Area Harvested'])
-	dA=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HarvestArea_TS.pkl')
-	ind=np.where( (d['Year']>=dA['tv'][0]) & (d['Year']<=dA['tv'][-1]) )[0]
-	d['A'][ind]=dA['Area Harv NFD']
-
-	if pNam=='BCFCS_CWH':
-		ax.plot(dH_ByBGCZ['Time']['CWH'],dH_ByBGCZ['m3/ha']['CWH']*np.ones(dH_ByBGCZ['Time']['CWH'].size),color=[0,1,1],lw=1.25,label='Tot. merch. vol. (HBS)')
-	else:
-		iT3=np.where( (d['Year']>=tv[iT[0]]) & (d['Year']<=tv[iT[-1]]) )[0]
-		plt.plot(d['Year'][iT3],d['V'][iT3]/d['A'][iT3],'-bs',color=[0.27,0.49,0.79],mfc=[0.27,0.49,0.79],mec=[0.27,0.49,0.79],ms=2,lw=0.5,mew=0.5,label='HBS + Harvest Area Analysis')
-
-	ax.set(xticks=np.arange(tv[iT[0]],2250,5),xlabel='Time, years',yticks=np.arange(0,2000,100),ylabel='Harvest volume (m$^3$ ha$^-$$^1$)',
-		   xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,1000])
-	ax.legend(loc='lower left',frameon=False,facecolor='w',edgecolor='w');
-	ax.grid(False)
-	plt.tight_layout()
-	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
-	if meta['Graphics']['Print Figures']=='On':
-		nam_ps=meta[pNam]['Project']['Strata']['Project Type']['Unique CD'][iPS]
-		nam_ss=meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]
-		nam_ys=meta[pNam]['Project']['Strata']['Year']['Unique CD'][iYS]
-		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_Scn' + str(iScn+1) + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_HarvestVolumePerHectareTimeSeries','png',900)
-	return
-
 #%% Plot net sector GHG balance
 def GHGBalance(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS):
-
-	v='E_NAB'
-	v2='E_NSB'
 
 	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(15.5,11)); wd=1;
 	ax.add_patch(Rectangle([1920,-1000],103,2000,fc=[0.94,0.94,0.94],ec="none"))
@@ -588,28 +558,21 @@ def GHGBalance(meta,mos,pNam,tv,iScn,iT,iPS,iSS,iYS):
 	y_hwp=mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi']
 	ax.bar(tv[iT],y_hwp,wd,label='Product emissions',facecolor=[0.75,0.85,1])
 
-	try:
-		y_op=mos[pNam]['Scenarios'][iScn]['Sum']['E_ForestOperations']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi']
-	except:
-		y_op=0*y_hwp
+	y_op=mos[pNam]['Scenarios'][iScn]['Sum']['E_ForestOperations']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi']
 	ax.bar(tv[iT],y_op,wd,bottom=y_hwp,label='Fossil fuel emissions',facecolor=[0,0,0.7])
 
-	y_ob=mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi']
+	y_ob=mos[pNam]['Scenarios'][iScn]['Sum']['E_OpenBurning_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi']
 	ax.bar(tv[iT],y_ob,wd,bottom=y_hwp+y_op,label='Open burning emissions',facecolor=[1,0.1,0.1])
 
-	y_wf=mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi']
+	y_wf=mos[pNam]['Scenarios'][iScn]['Sum']['E_Wildfire_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi']
 	ax.bar(tv[iT],y_wf,wd,bottom=y_hwp+y_op+y_ob,label='Wildfire emissions',facecolor=[1,0.7,0.7])
 
 	# Negative harvest removals
 	#ax.bar(tv[iT],-1*(mos[pNam]['Scenarios'][iScn]['Sum']['C_ToMill']['Ensemble Mean'][iT,iPS,iSS,iYS])*3.667/meta[pNam]['Project']['Multi'],wd,facecolor=[0.65,.85,0.2],label='Removals (ecosystem to HWP)')
 	ax.bar(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Substitution_Total']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],wd,facecolor=[0.65,.85,0.2],label='Maximum substitution effects')
 
-	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum'][v]['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'k--',color=[0.5,0.5,0.5],mfc='w',mew=0.5,ms=2,label='GHG balance (with maximum substitution effects)')
-	try:
-		ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum'][v2]['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'k-.',color=[0.5,0.5,0.5],mfc='w',mew=0.5,ms=2,label='GHG balance (w/o substitution effects)')
-		ax.plot(tv[iT],(mos[pNam]['Scenarios'][iScn]['Sum'][v2]['Ensemble Mean'][iT,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum'][v]['Ensemble Mean'][iT,iPS,iSS,iYS])/2/meta[pNam]['Project']['Multi'],'k-',color=[0,0,0],mfc='w',mew=0.5,ms=2,label='GHG balance (average substitution effects)')
-	except:
-		pass
+	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_NAB']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'k--',color=[0.5,0.5,0.5],mfc='w',mew=0.5,ms=2,label='Net atmospheric balance')
+	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_NSB']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'k-',color=[0,0,0],mfc='w',mew=0.75,ms=2,label='Net sector balance')
 	ax.plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_NEE']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'k-.',color=[0.4,0.6,0.15],mfc='w',ms=2,mew=0.5,label='Net ecosystem exchange')
 
 	if tv[iT[0]]>=1800:
@@ -831,7 +794,7 @@ def ScenarioComp_GHGBalanceAnnual(meta,pNam,mos,tv,cNam,iT,iPS,iSS,iYS):
 
 #%%
 def ComparisonWithPIR(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
-	dPIR=gu.ReadExcel(r'C:\Data\PIR\PIR Reformatted.xlsx')
+	dPIR=gu.ReadExcel(r'C:\Data\PIR\PIR Reformatted.xlsx',sheet_name='Sheet1',skiprows=0)
 	iT=np.where( (tv>=1900) & (tv<=2023) )[0]
 
 	plt.close('all')
@@ -845,13 +808,13 @@ def ComparisonWithPIR(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
 	ax[0,0].legend(loc='best',frameon=False,facecolor='w',edgecolor='w')
 	ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 
-	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='Net ecosystem exchange')
+	ax[0,1].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Wildfire_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='Net ecosystem exchange')
 	ax[0,1].plot(dPIR['Year'],dPIR['Wildfires']/1e3,'rs-',mfc=[1,1,1],mew=0.5,ms=2,lw=meta['Graphics']['gp']['lw1'],label='PIR')
 	ax[0,1].set(xticks=np.arange(tv[iT[0]],2250,20),yticks=np.arange(0,300,25),
 		   ylabel='Wildfire (MtCO$_2$e yr$^-$$^1$)',xlabel='Time, years',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5],ylim=[0,220])
 	ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 
-	#ax[1,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'ob-',mfc='w',mew=0.5,ms=2,label='Net ecosystem exchange')
+	#ax[1,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_OpenBurning_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'ob-',mfc='w',mew=0.5,ms=2,label='Net ecosystem exchange')
 	#ax[1,0].plot(dPIR['Year'],dPIR['Slash Pile Burning']/1e3,'rs-',mfc=[1,1,1],label='PIR')
 	ax[1,0].plot(tv[iT],mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]/meta[pNam]['Project']['Multi'],'ob-',color=cl[0,:],mec=cl[0,:],mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='HWP decay (FCS)')
 	ax[1,0].plot(tv[iT],(mos[pNam]['Scenarios'][iScn]['Sum']['E_Domestic_ForestSector_HWP']['Ensemble Mean'][iT,iPS,iSS,iYS]+mos[pNam]['Scenarios'][iScn]['Sum']['E_Bioenergy']['Ensemble Mean'][iT,iPS,iSS,iYS])/meta[pNam]['Project']['Multi'],'oc-',mfc='w',lw=meta['Graphics']['gp']['lw1'],mew=0.5,ms=2,label='HWP decay + bioenergy (FCS)')
@@ -884,9 +847,9 @@ def ComparisonWithPIR(meta,pNam,mos,tv,iScn,iT,iPS,iSS,iYS):
 	return
 
 #%%
-def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS,**kwargs):
+def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS,iOS,**kwargs):
 	tv=np.arange(meta[pNam]['Project']['Year Start Saving'],meta[pNam]['Project']['Year End']+1,1)
-	A=cbu.SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,ivlT)
+	A=cbu.SummarizeAreaAffected(meta,pNam,mos,tv,iScn,iPS,iSS,iYS,iOS,ivlT)
 	yr_start=tv[iT[0]]
 	if tv[iT[0]]>=1800:
 		xtivl=20
@@ -898,12 +861,23 @@ def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS,**kwargs):
 
 	if 'multi' in kwargs.keys():
 		multi=kwargs['multi']
-		ylab='Area affected (ha)'
+		ylab='Area affected (ha x ' + str(int(multi)) + ')'
 	else:
 		multi=1e6
 		ylab='Area affected (Mha)'
 
-	plt.close('all'); fig,ax=plt.subplots(2,1,figsize=gu.cm2inch(15,10));
+	if 'ncols' in kwargs.keys():
+		ncols=kwargs['ncols']
+	else:
+		ncols=1
+
+	if 'LegendLoc' in kwargs.keys():
+		LegendLoc=kwargs['LegendLoc']
+	else:
+		LegendLoc='upper left'
+
+
+	plt.close('all'); fig,ax=plt.subplots(2,1,figsize=gu.cm2inch(22,10));
 
 	pl_d=[None]*len(A['Natural'])
 	nams_d=[None]*len(A['Natural'])
@@ -914,8 +888,10 @@ def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS,**kwargs):
 		nams_d[cnt]=k
 		bottom=bottom+A['Natural'][k]['Data'][iT]/multi
 		cnt=cnt+1
-	ax[0].legend(pl_d,nams_d,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False,ncols=1,fontsize=6)
-	ax[0].set(yscale='linear',xticks=np.arange(np.min(tv),np.max(tv)+1,xtivl),ylabel=ylab,xlim=[yr_start,np.max(tv)])
+	ax[0].legend(pl_d,nams_d,loc=LegendLoc,labelspacing=0.12,facecolor=[1,1,1],
+			  frameon=False,fontsize=6,ncols=ncols)
+	ax[0].set(yscale='linear',xticks=np.arange(np.min(tv),np.max(tv)+1,xtivl),ylabel=ylab,
+		   xlim=[yr_start,np.max(tv[iT])],ylim=[0,1.05*np.max(bottom)])
 	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
 	#ax[0].text((2020+1920)/2,1050,'Observation Period',ha='center',fontsize=6,style='normal',weight='normal',color=[0,0,0])
 
@@ -930,8 +906,9 @@ def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS,**kwargs):
 		bottom=bottom+A['Management'][k]['Data'][iT]/multi
 		cnt=cnt+1
 	#ax[1].plot([2020,2020],[0,5500],'k--')
-	ax[1].legend(pl_m,nams_m,loc='upper left',bbox_to_anchor=(0.05,0.98),labelspacing=0.12,facecolor=[1,1,1],frameon=False,ncols=1,fontsize=6)
-	ax[1].set(yscale='linear',xticks=np.arange(np.min(tv),np.max(tv)+1,xtivl),xlabel='Time, years',ylabel=ylab,xlim=[yr_start,np.max(tv)])
+	ax[1].legend(pl_m,nams_m,loc=LegendLoc,labelspacing=0.12,facecolor=[1,1,1],frameon=False,ncols=ncols,fontsize=6)
+	ax[1].set(yscale='linear',xticks=np.arange(np.min(tv),np.max(tv)+1,xtivl),xlabel='Time, years',ylabel=ylab,
+		   xlim=[yr_start,np.max(tv[iT])],ylim=[0,1.05*np.max(bottom)])
 	ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
 	ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
 	gu.axletters(ax,plt,0.014,0.91,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
@@ -939,8 +916,9 @@ def Area_DisturbedAndManaged(meta,pNam,mos,ivlT,iScn,iT,iPS,iSS,iYS,**kwargs):
 	nam_ps=meta[pNam]['Project']['Strata']['Project Type']['Unique CD'][iPS]
 	nam_ss=meta[pNam]['Project']['Strata']['Spatial']['Unique CD'][iSS]
 	nam_ys=meta[pNam]['Project']['Strata']['Year']['Unique CD'][iYS]
+	nam_os=meta[pNam]['Project']['Strata']['Other']['Unique CD'][iOS]
 	if meta['Graphics']['Print Figures']=='On':
-		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + pNam + '_Scn' + str(iScn+1) + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_Area_DisturbedAndManaged','png',900)
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\AreaAffected_ByEventType_' + pNam + '_Scn' + str(iScn+1) + '_' + nam_ps + '_' + nam_ss + '_' + nam_ys + '_' + nam_os,'png',900)
 	return
 
 #%% Mortality summary
@@ -975,7 +953,8 @@ def CarbonFluxMortality(meta,pNam,mos,tv,iScn,iT,ivlT,iPS,iSS,iYS):
 		xivl=50
 	else:
 		xivl=20
-	ax.set(ylabel='Mortality (tC ha$^{-1}$ yr$^{-1}$)',xlabel='Time, years',xticks=np.arange(np.min(y[0]['tv']),np.max(y[0]['tv'])+1,xivl),xlim=[yr_start,np.max(y[0]['tv'])]); # ,ylim=[0,3]yticks=np.arange(0,5,0.2),
+	ax.set(ylabel='Mortality (tC ha$^{-1}$ yr$^{-1}$)',xlabel='Time, years',xticks=np.arange(np.min(y[0]['tv']),np.max(y[0]['tv'])+1,xivl),
+		xlim=[yr_start,np.max(y[0]['tv'])],ylim=[0,1.05*np.max(bottom)]); # ,ylim=[0,3]yticks=np.arange(0,5,0.2),
 	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
 	plt.tight_layout()
 	if meta['Graphics']['Print Figures']=='On':
@@ -1041,9 +1020,9 @@ def CarbonFluxTimeSeries(meta,pNam,mos,iT,iScn,iPS,iSS,iYS):
 	mu=mos[pNam]['Scenarios'][iScn]['Mean']['C_RH']['Ensemble Mean'][iT,iPS,iSS,iYS]*3.667
 	ax[0,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[0,1].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[0,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[0,1].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[0,1].set(xticks=xt,xlabel='Time, years',ylabel='RH\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
@@ -1065,28 +1044,28 @@ def CarbonFluxTimeSeries(meta,pNam,mos,iT,iScn,iPS,iSS,iYS):
 	ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
 
 	ax[1,1].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.75)
-	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
-	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
-	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble P025'][iT,iPS,iSS,iYS]
+	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble P975'][iT,iPS,iSS,iYS]
+	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	ax[1,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[1,1].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_Wildfire']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Wildfire_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[0,1].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[0,1].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[1,1].set(xticks=xt,xlabel='Time, years',ylabel='Wildfire emissions\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
 	ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
 
 	ax[2,0].plot(tv[iT],np.zeros(iT.size),'k-',lw=0.75)
-	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_Domestic_ForestSector_OpenBurning']['Ensemble P025'][iT,iPS,iSS,iYS]
-	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_Domestic_ForestSector_OpenBurning']['Ensemble P975'][iT,iPS,iSS,iYS]
-	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_Domestic_ForestSector_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	lo=mos[pNam]['Scenarios'][iScn]['Mean']['E_OpenBurning_ForestSector_Domestic']['Ensemble P025'][iT,iPS,iSS,iYS]
+	hi=mos[pNam]['Scenarios'][iScn]['Mean']['E_OpenBurning_ForestSector_Domestic']['Ensemble P975'][iT,iPS,iSS,iYS]
+	mu=mos[pNam]['Scenarios'][iScn]['Mean']['E_OpenBurning_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	ax[2,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl2'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	ax[2,0].plot(tv[iT],mu,'-',color=meta['Graphics']['gp']['cl2'],label='Actual scenario')
-	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_OpenBurning']['Ensemble P025'][iT,iPS,iSS,iYS]
-	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_OpenBurning']['Ensemble P975'][iT,iPS,iSS,iYS]
-	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_Domestic_ForestSector_OpenBurning']['Ensemble Mean'][iT,iPS,iSS,iYS]
+	#lo=mos[pNam]['Scenarios'][iB]['Mean']['E_OpenBurning_ForestSector_Domestic']['Ensemble P025'][iT,iPS,iSS,iYS]
+	#hi=mos[pNam]['Scenarios'][iB]['Mean']['E_OpenBurning_ForestSector_Domestic']['Ensemble P975'][iT,iPS,iSS,iYS]
+	#mu=mos[pNam]['Scenarios'][iB]['Mean']['E_OpenBurning_ForestSector_Domestic']['Ensemble Mean'][iT,iPS,iSS,iYS]
 	#ax[1,0].fill_between(tv[iT],lo,hi,color=meta['Graphics']['gp']['cl1'],alpha=meta['Graphics']['gp']['Alpha1'],lw=0)
 	#ax[1,0].plot(tv[iT],mu,'--',color=meta['Graphics']['gp']['cl1'],label='Baseline scenario')
 	ax[2,0].set(xticks=xt,xlabel='Time, years',ylabel='Open burning\n(tCO$_2$e ha$^-$$^1$yr$^-$$^1$)',xlim=[tv[iT[0]]-0.5,tv[iT[-1]]+0.5])
@@ -1467,7 +1446,7 @@ def AgeClassDist(meta,pNam,iScn,iPS,iSS,iYS):
 	acd['Data VRI'][0]=0
 
 	# Import age class distributions fitted against field plots
-	dFP=gu.ReadExcel(meta['Paths']['DB']['Field Plot Observations'] + '\\FP_AgeDistributionsByBGCZone.xlsx')
+	dFP=gu.ReadExcel(meta['Paths']['DB']['Field Plot Observations'] + '\\FP_AgeDistributionsByBGCZone.xlsx',sheet_name='Sheet1',skiprows=0)
 
 	lw=1.25
 	tL=[1850,2020]
@@ -1551,7 +1530,7 @@ def Plot_Wildfire_Po_By_BGCZone(meta):
 	wfss=gu.ipickle(meta['Paths']['DB']['Taz'] + '\\Wildfire\\Wildfire_Stats_Scenarios_By_BGCZ.pkl')
 	plt.close('all'); fig,ax=plt.subplots(2,1,figsize=gu.cm2inch(22,9))
 	ax[0].bar(wfss['tv_obs'],wfss['A_Burned_Tot']/1e6,facecolor=meta['Graphics']['Colours']['rgb']['Blue Light'])
-	ax[0].set(xticks=np.arange(1920,2040,10),ylabel='Area affected (Million ha yr$^-$$^1$)',xlabel='Time, years',xlim=[1919,2024])
+	ax[0].set(xticks=np.arange(1920,2040,10),ylabel='Area affected (Million ha yr$^-$$^1$)',xlabel='Time, years',xlim=[1919,2025])
 	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=1.5)
 	ax[1].bar(np.arange(1,wfss['Po_obs_mu'].size+1),wfss['Po_obs_mu']*100,facecolor=meta['Graphics']['Colours']['rgb']['Blue Light'])
 	ax[1].set(xticks=np.arange(1,wfss['Po_obs_mu'].size+1),
@@ -1561,6 +1540,12 @@ def Plot_Wildfire_Po_By_BGCZone(meta):
 	gu.axletters(ax,plt,0.015,0.88,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['Modelling']['AxesLetterStyle'],FontWeight=meta['Graphics']['Modelling']['AxesFontWeight'])
 	if meta['Graphics']['Print Figures']=='On':
 		gu.PrintFig(r'C:\Users\rhember\OneDrive - Government of BC\Figures\Harvest\Wildfire_Po_By_BGCZone','png',900)
+
+	d={}
+	d['Zone']=wfss['bgcz_cdS']
+	d['Po']=wfss['Po_obs_mu']*100
+	pd.DataFrame.from_dict(d)
+
 	return
 
 #%%
@@ -2013,218 +1998,6 @@ def ImportText(meta,pNam):
 	return txt
 
 #%%
-def Plot_QA_FateOfFelled(meta,d,iS,iH,TimeHorizon,dpi):
-	fnam='Figure ' + str(meta['Graphics']['Fig Count']) + ' Schematic of Fibre Flow'
-	g=graphviz.Digraph('Fibre Flow',filename=fnam,
-					 graph_attr={'rankdir':'LR',
-								 'compound':'true',
-								 'pad':'0.1',
-								 'nodesep':'0.1',
-								 'format':'png',
-								 'dpi':dpi},
-					 node_attr={'shape':'box',
-								'fixedsize':'true',
-								'width':'1.2',
-								'height':'0.5',
-								'fontname':meta['Graphics']['Flowchart']['Font Name'],
-								'fontcolor':meta['Graphics']['Flowchart']['Font Color'],
-								'fontsize':meta['Graphics']['Flowchart']['Font Size'],
-								'style':'filled',
-								'fillcolor':meta['Graphics']['Flowchart']['Node Background Color'],
-								'penwidth':meta['Graphics']['Flowchart']['Penwidth'],
-								'center':'true'},
-					edge_attr={})
-	
-	g.edge_attr.update(arrowhead='normal',arrowsize='0.6',penwidth='0.5',fontsize='9',fontname=meta['Graphics']['Flowchart']['Font Name'])
-	
-	tfb='Biomass of\nfelled trees'
-	r='Root\nmortality'
-	m='Merchantable\nwood'
-	nm='Non-merchant.\naboveground\nbiomass'
-	lds='Left\ndispersed'
-	pil='Piles'
-	rpil='Remnant\npiles'
-	lex='Log\nexports'
-	fw='Firewood\ncollection'
-	mill='Mill\ntransport'
-	lum='Lumber'
-	pp='Pulp and Paper'
-	pan='Panels'
-	pel='Pellets'
-	bef='Bioenergy facility'
-	#rh='Residual\nharvest'
-	dom='Dead organic\nmatter'
-	atm='Atmosphere'
-	ob='Open\nburning'
-	rhe='Decay'
-	rhp='Product\ndecay'
-	combp='Product\nburning'
-	res='Residential'
-
-	Felled=d['C_Felled'][iH,iS]
-	FelledM=d['C_FelledMerch'][iH,iS]
-	FelledR=d['C_FelledRoots'][iH,iS]
-	FelledNM=Felled-FelledM-FelledR
-	dDW=(d['C_DeadWood'][iH,iS])-(d['C_DeadWood'][iH-1,iS])
-	ToDOM=d['C_ToDOM'][iH,iS]
-	LdsToDom=ToDOM-FelledR
-	DomToAtm=np.sum(d['C_RH_FelledRootsDispersed'][iH:iH+TimeHorizon,iS])
-	ToPile=d['C_ToPile'][iH,iS]
-	ToPileM=d['C_ToPileMerch'][iH,iS]
-	ToPileNM=ToPile-ToPileM
-	ToMillSS=d['C_ToMillMerchDead'][iH,iS]
-	ToMillM=d['C_ToMillMerchGreen'][iH,iS]
-	ToMillNM=d['C_ToMillNonMerchGreen'][iH,iS]
-	ToFW=d['C_ToBBP_FirewoodDom'][iH,iS]
-	BurnTot=np.sum(d['C_ToPileBurnTot'][iH:iH+1,iS])
-	RemnantPile=ToPile-BurnTot
-	#BurnNM=d['C_ToPileBurnTot'][iH+1,iS]-d['C_ToPileBurnMerch'][iH+1,iS]
-	ToLogEx=d['C_ToLogExport'][iH,iS]
-	ToLum=d['C_ToLumber'][iH,iS]
-	ToAtm=0
-
-	#print(Felled-ToDOM-ToPile-ToMillM-ToMillNM-ToMillSS-ToFW) # Confirm that all felled fibre is accounted for
-
-	tfb2r=str(np.round(FelledR/Felled*100,decimals=1)) + '%'
-	tfb2m=str(np.round(FelledM/Felled*100,decimals=1)) + '%\l'
-	tfb2nm=str(np.round(FelledNM/Felled*100,decimals=1)) + '%\l'
-
-	r2dom=str(np.round(FelledR/Felled*100,decimals=1)) + '%'
-
-	m2lds=str(np.round((FelledM-ToMillM-ToPileM)/Felled*100,decimals=1)) + '%\l'
-	m2pb=str(np.round(ToPileM/Felled*100,decimals=1)) + '%\l'
-	m2mill=str(np.round(ToMillM/Felled*100,decimals=1)) + '%\l'
-	m2fw=str(np.round(ToFW/Felled*100,decimals=1)) + '%\l'
-	m2lex=str(np.round(ToLogEx/Felled*100,decimals=1)) + '%\l'
-
-	nm2lds=str(np.round((FelledNM-ToPileNM-ToMillNM)/Felled*100,decimals=1)) + '%\l'
-	nm2pb=str(np.round(ToPileNM/Felled*100,decimals=1)) + '%\l'
-	nm2mill=str(np.round(ToMillNM/Felled*100,decimals=1)) + '%\l'
-
-	lds2dom=str(np.round(LdsToDom/Felled*100,decimals=1)) + '%\l'
-
-	mill2lum=str(np.round(ToLum/Felled*100,decimals=1)) + '%\l'
-	mill2pp=str(np.round(d['C_ToPaper'][iH,iS]/Felled*100,decimals=1)) + '%\l'
-	mill2pan=str(np.round((d['C_ToPlywood'][iH,iS]+d['C_ToMDF'][iH,iS]+d['C_ToOSB'][iH,iS])/Felled*100,decimals=1)) + '%\l'
-	mill2pel=str(np.round((d['C_ToBBP_PelletExport'][iH,iS]+d['C_ToBBP_PelletDomRNG'][iH,iS]+d['C_ToBBP_PelletDomGrid'][iH,iS])/Felled*100,decimals=1)) + '%\l'
-	mill2bef=str(np.round((d['C_ToBBP_PowerGrid'][iH,iS]+d['C_ToBBP_PowerFacilityExport'][iH,iS]+d['C_ToBBP_PowerFacilityDom'][iH,iS])/Felled*100,decimals=1)) + '%\l'
-
-	fw2atm=str(np.round(ToFW/Felled*100,decimals=1)) + '%\l'
-
-	pil2ob=str(np.round(BurnTot/Felled*100,decimals=1)) + '%\l'
-	pil2rpil=str(np.round(RemnantPile/Felled*100,decimals=1)) + '%\l'
-	b=BurnTot/Felled*100
-	ob2atm=str(np.round(b,decimals=1)) + '%\l'
-	ToAtm=ToAtm+b
-
-	f=(RemnantPile-d['C_Piles'][iH+TimeHorizon,iS])/RemnantPile
-	rpil2rhe=f*(RemnantPile/Felled*100)
-	rpil2rhe_str=str(np.round(rpil2rhe,decimals=1)) + '%\l'
-
-	Frac_To_DOM=FelledR/Felled+LdsToDom/Felled
-	dom2rhe=(DomToAtm/ToDOM)*Frac_To_DOM*100
-	dom2rhe_str=str(np.round(dom2rhe,decimals=1)) + '%'
-	rhe2atm=str(np.round(dom2rhe+rpil2rhe,decimals=1)) + '%'
-	ToAtm=ToAtm+dom2rhe+rpil2rhe
-
-	a=np.sum(d['E_Domestic_ForestSector_HWP'][iH:iH+TimeHorizon,iS])/3.667
-	b=a/Felled*100
-	ToAtm=ToAtm+b
-	rhp2atm=str(np.round(b,decimals=1)) + '%'
-
-	a=np.sum(d['E_Domestic_Bioenergy'][iH:iH+TimeHorizon,iS])/3.667
-	b=a/Felled*100
-	ToAtm=ToAtm+b
-	combp2atm=str(np.round(b,decimals=1)) + '%'
-
-	with g.subgraph(name='cluster_eco') as eco:
-		eco.attr(label='Ecosystem',labeljust="l",style='filled',color=meta['Graphics']['Flowchart']['Cluster Background Color'],fontname=meta['Graphics']['Flowchart']['Font Name'])
-		eco.node(tfb)
-		eco.node(dom)
-		eco.node(lds,shape='circle',width='0.9')
-		eco.node(pil)
-		eco.node(rpil)
-		eco.node(ob,shape='circle',width='0.9')
-		eco.node(rhe,shape='circle',width='0.9')
-		eco.node(r,shape='circle',width='0.9')
-		eco.node(nm)
-		eco.node(m)
-
-	g.node(atm,color='#578f91',fillcolor='#a2f9fc',
-		fontcolor='#274445')
-
-	with g.subgraph(name='cluster_mills') as mil:
-		mil.attr(label='Harvested Wood Products',labeljust="r",style='filled',color=meta['Graphics']['Flowchart']['Cluster Background Color'],fontname=meta['Graphics']['Flowchart']['Font Name'])
-		mil.node(lex,shape='circle',width='0.9')
-		mil.node(fw,shape='circle',width='0.9')
-		mil.node(mill,shape='circle',width='0.9')
-		mil.node(lum) #,shape='house'
-		mil.node(pp)
-		mil.node(pan)
-		mil.node(pel)
-		mil.node(bef)
-		mil.node(res)
-		#mil.node(bef,shape='house')
-		mil.node(combp,shape='circle',width='0.9')
-		mil.node(rhp,shape='circle',width='0.9')
-
-	g.edge(tfb,m,label=tfb2m)
-	g.edge(tfb,nm,label=tfb2nm)
-	g.edge(tfb,r,label=tfb2r)
-	
-	g.edge(r,dom,label=r2dom)
-	g.edge(dom,rhe,label=dom2rhe_str)
-	g.edge(rhe,atm,label=rhe2atm)
-
-	g.edge(rpil,rhe,label=rpil2rhe_str)
-
-	g.edge(m,lds,label=m2lds)
-	g.edge(m,pil,label=m2pb)
-
-	g.edge(nm,lds,label=nm2lds)
-	g.edge(nm,pil,label=nm2pb)
-	g.edge(nm,mill,label=nm2mill)
-	
-	g.edge(pil,ob,label=pil2ob)
-	g.edge(pil,rpil,label=pil2rpil)
-	g.edge(ob,atm,label=ob2atm)
-	g.edge(lds,dom,label=lds2dom)
-
-	g.edge(m,lex,label=m2lex)
-	g.edge(m,mill,label=m2mill)
-	g.edge(m,fw,label=m2fw)
-	g.edge(fw,res,label=m2fw)
-	g.edge(mill,lum,label=mill2lum)
-	g.edge(mill,pp,label=mill2pp)
-	g.edge(mill,pan,label=mill2pan)
-	g.edge(mill,pel,label=mill2pel)
-	g.edge(mill,bef,label=mill2bef)
-
-	g.edge(bef,combp,label='')
-	g.edge(pel,combp,label='')
-	g.edge(pp,combp,label='')
-	g.edge(res,combp,label='')
-
-	g.edge(lum,rhp,label='')
-	g.edge(pp,rhp,label='')
-	g.edge(pan,rhp,label='')
-
-	g.edge(rhp,atm,label=rhp2atm)
-
-	g.edge(combp,atm,label=combp2atm)
-
-	g.node(atm,label='Atmosphere\n' + str(np.round(ToAtm,decimals=1)) + '%')
-
-	display(g)
-	g.format='png'
-	#g.dpi=72 # Controlled by "graph_attr" above
-	if meta['Graphics']['Print Figures']=='On':
-		g.render(filename=meta['Graphics']['Print Figure Path'] + '\\HarvestSchematic')
-	return
-
-
-
-#%%
 def Plot_FateOfRemovals(meta):
 	fnam='Figure ' + str(meta['Graphics']['Fig Count']) + ' Schematic Fate of Harvest Removals'
 	g=graphviz.Digraph('Fibre Flow',filename=fnam,
@@ -2436,7 +2209,7 @@ def Plot_FlowChartHarvestByTimberMarkDB(meta,capt):
 
 #%%
 def Tabulate_Prices(meta,year):
-	dCP=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_CostsAndPrices.xlsx','Data')
+	dCP=gu.ReadExcel(meta['Paths']['Model']['Code'] + '\\Parameters\\Parameters_CostsAndPrices.xlsx',sheet_name='Data')
 	iT=np.where(dCP['Year']==year)[0]
 	d={}
 	for k in dCP.keys():

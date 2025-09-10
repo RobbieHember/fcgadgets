@@ -17,7 +17,6 @@ import time
 import gc as garc
 from fcgadgets.macgyver import util_general as gu
 from fcgadgets.macgyver import util_gis as gis
-from fcgadgets.macgyver import util_inventory as invu
 from fcgadgets.cbrunner import cbrun_util as cbu
 from fcgadgets.bc1ha import bc1ha_utils as bc1hau
 

@@ -21,10 +21,27 @@ import fcgadgets.cbrunner.cbrun_util as cbu
 
 #%%
 def PlotVectorBaseMaps(meta,roi,ax):
+	#ec_bound=[0,0,0]
+	ec_bound=[0.5,0.5,0.5]
+
+	ec_road=[0.4,0,0]
+
+	#ec_cities=[0.75,0.3,0] # Orange
+	#fc_cities=[1,0.6,0]
+	ec_cities=[0,0,0] # Black
+	fc_cities=[0,0,0] # Black
+
+	#ms_cities=10
+	ms_cities=5
+	fw_cities='bold'
+
+	#symb_cities='o'
+	symb_cities='s'
+
 	if meta['Graphics']['Map']['Show Bound Within']=='On':
-		roi['gdf']['bound ROI'].plot(ax=ax,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+		roi['gdf']['bound ROI'].plot(ax=ax,edgecolor=ec_bound,facecolor='none',linewidth=0.25)
 	if meta['Graphics']['Map']['Show Bound Land Mask']=='On':
-		roi['gdf']['bc_bound'].plot(ax=ax,edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+		roi['gdf']['bc_bound'].plot(ax=ax,edgecolor=ec_bound,facecolor='none',linewidth=0.25)
 	if meta['Graphics']['Map']['Show Lakes']=='On':
 		roi['gdf']['lakes'].plot(ax=ax,facecolor=[0.5,0.8,1],label='Lakes',linewidth=0.25)
 	if meta['Graphics']['Map']['Show Rivers']=='On':
@@ -32,7 +49,7 @@ def PlotVectorBaseMaps(meta,roi,ax):
 		roi['gdf']['riversecond'].plot(ax=ax,facecolor=[0.5,0.8,1],edgecolor=[0.5,0.8,1],label='Rivers',linewidth=0.6)
 		roi['gdf']['rivermajor'].plot(ax=ax,facecolor=[0.5,0.8,1],edgecolor=[0.5,0.8,1],label='Rivers',linewidth=1)
 	if meta['Graphics']['Map']['Show Roads']=='On':
-		roi['gdf']['road'].plot(ax=ax,edgecolor=[0.4,0,0],linewidth=0.25,label='Road',alpha=1,zorder=1)
+		roi['gdf']['road'].plot(ax=ax,edgecolor=ec_road,linewidth=0.25,label='Road',alpha=1,zorder=1)
 	if meta['Graphics']['Map']['Show Rail']=='On':
 		roi['gdf']['rail'].plot(ax=ax,edgecolor=[0,0,0],linewidth=0.5,label='Rail',alpha=1,zorder=1)
 		roi['gdf']['rail'].plot(ax=ax,edgecolor=[1,1,1],linewidth=0.25,label='Rail',alpha=1,zorder=1)
@@ -43,10 +60,10 @@ def PlotVectorBaseMaps(meta,roi,ax):
 				ax.annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0,0,0],fontsize=6)
 	if meta['Graphics']['Map']['Show Cities']=='On':
 		ind=np.where( (roi['gdf']['cities']['Level']==1) & (roi['gdf']['cities']['Territory']=='BC') )[0]
-		roi['gdf']['cities'].iloc[ind].plot(ax=ax,marker='o',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=1,markersize=10,alpha=1,zorder=2)
+		roi['gdf']['cities'].iloc[ind].plot(ax=ax,marker=symb_cities,edgecolor=ec_cities,facecolor=fc_cities,lw=1,markersize=ms_cities,alpha=1,zorder=2)
 		if meta['Graphics']['Map']['Show Symbol Labels']=='On':
 			for x,y,label in zip(roi['gdf']['cities'].iloc[ind].geometry.x,roi['gdf']['cities'].iloc[ind].geometry.y,roi['gdf']['cities'].iloc[ind]['City Name']):
-				ax.annotate(label,xy=(x,y),xytext=(3,2),textcoords="offset points",color=[0,0,0],fontsize=5)
+				ax.annotate(label,xy=(x,y),xytext=(3,2),textcoords="offset points",color=[0,0,0],fontsize=5,fontweight=fw_cities)
 	return roi
 
 #%%
@@ -906,18 +923,34 @@ def Plot_Harvest_Po(meta,roi):
 
 #%%
 def AddScalebar(ax,roi):
-	sb_width=50*1000 # Distance of scalebar (meters)
-	x0=0.9 # Starting relative x
-	y0=0.07 # Starting relative y (from bottom)
-	y_text_offset=250
 
 	dx=roi['grd']['xmax']-roi['grd']['xmin']
 	dy=roi['grd']['ymax']-roi['grd']['ymin']
+
+	if dy>1000000:
+		x0=0.9 # Starting relative x
+		y0=0.04 # Starting relative y (from bottom)
+		sb_width=100*1000 # Distance of scalebar (meters)
+		y_text_offset=15000
+		y_offset=1*y_text_offset
+	elif (dy>200000) & (dy<200000):
+		x0=0.9 # Starting relative x
+		y0=0.07 # Starting relative y (from bottom)
+		sb_width=50*1000 # Distance of scalebar (meters)
+		y_text_offset=5000
+		y_offset=1*y_text_offset
+	else:
+		x0=0.9 # Starting relative x
+		y0=0.07 # Starting relative y (from bottom)
+		sb_width=50*1000 # Distance of scalebar (meters)
+		y_text_offset=300
+		y_offset=5*y_text_offset
+
 	sb_x=[roi['grd']['xmin']+x0*dx-sb_width,roi['grd']['xmin']+x0*dx]
 	sb_y=[roi['grd']['ymin']+y0*dy,roi['grd']['ymin']+y0*dy]
 	ax.plot(sb_x,sb_y,'k-')
-	ax.plot([sb_x[0],sb_x[0]],[sb_y[0]-5*y_text_offset,sb_y[0]],'k-')
-	ax.plot([sb_x[1],sb_x[1]],[sb_y[0]-5*y_text_offset,sb_y[0]],'k-')
+	ax.plot([sb_x[0],sb_x[0]],[sb_y[0]-y_offset,sb_y[0]],'k-')
+	ax.plot([sb_x[1],sb_x[1]],[sb_y[0]-y_offset,sb_y[0]],'k-')
 	ax.text(np.mean(sb_x),sb_y[0]+y_text_offset,str(int(sb_width/1000)) + ' km',ha='center')
 	return
 
@@ -925,16 +958,31 @@ def AddScalebar(ax,roi):
 def Plot_BGC_Zone(meta,roi,vnam):
 
 	z0=roi['grd'][vnam]['Data']
-	lab0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys())
+	z0[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=0
+
+	lab0=np.array(list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].keys()))
 	cl0=np.column_stack([meta['LUT']['Raw']['bgc_zone']['R'],meta['LUT']['Raw']['bgc_zone']['G'],meta['LUT']['Raw']['bgc_zone']['B']])
-	id0=list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].values())
-	z1,lab1,cl1=gis.CompressCats(z0,id0,lab0,cl0)
-	#d=gu.CountByCategories(z1,'Percent')
-	N_vis=np.unique(z1).size
+	id0=np.array(list(meta['LUT']['BEC_BIOGEOCLIMATIC_POLY']['ZONE'].values()))
+
+	uid=np.unique(z0[z0!=0])
+	id1=np.zeros(uid.size)
+	lab1=np.array(['' for _ in range(uid.size)],dtype=object)
+	cl1=np.zeros((uid.size,3))
+	z1=(uid.size+1)*np.ones(z0.shape)
+	for i in range(uid.size):
+		ind=np.where(z0==uid[i])
+		z1[ind]=i+1
+		ind=np.where(id0==uid[i])[0][0]
+		id1[i]=id0[ind]
+		lab1[i]=lab0[ind]
+		cl1[i,:]=cl0[ind,:]
+
+	d=gu.CountByCategories(z1.flatten(),'Percent')
+
+	N_vis=uid.size
 	N_hidden=1
 	N_tot=N_vis+N_hidden
-	z1[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=N_vis+1
-	#lab1=np.append(lab1,['',''])
+	#lab1=np.append(lab1,[''])
 
 	# Colormap
 	cm=plt.cm.get_cmap('viridis',N_vis);
@@ -954,10 +1002,7 @@ def Plot_BGC_Zone(meta,roi,vnam):
 	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
 	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
-	# Scalebar
-	if meta['Graphics']['Map']['Show Scalebar']=='On':
-		AddScalebar(ax[0],roi)
-
+	# Legend
 	zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
 	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
 	cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
@@ -967,15 +1012,23 @@ def Plot_BGC_Zone(meta,roi,vnam):
 	cb.outline.set_edgecolor('w')
 	for i in range(cb_bnd.size):
 		ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
-
 	pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
 	ax[1].set(position=pos2)
 
+	# Scalebar
+	if meta['Graphics']['Map']['Show Scalebar']=='On':
+		AddScalebar(ax[0],roi)
+
+	# Inset
 	if meta['Graphics']['Map']['Show Inset Map']=='On':
 		meta['gdf']['bc_bound']['gdf'].plot(ax=ax[2],edgecolor=None,facecolor=[0.8,0.8,0.8],linewidth=0.25)
-		minx, miny, maxx, maxy = meta['gdf']['bc_bound']['gdf'].geometry.total_bounds
+		minx,miny,maxx,maxy=meta['gdf']['bc_bound']['gdf'].geometry.total_bounds
 		roi['gdf']['bound within'].plot(ax=ax[2],edgecolor=None,facecolor=[0,0,0],linewidth=0.25)
-		ax[2].set(position=[meta['Graphics']['Map']['Legend X'],0.1,1-meta['Graphics']['Map']['Legend X']-0.01,1-meta['Graphics']['Map']['Legend X']+0.05],xlim=[minx,maxx],ylim=[miny,maxy])
+		# Lower right
+		#pos=[meta['Graphics']['Map']['Legend X'],0.1,1-meta['Graphics']['Map']['Legend X']-0.01,1-meta['Graphics']['Map']['Legend X']+0.05]
+		# Lower left
+		pos=[0,0,1-meta['Graphics']['Map']['Legend X']-0.01,1-meta['Graphics']['Map']['Legend X']+0.05]
+		ax[2].set(position=pos,xlim=[minx,maxx],ylim=[miny,maxy])
 		ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[2].axis(meta['Graphics']['Map']['Map Axis Vis'])
 
 	if meta['Graphics']['Print Figures']=='On':
@@ -1829,7 +1882,8 @@ def Plot_Slope(meta,roi,vnam):
 #%%
 def Plot_Infastructure1(meta,roi,vnam):
 	z0=roi['grd'][vnam]['Data']
-	bw=500; bin=np.arange(0,5000+bw,bw);
+	#bw=500; bin=np.arange(0,5000+bw,bw);
+	bw=1; bin=np.arange(120,160+bw,bw);
 	
 	N_vis=bin.size
 	N_hidden=1
@@ -1856,6 +1910,9 @@ def Plot_Infastructure1(meta,roi,vnam):
 
 	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
 	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
+
+	a=gis.OpenGeoTiff(r'D:\Data\dem_CV_p.tif')
+	ax[0].matshow(a['Data'],extent=a['Extent'],cmap=cm,clim=(100,170))
 	
 	#roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
 	roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0.6,0.6,0.6],facecolor='none',linewidth=0.25)
@@ -1894,6 +1951,252 @@ def Plot_Infastructure1(meta,roi,vnam):
 	ax[1].set(position=pos2)
 		
 	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_infastructure1','png',900)
+	return fig,ax
+
+#%%
+def Plot_CHM(meta,roi,vnam):
+	#z0=roi['grd'][vnam]['Data']
+	chm=gis.OpenGeoTiff(r'C:\Data\LiDAR\chm_p.tif')
+	z0=chm['Data'].copy()
+
+	bw=5; bin=np.arange(0,40+bw,bw)
+	N_vis=bin.size
+	N_hidden=1
+	N_tot=N_vis+N_hidden
+	
+	z1=N_vis*np.ones(z0.shape)
+	for i in range(bin.size):
+		ind=np.where(np.abs(z0-bin[i])<=bw/2)
+		z1[ind]=i
+	z1[(z0>bin[i])]=i
+	#z1[(roi['grd']['Data']==0)]=i+1
+	z1[0,0:N_tot]=np.arange(0,N_tot,1)
+
+	lab=bin.astype(str)
+
+	cm=plt.cm.get_cmap('viridis',i)
+	cmc=np.zeros((N_vis,4))
+	cnt=0
+	for ivl in np.linspace(0,1,N_vis):
+		cmc[cnt,:]=np.array(cm(ivl))
+		cnt=cnt+1
+	cm=np.vstack( (cmc,(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	#im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
+	#ax[0].matshow(chm['Data'],extent=chm['Extent'],cmap=cm,clim=(0,N_tot))
+	im=ax[0].matshow(z1,extent=chm['Extent'],cmap=cm,clim=(0,N_tot))
+
+	prop=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Rainville\Property Boundary.xlsx',r'G:\My Drive\Property\Rainville\Property Boundary.geojson','Polygon')
+	prop.plot(ax=ax[0],facecolor='none',edgecolor=[0,1,1],label='Property',linewidth=1,linestyle='-')
+
+	#prop=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Coordinates Geographic.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Coordinates Geographic.geojson','Polygon')
+	#prop.plot(ax=ax[0],facecolor='none',edgecolor=[1,0,0],label='Property',linewidth=1.25,linestyle='-')
+
+	#row=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\ROW.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\ROW.geojson','Line')
+	#row.plot(ax=ax[0],facecolor='none',edgecolor=[0.7,0.2,1],label='Property',linewidth=1,linestyle='-')
+
+	#phot=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Photos.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Photos.geojson','Point')
+	#phot.plot(ax=ax[0],marker='o',markersize=7,facecolor='none',edgecolor=[1,0,0],label='Property',linewidth=1,linestyle='-')
+
+	#roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+	roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0.6,0.6,0.6],facecolor='none',linewidth=0.25)
+	roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=0.25)
+	#roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+	roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0.9,0.45,0],linewidth=0.25,label='Road',alpha=1,zorder=1)
+	roi['gdf']['hydrol'].plot(ax=ax[0],linestyle='--',edgecolor=[0.27,0.45,0.8],linewidth=0.5,alpha=1,zorder=1,label='Road')
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[0,0,0],linewidth=0.5,alpha=1,zorder=1,label='Rail')
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[1,1,1],linewidth=0.25,alpha=1,zorder=1,label='Rail')
+	roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor=[0,0.75,0.75],facecolor=[0,1,1],linewidth=0.25,label='TPF',alpha=1,zorder=1,markersize=5)
+	#for x,y,label in zip(roi['gdf']['tpf'].geometry.x,roi['gdf']['tpf'].geometry.y,roi['gdf']['tpf']['COMPANY_NAME']):
+	#	ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0,0,0],fontsize=4)
+	ind=np.where( (roi['gdf']['cities']['Territory']=='BC') & (roi['gdf']['cities']['Level']==1) )[0]
+	roi['gdf']['cities'].iloc[ind].plot(ax=ax[0],marker='s',edgecolor=[0.5,0,0],facecolor=[1,0,0],lw=0.5,markersize=7,alpha=1,zorder=2)
+	for x,y,label in zip(roi['gdf']['cities'].iloc[ind].geometry.x,roi['gdf']['cities'].iloc[ind].geometry.y,roi['gdf']['cities'].iloc[ind]['City Name']):
+		ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+	#roi['gdf']['popp'].plot(ax=ax[0],marker='o',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=0.25,markersize=6,alpha=1,zorder=2)
+	#for x,y,label in zip(roi['gdf']['popp'].geometry.x,roi['gdf']['popp'].geometry.y,roi['gdf']['popp']['NAME']):
+	#	ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+
+	#ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=chm['xlim'],ylim=chm['ylim'])
+	ax[0].set(position=[0.1,0.1,0.55,0.8],xlim=chm['xlim'],ylim=chm['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both');
+	#ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+	#ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis+1,1),ticks=np.arange(0.5,N_vis,1))
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(0,N_vis):
+		ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+
+	pos2=[0.75,0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+	ax[1].set(position=pos2)
+		
+	#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_chm_a','png',900)
+	#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_chm_b','png',900)
+	#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_chm_c','png',900)
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_chm_Rainville','png',900)
+	return fig,ax
+
+#%%
+def Plot_hcl(meta,roi):
+
+	chm=gis.OpenGeoTiff(r'C:\Data\LiDAR\chm_p.tif')
+	#chm=gis.OpenGeoTiff(r'D:\Data\chm_p2.tif')
+
+	N_vis=5
+	N_hidden=1
+	N_tot=N_vis+N_hidden
+
+	chm1=N_vis*np.ones(chm['Data'].shape,dtype='int8')
+	ind=np.where( (chm['Data']<0.5) ); chm1[ind]=1
+	ind=np.where( (chm['Data']>=0.5) & (chm['Data']<2) ); chm1[ind]=2
+	ind=np.where( (chm['Data']>=2.0) & (chm['Data']<10) ); chm1[ind]=3
+	ind=np.where( (chm['Data']>=10) & (chm['Data']<20) ); chm1[ind]=4
+	ind=np.where( (chm['Data']>=20) ); chm1[ind]=5
+	chm1[:,0]=6
+
+	lab=['< 0.5m','> 0.5m and < 2m','>2m and < 10m','>10m and < 20m','>20m','','']
+	cm=np.vstack( ((0.5,0.5,0.5,1),(0.85,1,0.85,1),(0.25,0.9,0.25,1),(0,0.5,0,1),(0,0.25,0,1),(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	#im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
+	#ax[0].matshow(chm['Data'],extent=chm['Extent'],cmap=cm,clim=(0,N_tot))
+	im=ax[0].matshow(chm1,extent=chm['Extent'],cmap=cm)
+
+	prop=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Rainville\Property Boundary.xlsx',r'G:\My Drive\Property\Rainville\Property Boundary.geojson','Polygon')
+	prop.plot(ax=ax[0],facecolor='none',edgecolor=[1,1,0],label='Property',linewidth=1,linestyle='-')
+
+	#prop=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Coordinates Geographic.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Coordinates Geographic.geojson','Polygon')
+	#prop.plot(ax=ax[0],facecolor='none',edgecolor=[1,0,0],label='Property',linewidth=1.25,linestyle='-')
+
+	#row=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\ROW.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\ROW.geojson','Line')
+	#row.plot(ax=ax[0],facecolor='none',edgecolor=[0.7,0.2,1],label='Property',linewidth=1,linestyle='-')
+
+	#phot=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Photos.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Photos.geojson','Point')
+	#phot.plot(ax=ax[0],marker='o',markersize=7,facecolor='none',edgecolor=[1,1,0],label='Property',linewidth=1,linestyle='-')
+
+	#roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+	roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0.6,0.6,0.6],facecolor='none',linewidth=0.25)
+	roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=0.25)
+	#roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+	roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0.9,0.45,0],linewidth=0.25,label='Road',alpha=1,zorder=1)
+	roi['gdf']['hydrol'].plot(ax=ax[0],linestyle='--',edgecolor=[0.27,0.45,0.8],linewidth=0.5,alpha=1,zorder=1,label='Road')
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[0,0,0],linewidth=0.5,alpha=1,zorder=1,label='Rail')
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[1,1,1],linewidth=0.25,alpha=1,zorder=1,label='Rail')
+	roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor=[0,0.75,0.75],facecolor=[0,1,1],linewidth=0.25,label='TPF',alpha=1,zorder=1,markersize=5)
+	#for x,y,label in zip(roi['gdf']['tpf'].geometry.x,roi['gdf']['tpf'].geometry.y,roi['gdf']['tpf']['COMPANY_NAME']):
+	#	ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0,0,0],fontsize=4)
+	ind=np.where( (roi['gdf']['cities']['Territory']=='BC') & (roi['gdf']['cities']['Level']==1) )[0]
+	roi['gdf']['cities'].iloc[ind].plot(ax=ax[0],marker='s',edgecolor=[0.5,0,0],facecolor=[1,0,0],lw=0.5,markersize=7,alpha=1,zorder=2)
+	for x,y,label in zip(roi['gdf']['cities'].iloc[ind].geometry.x,roi['gdf']['cities'].iloc[ind].geometry.y,roi['gdf']['cities'].iloc[ind]['City Name']):
+		ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+	#roi['gdf']['popp'].plot(ax=ax[0],marker='o',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=0.25,markersize=6,alpha=1,zorder=2)
+	#for x,y,label in zip(roi['gdf']['popp'].geometry.x,roi['gdf']['popp'].geometry.y,roi['gdf']['popp']['NAME']):
+	#	ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+	
+	#ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=chm['xlim'],ylim=chm['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+	cb=plt.colorbar(im,cax=ax[1])
+
+	w=N_vis/N_tot
+	ticks=np.arange(1+w/2,N_tot+1,w)
+	cb=plt.colorbar(im,cax=ax[1],ticks=ticks)
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i,ti in enumerate(ticks):
+		ax[1].plot([0,100],[ti+w/2,ti+w/2],'w-',linewidth=1.5)
+
+	pos2=[0.75,0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+	ax[1].set(position=pos2)
+		
+	#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_HeightClass_a','png',900)
+	#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_HeightClass_b','png',900)
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_HeightClass_Rainville','png',900)
+	return fig,ax
+
+#%%
+def Plot_zmin(meta,roi,vnam):
+	#z0=roi['grd'][vnam]['Data']
+	zmin=gis.OpenGeoTiff(r'D:\Data\zmin_p.tif')
+	z0=zmin['Data'].copy()
+
+	bw=0.25; bin=np.arange(124,138+bw,bw)
+	N_vis=bin.size
+	N_hidden=1
+	N_tot=N_vis+N_hidden
+	
+	z1=N_vis*np.ones(z0.shape)
+	for i in range(bin.size):
+		ind=np.where(np.abs(z0-bin[i])<=bw/2)
+		z1[ind]=i
+	z1[(z0>bin[i])]=i
+	z1[0,0:N_tot]=np.arange(0,N_tot,1)
+
+	lab=bin.astype(str)
+
+	cm=plt.cm.get_cmap('viridis',i)
+	cmc=np.zeros((N_vis,4))
+	cnt=0
+	for ivl in np.linspace(0,1,N_vis):
+		cmc[cnt,:]=np.array(cm(ivl))
+		cnt=cnt+1
+	cm=np.vstack( (cmc,(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	#im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm,clim=(0,N_tot)) #
+	#ax[0].matshow(chm['Data'],extent=chm['Extent'],cmap=cm,clim=(0,N_tot))
+	im=ax[0].matshow(z1,extent=zmin['Extent'],cmap=cm,clim=(0,N_tot))
+
+	prop=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Coordinates Geographic.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Coordinates Geographic.geojson','Polygon')
+	prop.plot(ax=ax[0],facecolor='none',edgecolor=[1,0,0],label='Property',linewidth=1.25,linestyle='-')
+
+	row=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\ROW.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\ROW.geojson','Line')
+	row.plot(ax=ax[0],facecolor='none',edgecolor=[0.7,0.2,1],label='Property',linewidth=1,linestyle='-')
+
+	phot=gis.ConvertGeographicToGeojson(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Photos.xlsx',r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Photos.geojson','Point')
+	phot.plot(ax=ax[0],marker='o',markersize=7,facecolor='none',edgecolor=[1,0,0],label='Property',linewidth=1,linestyle='-')
+
+	#roi['gdf']['bound within'].plot(ax=ax[0],edgecolor=[0,0,0],facecolor='none',linewidth=0.25)
+	roi['gdf']['bc_bound'].plot(ax=ax[0],edgecolor=[0.6,0.6,0.6],facecolor='none',linewidth=0.25)
+	roi['gdf']['lakes'].plot(ax=ax[0],facecolor=[0.82,0.88,1],label='Lakes',linewidth=0.25)
+	#roi['gdf']['rivers'].plot(ax=ax[0],color=[0.6,0.8,1],label='Rivers',linewidth=0.25)
+	roi['gdf']['road'].plot(ax=ax[0],edgecolor=[0.9,0.45,0],linewidth=0.25,label='Road',alpha=1,zorder=1)
+	roi['gdf']['hydrol'].plot(ax=ax[0],linestyle='--',edgecolor=[0.27,0.45,0.8],linewidth=0.5,alpha=1,zorder=1,label='Road')
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[0,0,0],linewidth=0.5,alpha=1,zorder=1,label='Rail')
+	roi['gdf']['rail'].plot(ax=ax[0],edgecolor=[1,1,1],linewidth=0.25,alpha=1,zorder=1,label='Rail')
+	roi['gdf']['tpf'].plot(ax=ax[0],marker='^',edgecolor=[0,0.75,0.75],facecolor=[0,1,1],linewidth=0.25,label='TPF',alpha=1,zorder=1,markersize=5)
+	#for x,y,label in zip(roi['gdf']['tpf'].geometry.x,roi['gdf']['tpf'].geometry.y,roi['gdf']['tpf']['COMPANY_NAME']):
+	#	ax[0].annotate(label,xy=(x,y),xytext=(4,3),textcoords="offset points",color=[0,0,0],fontsize=4)
+	ind=np.where( (roi['gdf']['cities']['Territory']=='BC') & (roi['gdf']['cities']['Level']==1) )[0]
+	roi['gdf']['cities'].iloc[ind].plot(ax=ax[0],marker='s',edgecolor=[0.5,0,0],facecolor=[1,0,0],lw=0.5,markersize=7,alpha=1,zorder=2)
+	for x,y,label in zip(roi['gdf']['cities'].iloc[ind].geometry.x,roi['gdf']['cities'].iloc[ind].geometry.y,roi['gdf']['cities'].iloc[ind]['City Name']):
+		ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+	#roi['gdf']['popp'].plot(ax=ax[0],marker='o',edgecolor=[0.75,0.3,0],facecolor=[1,0.6,0],lw=0.25,markersize=6,alpha=1,zorder=2)
+	#for x,y,label in zip(roi['gdf']['popp'].geometry.x,roi['gdf']['popp'].geometry.y,roi['gdf']['popp']['NAME']):
+	#	ax[0].annotate(label,xy=(x,y),xytext=(2,1.5),textcoords="offset points",color=[0,0,0],fontsize=4)
+
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=zmin['xlim'],ylim=zmin['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	cb=plt.colorbar(im,cax=ax[1],boundaries=np.arange(0,N_vis+1,1),ticks=np.arange(0.5,N_vis,1))
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(0,N_vis):
+		ax[1].plot([0,100],[i,i],'w-',linewidth=1.5)
+
+	pos2=[0.75,0.1,0.02,0.8]
+	ax[1].set(position=pos2)
+		
+	#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_zmin_b','png',900)
 	return fig,ax
 
 #%%
@@ -4119,5 +4422,249 @@ def WaterManagementWithSelectWatersheds(meta,roi):
 
 	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_ClearwaterRiver_' + nam,'png',900)
 	return
+
+#%%
+def Plot_Map_FNM_ForTimeSpan(meta,roi,t0,t1):
+
+	vnam='feca_yr'
+	roi=u1ha.Import_Raster(meta,roi,[vnam])
+	gdf=gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\atu_FE_CA.geojson')
+
+	z1=4*np.ones(roi['grd']['Data'].shape,dtype='int8')
+	ind=np.where( (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (roi['grd']['Data']>0) )
+	z1[ind]=1
+	ind=np.where( (roi['grd']['lc_comp1_2019']['Data']!=meta['LUT']['Derived']['lc_comp1']['Forest']) & (roi['grd']['Data']>0) )
+	z1[ind]=2
+	ind=np.where( (roi['grd'][vnam]['Data']>=t0) & (roi['grd'][vnam]['Data']<=t1) )
+	z1[ind]=3
+
+	if (meta['Graphics']['Map']['Show Inset Map']=='On'):
+		N_panel=3
+	else:
+		N_panel=2
+
+	# Number of colours and number of colours excluded from colorbar
+	N_vis=3
+	N_hidden=1
+	N_tot=N_vis+N_hidden
+	lab=np.array(['Forest','Non-forest','Treatment area'])
+
+	cm=np.vstack( ((0.65,0.75,0.5,1),(0.9,0.9,0.9,1),(1,0.15,0.0,1),(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,N_panel,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+	roi=PlotVectorBaseMaps(meta,roi,ax[0])
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+	gdf[(gdf['Year']>=t0) & (gdf['Year']<=t1)].plot(ax=ax[0],facecolor='r',edgecolor='r',linewidth=1)
+
+	zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+	cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+	ax[1].set(position=[meta['Graphics']['Map']['Legend X'],meta['Graphics']['Map']['Legend Y'],0.03,0.1])
+
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(cb_bnd.size):
+		ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+	#ax[1].axis(meta['Graphics']['Map']['Map Axis Vis']) # Exclude colorbar
+
+	# Scalebar
+	if meta['Graphics']['Map']['Show Scalebar']=='On':
+		AddScalebar(ax[0],roi)
+
+	if meta['Graphics']['Map']['Show Inset Map']=='On':
+		meta['gdf']['bc_bound']['gdf'].plot(ax=ax[2],edgecolor=None,facecolor=[0.8,0.8,0.8],linewidth=0.25)
+		minx, miny, maxx, maxy = meta['gdf']['bc_bound']['gdf'].geometry.total_bounds
+		roi['gdf']['bound within'].plot(ax=ax[2],edgecolor=None,facecolor=[0,0,0],linewidth=0.25)
+		ax[2].set(position=[meta['Graphics']['Map']['Legend X'],0.1,1-meta['Graphics']['Map']['Legend X']-0.01,1-meta['Graphics']['Map']['Legend X']+0.05],xlim=[minx,maxx],ylim=[miny,maxy])
+		ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[2].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	# *** Add Vector layers ***
+	
+	# points=[]
+	# for k in range(x.size):
+	#	 points.append(Point(x[k],y[k]))
+	# gdf1=gpd.GeoDataFrame({'geometry':points,'ID':np.ones(x.size)})
+	# gdf1.crs=roi['crs']
+	# gdf1=gpd.overlay(gdf1,roi['gdf']['bound within'],how='intersection')
+	# gdf1.plot(ax=ax[0],markersize=0.7,facecolor=[0.75,0,0],edgecolor=None,linewidth=0.75,alpha=1,label='Proposed sample')
+
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Map_FNM_TreatmentAreas_' + str(t0) + '_to_' + str(t1),'png',900)
+	return fig,ax
+
+#%%
+def Plot_Map_NOSE_ForTimeSpan(meta,roi,t0,t1):
+
+	meta['Graphics']['Map']['Show Rail']='Off'
+	meta['Graphics']['Map']['Show Roads']='Off'
+	meta['Graphics']['Map']['Show Cities']='On'
+	meta['Graphics']['Map']['Show Inset Map']='Off'
+
+	# Import vector
+	gdf=gpd.read_file(meta['Paths']['GDB']['GDB'] + '\\atu_PL_PL.geojson')
+
+	# Import raster
+	vnam='aset_no_all'
+	roi=u1ha.Import_Raster(meta,roi,[vnam])
+
+	z1=4*np.ones(roi['grd']['Data'].shape,dtype='int8')
+	ind=np.where( (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Forest']) & (roi['grd']['Data']>0) )
+	z1[ind]=1
+	ind=np.where( (roi['grd']['lc_comp1_2019']['Data']!=meta['LUT']['Derived']['lc_comp1']['Forest']) & (roi['grd']['Data']>0) )
+	z1[ind]=2
+	ind=np.where( (roi['grd'][vnam]['Data']>0) )
+	z1[ind]=3
+
+	if (meta['Graphics']['Map']['Show Inset Map']=='On'):
+		N_panel=3
+	else:
+		N_panel=2
+
+	# Number of colours and number of colours excluded from colorbar
+	N_vis=3
+	N_hidden=1
+	N_tot=N_vis+N_hidden
+	lab=np.array(['Forest','Non-forest','Treatment area'])
+
+	cm=np.vstack( ((0.8,0.9,0.65,1),(0.9,0.9,0.9,1),(1,0,0.0,1),(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,N_panel,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+	roi=PlotVectorBaseMaps(meta,roi,ax[0])
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	gdf[(gdf['Year']>=t0) & (gdf['Year']<=t1)].plot(ax=ax[0],facecolor='r',edgecolor='r',linewidth=1)
+
+	zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+	cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+	ax[1].set(position=[meta['Graphics']['Map']['Legend X'],meta['Graphics']['Map']['Legend Y'],0.03,0.1])
+
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(cb_bnd.size):
+		ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+	#ax[1].axis(meta['Graphics']['Map']['Map Axis Vis']) # Exclude colorbar
+
+	# Scalebar
+	if meta['Graphics']['Map']['Show Scalebar']=='On':
+		AddScalebar(ax[0],roi)
+
+	if meta['Graphics']['Map']['Show Inset Map']=='On':
+		meta['gdf']['bc_bound']['gdf'].plot(ax=ax[2],edgecolor=None,facecolor=[0.8,0.8,0.8],linewidth=0.25)
+		minx,miny,maxx,maxy=meta['gdf']['bc_bound']['gdf'].geometry.total_bounds
+		roi['gdf']['bound within'].plot(ax=ax[2],edgecolor=None,facecolor=[0,0,0],linewidth=0.25)
+		ax[2].set(position=[meta['Graphics']['Map']['Legend X'],0.1,1-meta['Graphics']['Map']['Legend X']-0.01,1-meta['Graphics']['Map']['Legend X']+0.05],xlim=[minx,maxx],ylim=[miny,maxy])
+		ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[2].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_nose_' + str(t0) + 'to' + str(t1),'png',900)
+	return fig,ax
+
+#%%
+def Plot_HoldridgeClimateZones(meta,roi,vnam):
+
+	lut=gu.ReadExcel(r'G:\My Drive\Code_Python\fcgadgets\cbrunner\Parameters\LUT_HoldgridgeLifeZone.xlsx',sheet_name='Sheet1',skiprows=0)
+
+	z0=roi['grd'][vnam]['Data']
+	z0[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=0
+
+	lab0=lut['Name']
+	cl0=np.column_stack([lut['c1'],lut['c2'],lut['c3']])
+	id0=lut['ID']
+
+# 	uid=np.unique(z0[z0!=0])
+# 	id1=np.zeros(uid.size)
+# 	lab1=np.array(['' for _ in range(uid.size)],dtype=object)
+# 	cl1=np.zeros((uid.size,3))
+# 	z1=(uid.size+1)*np.ones(z0.shape)
+# 	for i in range(uid.size):
+# 		ind=np.where(z0==uid[i])
+# 		z1[ind]=i+1
+# 		ind=np.where(id0==uid[i])[0][0]
+# 		id1[i]=id0[ind]
+# 		lab1[i]=lab0[ind]
+# 		cl1[i,:]=cl0[ind,:]
+
+	uid=np.unique(z0[z0!=0])
+	id1=np.zeros(uid.size)
+	lab1=np.array(['' for _ in range(uid.size)],dtype=object)
+	cl1=np.zeros((uid.size,3))
+	z1=(uid.size+1)*np.ones(z0.shape)
+	for i in range(uid.size):
+		ind=np.where(z0==uid[i])
+		z1[ind]=i+1
+		ind=np.where(id0==uid[i])[0][0]
+		id1[i]=id0[ind]
+		lab1[i]=lab0[ind]
+		cl1[i,:]=cl0[ind,:]
+
+	#d=gu.CountByCategories(z1.flatten(),'Percent')
+
+	N_vis=uid.size
+	N_hidden=1
+	N_tot=N_vis+N_hidden
+	#lab1=np.append(lab1,[''])
+
+	# Colormap
+	cm=plt.cm.get_cmap('viridis',N_vis);
+	for i in range(N_vis):
+		cm.colors[i,0:3]=cl1[i,:]
+	cm=np.vstack( (cm.colors,(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	if (meta['Graphics']['Map']['Show Inset Map']=='On'):
+		N_panel=3
+	else:
+		N_panel=2
+
+	plt.close('all'); fig,ax=plt.subplots(1,N_panel,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+	roi=PlotVectorBaseMaps(meta,roi,ax[0])
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	# Legend
+	zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+	cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+
+# 	zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+# 	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+# 	cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+	ax[1].set(position=[0.71,0.6,0.05,0.14])
+	cb.ax.set(yticklabels=lab1)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(cb_bnd.size):
+		ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+	pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+	ax[1].set(position=pos2)
+
+	# Scalebar
+	if meta['Graphics']['Map']['Show Scalebar']=='On':
+		AddScalebar(ax[0],roi)
+
+	# Inset
+	if meta['Graphics']['Map']['Show Inset Map']=='On':
+		meta['gdf']['bc_bound']['gdf'].plot(ax=ax[2],edgecolor=None,facecolor=[0.8,0.8,0.8],linewidth=0.25)
+		minx,miny,maxx,maxy=meta['gdf']['bc_bound']['gdf'].geometry.total_bounds
+		roi['gdf']['bound within'].plot(ax=ax[2],edgecolor=None,facecolor=[0,0,0],linewidth=0.25)
+		# Lower right
+		#pos=[meta['Graphics']['Map']['Legend X'],0.1,1-meta['Graphics']['Map']['Legend X']-0.01,1-meta['Graphics']['Map']['Legend X']+0.05]
+		# Lower left
+		pos=[0,0,1-meta['Graphics']['Map']['Legend X']-0.01,1-meta['Graphics']['Map']['Legend X']+0.05]
+		ax[2].set(position=pos,xlim=[minx,maxx],ylim=[miny,maxy])
+		ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[2].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	if meta['Graphics']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
+
+	return fig,ax
 
 #%%

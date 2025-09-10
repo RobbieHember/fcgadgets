@@ -503,4 +503,56 @@ def ClimateSpace(meta,vX,vY):
 	pY=np.percentile(z0[vY],[0.25,99.75])
 	return
 
+#%%
+def HoldridgeLifeZones(meta):
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	iMask=np.where( (zRef['Data']>0) )
 
+	zMAT=np.zeros(iMask[0].size)
+	for mo in range(12):
+		a=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Monthly\\Normals\\bc1ha_tmean_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype(float)*meta['Climate']['SF']['tmean']
+		ind=np.where(a<0)
+		a[ind]=0
+		zMAT=zMAT+a
+	zMAT=zMAT/12
+
+	#zMAT=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Summaries\\Normals\\bc1ha_tmean_ann_norm_1971to2000.tif')['Data'][iMask].astype(float)*meta['Climate']['SF']['tmean']
+	zMAP=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Summaries\\Normals\\bc1ha_prcp_ann_norm_1971to2000.tif')['Data'][iMask].astype(float)
+	zPET=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Climate\\Summaries\\Normals\\bc1ha_etp_ann_norm_1971to2000.tif')['Data'][iMask].astype(float)
+	zAI=zPET/zMAP
+	lut=gu.ReadExcel(r'G:\My Drive\Code_Python\fcgadgets\cbrunner\Parameters\LUT_HoldgridgeLifeZone.xlsx',sheet_name='Sheet1',skiprows=0)
+
+	zT,muT,sigT=gu.zscore(zMAT)
+	zP,muP,sigP=gu.zscore(zMAP)
+	zA,muA,sigA=gu.zscore(zAI)
+
+	lut['zT']=(lut['MAT']-muT)/sigT
+	lut['zP']=(lut['MAP']-muP)/sigP
+	lut['zA']=(lut['AI']-muA)/sigA
+
+	z1=np.zeros(iMask[0].size)
+	e1=100000*np.ones(iMask[0].size)
+	for i in range(lut['Name'].size):
+		print(lut['Name'][i])
+		#if lut['Name'][i]=='Wet Tundra':
+		#	continue
+		#eMAT=np.abs(zMAT-lut['MAT'][i])/np.mean(zMAT)
+		#eMAP=np.abs(zMAP-lut['MAP'][i])/np.mean(zMAP)
+		#eAI=np.abs(zAI-lut['AI'][i])/np.mean(zAI)
+		eT=np.abs(zT-lut['zT'][i])
+		eP=np.abs(zP-lut['zP'][i])
+		eA=np.abs(zA-lut['zA'][i])
+		eTot=eT+eP+eA
+		ind=np.where(eTot<e1)
+		z1[ind]=lut['ID'][i]
+		e1[ind]=eTot[ind]
+
+	z2=copy.deepcopy(zRef)
+	z2['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+	z2['Data'][iMask]=z1
+	d=gu.CountByCategories(z2['Data'][iMask].flatten(),'Percent')
+	#plt.close('all');plt.matshow(z2['Data'],clim=[0,15])
+
+	gis.SaveGeoTiff(z2,meta['Paths']['bc1ha'] + '\\Climate\\Summaries\\Normals\\bc1ha_HoldridgeLifeZones_1971to2000.tif')
+
+	return

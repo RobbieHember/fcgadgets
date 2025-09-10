@@ -35,9 +35,9 @@ meta['Graphics']['Map']['Show Roads']='Off'
 meta['Graphics']['Map']['Show Cities']='On'
 meta['Graphics']['Map']['Show TPFs']='Off'
 meta['Graphics']['Map']['Show Symbol Labels']='On'
-meta['Graphics']['Map']['Show Inset Map']='On'
-meta['Graphics']['Map']['Show Scalebar']='On'
-meta['Graphics']['Vector Import']={'Water Management':'On','Wetland':'Off'}
+meta['Graphics']['Map']['Show Inset Map']='Off'
+meta['Graphics']['Map']['Show Scalebar']='Off'
+meta['Graphics']['Vector Import']={'Water Management':'Off','Wetland':'Off'} # This can really slow down for irregular-shaped masks
 
 meta['Graphics']['Plot Style']='Manuscript'
 meta['Graphics']['gp']=gu.SetGraphics(meta['Graphics']['Plot Style'])
@@ -45,10 +45,10 @@ meta['Graphics']['Print Figures']='On'
 
 # Define region of interest
 roi={}
-#roi['Type']='Prov'
+roi['Type']='Prov'
 #roi['Type']='FromMask'
 #roi['Type']='ByRegDis'
-roi['Type']='ByWatershed'
+#roi['Type']='ByWatershed'
 #roi['Type']='ByTSA'
 #roi['Type']='LICS'
 
@@ -88,12 +88,12 @@ if roi['Type']=='ByTSA':
 	#roi['List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
 
 elif roi['Type']=='ByRegDis':
-	roi['List']=roi['Name']
+	#roi['List']=roi['Name']
 	# Search: gdf['regdis']['gdf']['REGIONAL_DISTRICT_NAME'].unique()
-	# roi['Name']='CAPITAL'; roi['List']=['CAPITAL']
+	roi['Name']='CAPITAL'; roi['List']=['CAPITAL']
 	# roi['Name']='STRATHCONA'; roi['List']=['STRATHCONA']
 	# roi['Name']='COMOX VALLEY'
-	# roi['Name']='COWICHAN VALLEY'; roi['List']=['COWICHAN VALLEY']
+	#roi['Name']='COWICHAN VALLEY'; roi['List']=['COWICHAN VALLEY']
 
 elif roi['Type']=='ByWatershed':
 	#roi['Name']='Chilko-Taseko River'; roi['List']=[13741,23935] # Chilko River / Taseko River
@@ -108,8 +108,8 @@ elif roi['Type']=='ByWatershed':
 
 elif roi['Type']=='FromMask':
 	#roi['Name']='CDF'
-	#roi['Name']='IDF'
-	roi['Name']='Lower Thompson'
+	roi['Name']='IDF'
+	#roi['Name']='Lower Thompson'
 
 elif roi['Type']=='LICS':
 	#roi['Name']='Hanceville Fire'; roi['Centre']=[-122.92,51.92]; roi['Radius']=40*1000 # Hanceville fire
@@ -153,6 +153,7 @@ vList=['d2road']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Dista
 vList=['d2fac']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_DistanceFrom(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Elev(meta,roi,vList[0])
 vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Infastructure1(meta,roi,vList[0])
+vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_CHM(meta,roi,vList[0])
 vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Settlements(meta,roi,vList[0])
 vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_WaterManagement(meta,roi,vList[0])
 vList=['elev']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.PlotWatershedBoundaries(meta,roi,[5,6,7],1e6)
@@ -164,7 +165,7 @@ vList=['gfcly']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_GFC_Lo
 vList=['geomorph']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Geomorphons(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['gromo_net50']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_gromo_GN(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['gromo_net']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_gromo_GN(meta,roi,vList[0]); del roi['grd'][vList[0]]
-vList=['gromo_g']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_gromo_G(meta,roi,vList[0]); del roi['grd'][vList[0]]
+vList=['gromo_g_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_gromo_G(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['gromo_m']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_gromo_M(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['gsoc']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SoilOrganicCarbon_GSOC(meta,roi,vList[0]); del roi['grd'][vList[0]]
 vList=['h_vri23'];roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_Height(meta,roi,vList[0]); del roi['grd'][vList[0]]
@@ -211,6 +212,74 @@ vList=['upwetf_vri']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_U
 vList=['ws_mjjas_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_SoilWaterContent(meta,roi,vList[0]); del roi['grd'][vList[0]]
 #vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_PFI(meta,roi,vList[0]); del roi['grd'][vList[0]]
 #vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.(meta,roi,vList[0]); del roi['grd'][vList[0]]
+#vList=['hlz']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HoldridgeClimateZones(meta,roi,vList[0]); del roi['grd'][vList[0]]
+
+#%%  LIDAR
+fig,ax=p1ha.Plot_CHM(meta,roi,vList[0])
+fig,ax=p1ha.Plot_hcl(meta,roi)
+
+# # Building
+# ll=[48.780672,-123.837998] # Anchor
+# dx=-3
+# dy=-14
+# rot=3
+# build,xy=gis.PolygonRotate(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Building.xlsx',ll,dx,dy,rot)
+# build.plot(ax=ax[0],facecolor='none',edgecolor=[1,0.5,1],label='Property',linewidth=2.5,linestyle='-')
+# #build.plot(ax=ax[0],facecolor='none',edgecolor=[1,1,1],label='Property',linewidth=0.5,linestyle='-')
+
+# # Distance to transmission line
+# x=[xy['X'][3],xy['X'][3]-26]
+# y=[xy['Y'][3],xy['Y'][3]+16]
+# c=np.sqrt(np.diff(x)**2+np.diff(y)**2)
+# print(c)
+# ax[0].plot(x,y,'om-',lw=1,ms=3)
+
+# # Distance to neighbouring property
+# x=[xy['X'][2],xy['X'][2]+10]
+# y=[xy['Y'][2],xy['Y'][2]+0.6]
+# c=np.sqrt(np.diff(x)**2+np.diff(y)**2)
+# print(c)
+# ax[0].plot(x,y,'om-',lw=1,ms=3)
+
+# # Distance to hydro pole
+# x=[xy['X'][0],xy['X'][0]-22]
+# y=[xy['Y'][0],xy['Y'][0]-10.4]
+# c=np.sqrt(np.diff(x)**2+np.diff(y)**2)
+# print(c)
+# ax[0].plot(x,y,'om-',lw=1,ms=3)
+
+# # Septic (22.4 x 22.4 feet, 500 sqft)
+# dx=4.25
+# dy=-1
+# rot=3
+# build,xy=gis.PolygonRotate(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Septic field.xlsx',ll,dx,dy,rot)
+# build.plot(ax=ax[0],facecolor='none',edgecolor=[1,0.5,1],label='Property',linewidth=1.5,linestyle='-')
+
+# # Deck
+# dx=-3
+# dy=-14
+# rot=3
+# deck,xy=gis.PolygonRotate(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Deck.xlsx',ll,dx,dy,rot)
+# deck.plot(ax=ax[0],facecolor='none',edgecolor=[1,0.5,1],label='Property',linewidth=1.5,linestyle='--')
+
+# # Carpark (20 x 20 feet)
+# dx=-24
+# dy=-33
+# rot=-24
+# build,xy=gis.PolygonRotate(r'G:\My Drive\Property\Cowichan Lake Road Lot 3\Carpark.xlsx',ll,dx,dy,rot)
+# build.plot(ax=ax[0],facecolor='none',edgecolor=[1,0.5,1],label='Property',linewidth=1.5,linestyle='--')
+
+
+
+
+#%%
+vnam='spc1_vri23'
+roi=u1ha.Import_Raster(meta,roi,[vnam])
+
+z0=np.zeros(roi['grd'][vnam]['Data'].shape,dtype='int8')
+ind=np.where(roi['grd']['Data']==1); z0[ind]=1
+ind=np.where(roi['grd'][vnam]['Data']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['FDC']); z0[ind]=2
+plt.matshow(z0)
 
 #%% Forest mask for costum vector layers
 fig,ax=p1ha.Plot_ForestMask(meta,roi)

@@ -13,6 +13,7 @@ from scipy.io import loadmat
 from scipy import stats
 from subprocess import call
 import calendar
+import operator
 import netCDF4 as nc
 import statsmodels.api as sm
 import csv
@@ -153,10 +154,67 @@ def GetRegStats(x,y,*args):
 	if 'No Intercept' in args:
 		txt='y = ' + str(np.round(rs['B'][0],decimals=3)) + 'x' + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np ' + psmb + ' ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
 	else:
-		txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np ' + psmb + ' ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+		if (rs['P']>=0.01):
+			txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np ' + psmb + ' ' + str(np.round(rs['P'],decimals=2)) + '\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+		elif (rs['P']<0.01) & (rs['P']>0.001):
+			txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np < 0.01\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+		else:
+			txt='y = ' + str(np.round(rs['B'][1],decimals=3)) + 'x' + fl + str(np.round(np.abs(rs['B'][0]),decimals=3)) + '\nR$^2$ = ' + str(np.round(rs['R2'],decimals=2)) + '\np < 0.001\nRMSE = ' + str(np.round(rs['RMSE'],decimals=2))
+
 	rs['txt']=txt
 
 	return rs,txt
+
+#%%
+# Example:
+#	elist=[]
+#	elist.append({'Variable':'PTF CNYPSP','Operator':'==','Value':0})
+#	elist.append({'Variable':'X BC','Operator':'isnan','Value':[]})
+#	iKeep,ExcActual,ExcActualUnique,ExcPercent,RemainA,RemainP=gu.IndexAndTrackExclusions(d,elist)
+def IndexAndTrackExclusions(d,elist):
+	d1=d.copy()
+	Status=np.ones(d1[ elist[0]['Variable'] ].size )
+	N_Init=Status.size
+	RemainA={'Initial':N_Init}
+	RemainP={'Initial':100}
+	ExcActual={}
+	ExcActualUnique={}
+	ExcPercent={}
+	for el in elist:
+		vr=d1[ el['Variable'] ]
+		va=el['Value']
+		if el['Operator']=='==':
+			ind=np.where(operator.eq(vr,va)==True)[0]
+			ind2=np.where((operator.eq(vr,va)==True) & (Status==1) )[0]
+		elif el['Operator']=='!=':
+			ind=np.where(operator.ne(vr,va)==True)[0]
+			ind2=np.where( (operator.ne(vr,va)==True) & (Status==1) )[0]
+		elif el['Operator']=='>':
+			ind=np.where(operator.gt(vr,va)==True)[0]
+			ind2=np.where( (operator.gt(vr,va)==True) & (Status==1) )[0]
+		elif el['Operator']=='>=':
+			ind=np.where(operator.ge(vr,va)==True)[0]
+			ind2=np.where( (operator.ge(vr,va)==True) & (Status==1) )[0]
+		elif el['Operator']=='<':
+			ind=np.where(operator.lt(vr,va)==True)[0]
+			ind2=np.where( (operator.lt(vr,va)==True) & (Status==1) )[0]
+		elif el['Operator']=='<=':
+			ind=np.where(operator.le(vr,va)==True)[0]
+			ind2=np.where( (operator.le(vr,va)==True) & (Status==1) )[0]
+		elif el['Operator']=='isnan':
+			a=np.isnan(vr)
+			ind=np.where(operator.eq(a,True))[0]
+			ind2=np.where( (operator.eq(a,True)) & (Status==1) )[0]
+		Status[ind]=0
+		RemainA[el['Variable'] + '_' + el['Operator'] + '_' + str(va)]=np.sum(Status)
+		RemainP[el['Variable'] + '_' + el['Operator'] + '_' + str(va)]=np.round(np.sum(Status)/N_Init*100,decimals=1)
+		ExcActual[el['Variable'] + '_' + el['Operator'] + '_' + str(va)]=ind.size
+		ExcActualUnique[el['Variable'] + '_' + el['Operator'] + '_' + str(va)]=ind2.size
+		ExcPercent[el['Variable'] + '_' + el['Operator'] + '_' + str(va)]=np.round(ind.size/Status.size*100,decimals=2)
+		iKeep=np.where(Status==1)[0]
+
+	iKeep=np.where(Status==1)[0]
+	return iKeep,ExcActual,ExcActualUnique,ExcPercent,RemainA,RemainP
 
 #%%
 # rs,txt=gu.PolynomialFit(x,y,2)
@@ -264,15 +322,10 @@ def PrintFig(fin,type,dpi):
 		plt.savefig(fin+'.png',format='png',dpi=dpi)
 	return
 
-#%% IMPORT EXCEL SPREADSHEET AND CONVERT TO DICTIONARY
-def ReadExcel(*args):
+#%% Import Excel spredsheet
+def ReadExcel(pth,**kwargs):
 
-	if len(args)==1:
-		df=pd.read_excel(args[0])
-	elif len(args)==2:
-		df=pd.read_excel(args[0],sheet_name=args[1])
-	elif len(args)==3:
-		df=pd.read_excel(args[0],sheet_name=args[1],skiprows=args[2])
+	df=pd.read_excel(pth,sheet_name=kwargs['sheet_name'],skiprows=kwargs['skiprows'])
 
 	#df=df.where(pd.notnull(df),None)
 
@@ -380,14 +433,14 @@ def DataFrameToDataStruct(df):
 #%% ADD LETTERS TO FIGURE PANELS
 def axletters(ax,plt,rx,ry,**kwargs):
 	# Letter style
-	Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)']
+	Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)','(o)','(p)','(q)','(r)']
 	if 'LetterStyle' in kwargs.keys():
 		if kwargs['LetterStyle']=='Caps':
 			Letter=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
 		elif kwargs['LetterStyle']=='NoPar':
 			Letter=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p']
 		elif kwargs['LetterStyle']=='Default':
-			Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)']
+			Letter=['(a)','(b)','(c)','(d)','(e)','(f)','(g)','(h)','(i)','(j)','(k)','(l)','(m)','(n)','(o)','(p)','(q)','(r)']
 		else:
 			pass
 
@@ -414,7 +467,7 @@ def axletters(ax,plt,rx,ry,**kwargs):
 		Skip_Flag[kwargs['Skip']]=1
 
 	# Additional labels
-	Label=['','','','','','','','','','','','','','']
+	Label=['','','','','','','','','','','','','','','','','','','','','','','','','','']
 	if 'Labels' in kwargs.keys():
 		Label=kwargs['Labels']
 
@@ -1149,6 +1202,16 @@ def BlockMean(x,ivl):
 			cnt=cnt+1
 	return y
 
+#%% Rolling mean
+def RollingMean(x,ivl):
+	if np.isin(x.dtype,['float64','int64'])==False:
+		y=x
+	else:
+		y=np.zeros(ivl)
+		for i in range(0,ivl):
+			y[i]=np.nanmean(x[i::ivl])
+	return y
+
 #%% Sum over interval
 def BlockMissing(x,ivl):
 	c=np.arange(0,x.size,ivl,dtype=int)
@@ -1480,5 +1543,20 @@ def unpackbits(x, num_bits):
 	x = x.reshape([-1, 1])
 	mask = 2**np.arange(num_bits, dtype=x.dtype).reshape([1, num_bits])
 	return (x & mask).astype(bool).astype(int).reshape(xshape + [num_bits])
+
+#%%
+def DictToArray(d):
+	n=len(d.keys())
+	x=np.arange(n)
+	y=np.zeros(n)
+	lab=np.array(list(d.keys()))
+	for i,k in enumerate(d.keys()):
+		y[i]=d[k]
+	return x,y,lab
+
+#%%
+def ShiftArray(x,N_Shift):
+	y=np.append(x[N_Shift::],np.nan*np.ones(N_Shift))
+	return y
 
 #%%

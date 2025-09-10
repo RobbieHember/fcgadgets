@@ -20,8 +20,10 @@ gradeL=list(meta['LUT']['Derived']['LogGrade'].keys())
 #%% Processing of harvest DB by timber mark
 flg=0
 if flg==1:
+	YearLast=2024
+
 	# Import HBS by TM and year
-	dTMY=hut.CompileHarvest_ByTMY(meta)
+	dTMY=hut.CompileHarvest_ByTMY(meta,YearLast)
 
 	# Get area from forest tenure layer
 	dTMY,dOP=hut.GetHarvestAreaFromFTEN(meta,dTMY)
@@ -45,23 +47,26 @@ if flg==1:
 	dTMY,dTM=hut.GetVariablesFromRasterDB(meta,dTMY,dTM)
 
 	# Save
-	gu.opickle(meta['Paths']['DB']['Harvest'] + '\\HavestSummary_ByTMAndYear.pkl',dTMY)
-	gu.opickle(meta['Paths']['DB']['Harvest'] + '\\HavestSummary_ByTM.pkl',dTM)
+	gu.opickle(meta['Paths']['DB']['Harvest'] + '\\Havest_ByTMAndYear.pkl',dTMY)
+	gu.opickle(meta['Paths']['DB']['Harvest'] + '\\Havest_ByTM.pkl',dTM)
+
+	# Produce harvest compilation 1 by year
+	hut.CalcHarvestTimeSeries(meta,YearLast)
 
 	# Export to spreadsheet for review
 	#df=pd.DataFrame(dTM)
-	#df.to_excel(meta['Paths']['DB']['Harvest'] + '\\HavestSummary_ByTM.xlsx',index=False)
-	#df=pd.DataFrame(dTMAndYear)
-	#df.to_excel(meta['Paths']['DB']['Harvest'] + '\\HavestSummary_ByTMAndYear.xlsx',index=False)
+	#df.to_excel(meta['Paths']['DB']['Harvest'] + '\\Havest_ByTM.xlsx',index=False)
+	#df=pd.DataFrame(dTMY)
+	#df.to_excel(meta['Paths']['DB']['Harvest'] + '\\Havest_ByTMAndYear.xlsx',index=False)
 else:
 	# Import saved data
-	dTMY=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HavestComp1_ByTMAndYear.pkl')
-	dTM=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\HavestComp1_ByTM.pkl')
+	dTMY=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\Havest_ByTMAndYear.pkl')
+	dTM=gu.ipickle(meta['Paths']['DB']['Harvest'] + '\\Havest_ByTM.pkl')
 
-#%% Harvest compilation 1 by time
-hut.CalcHarvest_ByYear(meta)
+#%% Plot harvest area
+hut.Plot_HarvestAreaTimeSeries(meta,[1960,2024])
 
-#%% Plot time series of harvest volume
+#%% Plot  harvest volume
 hut.Plot_HarvestVolumeTimeSeries(meta,dTMY)
 
 #%% QA 15% of TMs in HBS are missing area from FTEN layer (private land?)

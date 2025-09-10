@@ -6,7 +6,7 @@ import numpy as np
 from osgeo import osr
 from matplotlib import path
 import copy
-from shapely.geometry import Polygon,Point
+from shapely.geometry import Polygon,Point,LineString
 import pyproj
 from scipy import ndimage
 import rasterio
@@ -152,8 +152,18 @@ def OpenGeoTiff(pthin):
 	try:
 		y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
 	except:
-		y=np.flip(np.arange(gt[3]-m*gt[1]+gt[1],gt[3],gt[1]))
-		y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
+		#print(data.shape)
+		#print(y.shape)
+		#print(x.shape)
+		try:
+			y=np.flip(np.arange(gt[3]-m*gt[1]+gt[1],gt[3],gt[1]))
+			#print(y.shape)
+			y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
+		except:
+			y=np.flip(np.arange(gt[3]-m*gt[1],gt[3],gt[1]))
+			y=y[0:-1]#.flatten()
+			#print(y.shape)
+			y=np.tile(np.reshape(y,(m,1)),(1,int(n)))
 
 	Cellsize=gt[1]
 
@@ -419,7 +429,7 @@ def GetExtentFromGDAL(gt,cols,rows):
 # z1,lab1,cl1=gis.CompressCats(z0,id0,lab0,cl0)
 def CompressCats(z0,id0,lab0,cl0):
 	uc=np.unique(z0)
-	z1=0*np.ones(z0.shape)
+	z1=uc.size*np.ones(z0.shape)
 	cl1=0*np.ones((uc.size,3))
 	lab1=[None]*uc.size
 	for i in range(uc.size):
@@ -553,10 +563,60 @@ def GetGridIndexToPoints(z,x,y):
 	ind=tuple([iy,ix])
 	return ind
 
+#%% Import geographic coordinates
+def ConvertGeographicToGeojson(pthin,pthout,type):
+
+	ll=gu.ReadExcel(pthin,sheet_name='Sheet1',skiprows=0)
+
+	# Import spatial reference systems
+	srs=ImportSRSs()
+	ll['X']=np.zeros(ll['Lon'].size)
+	ll['Y']=np.zeros(ll['Lat'].size)
+	for i in range(ll['Lat'].size):
+		ll['X'][i],ll['Y'][i]=srs['Proj']['BC1ha'](ll['Lon'][i],ll['Lat'][i])
+
+	points=[]
+	for i in range(ll['X'].size):
+		points.append(Point(ll['X'][i],ll['Y'][i]))
+
+	if type=='Polygon':
+		poly=Polygon(points)
+		out=gpd.GeoDataFrame({'geometry':[poly]})
+	elif type=='Line':
+		poly=LineString(points)
+		out=gpd.GeoDataFrame({'geometry':[poly]})
+	elif type=='Point':
+		out=gpd.GeoDataFrame({'geometry':points})
+	out.to_file(pthout + '.geojson',driver='GeoJSON')
+
+	return out
+
+#%% Import geographic coordinates
+def PolygonRotate(pthin,ll,dx,dy,r):
+	xy0=gu.ReadExcel(pthin,sheet_name='Sheet1',skiprows=0)
+
+	srs=ImportSRSs()
+	xy={}
+	xy['X']=np.zeros(xy0['Lon'].size)
+	xy['Y']=np.zeros(xy0['Lon'].size)
+	for i in range(xy0['Lon'].size):
+		xy['X'][i],xy['Y'][i]=srs['Proj']['BC1ha'](ll[1],ll[0])
+		xy['X'][i]=xy['X'][i]+xy0['Lon'][i]+dx
+		xy['Y'][i]=xy['Y'][i]+xy0['Lat'][i]+dy
+
+	points=[]
+	for i in range(xy['X'].size):
+		points.append(Point(xy['X'][i],xy['Y'][i]))
+	poly=Polygon(points)
+	out=gpd.GeoDataFrame({'geometry':[poly]})
+	out=out.rotate(r)
+	#out.to_file(pthout + '.geojson',driver='GeoJSON')
+	return out,xy
+
 #%% Import Cities
 def ImportCities(pthin,output_type):
 
-	Cities=gu.ReadExcel(pthin)
+	Cities=gu.ReadExcel(pthin,sheet_name='Sheet1',skiprows=0)
 
 	# Import spatial reference systems
 	srs=ImportSRSs()
@@ -578,7 +638,7 @@ def ImportCities(pthin,output_type):
 #%% Import Bioenergy
 def ImportBioenergy(pthin,output_type):
 
-	d=gu.ReadExcel(pthin)
+	d=gu.ReadExcel(pthin,sheet_name='Sheet1',skiprows=0)
 
 	# Import spatial reference systems
 	srs=ImportSRSs()

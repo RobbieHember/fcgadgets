@@ -18,7 +18,7 @@ dP0=gu.ReadExcel(meta['Paths']['Model']['Parameters'] + '\\Parameters_FelledFate
 #%% Initialize all regions and all scenarios with the BaseCase values
 regL=['Coast',
       'Interior',
-      'CT1',
+      'Full Utilization',
       'CT2',
       'CT3',
       'GFS22',

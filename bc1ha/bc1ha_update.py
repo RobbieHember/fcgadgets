@@ -30,14 +30,15 @@ import fcgadgets.cbrunner.cbrun_util as cbu
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
 
 #%% Build LUTs for variables with categorical data from source geodatabases
-# Takes 7.5 hours
+# Takes 1.5 hours
 # Raw look-up-table spreadsheets stored with model parameters, while the processed
 # pickle files are are stored with bc1ha data
 
 #fiona.listlayers(meta['Paths']['GDB']['LandCover'])
 #fiona.listlayers(meta['Paths']['GDB']['LandUse'])
-#fiona.listlayers(meta['Paths']['GDB']['VRI'])
+#fiona.listlayers(meta['Paths']['GDB']['VRI 2023'])
 #fiona.listlayers(meta['Paths']['GDB']['Disturbance'])
+#fiona.listlayers(meta['Paths']['GDB']['Results'])
 
 def BuildLUTsFromSourceGDBs(meta):
 	# Unique layers
@@ -169,11 +170,12 @@ def BuildLUTsFromSourceGDBs(meta):
 	return
 
 #%% Rasterize VRI
+#fiona.listlayers(meta['Paths']['GDB']['Disturbance'])#%% Rasterize VRI
 # *** Takes 7.5 hours ***
 def RasterizeVRI(meta,year):
 
 	# Pick year
-	year=2023
+	year=2025
 	#year=2015
 	t0=time.time()
 	lNam='VEG_COMP_LYR_R1_POLY'
@@ -181,7 +183,19 @@ def RasterizeVRI(meta,year):
 	# Import reference grid
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
-	# Import feature ID (rasterizing this takes > 12 hours
+	# Feature ID
+	flg=0
+	if flg==1:
+		# *** Manually do Feature to Raster conversion in ArcGIS (rasterizing once
+		# took > 12 hours, next time only took 1 hours) So if it is taking more
+		# than 2 hours something is wrong. ***
+
+		# Clip
+		fin=meta['Paths']['bc1ha'] + '\\VRI ' + str(year) + '\\vri_feaid_orig.tif'
+		fout=meta['Paths']['bc1ha'] + '\\VRI ' + str(year) + '\\vri_feaid.tif'
+		gis.ClipToRaster_ByFile(fin,fout,meta['Paths']['bc1ha Ref Grid'])
+		#z=gis.OpenGeoTiff(fout)
+
 	zFID=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI ' + str(year) + '\\vri_feaid.tif')
 	fid=zFID['Data'].flatten()
 	iu=gu.IndicesFromUniqueArrayValues(fid)
@@ -192,7 +206,7 @@ def RasterizeVRI(meta,year):
 	# Just specific variables
 	#vL=['WHOLE_STEM_BIOMASS_PER_HA','BRANCH_BIOMASS_PER_HA','FOLIAGE_BIOMASS_PER_HA','BARK_BIOMASS_PER_HA']
 	#indL=np.where( (np.isin(meta['Geos']['Variable Info']['Variable Name'],vL)==True) )[0]
-	indL=np.where( (meta['Geos']['Variable Info']['Variable Name']=='FOR_MGMT_LAND_BASE_IND') )[0]
+	#indL=np.where( (meta['Geos']['Variable Info']['Variable Name']=='FOR_MGMT_LAND_BASE_IND') )[0]
 
 	# Initialize variables
 	d={}
@@ -205,23 +219,37 @@ def RasterizeVRI(meta,year):
 			d[vNam + '_Month']=np.zeros(fid.size,dtype=Prec)
 		d[vNam]=np.zeros(fid.size,dtype=Prec)
 
+	c=fiona.open(meta['Paths']['GDB']['VRI ' + str(year)],layer=lNam)
+	df=gpd.GeoDataFrame.from_features(c[10000:20000])
+
 	# Keep track of instances where there is no crosswalk between GDB and rasterized feature ID
-	cn=0
+	N_Missing=0
 	with fiona.open(meta['Paths']['GDB']['VRI ' + str(year)],layer=lNam) as source:
 		for feat in source:
 			prp=dict(feat['properties'].items())
-			# if prp['BCLCS_LEVEL_2']!='T':
-			#	 continue
+
+			if prp['BCLCS_LEVEL_2']!='T':
+				continue
+
 			try:
 				ind=iu[ prp['FEATURE_ID'] ]
 			except:
-				cn=cn+1
-				print(cn)
+				N_Missing=N_Missing+1
+				continue
+
+			if 'SPECIES_PCT_1' not in prp:
+				print(prp['FEATURE_ID'])
+				continue
 
 			for i in indL:
 				vNam=meta['Geos']['Variable Info']['Variable Name'][i]
 				Cat=meta['Geos']['Variable Info']['LUT Required'][i]
 				Date=meta['Geos']['Variable Info']['Date Conversion Required'][i]
+
+				if vNam not in prp.keys():
+					# There was a change in 2025 and many SI values are Null now
+					#print(vNam)
+					continue
 
 				if prp[vNam]==None:
 					continue
@@ -416,7 +444,7 @@ def GapFillBGCZ(meta):
 	return
 
 #%%
-def RasterizeWildfirePerimitersHistorical(meta,zRef,YearCurrent):
+def RasterizeWildfirePerimitersHistorical(meta,zRef,YearLast):
 
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
@@ -431,7 +459,7 @@ def RasterizeWildfirePerimitersHistorical(meta,zRef,YearCurrent):
 	df=df[df.geometry!=None]
 	df=df.reset_index()
 
-	tv=np.arange(1917,2030,1)
+	tv=np.arange(1917,YearLast+1,1)
 
 	for iT in range(tv.size):
 
@@ -464,12 +492,17 @@ def RasterizeWildfirePerimitersHistorical(meta,zRef,YearCurrent):
 			burned=features.rasterize(shapes=shapes,fill=0,out=z0,transform=zRef['Transform'])
 		z1=copy.deepcopy(zRef)
 		z1['Data']=z0.astype('int16')
-		gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\PROT_HISTORICAL_FIRE_POLYS_SP__' + str(tv[iT]) + '_Year.tif')
+		gis.SaveGeoTiff(z1,meta['Paths']['bc1ha'] + '\\' + lNam + '\\PROT_HISTORICAL_FIRE_POLYS_SP_' + str(tv[iT]) + '_Year.tif')
 
 		# DOY
 		DOY=np.zeros(date0.size)
 		for iDate in range(date0.size):
-			DOY[iDate]=datetime(int(tv[iT]),int(date1[iDate]),int(date2[iDate])).timetuple().tm_yday
+			try:
+				DOY[iDate]=datetime(int(tv[iT]),int(date1[iDate]),int(date2[iDate])).timetuple().tm_yday
+			except:
+				if date2[iDate]==29:
+					DOY[iDate]=datetime(int(tv[iT]),int(date1[iDate]),int(28)).timetuple().tm_yday
+
 		shapes=((geom,value) for geom, value in zip(df0.geometry,DOY))
 		z0=np.zeros(zRef['Data'].shape,dtype=float)
 		if len(df0)>0:
@@ -545,8 +578,8 @@ def DeriveWildfireComposite(meta,zRef,YearCurrent):
 	for iT in range(tv.size):
 
 		try:
-			zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\FIRE_YEAR_' + str(tv[iT]) + '.tif')['Data']
-			zDOY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\DOY_' + str(tv[iT]) + '.tif')['Data']
+			zY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\PROT_HISTORICAL_FIRE_POLYS_SP_' + str(tv[iT]) + '_Year.tif')['Data']
+			zDOY=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\PROT_HISTORICAL_FIRE_POLYS_SP\\PROT_HISTORICAL_FIRE_POLYS_SP_' + str(tv[iT]) + '_DOY.tif')['Data']
 		except:
 			pass
 
@@ -626,9 +659,9 @@ def DeriveWildfireComposite(meta,zRef,YearCurrent):
 	return
 
 #%%
-def RasterizeInsects(meta,zRef):
+def RasterizeInsects(meta,zRef,YearLast):
 
-	YearLast=2023
+	#YearLast=2023
 
 	lNam='PEST_INFESTATION_POLY'
 	vNam='PEST_SEVERITY_CODE'
@@ -664,7 +697,6 @@ def RasterizeInsects(meta,zRef):
 
 		for iT in range(tv.size):
 			# iT=tv.size-12
-
 			df0=df[ (df['PEST_SPECIES_CODE']==pest) & (df['CAPTURE_YEAR']==tv[iT]) ].copy()
 			df0=df0[df0.geometry!=None]
 			df0=df0.reset_index()
@@ -1803,6 +1835,8 @@ def RasterizePlantingLayer(meta,zRef):
 def RasterizeOpeningID2(meta):
 	# Import opening ID with spatial
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+
+	# Rasterize opening ID
 	#RasterizeFromSource(meta,zRef,'RSLT_OPENING_SVW','OPENING_ID')
 	
 	# Open Opening ID 1
@@ -1850,8 +1884,8 @@ def RasterizeOpeningID2(meta):
 	return
 
 #%%
-def RasterizeInsectComp1(meta):
-	YearLast=2023
+def RasterizeInsectComp1(meta,YearLast):
+	#YearLast=2024
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 	#meta['LUT']['PEST_INFESTATION_POLY'].keys()
 	
@@ -2592,7 +2626,7 @@ def VectorMapsByActivity_NO(meta):
 def RasterizeDenudationsFromATU(meta):
 	meta['LUT']['RSLT_ACTIVITY_TREATMENT_SVW']['DISTURBANCE_CODE']
 	
-	YearLast=2023
+	YearLast=2024
 	sbc=np.array(['DN']);stc=np.array([]); smc=np.array([]);soc1=np.array([]);vNam='DN'
 	ats={}
 	ats['Path']=meta['Paths']['GDB']['Results']

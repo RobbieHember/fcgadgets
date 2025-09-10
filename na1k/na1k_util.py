@@ -91,11 +91,11 @@ def Init(*argv):
 	if 'LUT' not in meta:
 		meta['LUT']={}
 		meta['LUT']['EZ']={}
-		d=gu.ReadExcel(meta['Paths']['na1k'] + '\\LUTs\\LUT_Ecozones_CEC_L1.xlsx')
+		d=gu.ReadExcel(meta['Paths']['na1k'] + '\\LUTs\\LUT_Ecozones_CEC_L1.xlsx',sheet_name='Sheet1',skiprows=0)
 		for i in range(d['ID'].size):
 			meta['LUT']['EZ'][d['Name'][i]]=d['ID'][i]
 		meta['LUT']['PB']={}
-		d=gu.ReadExcel(meta['Paths']['na1k'] + '\\LUTs\\LUT_PoliticalBoundaries.xlsx')
+		d=gu.ReadExcel(meta['Paths']['na1k'] + '\\LUTs\\LUT_PoliticalBoundaries.xlsx',sheet_name='Sheet1',skiprows=0)
 		for i in range(d['ID'].size):
 			meta['LUT']['PB'][d['Name'][i]]=d['ID'][i]
 
@@ -1842,15 +1842,16 @@ def CalcSummariesWB(meta):
 	# Save annual normal
 	mo=np.arange(1,13,1)
 	vL=['runoff']
+	vL=['etp']
 	for v in vL:
 		z0=np.zeros(zRef['Data'].shape,dtype='float')
 		for iM in range(mo.size):
-			z0=z0+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+			z0=z0+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 		z0=z0/mo.size
 		z1=copy.deepcopy(zRef)
 		z1['Data']=z0
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[-10,12])
-		z1['Data']=z1['Data']/meta['SF'][v]
+		z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 		z1['Data']=z1['Data'].astype('int16')
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_ann.tif')
 
@@ -2119,6 +2120,58 @@ def CalcAnnualAnomalies(meta):
 			z['Data']=zA/meta['SF'][v]
 			z['Data']=z['Data'].astype('int16')
 			gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Summaries\\Anomalies\\na1k_' + v + '_anom_ann_' + str(meta['tva'][iT]) + '.tif')
+	return
+
+#%%
+def HoldridgeLifeZones(meta):
+	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
+	iMask=np.where( (zRef['Data']>0) )
+
+	zMAT=np.zeros(iMask[0].size)
+	for mo in range(12):
+		a=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype(float)*meta['Climate']['SF']['tmean']
+		ind=np.where(a<0)
+		a[ind]=0
+		zMAT=zMAT+a
+	zMAT=zMAT/12
+
+	zMAP=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_prcp_norm_1971to2000_ann.tif')['Data'][iMask].astype(float)
+	zPET=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_etp_norm_1971to2000_ann.tif')['Data'][iMask].astype(float)
+	zAI=gu.Clamp(zPET/zMAP,0,1000)
+	lut=gu.ReadExcel(r'G:\My Drive\Code_Python\fcgadgets\cbrunner\Parameters\LUT_HoldgridgeLifeZone.xlsx',sheet_name='Sheet1',skiprows=0)
+
+	zT,muT,sigT=gu.zscore(zMAT)
+	zP,muP,sigP=gu.zscore(zMAP)
+	zA,muA,sigA=gu.zscore(zAI)
+
+	lut['zT']=(lut['MAT']-muT)/sigT
+	lut['zP']=(lut['MAP']-muP)/sigP
+	lut['zA']=(lut['AI']-muA)/sigA
+
+	z1=np.zeros(iMask[0].size)
+	e1=100000*np.ones(iMask[0].size)
+	for i in range(lut['Name'].size):
+		print(lut['Name'][i])
+		#if lut['Name'][i]=='Wet Tundra':
+		#	continue
+		#eMAT=np.abs(zMAT-lut['MAT'][i])/np.mean(zMAT)
+		#eMAP=np.abs(zMAP-lut['MAP'][i])/np.mean(zMAP)
+		#eAI=np.abs(zAI-lut['AI'][i])/np.mean(zAI)
+		eT=np.abs(zT-lut['zT'][i])
+		eP=np.abs(zP-lut['zP'][i])
+		eA=np.abs(zA-lut['zA'][i])
+		eTot=eT+eP+eA
+		ind=np.where(eTot<e1)
+		z1[ind]=lut['ID'][i]
+		e1[ind]=eTot[ind]
+
+	z2=copy.deepcopy(zRef)
+	z2['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+	z2['Data'][iMask]=z1
+	d=gu.CountByCategories(z2['Data'][iMask].flatten(),'Percent')
+	# plt.close('all');plt.matshow(z2['Data'],clim=[0,15])
+	gis.SaveGeoTiff(z2,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_HoldridgeLifeZones_1971to2000.tif')
+
 	return
 
 #%%
