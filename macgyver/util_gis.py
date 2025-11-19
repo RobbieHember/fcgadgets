@@ -694,17 +694,17 @@ def BufferRasterMask(MaskIn,r):
 		y,x=np.ogrid[-radius:radius+1, -radius:radius+1]
 		mask=x**2 + y**2 <= radius**2
 		kernel[mask]=1
-		return kernel	
-	MaskOut=ndimage.morphology.binary_dilation(MaskIn==1,structure=CreateKernel(r))	
+		return kernel
+	MaskOut=ndimage.morphology.binary_dilation(MaskIn==1,structure=CreateKernel(r))
 	
 	# Test
 	flg=0
 	if flg==1:
 		A=np.zeros((120,320))
 		A[60,40]=1
-		A[2,140]=1	
+		A[2,140]=1
 		r=10
-		B=ndimage.morphology.binary_dilation(A==1,structure=CreateKernel(r))	
+		B=ndimage.morphology.binary_dilation(A==1,structure=CreateKernel(r))
 		plt.close('all'); plt.matshow(B)
 	
 	return MaskOut
@@ -714,7 +714,7 @@ def BufferRasterMask(MaskIn,r):
 #	 id1=2
 #	 MaskOut=MaskIn.copy()
 #	 bin_x=np.arange(-wShuf,wShuf+1,1)
-#	 bin_y=np.arange(-wShuf,wShuf+1,1)	
+#	 bin_y=np.arange(-wShuf,wShuf+1,1)
 #	 bin_x=bin_x[bin_x!=0]
 #	 bin_y=bin_y[bin_y!=0]
 #	 bin_x=bin_x[np.flip(np.argsort(np.abs(bin_x)))]
@@ -730,11 +730,11 @@ def BufferRasterMask(MaskIn,r):
 def ShuffleFill(zIn,wShuf,idMissing):
 	zOut=idMissing*np.ones(zIn.shape,dtype=zIn.dtype)
 	bin_x=np.arange(-wShuf,wShuf+1,1)
-	bin_y=np.arange(-wShuf,wShuf+1,1)	
+	bin_y=np.arange(-wShuf,wShuf+1,1)
 	bin_x=bin_x[bin_x!=0]
 	bin_y=bin_y[bin_y!=0]
 	bin_x=bin_x[np.flip(np.argsort(np.abs(bin_x)))]
-	bin_y=bin_y[np.flip(np.argsort(np.abs(bin_y)))]	
+	bin_y=bin_y[np.flip(np.argsort(np.abs(bin_y)))]
 	for i in range(bin_y.size):
 		for j in range(bin_x.size):
 			zShuf=imshift(zIn,bin_x[j],bin_y[i])

@@ -25,7 +25,7 @@ import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.macgyver.util_query_gdb as qgdb
 import fcgadgets.gaia.gaia_util as gaia
-import fcexplore.field_plots.Processing.fp_util as ufp
+import fcexplore.field_plots.processing.fp_util as ufp
 import fcgadgets.cbrunner.cbrun_util as cbu
 import fcgadgets.na1k.na1k_util as u1k
 

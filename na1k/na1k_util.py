@@ -35,6 +35,7 @@ import fcgadgets.gaia.gaia_util as gaia
 #%% Initialize project
 def Init(*argv):
 	meta={}
+
 	# Set paths
 	meta['Paths']={}
 	#meta['Paths']['na1k']=r'C:\Data\na1k'
@@ -45,6 +46,9 @@ def Init(*argv):
 	meta['Paths']['na1k DEM']=r'C:\Data\DEM\North America\namer_dem1.tif'
 	meta['Paths']['ECCD']=r'C:\Data\Climate\ECCD'
 	meta['Paths']['GSOD']=r'C:\Data\Climate\GSOD'
+	meta['Paths']['USHCN']=r'C:\Data\Climate\USHCN\Recent Serial\2025'
+	meta['Paths']['CRU']=r'C:\Data\Climate\CRU'
+	meta['Paths']['AHCCD']=r'C:\Data\Climate\AHCCD\2025'
 
 	meta['Paths']['DB']={}
 	meta['Paths']['DB']['Harvest']=r'C:\Data\Harvest'
@@ -55,6 +59,11 @@ def Init(*argv):
 	meta['Paths']['DB']['CMIP6']=r'C:\Data\Climate\CMIP6\Monthly'
 	meta['Paths']['DB']['20thCR']=r'C:\Data\Climate\Reanlysis\20th Century'
 	meta['Paths']['DB']['CRU']=r'C:\Data\Climate\CRU'
+
+	# Current versions
+	meta['Current Versions']={}
+	meta['Current Versions']['CRU']='cru_ts4.09.1901.2024'
+	meta['Current Versions']['UCHCN']='ushcn.v2.5.5.20250920'
 
 	meta['Graphics']={}
 	meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\na1k'
@@ -77,6 +86,7 @@ def Init(*argv):
 	meta['Graphics']['Map']['Show Symbol Labels']='Off'
 
 	meta['Graphics']['gp']=gu.SetGraphics('Manuscript')
+	meta['Graphics']['gp']['Print Figures']='On'
 	meta['Graphics']['gp']['AxesLetterStyle']='Caps'
 	meta['Graphics']['gp']['AxesLetterFontWeight']='Bold'
 
@@ -100,8 +110,9 @@ def Init(*argv):
 			meta['LUT']['PB'][d['Name'][i]]=d['ID'][i]
 
 	# Time vectors
-	meta['tvd']=gu.tvec('d',1950,2025)
-	meta['tvm']=gu.tvec('m',1950,2025)
+	meta['YearLast']=2024
+	meta['tvd']=gu.tvec('d',1850,meta['YearLast'])
+	meta['tvm']=gu.tvec('m',1850,meta['YearLast'])
 	meta['tva']=np.unique(meta['tvd'][:,0])
 
 	# Scale factors
@@ -115,6 +126,7 @@ def Init(*argv):
 	meta['Climate']['SF']['es']=0.01
 	meta['Climate']['SF']['eta']=0.1 # Stored as mm/month
 	meta['Climate']['SF']['etp']=0.1 # Stored as mm/month
+	meta['Climate']['SF']['ndep']=0.01
 	meta['Climate']['SF']['prcp']=0.1 # Stored as mm/month
 	meta['Climate']['SF']['rswd']=0.01
 	meta['Climate']['SF']['tmean']=0.01
@@ -125,6 +137,7 @@ def Init(*argv):
 	meta['Climate']['SF']['wsp']=0.1 # Stored as mm/month
 	meta['Climate']['SF']['runoff']=0.1 # Stored as mm/month
 	meta['Climate']['SF']['melt']=0.1 # Stored as mm/month
+	meta['Climate']['SF']['zscore']=0.01
 
 	meta['Missing Number']=-99
 
@@ -294,7 +307,7 @@ def ImportNormalsFromClimateNA(meta):
 				z=copy.deepcopy(zE)
 				z['Data']=src.read(1).astype('float')
 				src.close()
-				z['Data']=z['Data']/meta['SF'][vL2[iV]]
+				z['Data']=z['Data']/meta['Climate']['SF'][vL2[iV]]
 				z['Data']=z['Data'].astype('int16')
 				gis.SaveGeoTiff(z,pthin + '\\tmp2.tif')
 				# Reproject and change extent
@@ -308,7 +321,7 @@ def ImportNormalsFromClimateNA(meta):
 				z=copy.deepcopy(zE)
 				z['Data']=z0['Data']
 				z['Data'][iOut]=meta['Missing Number']
-				z['Data']=z['Data']/meta['SF'][vL2[iV]]
+				z['Data']=z['Data']/meta['Climate']['SF'][vL2[iV]]
 				z['Data']=z['Data'].astype('int16')
 				gis.SaveGeoTiff(z,pthin + '\\tmp2.tif')
 
@@ -319,7 +332,7 @@ def ImportNormalsFromClimateNA(meta):
 				gis.ReprojectRasterAndClipToRaster(fin,fout,fref,meta['Geos']['crs'])
 
 			# Import reprojected map
-			z0=gis.OpenGeoTiff(fout)['Data'].astype('float')*meta['SF'][vL2[iV]]
+			z0=gis.OpenGeoTiff(fout)['Data'].astype('float')*meta['Climate']['SF'][vL2[iV]]
 
 			# Remove exterior
 			z0[zRef['Data']==0]=meta['Missing Number'] #plt.matshow(z0)
@@ -345,18 +358,18 @@ def ImportNormalsFromClimateNA(meta):
 			z=copy.deepcopy(zRef)
 			z['Data']=z0
 			#z['Data'][iOut]=meta['Missing Number']
-			z['Data']=z['Data']/meta['SF'][vL2[iV]]
+			z['Data']=z['Data']/meta['Climate']['SF'][vL2[iV]]
 			z['Data']=z['Data'].astype('int16')
 			gis.SaveGeoTiff(z,fout)
 
 	for mo in range(1,13):
-		zMin=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmin_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['tmin']
-		zMax=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmax_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['tmax']
+		zMin=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmin_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['tmin']
+		zMax=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmax_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['tmax']
 		z0=(zMin+zMax)/2
 		z=copy.deepcopy(zRef)
 		z['Data']=z0
 		#z['Data'][iOut]=meta['Missing Number']
-		z['Data']=z['Data']/meta['SF']['tmean']
+		z['Data']=z['Data']/meta['Climate']['SF']['tmean']
 		z['Data']=z['Data'].astype('int16')
 		gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo) + '.tif')
 	return
@@ -375,7 +388,7 @@ def CalcSolarRadiationNormals(meta):
 		z1=gis.OpenGeoTiff(fout)
 		z1['Data']=z1['Data'].astype('float')
 		z1['Data']=z1['Data']/10
-		z1['Data']=z1['Data']/meta['SF']['rswd']
+		z1['Data']=z1['Data']/meta['Climate']['SF']['rswd']
 		z1['Data']=z1['Data'].astype('int16')
 		z1['Data']=z1['Data']*zRef['Data']
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[0,3000])
@@ -386,11 +399,11 @@ def CalcSolarRadiationNormals(meta):
 def CalcSaturationVapourPressureNormal(meta):
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
 	for mo in range(1,13):
-		zT=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['tmean']
+		zT=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['tmean']
 		z=copy.deepcopy(zRef)
 		z['Data']=gaia.GetEstar(zT)
 		z['Data'][zRef['Data']==0]=meta['Missing Number']
-		z['Data']=z['Data']/meta['SF']['es']
+		z['Data']=z['Data']/meta['Climate']['SF']['es']
 		z['Data']=z['Data'].astype('int16')
 		gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_es_norm_1971to2000_' + str(mo) + '.tif')
 	return
@@ -400,11 +413,11 @@ def CalcActualVapourPressureNormalFromTemps(meta):
 	# Reference: https://www.agraria.unirc.it/documentazione/materiale_didattico/1462_2016_412_24509.pdf
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
 	for mo in range(1,13):
-		zT=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmin_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['tmean']
+		zT=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmin_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['tmean']
 		z=copy.deepcopy(zRef)
 		z['Data']=10*(0.6108*np.exp((17.27*zT)/(zT+237.3)))
 		z['Data'][zRef['Data']==0]=meta['Missing Number']
-		z['Data']=z['Data']/meta['SF']['ea']
+		z['Data']=z['Data']/meta['Climate']['SF']['ea']
 		z['Data']=z['Data'].astype('int16')
 		gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_fromtmin_norm_1971to2000_' + str(mo) + '.tif')
 	return
@@ -417,7 +430,7 @@ def CalcActualVapourPressureNormalFromCRU(meta):
 	srs=gis.ImportSRSs()
 
 	# Import netcdf data
-	fin=r'C:\Data\Climate\CRU\cru_ts4.07.1901.2022.vap.dat.nc.gz'
+	fin=r'C:\Data\Climate\CRU' + '\\' + meta['Current Versions']['CRU'] + '.vap.dat.nc.gz'
 	ea0={}
 	with gzip.open(fin) as gz:
 		with nc.Dataset('dummy',mode='r',memory=gz.read()) as ds:
@@ -442,7 +455,7 @@ def CalcActualVapourPressureNormalFromCRU(meta):
 		z1=copy.deepcopy(zRef)
 		z1['Data']=griddata(xy0,z0,(zRef['X'],zRef['Y']),method='linear')
 		z1['Data'][zRef['Data']==0]=meta['Missing Number']
-		z1['Data']=z1['Data']/meta['SF']['ea']
+		z1['Data']=z1['Data']/meta['Climate']['SF']['ea']
 		z1['Data']=z1['Data'].astype('int16')
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[0,3000])
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_fromcru_norm_1971to2000_' + str(mo) + '.tif')
@@ -450,17 +463,21 @@ def CalcActualVapourPressureNormalFromCRU(meta):
 
 #%%
 def CalcActualVapourPressureNormalBiasCorrected(meta):
-	# Import GSOD
+
+	# Import projection info
+	srs=gis.ImportSRSs()
+
+	# Import GSOD station observations
 	dS=gu.ipickle(meta['Paths']['GSOD'] + '\\Processed\\gsod.pkl')
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
+	iMask=np.where(zRef['Data']==1)
 	iGrdS=gis.GetGridIndexToPoints(zRef,dS['X'],dS['Y'])
 	iOut=np.where(zRef['Data'][iGrdS]==0)[0]
 	dS['Data']['ea'][:,iOut]=np.nan
-	srs=gis.ImportSRSs()
 
 	# Import CRU
-	tvC=gu.tvec('m',1901,2023)
-	fin=r'C:\Data\Climate\CRU\cru_ts4.07.1901.2022.vap.dat.nc.gz'
+	tv_cru=gu.tvec('m',1901,meta['YearLast'])
+	fin=r'C:\Data\Climate\CRU' + '\\' + meta['Current Versions']['CRU'] + '.vap.dat.nc.gz'
 	vap0={}
 	with gzip.open(fin) as gz:
 		with nc.Dataset('dummy',mode='r',memory=gz.read()) as ds:
@@ -468,56 +485,65 @@ def CalcActualVapourPressureNormalBiasCorrected(meta):
 				vap0[k]=ds.variables[k][:]
 	ea_cru=vap0['vap'].filled()
 	ea_cru[ea_cru>999]=meta['Missing Number']
-	#ind=np.where(ea_cru>meta['Missing Number']); print(np.mean(ea_cru[ind]))
-	for mo in range(12):
-		#itmu=np.where( (tv[:,0]>=1971) & (tv[:,0]<=2000) & (tv[:,1]==mo) )
-		mu=np.mean(ea_cru[mo::12,:,:],axis=0)
-		ea_cru[mo::12,:,:]=ea_cru[mo::12,:,:]-np.tile(mu,(int(ea_cru.shape[0]/12),1,1))
-	lonC,latC=np.meshgrid(vap0['lon'].filled(),vap0['lat'].filled(),sparse=False)
-	xC,yC=srs['Proj']['NACID'](lonC,latC)
+	# Convert CRU to anomalies
+	ea_cru_anom=np.zeros(ea_cru.shape)
+	for iM in range(12):
+		iT=np.where( (tv_cru[:,0]>=1971) & (tv_cru[:,0]<=2000) & (tv_cru[:,1]==iM+1) )
+		mu=np.mean(np.squeeze(ea_cru[iT,:,:]),axis=0)
+		ea_cru_anom[iM::12,:,:]=ea_cru[iM::12,:,:]-np.tile(mu,(int(ea_cru.shape[0]/12),1,1))
+	lon_cru,lat_cru=np.meshgrid(vap0['lon'].filled(),vap0['lat'].filled(),sparse=False)
+	x_cru,y_cru=srs['Proj']['NACID'](lon_cru,lat_cru)
 
-	for mo in range(1,13):
+	ea_Delta=np.zeros(zRef['Data'].shape)
+	ea_Delta_mu=np.zeros(12)
+	for iM in range(12):
 		# Find stations with enough data
-		#iT=np.where( (meta['tvm'][:,0]>=1971) & (meta['tvm'][:,0]<=2019) & (meta['tvm'][:,1]==mo) )[0]
-		iT=np.where( (meta['tvm'][:,0]>=1971) & (meta['tvm'][:,0]<=2000) & (meta['tvm'][:,1]==mo) )[0]
+		iT=np.where( (meta['tvm'][:,0]>=1971) & (meta['tvm'][:,0]<=2000) & (meta['tvm'][:,1]==iM+1) )[0]
 		N=np.sum(~np.isnan(dS['Data']['ea'][iT,:]),axis=0)
 		iS=np.where(N>15)[0]
-		# plt.plot(dS['X'][iS],dS['Y'][iS],'k.')
+		print(iS.size)
+		ea_gsod_M=np.nanmean(dS['Data']['ea'][iT,:][:,iS],axis=0)
+		# plt.close('all'); plt.plot(dS['X'][iS],dS['Y'][iS],'k.')
 
-		ea_mu0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_fromtmin_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['ea']
-		ea_mu0[zRef['Data']==0]=np.nan
+		# Import normal predicted from minimum temperature
+		ea_norm=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_fromtmin_norm_1971to2000_' + str(iM+1) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['ea']
+		ea_norm[zRef['Data']==0]=np.nan
 		iGrd=gis.GetGridIndexToPoints(zRef,dS['X'][iS],dS['Y'][iS])
-		ea_mu0=ea_mu0[iGrd]
+		ea_norm_M=ea_norm[iGrd]
 
-		iGrdC=gis.GetGridIndexToPoints({'X':xC,'Y':yC},dS['X'][iS],dS['Y'][iS])
-		ea_hat=np.nan*np.ones((meta['tvm'].shape[0],iS.size))
-		for yr in range(1970,2020):
-			iT1=np.where( (tvC[:,0]==yr) & (tvC[:,1]==mo) )[0]
-			iT2=np.where( (meta['tvm'][:,0]==yr) & (meta['tvm'][:,1]==mo) )[0]
-			ea_cruT=np.squeeze(ea_cru[iT1,:,:])
-			#ea_hat[iT2,:]=ea_mu0
-			ea_hat[iT2,:]=ea_mu0+ea_cruT[iGrdC]
+		# 		iGrd_cru=gis.GetGridIndexToPoints({'X':x_cru,'Y':y_cru},dS['X'][iS],dS['Y'][iS])
+		# 		iT_cru=np.where( (tv_cru[:,0]>=1971) & (tv_cru[:,0]<=2000) & (tv_cru[:,1]==iM+1) )[0]
+		# 		ea_cru_anom_mu=np.mean(ea_cru_anom[iT_cru,:,:],axis=0)
+		# 		plt.hist(ea_cru_anom_mu.flatten(),np.arange(-0.1,0.1,0.01))
+		
+		# 		ea_hat0=np.nan*np.ones((meta['tvm'].shape[0],iS.size))
+		# 		for yr in range(1971,2000):
+		# 			iT1=np.where( (tv_cru[:,0]==yr) & (tv_cru[:,1]==iM) )[0]
+		# 			iT2=np.where( (meta['tvm'][:,0]==yr) & (meta['tvm'][:,1]==iM+1) )[0]
+		# 			ea_cruT=np.squeeze(ea_cru_anom[iT1,:,:])
+		# 			ea_hat0[iT2,:]=ea_norm
+		# 			#ea_hat0[iT2,:]=ea_norm+ea_cruT[iGrd_cru]
+
+		# Define error
+		E=ea_norm_M-ea_gsod_M
+		#plt.close('all'); plt.hist(E,np.arange(-10,10,0.1))
 
 		# Remove missing data, remove large outliers and reduced negative outliers (that affect mapping)
-		x=dS['Data']['ea'][iT,:][:,iS]
-		y=ea_hat[iT,:]
 		E_th=12
-		ind=np.where( (np.isnan(x)==True) | (np.isnan(y)==True) | (np.abs(x-y)>E_th) )
-		x[ind]=np.nan
-		y[ind]=np.nan
-		E=np.nanmean(y-x,axis=0)
-		ind=np.where(E<-5)[0]
-		E[ind]=-2
+		ind=np.where( (np.abs(E)>E_th) )
+		E[ind]=np.nan
 
 		# Plot map of error at stations
-		bw=1; bin=np.arange(0,12,bw)
-		ms=np.linspace(0.5,12,bin.size)
-		plt.close('all');fig,ax=plt.subplots(1,figsize=gu.cm2inch(14,14))
-		for i in range(bin.size):
-			ind=np.where( (E>0) & (np.abs(E-bin[i])<=bw/2) )[0]
-			plt.plot(dS['X'][iS][ind],dS['Y'][iS][ind],'ro',ms=ms[i],mew=0.25,mfc='none')
-			ind=np.where( (E<0) & (np.abs(E--bin[i])<=bw/2) )[0]
-			plt.plot(dS['X'][iS][ind],dS['Y'][iS][ind],'bo',ms=ms[i],mew=0.25,mfc='none')
+		flg=0
+		if flg==1:
+			bw=1; bin=np.arange(0,12,bw)
+			ms=np.linspace(0.5,12,bin.size)
+			plt.close('all');fig,ax=plt.subplots(1,figsize=gu.cm2inch(14,14))
+			for i in range(bin.size):
+				ind=np.where( (E>0) & (np.abs(E-bin[i])<=bw/2) )[0]
+				plt.plot(dS['X'][iS][ind],dS['Y'][iS][ind],'ro',ms=ms[i],mew=0.25,mfc='none')
+				ind=np.where( (E<0) & (np.abs(E--bin[i])<=bw/2) )[0]
+				plt.plot(dS['X'][iS][ind],dS['Y'][iS][ind],'bo',ms=ms[i],mew=0.25,mfc='none')
 
 		# Extract
 		ikp=np.where( (np.isnan(E)==False) )[0]
@@ -538,8 +564,9 @@ def CalcActualVapourPressureNormalBiasCorrected(meta):
 			iz=griddata(np.column_stack((x0,y0)),e0,(zRef['X'][0::ivl,0::ivl],zRef['Y'][0::ivl,0::ivl]),method='linear')
 			iz=scipy.ndimage.zoom(iz,ivl,order=0)
 			iz[zRef['Data']==0]=0
-			plt.close('all'); plt.matshow(iz,clim=[-12,12])
-			CorrFac=np.tile(iz[iGrd],(iT.size,1))
+			#plt.close('all'); plt.matshow(iz,clim=[-12,12])
+			CorrFacAtPoints=iz[iGrd]
+			#CorrFac=np.tile(iz[iGrd],(iT.size,1))
 
 		else:
 			# Polynomial surface interpolation
@@ -551,67 +578,74 @@ def CalcActualVapourPressureNormalBiasCorrected(meta):
 			kernel=np.ones((50,50))
 			mask=cv2.dilate(mask.astype(np.uint8),kernel,iterations=1)
 			
-			itvl=50
+			itvl=25
 			type='Hyperbolic'
 			xI=zRef['X'][0::itvl,0::itvl]
 			yI=zRef['Y'][0::itvl,0::itvl]
 			maskI=mask[0::itvl,0::itvl]
 			
 			iz,iE,iN=gu.PolynomialSurfaceFit(x0/1000,y0/1000,e0,xI/1000,yI/1000,maskI,beta)
-			plt.close('all'); plt.matshow(iz,clim=[-12,12])
+			plt.close('all'); plt.matshow(iz,clim=[-6,6])
 			iz=scipy.ndimage.zoom(iz,itvl,order=0)
 			CorrFac=np.tile(iz[iGrd],(iT.size,1))
 
-		# Skill without correction
-		x=dS['Data']['ea'][iT,:][:,iS].flatten()
-		y=ea_hat[iT,:].flatten()
-		ikp=np.where( (x>0) & (y>0) & (np.abs(x-y)<20) )[0]
-		x=x[ikp]
-		y=y[ikp]
-		rs,txt=gu.GetRegStats(x,y)
-		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
-		ax.plot([-10000,10000],[-10000,10000],'k-',lw=2,color=[0.8,0.8,0.8])
-		ax.plot(x,y,'o',ms=3,mec='w',mfc='k',mew=0.5)
-		ax.plot(rs['xhat Line'],rs['yhat Line'],'r-')
-		ax.text(33,2,rs['txt'],fontsize=7,ha='right')
-		ax.text(33,33,'1:1',fontsize=7,ha='center')
-		ax.set(xlabel='GSOD measurements (hPa)',ylabel='NA1K grid (hPa)',xticks=np.arange(0,40,5),yticks=np.arange(0,40,5),xlim=[0,35],ylim=[0,35])
-		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
-		plt.tight_layout()
-		#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Name','png',900)
+		flg=0
+		if flg==1:
+			# Plot Skill without correction
+			x=ea_gsod_M
+			y=ea_norm_M
+			rs,txt=gu.GetRegStats(x,y)
+			plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+			ax.plot([-10000,10000],[-10000,10000],'k-',lw=2,color=[0.8,0.8,0.8])
+			ax.plot(x,y,'o',ms=3,mec='w',mfc='k',mew=0.5)
+			ax.plot(rs['xhat Line'],rs['yhat Line'],'r-')
+			ax.text(33,2,rs['txt'],fontsize=7,ha='right')
+			ax.text(33,33,'1:1',fontsize=7,ha='center')
+			ax.set(xlabel='GSOD measurements (hPa)',ylabel='NA1K grid (hPa)',xticks=np.arange(0,40,5),yticks=np.arange(0,40,5),xlim=[0,35],ylim=[0,35])
+			ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+			plt.tight_layout()
+			#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Name','png',900)
+	
+			# Skill with correction
+			x=ea_gsod_M
+			y=ea_norm_M-CorrFacAtPoints
+			rs,txt=gu.GetRegStats(x,y)
+			plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
+			ax.plot([-10000,10000],[-10000,10000],'k-',lw=2,color=[0.8,0.8,0.8])
+			ax.plot(x,y,'o',ms=3,mec='w',mfc='k',mew=0.5)
+			ax.plot(rs['xhat Line'],rs['yhat Line'],'r-')
+			ax.text(33,2,rs['txt'],fontsize=7,ha='right')
+			ax.text(33,33,'1:1',fontsize=7,ha='center')
+			ax.set(xlabel='GSOD measurements (hPa)',ylabel='NA1K grid (hPa)',xticks=np.arange(0,40,5),yticks=np.arange(0,40,5),xlim=[0,35],ylim=[0,35])
+			ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+			plt.tight_layout()
 
-		# Skill with correction
-		x=dS['Data']['ea'][iT,:][:,iS].flatten()
-		ea_hatCF=ea_hat[iT,:]-CorrFac
-		y=ea_hatCF.flatten()
-		ikp=np.where( (x>0) & (y>0) & (np.abs(x-y)<20) )[0]
-		x=x[ikp]
-		y=y[ikp]
-		rs,txt=gu.GetRegStats(x,y)
-		plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
-		ax.plot([-10000,10000],[-10000,10000],'k-',lw=2,color=[0.8,0.8,0.8])
-		ax.plot(x,y,'o',ms=3,mec='w',mfc='k',mew=0.5)
-		ax.plot(rs['xhat Line'],rs['yhat Line'],'r-')
-		ax.text(33,2,rs['txt'],fontsize=7,ha='right')
-		ax.text(33,33,'1:1',fontsize=7,ha='center')
-		ax.set(xlabel='GSOD measurements (hPa)',ylabel='NA1K grid (hPa)',xticks=np.arange(0,40,5),yticks=np.arange(0,40,5),xlim=[0,35],ylim=[0,35])
-		ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
-		plt.tight_layout()
-
-		# Save new actual vapour pressure
-		z1=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_fromtmin_norm_1971to2000_' + str(mo) + '.tif')
-		tmp=np.maximum(0,(z1['Data'].astype('float')*meta['SF']['ea'])-iz)
-		tmp=tmp/meta['SF']['ea']
+		# Save grid
+		z1=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_fromtmin_norm_1971to2000_' + str(iM+1) + '.tif')
+		tmp=np.maximum(0,(z1['Data'].astype('float')*meta['Climate']['SF']['ea'])-iz)
+		tmp=tmp/meta['Climate']['SF']['ea']
 		z1['Data']=tmp.astype('int16')
 		# plt.matshow(z1['Data'],clim=[0,3000])
-		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_biasadj_norm_1971to2000_' + str(mo) + '.tif')
+		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_biasadj_norm_1971to2000_' + str(iM+1) + '.tif')
+
+		ea_Delta=ea_Delta+iz
+		ea_Delta_mu[iM]=np.nanmean(iz[iMask])
+
+	ea_Delta=ea_Delta/12
+
+	flg=0
+	if flg==1:
+		plt.close('all'); plt.matshow(ea_Delta,clim=[-12,12])
+
+		plt.close('all'); plt.plot(ea_Delta_mu,'-bo')
+
 	return
 
 #%%
 def QA_VapourPressureCRU_Vs_BiasAdjTempMod(meta):
 	ivl=50
-	z1=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_ea_biasadj_norm_1971to2000_mjjas.tif')['Data'][0::ivl,0::ivl].astype('float')*meta['SF']['ea']
-	z2=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_ea_fromcru_norm_1971to2000_mjjas.tif')['Data'][0::ivl,0::ivl].astype('float')*meta['SF']['ea']
+	z1=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_ea_biasadj_norm_1971to2000_mjjas.tif')['Data'][0::ivl,0::ivl].astype('float')*meta['Climate']['SF']['ea']
+	z2=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_ea_fromcru_norm_1971to2000_mjjas.tif')['Data'][0::ivl,0::ivl].astype('float')*meta['Climate']['SF']['ea']
 	iMask=np.where(zRef['Data'][0::ivl,0::ivl]==1)
 	x=z2[iMask]
 	y=z1[iMask]
@@ -634,14 +668,14 @@ def QA_VapourPressureCRU_Vs_BiasAdjTempMod(meta):
 def CalcVapourPressureDeficitNormal(meta):
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
 	for mo in range(1,13):
-		zEa=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_biasadj_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['ea']
-		zEs=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_es_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['es']
+		zEa=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_ea_biasadj_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['ea']
+		zEs=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_es_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['es']
 		vpd=np.maximum(0,zEs-zEa)
 
 		z=copy.deepcopy(zRef)
 		z['Data']=vpd
 		z['Data'][zRef['Data']==0]=meta['Missing Number']
-		z['Data']=z['Data']/meta['SF']['vpd']
+		z['Data']=z['Data']/meta['Climate']['SF']['vpd']
 		z['Data']=z['Data'].astype('int16')
 		# plt.matshow(z['Data'],clim=[0,2000])
 		gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_vpd_norm_1971to2000_' + str(mo) + '.tif')
@@ -701,134 +735,238 @@ def CalcVapourPressureDeficitNormal(meta):
 # 		z1['Data']=griddata(xy0,z0,(zRef['X'],zRef['Y']),method='linear')
 # 		ind=np.where(zRef['Data']==0)
 # 		z1['Data'][ind]=0
-# 		z1['Data']=z1['Data']/meta['SF']['vpd']
+# 		z1['Data']=z1['Data']/meta['Climate']['SF']['vpd']
 # 		z1['Data']=z1['Data'].astype('int16')
 # 		#plt.close('all'); plt.matshow(z1['Data'],clim=[0,3000])
 # 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_vpd_norm_1971to2000_' + str(mo+1) + '.tif')
 # 	return
 
 #%% Download daily ECCD data
+# Notes:
 # Station inventory: https://collaboration.cmc.ec.gc.ca/cmc/climate/Get_More_Data_Plus_de_donnees/
-# timeframe = 1: for hourly data, 2: for daily data, 3 for monthly data 
+# timeframe = 1: for hourly data, 2: for daily data, 3 for monthly data
+
+# Steps:
+# # *** Station inventory must be up to date! ***
+# # Download "Station Inventory EN.csv". Keep the original file and create an excel version with top few rows delted
+
+# Problems:
+# Sometimes the html file download fails - I think the ECCC server may be inaccessable sometimes
+
 def DownloadEnvironmentCanadaClimateData(meta):
 
-	# Starting from scratch or just updating?
-	#mode='Start from Scratch'
-	mode='Update Single Year'
-	YearUpdate=2023
-	
+	YearUpTo=2024
+
 	# List of stations
-	dSL=gu.ReadExcel(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.xlsx')
-	
+	dSL=gu.ReadExcel(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.xlsx',
+				sheet_name='Station Inventory EN',
+				skiprows=0)
+
 	# Fix climate ID in dictionary -> excel messes it up with scientific notation
 	dfSL=pd.read_csv(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.csv',skiprows=3)
 	dSL['Climate ID']=dfSL['Climate ID'].values
 	
 	# List of variables collected by Environment Canada
-# 	vL_All=['Data Quality','Max Temp (°C)','Max Temp Flag','Min Temp (°C)','Min Temp Flag','Mean Temp (°C)',
-# 	'Mean Temp Flag','Heat Deg Days (°C)','Heat Deg Days Flag','Cool Deg Days (°C)','Cool Deg Days Flag','Total Rain (mm)',
-# 	'Total Rain Flag','Total Snow (cm)','Total Snow Flag','Total Precip (mm)','Total Precip Flag','Snow on Grnd (cm)',
-# 	'Snow on Grnd Flag','Dir of Max Gust (10s deg)','Dir of Max Gust Flag','Spd of Max Gust (km/h)','Spd of Max Gust Flag']
-	
 	vL=['Max Temp (°C)','Min Temp (°C)','Mean Temp (°C)','Mean Temp Flag','Total Precip (mm)','Total Precip Flag']
-	uS=np.unique(dSL['Station ID'])
+	# 	vL_All=['Data Quality','Max Temp (°C)','Max Temp Flag','Min Temp (°C)','Min Temp Flag','Mean Temp (°C)',
+	# 	'Mean Temp Flag','Heat Deg Days (°C)','Heat Deg Days Flag','Cool Deg Days (°C)','Cool Deg Days Flag','Total Rain (mm)',
+	# 	'Total Rain Flag','Total Snow (cm)','Total Snow Flag','Total Precip (mm)','Total Precip Flag','Snow on Grnd (cm)',
+	# 	'Snow on Grnd Flag','Dir of Max Gust (10s deg)','Dir of Max Gust Flag','Spd of Max Gust (km/h)','Spd of Max Gust Flag']
+
+	# Unique stations
+	uSID=np.unique(dSL['Station ID'])
+
+	# Loop through and download unique stations
 	ListMissing=[]
-	for iS in range(uS.size):
-		indS=np.where(dSL['Station ID']==uS[iS])[0]
-		fout=meta['Paths']['ECCD'] + '\\Daily\Raw\\Combined\\' + str(dSL['Climate ID'][indS[0]]) + '.pkl'
+	for i,sid in enumerate(uSID):
+
+		indS=np.where(dSL['Station ID']==sid)[0]
+		cid=dSL['Climate ID'][indS][0]
+		fout=meta['Paths']['ECCD'] + '\\Daily\Raw\\Combined\\' + str(dSL['Climate ID'][indS][0]) + '.pkl'
+
+		if os.path.exists(fout)==True:
+			continue
+
 		tv=gu.tvec('d',dSL['First Year'][indS],dSL['Last Year'][indS])
 		uY=np.unique(tv[:,0])
-	
-		if mode=='Start from Scratch':
-			# Initialize combined station file if does not exist
-			if os.path.isfile(fout)==False:
-				d={}
-				for v in vL:
-					if v[-4:]=='Flag':
-						d[v]=np.array(['' for _ in range(tv.shape[0])],dtype=object)
-					else:
-						d[v]=-999*np.ones(tv.shape[0])
-			else:
-				print('Already downloaded, move on...')
-				continue
-		else:
-			if YearUpdate in uY:
-				uY=[YearUpdate]
-			else:
-				continue
-				d=gu.ipickle(fout)
-	
-		#if iS<39:
-		#continue
-		#break
-		
-		# Download annual files
-		for yr in uY:
-			if (yr<dSL['First Year'][indS]) | (yr>dSL['Last Year'][indS]):
-				continue
-			print('Working on: ' + str(uS[iS]) + ' ' + str(yr))
-			url='http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&stationID=' + str(uS[iS]) + '&Year=' + str(yr) + '&Month=1&Day=14&timeframe=2&submit=Download+Data'
-	
-			try:
-				testfile=urllib.request.urlretrieve(url,meta['Paths']['ECCD'] + '\\Daily\Raw\\file.csv')
-			except:
-				print('Failed to find download file.')
-				ListMissing.append(uS[iS])
-				continue
-	
-		df=pd.read_csv(meta['Paths']['ECCD'] + '\\Daily\Raw\\file.csv')
-		ind=np.where( (tv[:,0]==yr) )[0]
+		YearFirst=dSL['First Year'][indS]
+		YearLast=np.minimum(dSL['Last Year'][indS],YearUpTo)
+
+		# Initialize dictionary
+		d={}
 		for v in vL:
-			y=df[v].values
-			if y.dtype==object:
-				ikp=np.where(df[v].notna()==True)[0]
+			if v[-4:]=='Flag':
+				d[v]=np.array(['' for _ in range(tv.shape[0])],dtype=object)
 			else:
-				ikp=np.where(np.isnan(y)==False)[0]
-		
-			try:
-				d[v][ind[ikp]]=df[v].values[ikp]
-			except:
-				print('Unknown characters!')
-		
-		#ind=np.where(tv[:,0]==2023)[0]
-		#plt.plot(d['Mean Temp (°C)'][ind],'b-')
-		
+				d[v]=-999*np.ones(tv.shape[0])
+
+		# Download annual files and add annual data to dictionary
+		for iY,Y in enumerate(uY):
+			if (Y>=YearFirst) & (Y<=YearLast):
+				print('Working on: Climate ID ' + str(cid) + ', ' + str(Y))
+				url='http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&stationID=' + str(sid) + '&Year=' + str(Y) + '&Month=1&Day=14&timeframe=2&submit=Download+Data'
+				try:
+					testfile=urllib.request.urlretrieve(url,meta['Paths']['ECCD'] + '\\Daily\Raw\\file.csv')
+				except:
+					print('Failed to find download file.')
+					ListMissing.append(sid)
+					continue
+	
+				df=pd.read_csv(meta['Paths']['ECCD'] + '\\Daily\Raw\\file.csv')
+				iT=np.where( (tv[:,0]==Y) )[0]
+				for v in vL:
+					y=df[v].values
+					if y.dtype==object:
+						ikp=np.where(df[v].notna()==True)[0]
+					else:
+						ikp=np.where(np.isnan(y)==False)[0]
+				
+					try:
+						d[v][iT[ikp]]=df[v].values[ikp]
+					except:
+						print('Unknown characters!')
+
 		# Save
 		gu.opickle(fout,d)
 	
 	return
 
+#%%
+def ImportAHCCD(meta):
+	tvm=gu.tvec('m',1850,2025)
+	d={'tvm':tvm,'Data':{'Monthly':{}}}
+
+	# Monthly
+
+	# Temperature
+	dS=gu.ReadExcel(meta['Paths']['AHCCD'] + '\\Temperature_Stations_Gen3.xls',sheet_name='Temperature_Stations_Gen3_2023',skiprows=3)
+	d['Stations Temp']=dS
+	d['Data']['Monthly']['tmean']=np.nan*np.ones((tvm.shape[0],dS['No'].size))
+	pth=meta['Paths']['AHCCD'] + '\\Homog_monthly_mean_temp_Gen3'
+	fL=os.listdir(pth)
+	for f in fL:
+		iS=np.where( ('mm' + dS['StnId'] + '.txt'==f) )[0]
+		df=pd.read_csv(pth + '\\' + f,skiprows=3)
+		df=df.to_dict()
+		namL=['Annee',' ',' .1',' .2',' .3',' .4',' .5',' .6',' .7',' .8',' .9',' .10'] # ,' .11'
+		for iM,nam in enumerate(namL):
+			for yr in df[nam].keys():
+				if df[nam][yr]>-100:
+					iT=np.where( (tvm[:,0]==yr) & (tvm[:,1]==iM+1) )[0]
+					d['Data']['Monthly']['tmean'][iT,iS]=df[nam][yr]
+	#plt.close('all'); plt.plot(gu.RollingMean(d[:,10],12),'ob-')
+
+	# Precipitation
+	dS=gu.ReadExcel(meta['Paths']['AHCCD'] + '\\Precipitation_Stations.xls',sheet_name='web 2017 463st',skiprows=3)
+	d['Stations Precip']=dS
+	d['Data']['Monthly']['prcp']=np.nan*np.ones((tvm.shape[0],dS['stnid'].size))
+	pth=meta['Paths']['AHCCD'] + '\\Adj_monthly_total_prec'
+	fL=os.listdir(pth)
+	for f in fL:
+		iS=np.where( ('mt' + np.char.strip(dS['stnid']) + '.txt'==f) )[0]
+		df=pd.read_csv(pth + '\\' + f,skiprows=3,encoding='windows-1252')
+
+		idxM=np.arange(1,25,2)
+		for iY in range(len(df)):
+			yr=df.index[iY][0]
+			yJan=df.index[iY][1]
+			y=df.iloc[iY]
+			#lab=y.keys().values
+			y=y.values
+			for iM in range(12):
+				iT=np.where( (tvm[:,0]==yr) & (tvm[:,1]==iM+1) )[0]
+				if iM==0:
+					y0=yJan
+				else:
+					y0=y[idxM[iM-1]]
+				if y0>-100:
+					d['Data']['Monthly']['prcp'][iT,iS]=y0
+
+	#plt.close('all'); plt.plot(d['prcp'][:,26],'-bo')
+
+	# Seasonal
+	tva=np.unique(tvm[:,0])
+	d['tva']=tva
+	d['Data']['Seasonal']={}
+	d['Data']['Seasonal']['wyr']={}
+	d['Data']['Seasonal']['wyr']['tmean']=np.nan*np.ones((tva.size,d['Data']['Monthly']['tmean'].shape[1]))
+	d['Data']['Seasonal']['mjjas']={}
+	d['Data']['Seasonal']['mjjas']['prcp']=np.nan*np.ones((tva.size,d['Data']['Monthly']['prcp'].shape[1]))
+	for i,yr in enumerate(tva[1:]):
+		iT=np.where( (tvm[:,0]==yr-1) & (tvm[:,1]>=10) | (tvm[:,0]==yr) & (tvm[:,1]<10) )[0]
+		d['Data']['Seasonal']['wyr']['tmean'][i,:]=np.mean(d['Data']['Monthly']['tmean'][iT,:],axis=0)
+
+		iT=np.where( (tvm[:,0]==yr) & (tvm[:,1]>=5) & (tvm[:,1]<=9) )[0]
+		d['Data']['Seasonal']['mjjas']['prcp'][i,:]=np.mean(d['Data']['Monthly']['prcp'][iT,:],axis=0)
+
+	# Anomalies
+	iT=np.where( (tva>=1971) & (tva<=2000) )[0]
+	d['Data']['Seasonal']['wyr']['tmean_a']=d['Data']['Seasonal']['wyr']['tmean']-np.tile(np.nanmean(d['Data']['Seasonal']['wyr']['tmean'][iT,:],axis=0),(tva.size,1))
+	d['Data']['Seasonal']['mjjas']['prcp_a']=d['Data']['Seasonal']['mjjas']['prcp']-np.tile(np.nanmean(d['Data']['Seasonal']['mjjas']['prcp'][iT,:],axis=0),(tva.size,1))
+
+	# Stats
+	d['Stats']={}
+
+	d['Stats']['tmean']={}
+	d['Stats']['tmean']['Sample Size']=np.sum(np.isnan(d['Data']['Seasonal']['wyr']['tmean'])==False,axis=0)
+	d['Stats']['tmean']['Percent Complete']=d['Stats']['tmean']['Sample Size']/d['tva'].size*100
+	#plt.hist(d['Stats']['tmean']['Sample Size'])
+	iComplete=np.where( (d['Stations Temp']['Prov']=='BC') & (d['Stats']['tmean']['Percent Complete']>50) )[0]
+	print(iComplete.size)
+
+	d['Stats']['prcp']={}
+	d['Stats']['prcp']['Sample Size']=np.sum(np.isnan(d['Data']['Seasonal']['mjjas']['prcp'])==False,axis=0)
+	d['Stats']['prcp']['Percent Complete']=d['Stats']['prcp']['Sample Size']/d['tva'].size*100
+	#plt.hist(d['Stats']['prcp']['Sample Size'])
+	iComplete=np.where( (d['Stations Precip']['Prov']=='BC') & (d['Stats']['prcp']['Percent Complete']>50) )[0]
+	print(iComplete.size)
+
+	#plt.plot(d['tva'],np.nanmean(d['Data']['Seasonal']['wyr']['tmean'],axis=1),'-ko')
+	#plt.close('all'); plt.plot(d['tva'],d['Data']['Seasonal']['wyr']['tmean'][:,iComplete[5]],'-ko')
+
+	# Save
+	gu.opickle(r'C:\Data\Climate\AHCCD\2025\ahccd.pkl',d)
+
+	return d
+
 #%% Gap-fill reference stations
 def GapFillDailyECCD(meta):
+	# meta=metaNA
+
 	# Import reference stations to gap fill
-	dRS=gu.ReadExcel(meta['Paths']['ECCD'] + '\\Daily\\Reference Station List for Gap Filling.xlsx')
-	# Fix ID of reference stations
-	for i in range(dRS['ID'].size):
-		dRS['ID'][i]=dRS['ID'][i][1:-1]
+	dRS=gu.ReadExcel(meta['Paths']['ECCD'] + '\\Daily\\Reference Station List for Gap Filling.xlsx',sheet_name='Sheet1',skiprows=0)
+
+	# Remove astrices from Climate ID
+	for i in range(dRS['Climate ID'].size):
+		dRS['Climate ID'][i]=dRS['Climate ID'][i][1:-1]
 
 	# Import station list
-	dSL=gu.ReadExcel(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.xlsx')
+	dSL=gu.ReadExcel(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.xlsx',sheet_name='Station Inventory EN',skiprows=0)
+
 	# Fix climate ID in dictionary -> excel messes it up with scientific notation
 	dfSL=pd.read_csv(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.csv',skiprows=3)
 	dSL['Climate ID']=dfSL['Climate ID'].values
 	
 	# Add coordinates for reference stations
-	dRS['Lat']=np.zeros(dRS['ID'].size)
-	dRS['Lon']=np.zeros(dRS['ID'].size)
-	for i in range(dRS['ID'].size):
-		ind=np.where(dSL['Climate ID']==dRS['ID'][i])[0]
+	dRS['Lat']=np.zeros(dRS['Climate ID'].size)
+	dRS['Lon']=np.zeros(dRS['Climate ID'].size)
+	for i in range(dRS['Climate ID'].size):
+		ind=np.where(dSL['Climate ID']==dRS['Climate ID'][i])[0]
 		dRS['Lat'][i]=dSL['Latitude (Decimal Degrees)'][ind]
 		dRS['Lon'][i]=dSL['Longitude (Decimal Degrees)'][ind]
 	srs=gis.ImportSRSs()
 	dRS['X'],dRS['Y']=gis.ReprojectCoordinates(srs['Proj']['Geographic'],srs['Proj']['NACID'],dRS['Lon'],dRS['Lat'])
+	plt.plot(dRS['X'],dRS['Y'],'r^')
 
-	dRS['Neighbour List']=[None]*dRS['ID'].size
-	for i in range(dRS['ID'].size):
+	dRS['Neighbour List']=[None]*dRS['Climate ID'].size
+	for i in range(dRS['Climate ID'].size):
 		dRS['Neighbour List'][i]=np.zeros(10)
 
 	# Import locations of all data
 	f=os.listdir(meta['Paths']['ECCD'] + '\\Daily\\Raw\\Combined')
-	dAll={'Name':np.array(['' for _ in range(len(f))],dtype=object),'Lat':np.zeros(len(f)),'Lon':np.zeros(len(f))}
+	dAll={'Name':np.array(['' for _ in range(len(f))],dtype=object),
+	   'Lat':np.zeros(len(f)),
+	   'Lon':np.zeros(len(f))}
 	for i in range(len(f)):
 		ind=np.where(dSL['Climate ID']==f[i][:-4])[0]
 		if ind.size==0:
@@ -845,7 +983,7 @@ def GapFillDailyECCD(meta):
 
 	# Get Climate IDs for ten closest neighbours for each subset station
 	uID=np.array([])
-	for i in range(dRS['ID'].size):
+	for i in range(dRS['Climate ID'].size):
 		Dist=np.sqrt((dRS['X'][i]-dAll['X'])**2+(dRS['Y'][i]-dAll['Y'])**2)
 		Ord=np.argsort(Dist)
 		dRS['Neighbour List'][i]=dAll['Name'][Ord[0:10]]
@@ -867,6 +1005,7 @@ def GapFillDailyECCD(meta):
 		for Year in meta['tva']:
 			iT2=np.where( (tvd0[:,0]==Year) )[0]
 			tvd1=tvd0[iT2,:]
+
 			d1={}
 			d1['Mean Temp (°C)']=d0['Mean Temp (°C)'][iT2]
 			d1['Total Precip (mm)']=d0['Total Precip (mm)'][iT2]
@@ -883,14 +1022,19 @@ def GapFillDailyECCD(meta):
 					dN['prcp'][iT1,iU]=np.sum(d1['Total Precip (mm)'][iT3[ikp]])
 	gu.opickle(meta['Paths']['ECCD'] + '\\Monthly\\GapFilled\\Data Neighbours.pkl',dN)
 
-	# Import monthly data for reference stations
+	# Import reference station data
 	dRS['Data']={}
 	for v in vL:
-		dRS['Data'][v]=meta['Missing Number']*np.ones((meta['tvm'].shape[0],dRS['ID'].size))
-	for i in range(dRS['ID'].size):
-		indSL=np.where(dSL['Climate ID']==dRS['ID'][i])[0]
+		dRS['Data'][v]=meta['Missing Number']*np.ones((meta['tvm'].shape[0],dRS['Climate ID'].size))
+	for i,id in enumerate(dRS['Climate ID']):
+		indSL=np.where(dSL['Climate ID']==id)[0]
 		tvd0=gu.tvec('d',dSL['First Year'][indSL],dSL['Last Year'][indSL])
-		d0=gu.ipickle(meta['Paths']['ECCD'] + '\\Daily\\Raw\\Combined\\' + dRS['ID'][i] + '.pkl')
+		d0=gu.ipickle(meta['Paths']['ECCD'] + '\\Daily\\Raw\\Combined\\' + id + '.pkl')
+		ind1=np.where(d0['Mean Temp (°C)']>-99)[0]
+		ind2=np.where(d0['Total Precip (mm)']>-99)[0]
+		if (ind1.size==0) & (ind2.size==0):
+			continue
+		print(str(ind1.size) + ' ' + str(ind2.size))
 		for Year in meta['tva']:
 			iT2=np.where( (tvd0[:,0]==Year) )[0]
 			tvd1=tvd0[iT2,:]
@@ -910,13 +1054,19 @@ def GapFillDailyECCD(meta):
 					dRS['Data']['prcp'][iT1,i]=np.sum(d1['Total Precip (mm)'][iT3[ikp]])
 	gu.opickle(meta['Paths']['ECCD'] + '\\Monthly\\GapFilled\\Data Ref Stations.pkl',dRS)
 
+	a=dRS['Data']['tmean']
+	a[a<-55]=np.nan
+	plt.close('all'); plt.plot(np.nanmean(a,axis=1),'b-')
+	plt.close('all'); plt.plot(np.sum(a>-55,axis=0),'b-')
+
 	# Gap fill reference stations
 	dRS['Data GF']={}
 	for v in vL:
 		nN=dN[v].shape[1]
 		dRS['Data GF'][v]=dRS['Data'][v].copy()
-		for i in range(dRS['ID'].size):
+		for i in range(dRS['Climate ID'].size):
 			y=dRS['Data'][v][:,i]
+			#plt.plot(y,'-k.')
 			N_Overlap=np.zeros(nN)
 			mec=np.zeros(nN)
 			for j in range(nN):
@@ -948,56 +1098,57 @@ def GapFillDailyECCD(meta):
 
 #%%
 def ImportUSHCN(meta):
-	# Recent data (long term data nolonger needed as the recent data goes back)
-	
+	# Recent data (long term data no longer needed as the recent data goes back)
+	# Need to convert station list to excel and add headers
+
 	# Manually download (https://www.ncei.noaa.gov/pub/data/ushcn/v2.5/)
-	tar=tarfile.open(r'D:\Data\Climate\US\USHCN\Recent Serial\2023\ushcn.prcp.latest.FLs.52j.tar.gz',"r:gz")
-	tar.extractall(r'D:\Data\Climate\US\USHCN\Recent Serial\2023')
+	tar=tarfile.open(meta['Paths']['USHCN'] + '\\ushcn.prcp.latest.FLs.52j.tar.gz',"r:gz")
+	tar.extractall(meta['Paths']['USHCN'])
 	tar.close()
-	tar=tarfile.open(r'D:\Data\Climate\US\USHCN\Recent Serial\2023\ushcn.tavg.latest.FLs.52j.tar.gz',"r:gz")
-	tar.extractall(r'D:\Data\Climate\US\USHCN\Recent Serial\2023')
+	tar=tarfile.open(meta['Paths']['USHCN'] + '\\ushcn.tavg.latest.FLs.52j.tar.gz',"r:gz")
+	tar.extractall(meta['Paths']['USHCN'])
 	tar.close()
 	
 	# Import station list
-	dSL=gu.ReadExcel(r'D:\Data\Climate\US\USHCN\Recent Serial\2023\ushcn-v2.5-stations.xlsx')
+	dSL=gu.ReadExcel(meta['Paths']['USHCN'] + '\\ushcn-v2.5-stations.xlsx',sheet_name='ushcn-v2.5-stations',skiprows=0)
 	srs=gis.ImportSRSs()
 	dSL['X'],dSL['Y']=gis.ReprojectCoordinates(srs['Proj']['Geographic'],srs['Proj']['NACID'],dSL['Lon'],dSL['Lat'])
 	
 	# Import data
 	dSL['tmean']=meta['Missing Number']*np.ones((meta['tvm'].shape[0],dSL['ID'].size))
 	dSL['prcp']=meta['Missing Number']*np.ones((meta['tvm'].shape[0],dSL['ID'].size))
-	f=os.listdir(r'D:\Data\Climate\US\USHCN\Recent Serial\2023\ushcn.v2.5.5.20230910')
+	f=os.listdir(meta['Paths']['USHCN'] + '\\' + meta['Current Versions']['UCHCN'])
 	w=[11,1,4,1,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4,5,4]
 	for fn in f:
-		df=pd.read_fwf(r'D:\Data\Climate\US\USHCN\Recent Serial\2023\ushcn.v2.5.5.20230910' + '\\' + fn,widths=w,header=None)
+		df=pd.read_fwf(meta['Paths']['USHCN'] + '\\' + meta['Current Versions']['UCHCN'] + '\\' + fn,widths=w,header=None)
 		iS=np.where(dSL['ID']==df[0][0])[0]
 		Year=df[2].values
 		Data=np.ones((Year.size,12))
-	cnt=0
-	for i in range(4,28,2):
-		Data[:,cnt]=df[i].values
-		cnt=cnt+1
-	for iY in range(Year.size):
-		iT=np.where(meta['tvm'][:,0]==Year[iY])[0]
-		if iT.size==0:
-			continue
-		if fn[-4:]=='prcp':
-			dSL['prcp'][iT,iS]=Data[iY,:]/10
-		else:
-			dSL['tmean'][iT,iS]=Data[iY,:]/100
+		cnt=0
+		for i in range(4,28,2):
+			Data[:,cnt]=df[i].values
+			cnt=cnt+1
+		for iY in range(Year.size):
+			iT=np.where(meta['tvm'][:,0]==Year[iY])[0]
+			if iT.size==0:
+				continue
+			if fn[-4:]=='prcp':
+				dSL['prcp'][iT,iS]=Data[iY,:]/10
+			else:
+				dSL['tmean'][iT,iS]=Data[iY,:]/100
 	
 	ind=np.where(dSL['prcp']<0)
 	dSL['prcp'][ind]=np.nan
 	plt.close('all')
 	plt.plot(np.nanmean(dSL['prcp'],axis=1))
 	
-	ind=np.where(dSL['tmean']<-25)
+	ind=np.where(dSL['tmean']<-50)
 	dSL['tmean'][ind]=np.nan
 	plt.close('all')
 	plt.plot(np.nanmean(dSL['tmean'],axis=1))
-	
+
 	# Save
-	gu.opickle(r'D:\Data\Climate\US\USHCN\Recent Serial\2023\Data.pkl',dSL)
+	gu.opickle(meta['Paths']['USHCN'] + '\\Data.pkl',dSL)
 	
 	return
 
@@ -1007,16 +1158,17 @@ def ImportReanalysis(meta,vr,form):
 	# http://www.esrl.noaa.gov/psd/data/gridded/data.ncep.reanalysis.derived.surfaceflux.html
 
 	# Import data
+	pth=r'C:\Data\Climate\Reanlysis\NCEP Global'
 	if vr=='tmean':
-		ds=nc.Dataset(r'C:\Data\Reanalysis\NCEPGlobal\Monthly\air.2m.mon.mean.nc')
+		ds=nc.Dataset(pth + '\\Monthly\\air.2m.mon.mean.nc')
 	elif vr=='prcp':
-		ds=nc.Dataset(r'C:\Data\Reanalysis\NCEPGlobal\Monthly\prate.sfc.mon.mean.nc')
+		ds=nc.Dataset(pth + '\\Monthly\\prate.sfc.mon.mean.nc')
 	elif vr=='ea':
-		ds=nc.Dataset(r'C:\Data\Reanalysis\NCEPGlobal\Monthly\shum.2m.mon.mean.nc')
-		dsT=nc.Dataset(r'C:\Data\Reanalysis\NCEPGlobal\Monthly\air.2m.mon.mean.nc')
+		ds=nc.Dataset(pth + '\\Monthly\\shum.2m.mon.mean.nc')
+		dsT=nc.Dataset(pth + '\\Monthly\\air.2m.mon.mean.nc')
 	elif vr=='vpd':
-		ds=nc.Dataset(r'C:\Data\Reanalysis\NCEPGlobal\Monthly\shum.2m.mon.mean.nc')
-		dsT=nc.Dataset(r'C:\Data\Reanalysis\NCEPGlobal\Monthly\air.2m.mon.mean.nc')
+		ds=nc.Dataset(pth + '\\Monthly\\shum.2m.mon.mean.nc')
+		dsT=nc.Dataset(pth + '\\Monthly\\air.2m.mon.mean.nc')
 	else:
 		return
 	# ds.variables.keys()
@@ -1084,12 +1236,22 @@ def ImportReanalysis(meta,vr,form):
 	return xR2,yR2,zR2,tvR
 
 #%%
-def CalcTemperatureAnomalies(meta):
+def CalcTemperatureAnomaliesFromStationInterp(meta):
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
 
-	# Import station data and combine
+	# Import CA station data
 	dCA=gu.ipickle(meta['Paths']['ECCD'] + '\\Monthly\\GapFilled\\Data Ref Stations Gap Filled.pkl')
-	dUS=gu.ipickle(r'C:\Data\Climate\USHCN\Recent Serial\2023\Data.pkl')
+
+	ind=np.where(dCA['Data GF']['tmean']<-55)
+	dCA['Data GF']['tmean'][ind]=np.nan
+	#plt.plot(np.mean(dCA['Data GF']['tmean'][0::12,:],axis=1),'b-')
+
+	# Import US station data
+	yr_us=2025
+	dUS=gu.ipickle(r'C:\Data\Climate\USHCN\Recent Serial' + '\\' + str(yr_us) + '\\Data.pkl')
+	ind=np.where(dUS['tmean']<-55)
+	dUS['tmean'][ind]=np.nan
+	#plt.plot(np.mean(dUS['tmean'][0::12,:],axis=1),'r-')
 
 	# Combine
 	dS={}
@@ -1097,15 +1259,16 @@ def CalcTemperatureAnomalies(meta):
 	dS['X']=np.append(dCA['X'],dUS['X'])
 	dS['Y']=np.append(dCA['Y'],dUS['Y'])
 
+	# Convert missing data to nan
 	ind=np.where(dS['tmean']<-55)
 	dS['tmean'][ind]=np.nan
 
 	# Convert to anomalies 1971-2000 base period
-	for mo in range(12):
-		iMo=np.where( (meta['tvm'][:,1]==mo+1) )[0]
-		ind=np.where( (meta['tvm'][:,0]>=1971) & (meta['tvm'][:,0]<=2000) & (meta['tvm'][:,1]==mo+1) )[0]
-		mu=np.nanmean(dS['tmean'][ind,:],axis=0)
-		dS['tmean'][iMo,:]=dS['tmean'][iMo,:]-np.tile(mu,(iMo.size,1))
+	for iM in range(12):
+		iT=np.where( (meta['tvm'][:,1]==iM+1) )[0]
+		iBP=np.where( (meta['tvm'][:,0]>=1971) & (meta['tvm'][:,0]<=2000) & (meta['tvm'][:,1]==iM+1) )[0]
+		mu=np.nanmean(dS['tmean'][iBP,:],axis=0)
+		dS['tmean'][iT,:]=dS['tmean'][iT,:]-np.tile(mu,(iT.size,1))
 
 	# Import reanalysis
 	xR,yR,zR,tvR=ImportReanalysis(meta,'tmean','anom')
@@ -1115,8 +1278,7 @@ def CalcTemperatureAnomalies(meta):
 
 		zS0=dS['tmean'][iT,:]
 		ikp=np.where( (zS0>-45) & (zS0<45) )[0]
-		zS0=zS0[ikp]
-		xS0,yS0=dS['X'][ikp],dS['Y'][ikp]
+		zS0,xS0,yS0=zS0[ikp],dS['X'][ikp],dS['Y'][ikp]
 
 		indR=np.where( (tvR[:,0]==meta['tvm'][iT,0]) & (tvR[:,1]==meta['tvm'][iT,1]) )[0]
 		zR0=zR[indR[0],:,:]
@@ -1156,29 +1318,33 @@ def CalcTemperatureAnomalies(meta):
 		maskI=mask[0::itvl,0::itvl]
 
 		iZ,iE,iN=gu.PolynomialSurfaceFit(x0/1000,y0/1000,z0,xI/1000,yI/1000,maskI,beta)
-		#plt.close('all'); plt.matshow(iZ,clim=[-2,6])
+		#plt.close('all'); plt.matshow(iZ,clim=[-6,6])
+		#gu.opickle(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\50k\\na1k_tmean_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif',iZ)
 
-		iZ2=griddata(np.column_stack((xI.flatten(),yI.flatten())),iZ.flatten(),(zRef['X'],zRef['Y']),method='linear')
-		ind=np.where(zRef['Data']==0)
-		iZ2[ind]=meta['Missing Number']
-		#plt.close('all'); plt.matshow(iZ2,clim=[-6,6])
-		z=copy.deepcopy(zRef)
-		z['Data']=iZ2/meta['SF']['tmean']
-		z['Data']=z['Data'].astype('int16')
-		z['Data']=z['Data']*zRef['Data']
-		#plt.close('all'); plt.matshow(z['Data'],clim=[-800,800])
-		gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_tmean_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')
+		flg=1
+		if flg==1:
+			iZ2=griddata(np.column_stack((xI.flatten(),yI.flatten())),iZ.flatten(),(zRef['X'],zRef['Y']),method='linear')
+			ind=np.where(zRef['Data']==0)
+			iZ2[ind]=meta['Missing Number']
+			#plt.close('all'); plt.matshow(iZ2,clim=[-6,6])
+			z=copy.deepcopy(zRef)
+			z['Data']=iZ2/meta['Climate']['SF']['tmean']
+			z['Data']=z['Data'].astype('int16')
+			z['Data']=z['Data']*zRef['Data']
+			#plt.close('all'); plt.matshow(z['Data'],clim=[-800,800])
+			gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_tmean_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')
 
 	return
 
 #%%
-def CalcPrecipAnomalies(meta):
+def CalcPrecipAnomaliesFromStationInterp(meta):
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
 	zRefB=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid Buf'])
 
 	# Import station data and combine
 	dCA=gu.ipickle(meta['Paths']['ECCD'] + '\\Monthly\\GapFilled\\Data Ref Stations Gap Filled.pkl')
-	dUS=gu.ipickle(r'C:\Data\Climate\USHCN\Recent Serial\2023\Data.pkl')
+	yrUS=2025
+	dUS=gu.ipickle(r'C:\Data\Climate\USHCN\Recent Serial' + '\\' + str(yrUS) + '\\Data.pkl')
 
 	# Combine
 	dS={}
@@ -1190,10 +1356,10 @@ def CalcPrecipAnomalies(meta):
 
 	# Convert to anomalies 1971-2000 base period
 	for mo in range(12):
-			iMo=np.where( (meta['tvm'][:,1]==mo+1) )[0]
-			ind=np.where( (meta['tvm'][:,0]>=1971) & (meta['tvm'][:,0]<=2000) & (meta['tvm'][:,1]==mo+1) )[0]
-			mu=np.mean(dS['prcp'][ind,:],axis=0)
-			dS['prcp'][iMo,:]=dS['prcp'][iMo,:]-np.tile(mu,(iMo.size,1))
+		iMo=np.where( (meta['tvm'][:,1]==mo+1) )[0]
+		ind=np.where( (meta['tvm'][:,0]>=1971) & (meta['tvm'][:,0]<=2000) & (meta['tvm'][:,1]==mo+1) )[0]
+		mu=np.mean(dS['prcp'][ind,:],axis=0)
+		dS['prcp'][iMo,:]=dS['prcp'][iMo,:]-np.tile(mu,(iMo.size,1))
 
 	# Import reanalysis
 	xR,yR,zR,tvR=ImportReanalysis(meta,'prcp','anom')
@@ -1251,7 +1417,7 @@ def CalcPrecipAnomalies(meta):
 		#plt.close('all'); plt.matshow(iZ2,clim=[-200,200])
 		z=copy.deepcopy(zRef)
 		z['Data']=iZ2
-		z['Data']=z['Data']/meta['SF']['prcp']
+		z['Data']=z['Data']/meta['Climate']['SF']['prcp']
 		z['Data']=z['Data'].astype('int16')
 		#plt.close('all'); plt.matshow(z['Data'],clim=[-2000,2000])
 		gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_prcp_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')
@@ -1259,22 +1425,24 @@ def CalcPrecipAnomalies(meta):
 
 # for iT in range(meta['tvm'].shape[0]):
 # 	z=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_prcp_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')
-# 	z['Data']=z['Data'].astype('float')*meta['SF']['prcp']
+# 	z['Data']=z['Data'].astype('float')*meta['Climate']['SF']['prcp']
 # 	z['Data']=z['Data']*meta['Parameters']['DIM'][mo]
 
-# 	z['Data']=z['Data']/meta['SF']['prcp']
+# 	z['Data']=z['Data']/meta['Climate']['SF']['prcp']
 # 	z['Data']=z['Data'].astype('int16')
 # 	gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_prcp_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')
 
 #%% Import CRU Time Series dataset
-def CalcTempAnomaliesFromCRU(metaNA):
+def CalcTemperatureAnomaliesFromCRU(metaNA):
+
 	# Given in numpy mask arrays so you need to use the filled method
 	srs=gis.ImportSRSs()
 	zRef=gis.OpenGeoTiff(metaNA['Paths']['na1k Ref Grid'])
-	tv=gu.tvec('m',1901,2023)
+	tv=gu.tvec('m',1901,metaNA['YearLast'])
 	
 	# Import netcdf data
-	fin=r'C:\Data\Climate\CRU\cru_ts4.07.1901.2022.tmp.dat.nc.gz'
+	# C:\Data\Climate\CRU\cru_ts4.09.1901.2024.tmp.dat.gz
+	fin=metaNA['Paths']['CRU'] + '\\' + metaNA['Current Versions']['CRU'] + '.tmp.dat.nc.gz'
 	tmp0={}
 	with gzip.open(fin) as gz:
 			with nc.Dataset('dummy',mode='r',memory=gz.read()) as ds:
@@ -1312,13 +1480,14 @@ def CalcTempAnomaliesFromCRU(metaNA):
 
 #%% Import CRU Time Series dataset
 def CalcVapourPressureDefictAnomaliesFromCRU(meta):
+
 	# Given in numpy mask arrays so you need to use the filled method
 	srs=gis.ImportSRSs()
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
-	tv=gu.tvec('m',1901,2023)
+	tv=gu.tvec('m',1901,meta['YearLast'])
 	
-	# Import netcdf data
-	fin=r'C:\Data\Climate\CRU\cru_ts4.07.1901.2022.vap.dat.nc.gz'
+	# Import vapour pressure
+	fin=r'C:\Data\Climate\CRU' + '\\' + meta['Current Versions']['CRU'] + '.vap.dat.nc.gz'
 	vap0={}
 	with gzip.open(fin) as gz:
 		with nc.Dataset('dummy',mode='r',memory=gz.read()) as ds:
@@ -1329,8 +1498,9 @@ def CalcVapourPressureDefictAnomaliesFromCRU(meta):
 	vap0['vap'][ind]=meta['Missing Number']
 	ind=np.where(vap0['vap']>meta['Missing Number'])
 	np.mean(vap0['vap'][ind])
-	
-	fin=r'C:\Data\Climate\CRU\cru_ts4.07.1901.2022.tmp.dat.nc.gz'
+
+	# Import air temperature
+	fin=r'C:\Data\Climate\CRU' + '\\' + meta['Current Versions']['CRU'] + '.tmp.dat.nc.gz'
 	tmp0={}
 	with gzip.open(fin) as gz:
 			with nc.Dataset('dummy',mode='r',memory=gz.read()) as ds:
@@ -1346,15 +1516,16 @@ def CalcVapourPressureDefictAnomaliesFromCRU(meta):
 	ind=np.where(esat0>999999)
 	esat0[ind]=meta['Missing Number']
 	
+	# Calculate vapour pressure deficit
 	vpd0=np.maximum(0,esat0-vap0['vap'])
 	ind=np.where(vpd0>999)
 	vpd0[ind]=meta['Missing Number']
 	
 	# Convert to anomalies
-	for mo in range(12):
+	for iM in range(12):
 		#itmu=np.where( (tv[:,0]>=1971) & (tv[:,0]<=2000) & (tv[:,1]==mo) )
-		mu=np.mean(vpd0[mo::12,:,:],axis=0)
-		vpd0[mo::12,:,:]=vpd0[mo::12,:,:]-np.tile(mu,(int(vpd0.shape[0]/12),1,1))
+		mu=np.mean(vpd0[iM::12,:,:],axis=0)
+		vpd0[iM::12,:,:]=vpd0[iM::12,:,:]-np.tile(mu,(int(vpd0.shape[0]/12),1,1))
 	
 	# Isolate BC area  (so that interpolation is faster)
 	lon,lat=np.meshgrid(vap0['lon'].filled(),vap0['lat'].filled(),sparse=False)
@@ -1370,11 +1541,56 @@ def CalcVapourPressureDefictAnomaliesFromCRU(meta):
 		z1=copy.deepcopy(zRef)
 		z1['Data']=griddata(xy0,z0,(zRef['X'],zRef['Y']),method='linear')
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[-6,6])
-		z1['Data']=z1['Data']/meta['SF']['vpd']
+		z1['Data']=z1['Data']/meta['Climate']['SF']['vpd']
 		z1['Data']=z1['Data'].astype('int16')
 		z1['Data']=z1['Data']*zRef['Data']
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[-600,600])
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_vpd_anom_' + str(tv[iT,0]) + '_' + str(tv[iT,1]) + '.tif')
+
+	return
+
+#%%
+def CalcRadiationAnamlies(meta):
+
+	# Given in numpy mask arrays so you need to use the filled method
+	srs=gis.ImportSRSs()
+	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
+
+	d0=gu.ReadNC(r'C:\Data\Climate\Reanlysis\NCEP Global\Monthly\dswrf.sfc.mon.mean.nc')
+	tvR=gu.tvec('m',1948,meta['YearLast'])
+
+	lat0,lon0=np.meshgrid(d0['lat'],d0['lon'])
+	ind=np.where(lon0>180)[0]; lon0[ind]=lon0[ind]-360
+	x1,y1=srs['Proj']['NACID'](lon0,lat0)
+	bw=100000
+	indS=np.where( (x1>=zRef['xmin']-bw) & (x1<=zRef['xmax']+bw) & (y1>=zRef['ymin']-bw) & (y1<=zRef['ymax']+bw) )
+	xy0=np.column_stack((x1[indS],y1[indS]))
+
+	# Convert to anomalies
+	z_anom=d0['dswrf'][0:tvR.shape[0],:,:]
+	for iM in range(12):
+		itmu=np.where( (tvR[:,0]>=1971) & (tvR[:,0]<=2000) & (tvR[:,1]==iM+1) )
+		mu=np.mean(np.squeeze(z_anom[itmu,:,:]),axis=0)
+		z_anom[iM::12,:,:]=z_anom[iM::12,:,:]-np.tile(mu,(int(z_anom.shape[0]/12),1,1))
+
+	for iT0 in range(tvR.shape[0]):
+		iT=tvR.shape[0]-iT0
+		try:
+			z0=z_anom[iT,:,:].T
+		except:
+			continue
+		z1=griddata(xy0,z0[indS],(zRef['X'],zRef['Y']),method='cubic')
+		z1=z1*86400/1e6 # Converted from W/m2 to MJ/m2/d-1
+
+		z2=copy.deepcopy(zRef)
+		z2['Data']=z1
+		#plt.close('all'); plt.matshow(z2['Data'],clim=[-3,3])
+		z2['Data']=z2['Data']/meta['Climate']['SF']['rswd']
+		z2['Data']=z2['Data'].astype('int16')
+		z2['Data']=z2['Data']*zRef['Data']
+		#plt.close('all'); plt.matshow(z1['Data'],clim=[-600,600])
+		gis.SaveGeoTiff(z2,meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_rswd_anom_' + str(tvR[iT,0]) + '_' + str(tvR[iT,1]) + '.tif')
+
 	return
 
 #%%
@@ -1391,7 +1607,7 @@ def CalcVapourPressureDefictAnomaliesFromReanalysis(meta,year):
 		z1['Data']=griddata(np.column_stack((xR.flatten(),yR.flatten())),zR0.flatten(),(zRef['X'],zRef['Y']),method='linear')
 		ind=np.where(zRef['Data']==0)
 		z1['Data'][ind]=0
-		z1['Data']=z1['Data']/meta['SF']['vpd']
+		z1['Data']=z1['Data']/meta['Climate']['SF']['vpd']
 		z1['Data']=z1['Data'].astype('int16')
 		#plt.matshow(z1['Data'],clim=[-20,20])
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_vpd_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')
@@ -1417,20 +1633,24 @@ def CalcSurfaceWaterBalance(meta):
 	# Import normals
 	nrms={}
 	nrms['tmean']=[None]*12
-	nrms['rswn']=[None]*12
+	nrms['rswd']=[None]*12
 	nrms['prcp']=[None]*12
 	nrms['vpd']=[None]*12
 	for mo in range(12):
-		nrms['tmean'][mo]=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['SF']['tmean']
-		nrms['rswn'][mo]=(1-meta['Parameters']['Albedo']['Forest Coniferous'])*gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_rswd_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['SF']['rswd']
-		nrms['prcp'][mo]=np.maximum(0,gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_prcp_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['SF']['prcp'])
-		nrms['vpd'][mo]=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_vpd_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['SF']['vpd']
+		nrms['tmean'][mo]=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['tmean']
+		nrms['rswd'][mo]=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_rswd_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['rswd']
+		nrms['prcp'][mo]=np.maximum(0,gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_prcp_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['prcp'])
+		nrms['vpd'][mo]=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_vpd_norm_1971to2000_' + str(mo+1) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['vpd']
 
 	#plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(14,14)) # See if it is working
 	#cnt=0
 	vi={}
 	for iT in range(meta['tvm'].shape[0]):
 		if meta['tvm'][iT,0]<1950:
+			continue
+		if meta['tvm'][iT,0]<1986:
+			continue
+		if meta['tvm'][iT,0]>1997:
 			continue
 		print('Year:' + str(meta['tvm'][iT,0]) + ', Month:' + str(meta['tvm'][iT,1]) )
 		mo=meta['tvm'][iT,1]
@@ -1439,10 +1659,11 @@ def CalcSurfaceWaterBalance(meta):
 		vi['LAI']=5.0
 		vi['Gs']=0.010
 		vi['Ga']=0.058
-		vi['tmean']=np.maximum(-50,nrms['tmean'][iMo]+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_tmean_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')['Data'][iMask].astype('float')*meta['SF']['tmean'])
-		vi['prcp']=np.maximum(0,nrms['prcp'][iMo]+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_prcp_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')['Data'][iMask].astype('float')*meta['SF']['prcp'])
-		vi['vpd']=np.maximum(0.01,nrms['vpd'][iMo]+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_vpd_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')['Data'][iMask].astype('float')*meta['SF']['vpd'])
-		vi['rswn']=nrms['rswn'][mo-1]
+		vi['tmean']=np.maximum(-50,nrms['tmean'][iMo]+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_tmean_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['tmean'])
+		vi['prcp']=np.maximum(0,nrms['prcp'][iMo]+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_prcp_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['prcp'])
+		vi['vpd']=np.maximum(0.01,nrms['vpd'][iMo]+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_vpd_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['vpd'])
+		#vi['rswn']=nrms['rswn'][iMo]
+		vi['rswn']=(1-meta['Parameters']['Albedo']['Forest Coniferous'])*(nrms['rswd'][iMo]+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_rswd_anom_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')['Data'][iMask].astype('float')*meta['Climate']['SF']['rswd'])
 
 		vo=gaia.WBM_SparseGrid(par,vi)
 
@@ -1473,7 +1694,7 @@ def CalcSurfaceWaterBalance(meta):
 			z1=copy.deepcopy(zRef)
 			z1['Data']=meta['Missing Number']*np.ones(zRef['Data'].shape,dtype='float')
 			z1['Data'][iMask]=vo[v]
-			z1['Data'][iMask]=z1['Data'][iMask]/meta['SF'][v]
+			z1['Data'][iMask]=z1['Data'][iMask]/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			# plt.close('all'); plt.matshow(z1['Data'],clim=[0,6])
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Monthly\\Actual\\na1k_' + v + '_actual_' + str(meta['tvm'][iT,0]) + '_' + str(meta['tvm'][iT,1]) + '.tif')
@@ -1550,8 +1771,8 @@ def CalcThornthwaitesClassification(meta):
 
 #%%
 def CalcSummariesBasicVariables(meta):
+	#meta=metaNA
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
-	#iOut=np.where(zRef['Data']==0)
 
 	# Water Year
 	mo=np.arange(1,13,1)
@@ -1560,16 +1781,10 @@ def CalcSummariesBasicVariables(meta):
 		# Import Normals
 		zN=np.zeros(zRef['Data'].shape)
 		for iM in range(mo.size):
-			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 		zN=zN/mo.size
 
 		for iT in range(meta['tva'].size):
-			if (meta['tva'][iT]<2023):
-				# Cannot calculate the first winter (missing previous december)
-				continue
-			if (meta['tva'][iT]>2023):
-				# Cannot calculate the first winter (missing previous december)
-				continue
 			if meta['tva'][iT]<1951:
 				continue
 			# Import anomalies
@@ -1577,15 +1792,15 @@ def CalcSummariesBasicVariables(meta):
 			zA=np.zeros(zRef['Data'].shape)
 			for iM in range(mo.size):
 				if iM<=2:
-					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]-1) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]-1) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 				else:
-					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 			zA=zA/mo.size
 			z1=copy.deepcopy(zRef)
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zA
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_wyr_' + str(meta['tva'][iT]) + '.tif')
 	
@@ -1594,27 +1809,27 @@ def CalcSummariesBasicVariables(meta):
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zN+zA
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_wyr_' + str(meta['tva'][iT]) + '.tif')
 
 	# Warm season
 	mo=np.arange(5,10,1)
 	vL=['tmean','prcp','rswd','vpd','ea_fromtmin','ea_biasadj']
-	vL=['rswd','vpd','ea_fromtmin','ea_biasadj']
-	vL=['prcp']
+	#vL=['rswd','vpd','ea_fromtmin','ea_biasadj']
+	#vL=['prcp']
 	for v in vL:
 		# Import Normals
 		zN=np.zeros(zRef['Data'].shape)
 		for iM in range(mo.size):
-			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 		zN=zN/mo.size
 
 		# Save warm season normals
 		z1=copy.deepcopy(zRef)
 		z1['Data']=zN
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[-10,12])
-		z1['Data']=z1['Data']/meta['SF'][v]
+		z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 		z1['Data']=z1['Data'].astype('int16')
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_mjjas.tif')
 
@@ -1624,21 +1839,21 @@ def CalcSummariesBasicVariables(meta):
 			continue
 
 		for iT in range(meta['tva'].size):
-			if meta['tva'][iT]>2023:
-				continue
+			#if meta['tva'][iT]!=2024:
+			#	continue
 			if meta['tva'][iT]<1951:
 				continue
 
 			# Import anomalies
 			zA=np.zeros(zRef['Data'].shape)
 			for iM in range(mo.size):
-				zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+				zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 			zA=zA/mo.size
 			z1=copy.deepcopy(zRef)
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zA
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_mjjas_' + str(meta['tva'][iT]) + '.tif')
 
@@ -1651,7 +1866,7 @@ def CalcSummariesBasicVariables(meta):
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zR
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(meta['tva'][iT]) + '.tif')
 
@@ -1662,37 +1877,28 @@ def CalcSummariesBasicVariables(meta):
 		# Import Normals
 		zN=np.zeros(zRef['Data'].shape)
 		for iM in range(mo.size):
-			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 		zN=zN/mo.size
 
 		# Save normals
 		z1=copy.deepcopy(zRef)
 		z1['Data']=zN
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[-10,12])
-		z1['Data']=z1['Data']/meta['SF'][v]
+		z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 		z1['Data']=z1['Data'].astype('int16')
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_ann.tif')
 
-		# 		if np.isin(v,['prcp'])==True:
-		# 			# Don't calculate time series for these variables
-		# 			continue
-
 		for iT in range(meta['tva'].size):
-			if (meta['tva'][iT]>2022):
-				# Cannot calculate the first winter (missing previous december)
-				continue
-			if meta['tva'][iT]<1951:
-				continue
 			# Import anomalies
 			zA=np.zeros(zRef['Data'].shape)
 			for iM in range(mo.size):
-				zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+				zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 			zA=zA/mo.size
 			z1=copy.deepcopy(zRef)
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zA
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_ann_' + str(meta['tva'][iT]) + '.tif')
 	
@@ -1701,7 +1907,7 @@ def CalcSummariesBasicVariables(meta):
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zN+zA
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_ann_' + str(meta['tva'][iT]) + '.tif')
 
@@ -1712,19 +1918,19 @@ def CalcSummariesBasicVariables(meta):
 		# Import normals
 		zN=np.zeros(zRef['Data'].shape)
 		for iM in range(mo.size):
-			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+			zN=zN+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_' + v + '_norm_1971to2000_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 		zN=zN/mo.size
 
 		# Save normals
 		z1=copy.deepcopy(zRef)
 		z1['Data']=zN
 		#plt.close('all'); plt.matshow(z1['Data'],clim=[-10,12])
-		z1['Data']=z1['Data']/meta['SF'][v]
+		z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 		z1['Data']=z1['Data'].astype('int16')
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_djf.tif')
 	
 		for iT in range(meta['tva'].size):
-			if (meta['tva'][iT]>2023) | (iT==0):
+			if (iT==0):
 				# Cannot calculate the first winter (missing previous december)
 				continue
 	
@@ -1732,15 +1938,15 @@ def CalcSummariesBasicVariables(meta):
 			zA=np.zeros(zRef['Data'].shape)
 			for iM in range(mo.size):
 				if mo[iM]==12:
-					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]-1) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]-1) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 				else:
-					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+					zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 			zA=zA/mo.size
 			z1=copy.deepcopy(zRef)
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zA
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_djf_' + str(meta['tva'][iT]) + '.tif')
 	
@@ -1749,7 +1955,7 @@ def CalcSummariesBasicVariables(meta):
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zN+zA
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_djf_' + str(meta['tva'][iT]) + '.tif')
 
@@ -1757,30 +1963,30 @@ def CalcSummariesBasicVariables(meta):
 
 #%%
 def CalcSummariesWB(meta):
+
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
 	iMask=np.where(zRef['Data']==1)
 	iOut=np.where(zRef['Data']==0)
-	tvN=np.arange(1971,2001,1)
+	tvN=np.arange(1971,2000+1,1)
 
 	# Warm season (May-Sept)
 	mo=np.arange(5,10,1)
-	vL=['etp','ws','cwd','cmi']
+	vL=['etp','eta','ws','cwd','cmi']
 	for v in vL:
 		print(v)
 		for iT in range(meta['tva'].size):
-			if meta['tva'][iT]>2023:
+			if meta['tva'][iT]<1950:
 				continue
-
 			# Import actual monthly values directly from output of water balance model
 			zR=np.zeros(zRef['Data'].shape)
 			for iM in range(mo.size):
-				zR=zR+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Actual\\na1k_' + v + '_actual_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['SF'][v]
+				zR=zR+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Actual\\na1k_' + v + '_actual_' + str(meta['tva'][iT]) + '_' + str(mo[iM]) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 			zR=zR/mo.size
 			z1=copy.deepcopy(zRef)
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=zR
 			#plt.close('all'); plt.matshow(z1['Data'],clim=[0,12])
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(meta['tva'][iT]) + '.tif')
 
@@ -1789,22 +1995,22 @@ def CalcSummariesWB(meta):
 		z1=copy.deepcopy(zRef)
 		z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 		for iT in range(tvN.size):
- 			z1['Data']=z1['Data']+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(tvN[iT]) + '.tif')['Data'].astype(float)*meta['SF'][v]
+ 			z1['Data']=z1['Data']+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(tvN[iT]) + '.tif')['Data'].astype(float)*meta['Climate']['SF'][v]
 		z1['Data']=z1['Data']/tvN.size
-		z1['Data']=z1['Data']/meta['SF'][v]
+		z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 		z1['Data']=z1['Data'].astype('int16')
 		#plt.matshow(z1['Data'],clim=[-40,40])
 		gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_mjjas.tif')
 
 		# Save warm-season anomalies
 		print('Anomalies:')
-		zN=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_mjjas.tif')['Data'].astype(float)*meta['SF'][v]
+		zN=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_mjjas.tif')['Data'].astype(float)*meta['Climate']['SF'][v]
 		for iT in range(meta['tva'].size):
-			if meta['tva'][iT]>2023:
+			if meta['tva'][iT]<1950:
 				continue
-			z0=(gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(meta['tva'][iT]) + '.tif')['Data'].astype(float)*meta['SF'][v])-zN
+			z0=(gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(meta['tva'][iT]) + '.tif')['Data'].astype(float)*meta['Climate']['SF'][v])-zN
 			z1=copy.deepcopy(zRef)
-			z1['Data']=z0/meta['SF'][v]
+			z1['Data']=z0/meta['Climate']['SF'][v]
 			z1['Data']=z1['Data'].astype('int16')
 			#plt.matshow(z1['Data'],clim=[-40,40])
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_mjjas_' + str(meta['tva'][iT]) + '.tif')
@@ -1813,11 +2019,11 @@ def CalcSummariesWB(meta):
 		print('S.D.:')
 		z0=np.zeros((tvN.size,iMask[0].size),dtype='float')
 		for iT in range(tvN.size):
-			z0[iT,:]=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(tvN[iT]) + '.tif')['Data'][iMask].astype(float)*meta['SF'][v]
+			z0[iT,:]=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(tvN[iT]) + '.tif')['Data'][iMask].astype(float)*meta['Climate']['SF'][v]
 		z1=copy.deepcopy(zRef)
 		z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 		z1['Data'][iMask]=np.std(z0,axis=0)
-		z1['Data']=z1['Data']/meta['SF'][v]
+		z1['Data']=z1['Data']/meta['Climate']['SF'][v]
 		z1['Data']=z1['Data'].astype('int16')
 		z1['Data']=z1['Data']*zRef['Data']
 		#plt.matshow(z1['Data'],clim=[-40,40])
@@ -1825,24 +2031,23 @@ def CalcSummariesWB(meta):
 
 		# Save warm-season z-scores
 		print('Z-scores:')
-		zN=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_mjjas.tif')['Data'].astype(float)*meta['SF'][v]
-		zSD=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_stdev_1971to2000_mjjas.tif')['Data'].astype(float)*meta['SF'][v]
+		zN=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_mjjas.tif')['Data'].astype(float)*meta['Climate']['SF'][v]
+		zSD=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_stdev_1971to2000_mjjas.tif')['Data'].astype(float)*meta['Climate']['SF'][v]
 		for iT in range(meta['tva'].size):
-			if meta['tva'][iT]>2023:
+			if meta['tva'][iT]<1950:
 				continue
-			z0=((gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(meta['tva'][iT]) + '.tif')['Data'].astype(float)*meta['SF'][v])-zN)/zSD
+			z0=((gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Actual\\na1k_' + v + '_actual_mjjas_' + str(meta['tva'][iT]) + '.tif')['Data'].astype(float)*meta['Climate']['SF'][v])-zN)/zSD
 			z1=copy.deepcopy(zRef)
 			z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 			z1['Data']=z0
-			z1['Data']=z1['Data']/meta['SF'][v]
+			z1['Data']=z1['Data']/meta['Climate']['SF']['zscore']
 			z1['Data']=z1['Data'].astype('int16')
 			#plt.matshow(z1['Data'],clim=[-40,40])
 			gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Zscores\\na1k_' + v + '_zscore_mjjas_' + str(meta['tva'][iT]) + '.tif')
 
 	# Save annual normal
 	mo=np.arange(1,13,1)
-	vL=['runoff']
-	vL=['etp']
+	vL=['etp','runoff']
 	for v in vL:
 		z0=np.zeros(zRef['Data'].shape,dtype='float')
 		for iM in range(mo.size):
@@ -1860,11 +2065,11 @@ def CalcSummariesWB(meta):
 	z1=copy.deepcopy(zRef)
 	z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 	for i in range(len(mL)):
-		z1['Data']=z1['Data']+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_wsp_norm_1971to2000_' + str(mL[i]) + '.tif')['Data'].astype(float)*meta['SF']['wsp']
+		z1['Data']=z1['Data']+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_wsp_norm_1971to2000_' + str(mL[i]) + '.tif')['Data'].astype(float)*meta['Climate']['SF']['wsp']
 	z1['Data']=z1['Data']/len(mL)
 	z1['Data'][iOut]=meta['Missing Number']
 	# plt.matshow(z1['Data'],clim=[0,500])
-	z1['Data']=z1['Data']/meta['SF']['wsp']
+	z1['Data']=z1['Data']/meta['Climate']['SF']['wsp']
 	z1['Data']=z1['Data'].astype('int16')
 	gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_wsp_norm_1971to2000_djf.tif')
 
@@ -1873,105 +2078,167 @@ def CalcSummariesWB(meta):
 	z1=copy.deepcopy(zRef)
 	z1['Data']=np.zeros(zRef['Data'].shape,dtype='float')
 	for i in range(len(mL)):
-		z1['Data']=z1['Data']+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_melt_norm_1971to2000_' + str(mL[i]) + '.tif')['Data'].astype(float)*meta['SF']['melt']
+		z1['Data']=z1['Data']+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_melt_norm_1971to2000_' + str(mL[i]) + '.tif')['Data'].astype(float)*meta['Climate']['SF']['melt']
 	z1['Data']=z1['Data']/len(mL)
 	z1['Data'][iOut]=meta['Missing Number']
 	# plt.matshow(z1['Data'],clim=[0,5])
-	z1['Data']=z1['Data']/meta['SF']['melt']
+	z1['Data']=z1['Data']/meta['Climate']['SF']['melt']
 	z1['Data']=z1['Data'].astype('int16')
 	gis.SaveGeoTiff(z1,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_melt_norm_1971to2000_jfmam.tif')
 
 	return
 
 #%%
-def CalcTimeSeriesByEZ(meta):
+def CalcSummaryTimeSeries(meta):
+
 	zPB=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\PoliticalBoundaries.tif')['Data']
 	zEZ=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Ecozones_CEC_L1.tif')['Data']
-	indPB=np.where( (zPB==meta['LUT']['PB']['CA-BC']) )
-	zEZf=zEZ[indPB]
-	uEZ=np.unique(zEZf)
-	uEZ=uEZ[uEZ>0]
+	zLC=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\LandCover_Comp1_2019.tif')['Data'] # from BC1HA
+
+	tva=np.arange(1951,meta['YearLast']+1,1)
+
+	#--------------------------------------------------------------------------
+	# BC Forests
+	#--------------------------------------------------------------------------
+	ikp=np.where( (zPB==meta['LUT']['PB']['CA-BC']) & (zLC==1) )
 	d={}
 
-	# Warm season
-	vL=['tmean','prcp','cwd','cmi','ws']
-	for i in range(uEZ.size):
-		cd=lut_n2s(meta['LUT']['EZ'],uEZ[i])[0]
-		d[cd]={'mjjas':{}}
-		for v in vL:
-			d[cd]['mjjas'][v]=np.nan*np.ones((meta['tva'].size))
-	for v in vL:
-		print(v)
-		for iT in range(meta['tva'].size):
-			try:
-				z0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_mjjas_' + str(meta['tva'][iT]) + '.tif')['Data'][indPB]
-				if np.isin(v,['prcp','cwd','cmi'])==True:
-					z0=z0/30.5
-			except:
-				pass
-			for iU in range(uEZ.size):
-				cd=lut_n2s(meta['LUT']['EZ'],uEZ[iU])[0]
-				ind=np.where( (zEZf==uEZ[iU]) )
-				d[cd]['mjjas'][v][iT]=np.mean(z0[ind].astype('float')*meta['SF'][v])
-
-	# Annual
+	# Water-year mean
+	d['wyr']={}
 	vL=['tmean']
-	for i in range(uEZ.size):
-		cd=lut_n2s(meta['LUT']['EZ'],uEZ[i])[0]
-		d[cd]['ann']={}
-		for v in vL:
-			d[cd]['ann'][v]=np.nan*np.ones((meta['tva'].size))
 	for v in vL:
-		print(v)
-		for iT in range(meta['tva'].size):
+		d['wyr'][v]=np.nan*np.ones((tva.size))
+		for iT,yr in enumerate(tva):
 			try:
-				z0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_ann_' + str(meta['tva'][iT]) + '.tif')['Data'][indPB]
-				if np.isin(v,['prcp','cwd','cmi'])==True:
-					z0=z0/30.5
+				z0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_wyr_' + str(yr) + '.tif')['Data'][ikp].astype('float')*meta['Climate']['SF'][v]
 			except:
-				pass
-			for iU in range(uEZ.size):
-				cd=lut_n2s(meta['LUT']['EZ'],uEZ[iU])[0]
-				ind=np.where( (zEZf==uEZ[iU]) )
-				d[cd]['ann'][v][iT]=np.mean(z0[ind].astype('float')*meta['SF'][v])
+				z0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_ann_' + str(yr) + '.tif')['Data'][ikp].astype('float')*meta['Climate']['SF'][v]
+			if np.isin(v,['prcp','cwd','cmi'])==True:
+				z0=z0/30.5
+			d['wyr'][v][iT]=np.mean(z0)
 
-	# Save summary time series by ecozone
-	gu.opickle(meta['Paths']['na1k'] + '\\Stats\\SummaryTimeSeries_ByEZ.pkl',d)
+	# Warm season mean
+	d['mjjas']={}
+	vL=['tmean','prcp','etp','eta','cwd','cmi','ws']
+	for v in vL:
+		d['mjjas'][v]=np.nan*np.ones((tva.size))
+		for iT,yr in enumerate(tva):
+			z0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Anomalies\\na1k_' + v + '_anom_mjjas_' + str(yr) + '.tif')['Data'][ikp].astype('float')*meta['Climate']['SF'][v]
+			if np.isin(v,['prcp','etp','eta','cwd','cmi'])==True:
+				z0=z0/30.5
+			d['mjjas'][v][iT]=np.mean(z0)
 
-	# Time trend stats
-	sts={'Region':np.array(list(d.keys()),dtype='object'),
-	  'tmean_ann':np.zeros(uEZ.size),
-	  'tmean_mjjas':np.zeros(uEZ.size),
-	  'prcp_mjjas':np.zeros(uEZ.size),
-	  'cmi_mjjas':np.zeros(uEZ.size),
-	  'cwd_mjjas':np.zeros(uEZ.size),
-	  'ws_mjjas':np.zeros(uEZ.size)}
-	sea='mjjas'
-	cnt=0
-	for r in d.keys():
-		for v in d[r][sea].keys():
-			iT=np.where( (meta['tva']>=1951) & (meta['tva']<=2023) & (np.isnan(d[r][sea][v])==False) )[0]
-			x=meta['tva'][iT]
-			y=d[r][sea][v][iT]
-			rs,txt=gu.GetRegStats(x,y)
-			sts[v + '_' + sea][cnt]=np.round(rs['B'][1]*rs['N'],decimals=1)
-		cnt=cnt+1
-	
-	sea='ann'
-	cnt=0
-	for r in d.keys():
-		for v in d[r][sea].keys():
-			iT=np.where( (meta['tva']>=1951) & (meta['tva']<=2023) & (np.isnan(d[r][sea][v])==False) )[0]
-			x=meta['tva'][iT]
-			y=d[r][sea][v][iT]
-			rs,txt=gu.GetRegStats(x,y)
-			sts[v + '_' + sea][cnt]=np.round(rs['B'][1]*rs['N'],decimals=1)
-		cnt=cnt+1
+	# Area with drought
+	v='ws_z_lt'
+	d['mjjas'][v]={}
+	th=np.arange(-5,1,1)
+	for i,z_th in enumerate(th):
+		d['mjjas'][v][z_th]=np.nan*np.ones((tva.size))
+	for iT,yr in enumerate(tva):
+		z0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Zscores\\na1k_ws_zscore_mjjas_' + str(yr) + '.tif')['Data'][ikp].astype('float')*meta['Climate']['SF']['zscore']
+		for i,z_th in enumerate(th):
+			ind=np.where(z0<z_th)
+			d['mjjas'][v][z_th][iT]=ind[0].size/1e3
 
-	df=pd.DataFrame(sts)
-	df.to_excel(meta['Paths']['na1k'] + '\\Stats\\SummaryTrends_ByEZ.xlsx')
+	# Area with drought
+	v='cwd_z_gt'
+	d['mjjas'][v]={}
+	th=np.arange(0,6,1)
+	for i,z_th in enumerate(th):
+		d['mjjas'][v][z_th]=np.nan*np.ones((tva.size))
+	for iT,yr in enumerate(tva):
+		z0=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\Zscores\\na1k_cwd_zscore_mjjas_' + str(yr) + '.tif')['Data'][ikp].astype('float')*meta['Climate']['SF']['zscore']
+		for i,z_th in enumerate(th):
+			ind=np.where(z0>z_th)
+			d['mjjas'][v][z_th][iT]=ind[0].size/1e3
 
-	#plt.close('all'); plt.plot(meta['tva'],d['prcp'][:,2],'-bo')
+	# Save
+	gu.opickle(meta['Paths']['na1k'] + '\\Summaries\\Time Series\\TimeSeriesSummary_BC.pkl',d)
+
+	# Plot MJJAS means
+
+	lw=0.5; lw2=1.25; ms=2; cl1=[0.24,0.49,0.77]; cl2=[0.05,0.25,0.5]; xl=[1950,meta['YearLast']+1]; ma=10; iMa=np.where(tva>=1960)[0]
+	plt.close('all'); fig,ax=plt.subplots(3,2,figsize=gu.cm2inch(16,16))
+	for i in range(3):
+		for j in range(2):
+			ax[i,j].plot([1800,2300],[0,0],'k-',lw=1.5,color=[0.8,0.8,0.8])
+	ax[0,0].plot(tva,d['mjjas']['tmean'],'-ko',lw=lw,ms=ms,color=cl1,mec=cl1,mfc='w',mew=lw)
+	y=gu.movingave(d['mjjas']['tmean'],ma,'historical')
+	ax[0,0].plot(tva[iMa],y[iMa],'-k',lw=lw2,ms=ms,color=cl1)
+	rs,txt=gu.GetRegStats(tva,d['mjjas']['tmean'])
+	ax[0,0].plot(rs['xhat Line'],rs['yhat Line'],'k-',color=cl2,label='Best Fit Line')
+	ax[0,0].text(1952,-1.05,'Change over 1951-2024: ' + str(np.round(rs['B'][1]*tva.size,decimals=1)) + ' ($\circ$C)',fontsize=8,ha='left')
+
+	#ax[0,0].plot(tva,d['wyr']['tmean'],'-ks',lw=lw,ms=ms,color=cl2,mec=cl2,mfc='w',mew=lw,label='Water year')
+	#ax[0,0].legend(loc='lower right',frameon=False,facecolor=None,edgecolor='w')
+	ax[0,0].set(ylabel='Temperature ($\circ$C)',xlim=xl)
+	ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	ax[0,1].plot(tva,d['mjjas']['prcp'],'-ko',lw=lw,ms=ms,color=cl1,mec=cl1,mfc='w',mew=lw)
+	y=gu.movingave(d['mjjas']['prcp'],ma,'historical')
+	ax[0,1].plot(tva[iMa],y[iMa],'-k',lw=lw2,ms=ms,color=cl1)
+	rs,txt=gu.GetRegStats(tva,d['mjjas']['prcp'])
+	ax[0,1].plot(rs['xhat Line'],rs['yhat Line'],'k-',color=cl2,label='Best Fit Line')
+	ax[0,1].text(1952,-0.55,'Change over 1951-2024: ' + str(np.round(rs['B'][1]*tva.size,decimals=1)) + ' (mm d$^{-1}$)',fontsize=8,ha='left')
+	ax[0,1].set(ylabel='Precipitation (mm d$^{-1}$)',xlim=xl)
+	ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	ax[1,0].plot(tva,d['mjjas']['etp'],'-ko',lw=lw,ms=ms,color=cl1,mec=cl1,mfc='w',mew=lw)
+	y=gu.movingave(d['mjjas']['etp'],ma,'historical')
+	ax[1,0].plot(tva[iMa],y[iMa],'-k',lw=lw2,ms=ms,color=cl1)
+	rs,txt=gu.GetRegStats(tva,d['mjjas']['etp'])
+	ax[1,0].plot(rs['xhat Line'],rs['yhat Line'],'k-',color=cl2,label='Best Fit Line')
+	ax[1,0].text(1952,-0.6,'Change over 1951-2024: ' + str(np.round(rs['B'][1]*tva.size,decimals=1)) + ' (mm d$^{-1}$)',fontsize=8,ha='left')
+	ax[1,0].set(ylabel='Potential evapotranspiration (mm d$^{-1}$)',xlim=xl)
+	ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	ax[1,1].plot(tva,d['mjjas']['cmi'],'-ko',lw=lw,ms=ms,color=cl1,mec=cl1,mfc='w',mew=lw)
+	y=gu.movingave(d['mjjas']['cmi'],ma,'historical')
+	ax[1,1].plot(tva[iMa],y[iMa],'-k',lw=lw2,ms=ms,color=cl1)
+	rs,txt=gu.GetRegStats(tva,d['mjjas']['cmi'])
+	ax[1,1].plot(rs['xhat Line'],rs['yhat Line'],'k-',color=cl2,label='Best Fit Line')
+	ax[1,1].text(1952,-0.72,'Change over 1951-2024: ' + str(np.round(rs['B'][1]*tva.size,decimals=1)) + ' (mm d$^{-1}$)',fontsize=8,ha='left')
+	ax[1,1].set(ylabel='Climate moisture index (mm d$^{-1}$)',xlim=xl)
+	ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	ax[2,0].plot(tva,d['mjjas']['cwd'],'-ko',lw=lw,ms=ms,color=cl1,mec=cl1,mfc='w',mew=lw)
+	y=gu.movingave(d['mjjas']['cwd'],ma,'historical')
+	ax[2,0].plot(tva[iMa],y[iMa],'-k',lw=lw2,ms=ms,color=cl1)
+	rs,txt=gu.GetRegStats(tva,d['mjjas']['cwd'])
+	ax[2,0].plot(rs['xhat Line'],rs['yhat Line'],'k-',color=cl2,label='Best Fit Line')
+	ax[2,0].text(1952,-0.28,'Change over 1951-2024: ' + str(np.round(rs['B'][1]*tva.size,decimals=1)) + ' (mm d$^{-1}$)',fontsize=8,ha='left')
+	ax[2,0].set(ylabel='Climatic water deficit (mm d$^{-1}$)',xlim=xl)
+	ax[2,0].yaxis.set_ticks_position('both'); ax[2,0].xaxis.set_ticks_position('both'); ax[2,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	ax[2,1].plot(tva,d['mjjas']['ws'],'-ko',lw=lw,ms=ms,color=cl1,mec=cl1,mfc='w',mew=lw)
+	y=gu.movingave(d['mjjas']['ws'],ma,'historical')
+	ax[2,1].plot(tva[iMa],y[iMa],'-k',lw=lw2,ms=ms,color=cl1)
+	rs,txt=gu.GetRegStats(tva,d['mjjas']['ws'])
+	ax[2,1].plot(rs['xhat Line'],rs['yhat Line'],'k-',color=cl2,label='Best Fit Line')
+	ax[2,1].text(1952,-21,'Change over 1951-2024: ' + str(np.round(rs['B'][1]*tva.size,decimals=1)) + ' (mm)',fontsize=8,ha='left')
+	ax[2,1].set(ylabel='Soil water content (mm)',xlim=xl)
+	ax[2,1].yaxis.set_ticks_position('both'); ax[2,1].xaxis.set_ticks_position('both'); ax[2,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	gu.axletters(ax,plt,0.03,0.90,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['gp']['AxesLetterStyle'],FontWeight=meta['Graphics']['gp']['AxesLetterFontWeight'])
+	plt.tight_layout()
+	if meta['Graphics']['gp']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Summaries\\Time Series\\bc_mjjas_summary','png',900)
+
+	# Plot area of drought
+	y=d['mjjas']['cwd_z_gt'][4]
+	lw=0.5; lw2=1.25; ms=2; cl1=[0.24,0.49,0.77]; cl2=[0.05,0.25,0.5]; xl=[1950,meta['YearLast']+1]; ma=10;
+	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(12,8))
+	plt.plot(tva,y,'-ko',lw=lw,ms=ms,color=cl1,mec=cl1,mfc='w',mew=lw)
+	rs,txt=gu.GetRegStats(tva,y)
+	ax.plot(rs['xhat Line'],rs['yhat Line'],'k-',color=cl2,label='Best Fit Line')
+	ax.text(2022,43,'Change over 1951-2024: ' + str(np.round(rs['B'][1]*tva.size,decimals=1)) + ' (Kha yr$^{-1}$)',fontsize=8,ha='right')
+	ax.set(ylabel='Area experiencing extreme drought',ylim=[0,50],xlim=xl)
+	ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
+	plt.tight_layout()
+	if meta['Graphics']['gp']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Summaries\\Time Series\\bc_area_drought','png',900)
+
+
 	return
 
 #%%
@@ -1999,8 +2266,8 @@ def QA_ClimateNA(meta):
 	x=np.nanmean(x0[iT,:],axis=0)
 
 	# ClimateNA
-	y=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo) + '.tif')['Data'][idx].astype('float')*meta['SF']['tmean']
-	#z=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['SF']['tmean']
+	y=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo) + '.tif')['Data'][idx].astype('float')*meta['Climate']['SF']['tmean']
+	#z=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Normals\\na1k_tmean_norm_1971to2000_' + str(mo) + '.tif')['Data'].astype('float')*meta['Climate']['SF']['tmean']
 	#plt.matshow(z,clim=[-25,20])
 
 	ind=np.where(y<-60)[0]
@@ -2108,16 +2375,16 @@ def CalcAnnualAnomalies(meta):
 	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
 	vL=['tmean']
 	for v in vL:
-		#zN=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_ann.tif')['Data'].astype('float')*meta['SF'][v]
+		#zN=gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_' + v + '_norm_1971to2000_ann.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 		for iT in range(meta['tva'].size):
 			if meta['tva'][iT]>2023:
 				continue
 			zA=np.zeros(zRef['Data'].shape)
 			for iM in range(12):
-				zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(iM+1) + '.tif')['Data'].astype('float')*meta['SF'][v]
+				zA=zA+gis.OpenGeoTiff(meta['Paths']['na1k'] + '\\Monthly\\Anomalies\\na1k_' + v + '_anom_' + str(meta['tva'][iT]) + '_' + str(iM+1) + '.tif')['Data'].astype('float')*meta['Climate']['SF'][v]
 			zA=zA/12
 			z=copy.deepcopy(zRef)
-			z['Data']=zA/meta['SF'][v]
+			z['Data']=zA/meta['Climate']['SF'][v]
 			z['Data']=z['Data'].astype('int16')
 			gis.SaveGeoTiff(z,meta['Paths']['na1k'] + '\\Summaries\\Anomalies\\na1k_' + v + '_anom_ann_' + str(meta['tva'][iT]) + '.tif')
 	return
@@ -2168,10 +2435,231 @@ def HoldridgeLifeZones(meta):
 	z2=copy.deepcopy(zRef)
 	z2['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
 	z2['Data'][iMask]=z1
-	d=gu.CountByCategories(z2['Data'][iMask].flatten(),'Percent')
+	d=gu.CountBy_cruategories(z2['Data'][iMask].flatten(),'Percent')
 	# plt.close('all');plt.matshow(z2['Data'],clim=[0,15])
 	gis.SaveGeoTiff(z2,meta['Paths']['na1k'] + '\\Summaries\\Normals\\na1k_HoldridgeLifeZones_1971to2000.tif')
 
 	return
 
+#%% Nitrogen deposition from ECCC
+def ProcessRAQDPS023(meta):
+	#meta=metaNA
+
+	# https://zenodo.org/records/16970403
+	#ds=nc.Dataset(r'C:\Data\Nitrogen Deposition\RAQDPS023\ANN_2013_Accumulated_Deposition.nc')
+	#yr=2013
+	yr=2021
+	a=gu.ReadNC(r'C:\Data\Nitrogen Deposition\RAQDPS023\ANN_' + str(yr) + '_Accumulated_Deposition.nc')
+	mol2kg=14.01
+	ndep=-1*mol2kg*a['NGTD']/1e3*1e4 # kg N ha-1 yr-1
+	#ndep=np.flip(ndep,0)
+	#a['lat']=np.flip(a['lat'],0)
+
+	#meta=u1ha.Init()
+	zRef=gis.OpenGeoTiff(meta['Paths']['na1k Ref Grid'])
+	srs=gis.ImportSRSs()
+	x0,y0=srs['Proj']['NACID'](a['lon']-360,a['lat'])
+	ndepG=griddata((x0.flatten(),y0.flatten()),ndep.flatten(),(zRef['X'],zRef['Y']),
+				method='linear')
+	#plt.matshow(ndepG)
+
+	ndepG=ndepG/meta['Climate']['SF']['ndep']
+	ndepG=ndepG.astype('int16')
+	ndepG[zRef['Data']==0]=0
+
+	fin=r'D:\Data\na1k\Summaries\ANN_' + str(yr) + '_Accumulated_Deposition.tif'
+	with rasterio.open(
+		fin,
+		mode="w",
+		driver="GTiff",
+		height=ndepG.shape[0],
+		width=ndepG.shape[1],
+		count=1,
+		dtype=ndepG.dtype,
+		crs=meta['Geos']['crs'],
+		transform=from_origin(zRef['X'][0,0],zRef['Y'][0,0],100,100), # Inputs (west,north,xsize,ysize)
+		) as new_dataset:
+		new_dataset.write(ndepG,1)
+
+	flg=0
+	if flg==1:
+		z=gis.OpenGeoTiff(fin)
+		plt.close('all');
+		plt.matshow(z['Data'][0::5,0::5].astype('float')*meta['Climate']['SF']['ndep'],clim=[0,5])
+		plt.colorbar()
+
+	return
+
 #%%
+def Calc_NDEP_Stats():
+	yr=2021
+	zN=gis.OpenGeoTiff(r'D:\Data\na1k\ANN_' + str(yr) + '_Accumulated_Deposition.tif')['Data'].astype('float')*metaNA['Climate']['SF']['ndep']
+	
+	zPB=gis.OpenGeoTiff(r'D:\Data\na1k\PoliticalBoundaries.tif')['Data']
+	zEZ=gis.OpenGeoTiff(r'D:\Data\na1k\Ecozones_CEC_L1.tif')['Data']
+	
+	zRef=gis.OpenGeoTiff(metaNA['Paths']['na1k Ref Grid'])
+	srs=gis.ImportSRSs()
+	lon,lat=pyproj.transform(srs['Proj']['NACID'],srs['Proj']['Geographic'],zRef['X'],zRef['Y'])
+	
+	ind=np.where( (zPB==metaNA['LUT']['PB']['CA-QC']) & (lat<50) & (zEZ==metaNA['LUT']['EZ']['Northern Forests']) | \
+				 (zPB==metaNA['LUT']['PB']['CA-ON']) & (lat<50) & (zEZ==metaNA['LUT']['EZ']['Northern Forests']) )
+	mu1=np.mean(zN[ind])
+	
+	ind=np.where( (zPB==metaNA['LUT']['PB']['CA-QC']) & (lat<50) & (zEZ==metaNA['LUT']['EZ']['Eastern Temperate Forests']) | \
+				 (zPB==metaNA['LUT']['PB']['CA-ON']) & (lat<50) & (zEZ==metaNA['LUT']['EZ']['Eastern Temperate Forests']) )
+	mu2=np.mean(zN[ind])
+	
+	ind=np.where( (zPB==metaNA['LUT']['PB']['CA-BC']) & (zEZ==metaNA['LUT']['EZ']['Northwestern Forested Mountains']) )
+	mu3=np.mean(zN[ind])
+	ind=np.where( (zPB==metaNA['LUT']['PB']['CA-BC']) & (zEZ==metaNA['LUT']['EZ']['Marine West Coast Forests']) )
+	mu4=np.mean(zN[ind])
+	ind=np.where( (zPB==metaNA['LUT']['PB']['CA-BC']) & (zEZ==metaNA['LUT']['EZ']['Marine West Coast Forests']) & (lat>49.5) )
+	mu5=np.mean(zN[ind])
+	return
+#%%
+def LongTermStationAssessment(meta):
+
+	# US
+	dUS=gu.ipickle(meta['Paths']['USHCN'] + '\\Data.pkl')
+	# Plot long-term records for select areas
+	t=gu.BlockMean(meta['tvm'][:,0],12)
+	iBP=np.where( (t>=1971) & (t<=2000) )[0]
+
+	#ta=dSL['tmean'][0::12,:]
+	ta=gu.BlockMean(dUS['tmean'],12)
+	ta_a=ta-np.tile(np.nanmean(ta[iBP,:],axis=0),(t.size,1))
+	iT=np.where(t==1901)[0]
+
+	plt.close('all'); fig,ax=plt.subplots(2,2,figsize=gu.cm2inch(15.5,10))
+	ma=5
+	iT=np.where(t>=1900)[0]
+	# Seattle
+	iS=np.where( (ta[iT[0],:]>-50) & (dUS['X']>-1.75e6) & (dUS['X']<-1.5e6) & (dUS['Y']>1.2e6) )[0]
+	# plt.close('all');plt.plot(dUS['X'],dUS['Y'],'k.');plt.plot(dUS['X'][iS],dUS['Y'][iS],'gs')
+	y=np.nanmean(ta_a[:,iS],axis=1)
+	ax[0,0].plot(t,np.zeros(t.size),lw=2,color=[0.8,0.8,0.8])
+	ax[0,0].plot(t,gu.movingave(ta_a[:,iS],ma,'historical'),lw=0.25,color=[0.5,0.5,0.5])
+	ax[0,0].plot(t,gu.movingave(y,ma,'historical'),lw=1.5,color='k')
+	rs,txt=gu.GetRegStats(t[iT],y[iT])
+	ax[0,0].plot(rs['xhat Line'],rs['yhat Line'],'r-')
+	ax[0,0].text(2022,-1.27,'1901-2024 change: ' + str(np.round(rs['B'][1]*iT.size,decimals=1)) + ' ($\circ$C)',fontsize=6,ha='right')
+	ax[0,0].set(xlabel='Time, years',ylabel='MAT anomaly ($\circ$C)',xticks=np.arange(1800,3000,20),yticks=np.arange(-30,30,0.4),xlim=[1880,2025],ylim=[-1.5,1.5])
+	ax[0,0].yaxis.set_ticks_position('both'); ax[0,0].xaxis.set_ticks_position('both'); ax[0,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+	# Northern Idaho/Montana:
+	iS=np.where( (ta[iT[0],:]>-50) & (dUS['X']>-1.2e6) & (dUS['X']<-1e6) & (dUS['Y']>1e6) )[0]
+	# plt.close('all');plt.plot(dUS['X'],dUS['Y'],'k.');plt.plot(dUS['X'][iS],dUS['Y'][iS],'gs')
+	y=np.nanmean(ta_a[:,iS],axis=1)
+	ax[0,1].plot(t,np.zeros(t.size),lw=2,color=[0.8,0.8,0.8])
+	ax[0,1].plot(t,gu.movingave(ta_a[:,iS],ma,'historical'),lw=0.25,color=[0.5,0.5,0.5])
+	ax[0,1].plot(t,gu.movingave(y,ma,'historical'),lw=1.5,color='k')
+	rs,txt=gu.GetRegStats(t[iT],y[iT])
+	ax[0,1].plot(rs['xhat Line'],rs['yhat Line'],'r-')
+	ax[0,1].text(2022,-1.27,'1901-2024 change: ' + str(np.round(rs['B'][1]*iT.size,decimals=1)) + ' ($\circ$C)',fontsize=6,ha='right')
+	ax[0,1].set(xlabel='Time, years',ylabel='MAT anomaly ($\circ$C)',xticks=np.arange(1800,3000,20),yticks=np.arange(-30,30,0.4),xlim=[1880,2025],ylim=[-1.5,1.5])
+	ax[0,1].yaxis.set_ticks_position('both'); ax[0,1].xaxis.set_ticks_position('both'); ax[0,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	# Canada
+
+	# Import station list
+	dSL=gu.ReadExcel(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.xlsx',sheet_name='Station Inventory EN',skiprows=0)
+	dfSL=pd.read_csv(meta['Paths']['ECCD'] + '\\Daily\\Station Inventory EN.csv',skiprows=3)
+	dSL['Climate ID']=dfSL['Climate ID'].values
+
+	flg=0
+	if flg==1:
+		plt.close('all')
+		plt.plot(dSL['Longitude (Decimal Degrees)'],dSL['Latitude (Decimal Degrees)'],'k.',mec=[0.75,0.75,0.75],mfc=[0.75,0.75,0.75])
+		ind=np.where( (dSL['DLY First Year']<1900) )[0]
+		plt.plot(dSL['Longitude (Decimal Degrees)'][ind],dSL['Latitude (Decimal Degrees)'][ind],'rs')
+		for i in ind:
+			plt.text(dSL['Longitude (Decimal Degrees)'][i],dSL['Latitude (Decimal Degrees)'][i],dSL['Name'][i])
+
+	# Bella Coola (Good)
+	cid='1060840'
+	indSL=np.where(dSL['Climate ID']==cid)[0]
+	tvd=gu.tvec('d',dSL['First Year'][indSL],dSL['Last Year'][indSL])
+	d0=gu.ipickle(meta['Paths']['ECCD'] + '\\Daily\\Raw\\Combined\\' + cid + '.pkl')
+	iBad=np.where(d0['Mean Temp (°C)']<-50)[0]
+	d0['Mean Temp (°C)'][iBad]=np.nan
+	d1={}
+	d1['tmean']=np.zeros(meta['tvm'].shape[0])
+	for i in range(meta['tvm'].shape[0]):
+		iT=np.where( (tvd[:,0]==meta['tvm'][i,0]) & (tvd[:,1]==meta['tvm'][i,1]) )[0]
+		d1['tmean'][i]=np.nanmean(d0['Mean Temp (°C)'][iT])
+	tva=gu.BlockMean(meta['tvm'][:,0],12)
+	iBP=np.where( (tva>=1971) & (tva<=2000) )[0]
+	ta=gu.BlockMean(d1['tmean'],12)
+	ta_a=ta-np.nanmean(ta[iBP])
+	#plt.close('all'); plt.plot(tva,ta_a,'ok-')
+
+	iT=np.where( (tva>=1901) & (tva<=2025) )[0]
+	y=ta_a
+	ax[1,0].plot(tva,np.zeros(t.size),lw=2,color=[0.8,0.8,0.8])
+	ax[1,0].plot(tva,y,lw=0.25,color=[0.5,0.5,0.5])
+	ax[1,0].plot(tva,gu.movingave(y,ma,'historical'),lw=1.5,color='k')
+	rs,txt=gu.GetRegStats(tva[iT],y[iT])
+	ax[1,0].plot(rs['xhat Line'],rs['yhat Line'],'r-')
+	ax[1,0].text(2022,-1.27,'1901-2024 change: ' + str(np.round(rs['B'][1]*iT.size,decimals=1)) + ' ($\circ$C)',fontsize=6,ha='right')
+	ax[1,0].set(xlabel='Time, years',ylabel='MAT anomaly ($\circ$C)',xticks=np.arange(1800,3000,20),yticks=np.arange(-30,30,0.4),xlim=[1880,2025],ylim=[-1.5,1.5])
+	ax[1,0].yaxis.set_ticks_position('both'); ax[1,0].xaxis.set_ticks_position('both'); ax[1,0].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	# Fort St James (good)
+	cid='1092970'
+	indSL=np.where(dSL['Climate ID']==cid)[0]
+	tvd=gu.tvec('d',dSL['First Year'][indSL],dSL['Last Year'][indSL])
+	d0=gu.ipickle(meta['Paths']['ECCD'] + '\\Daily\\Raw\\Combined\\' + cid + '.pkl')
+	iBad=np.where(d0['Mean Temp (°C)']<-50)[0]
+	d0['Mean Temp (°C)'][iBad]=np.nan
+	d1={}
+	d1['tmean']=np.zeros(meta['tvm'].shape[0])
+	for i in range(meta['tvm'].shape[0]):
+		iT=np.where( (tvd[:,0]==meta['tvm'][i,0]) & (tvd[:,1]==meta['tvm'][i,1]) )[0]
+		d1['tmean'][i]=np.nanmean(d0['Mean Temp (°C)'][iT])
+	tva=gu.BlockMean(meta['tvm'][:,0],12)
+	ta=gu.BlockMean(d1['tmean'],12)
+	iBP=np.where( (tva>=1971) & (tva<=2000) & (ta>-8) )[0]
+	ta_a=ta-np.nanmean(ta[iBP])
+	#plt.close('all'); plt.plot(tva,ta_a,'ok-')
+	#plt.close('all'); plt.plot(tva,ta,'ok-')
+
+	flg=1
+	if flg==1:
+		iT=np.where( (tva>=1901) & (tva<=2019) )[0]
+		y=ta_a
+		ax[1,1].plot(tva,np.zeros(t.size),lw=2,color=[0.8,0.8,0.8])
+		ax[1,1].plot(tva,y,lw=0.25,color=[0.5,0.5,0.5])
+		ax[1,1].plot(tva,gu.movingave(y,ma,'historical'),lw=1.5,color=[0.5,0.5,0.5])
+		rs,txt=gu.GetRegStats(tva[iT],y[iT])
+		ax[1,1].plot(rs['xhat Line'],rs['yhat Line'],'r--')
+		ax[1,1].text(2022,-1.75,'1901-2024 change (uncorrected): ' + str(np.round(rs['B'][1]*iT.size,decimals=1)) + ' ($\circ$C)',fontsize=6,ha='right')
+		ax[1,1].set(xlabel='Time, years',ylabel='MAT anomaly ($\circ$C)',xticks=np.arange(1800,3000,20),yticks=np.arange(-30,30,0.4),xlim=[1880,2025],ylim=[-2.5,1.5])
+		ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	# Fort St James (with correction)
+	tva=gu.BlockMean(meta['tvm'][:,0],12)
+	ta=gu.BlockMean(d1['tmean'],12)
+	iFix=np.where( tva<=1921)[0]
+	ta[iFix]=ta[iFix]+1.25
+	iBP=np.where( (tva>=1971) & (tva<=2000) & (ta>-8) )[0]
+	ta_a=ta-np.nanmean(ta[iBP])
+	#plt.close('all'); plt.plot(tva,ta_a,'ok-')
+	#plt.close('all'); plt.plot(tva,ta,'ok-')
+
+	iT=np.where( (tva>=1901) & (tva<=2025) )[0]
+	y=ta_a
+	ax[1,1].plot(tva,np.zeros(t.size),lw=2,color=[0.8,0.8,0.8])
+	ax[1,1].plot(tva,y,lw=0.25,color=[0.5,0.5,0.5])
+	ax[1,1].plot(tva,gu.movingave(y,ma,'historical'),lw=1.5,color='k')
+	rs,txt=gu.GetRegStats(tva[iT],y[iT])
+	ax[1,1].plot(rs['xhat Line'],rs['yhat Line'],'r-')
+	ax[1,1].text(2022,-2.15,'1901-2024 change (corrected): ' + str(np.round(rs['B'][1]*iT.size,decimals=1)) + ' ($\circ$C)',fontsize=6,ha='right')
+	#ax[1,1].set(xlabel='Time, years',ylabel='MAT anomaly ($\circ$C)',xticks=np.arange(1800,3000,20),yticks=np.arange(-30,30,0.4),xlim=[1880,2025],ylim=[-1.5,1.5])
+	#ax[1,1].yaxis.set_ticks_position('both'); ax[1,1].xaxis.set_ticks_position('both'); ax[1,1].tick_params(length=meta['Graphics']['gp']['tickl'])
+
+	plt.tight_layout()
+	gu.axletters(ax,plt,0.03,0.9,FontColor=meta['Graphics']['gp']['cla'],LetterStyle=meta['Graphics']['gp']['AxesLetterStyle'],FontWeight='Bold',Labels=['Seattle','Northern Idaho & Montana','Bella Coola','Fort St. James'])
+	if meta['Graphics']['gp']['Print Figures']=='On':
+		gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\LongTermTempAssessment','png',900)
+
+	return

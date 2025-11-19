@@ -13,6 +13,7 @@ import pyproj
 import rasterio
 from rasterio import features
 from scipy.interpolate import NearestNDInterpolator
+from scipy.interpolate import griddata
 import fiona
 import time
 import cv2
@@ -28,7 +29,7 @@ import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.macgyver.util_query_gdb as qgdb
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
 import fcgadgets.gaia.gaia_util as gaia
-import fcexplore.field_plots.Processing.fp_util as ufp
+import fcexplore.field_plots.processing.fp_util as ufp
 import fcgadgets.cbrunner.cbrun_util as cbu
 
 #%%
@@ -63,6 +64,7 @@ def Init(*argv):
 
 	meta['Paths']['bc5k']=r'C:\Data\BC5k'
 	meta['Paths']['bc5k Ref Grid']=r'C:\Data\BC5k' + '\\LandMask.tif'
+
 	meta['Paths']['GDB']={}
 	meta['Paths']['GDB']['GDB']=r'C:\Data\Geodatabases'
 	meta['Paths']['GDB']['LandCover']=meta['Paths']['GDB']['GDB'] + '\\LandCover\\20230607\\LandCover.gdb'
@@ -94,14 +96,14 @@ def Init(*argv):
 	meta['Paths']['DB']['Nutrient Applications']=r'C:\Users\rhember\Government of BC\External NRS Data Science and Modelling - General\Data\Forest Nutrient Addition Experiments DB'
 
 	meta['Paths']['Model']={}
-	meta['Paths']['Model']['Code']=r'G:\My Drive\Code_Python\fcgadgets\cbrunner'
+	meta['Paths']['Model']['Code']=r'G:\My Drive\Research\Code_Python\fcgadgets\cbrunner'
 	meta['Paths']['Model']['Parameters']=meta['Paths']['Model']['Code'] + '\\Parameters'
 	meta['Paths']['Model']['gromo']=r'D:\Data\na1k\gromo'
 
 	meta['Paths']['Projects']={}
 	meta['Paths']['Projects']['Demos']=r'D:\Modelling Projects'
 	meta['Paths']['Projects']['BC-FCS']={}
-	meta['Paths']['Projects']['BC-FCS']['Documentation']=r'C:\Users\rhember\Government of BC\External Forest Carbon Estimation - Documents\General\Projects\BC-FCS\Documentation\R2025'
+	meta['Paths']['Projects']['BC-FCS']['Documentation']=r'C:\Users\rhember\Government of BC\External Forest Carbon Estimation - Documents\General\Projects\BC-FCS\Documentation\R2025\Detailed Documentation'
 
 	meta['Paths']['Field Plots']={}
 	meta['Paths']['Field Plots']['DB']=r'C:\Data\Field Plots\PSP-NADB2'
@@ -113,7 +115,7 @@ def Init(*argv):
 	meta['Graphics']={'Plot Style':{},'Map':{},'Flowchart':{}}
 	meta['Graphics']['Plot Style']='Web' # Manuscript
 	meta['Graphics']['gp']=gu.SetGraphics(meta['Graphics']['Plot Style'])
-	meta['Graphics']['gp']['AxesLetterStyle']='Caps'
+	meta['Graphics']['gp']['AxesLetterStyle']='Default'#'Caps'
 	meta['Graphics']['gp']['AxesLetterFontWeight']='Bold'
 	meta['Graphics']['Print Figures']='Off'
 	meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\BCFCS'
@@ -229,11 +231,14 @@ def Init(*argv):
 	meta['Climate']['SF']['ndep']=0.01
 	meta['Climate']['SF']['ndwi']=0.001
 	meta['Climate']['SF']['lst']=0.01
-	meta['Climate']['SF']['ca']=0.1
+	meta['Climate']['SF']['co2']=0.1
 	meta['Climate']['SF']['albedo']=0.001
 	meta['Climate']['SF']['AbsorptionRSW']=0.1
 	meta['Climate']['SF']['ndvi']=0.001
 	meta['Climate']['Missing Number']=-99
+
+	meta['Env']={}
+	meta['Env']['tva']=np.arange(1850,2100+1)
 
 	# Gromo (growth and mortality fitted against field plots)
 	if 'Modules' not in meta:
@@ -487,6 +492,12 @@ def Import_Raster(meta,roi,vList,*argv):
 			d[v]['Data']=d[v]['Data'].astype('float')*meta['Climate']['SF']['melt']
 		elif v=='mines':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\HSP_MJR_MINES_PERMTTD_AREAS_SP\\STATUS_TYPE.tif')
+		elif v=='ndep13':
+			d[v]=gis.OpenGeoTiff(r'C:\Data\Nitrogen Deposition\RAQDPS023\ANN_2013_Accumulated_Deposition.tif')
+			d[v]['Data']=d[v]['Data'].astype('float')*meta['Climate']['SF']['ndep']
+		elif v=='ndep21':
+			d[v]=gis.OpenGeoTiff(r'C:\Data\Nitrogen Deposition\RAQDPS023\ANN_2021_Accumulated_Deposition.tif')
+			d[v]['Data']=d[v]['Data'].astype('float')*meta['Climate']['SF']['ndep']
 		elif v=='munic':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\TA_MUNICIPALITIES_SVW\MUNICIPALITY_NAME.tif')
 		elif v=='ogma':
@@ -507,6 +518,8 @@ def Import_Raster(meta,roi,vList,*argv):
 			d[v]=gis.OpenGeoTiff(r'C:\Data\BC1ha\Results\Planting_FromRESULTS_MaskCount.tif')
 		elif v=='pl_yl':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_YearLast.tif')
+		elif v=='pl_ysl':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_YearSecondLast.tif')
 		elif v=='popp':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\NRC_POPULATED_PLACES_1M_SP\\NAME.tif')
 		elif v=='prcp_ann_n':
@@ -568,10 +581,12 @@ def Import_Raster(meta,roi,vList,*argv):
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-WING_YearLast.tif')
 		elif v=='sp_mound':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\SP-MOUND_YearLast.tif')
+		elif v=='sphl_vri02':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\VRI_LIVE_STEMS_PER_HA.tif')
 		elif v=='sphl_vri23':
-			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI\\sphlive.tif')
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\VRI_LIVE_STEMS_PER_HA.tif')
 		elif v=='sphd_vri23':
-			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI\\sphdead.tif')
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2023\\VRI_DEAD_STEMS_PER_HA.tif')
 		elif v=='soc':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\Soil\\soc_tot_forest_Shawetal2018.tif')
 		elif v=='spc1_ntems':
@@ -582,12 +597,16 @@ def Import_Raster(meta,roi,vList,*argv):
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_CD_2.tif')
 		elif v=='spc3_vri02':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_CD_3.tif')
+		elif v=='spc4_vri02':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_CD_4.tif')
 		elif v=='spc1_pct_vri02':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_PCT_1.tif')
 		elif v=='spc2_pct_vri02':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_PCT_2.tif')
 		elif v=='spc3_pct_vri02':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_PCT_3.tif')
+		elif v=='spc4_pct_vri02':
+			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2002\\SPECIES_PCT_4.tif')
 		elif v=='spc1_vri15':
 			d[v]=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\VRI 2015\\SPECIES_CD_1.tif')
 		elif v=='spc1_vri23':
@@ -683,26 +702,33 @@ def Import_Raster(meta,roi,vList,*argv):
 					iPoints=gis.GetGridIndexToPoints(d[vList[0]],roi['points']['x'],roi['points']['y'])
 				d[v]=d[v]['Data'][iPoints]
 
-	if 'Extract Grid' in argv:
-		for v in vList:
-			d[v]=d[v]['Data']
-
 	if roi!=[]:
 		if 'grd' in roi.keys():
 			for v in vList:
+
 				if v in roi['grd'].keys():
 					continue
-				# Add to ROI structure and clip to ROI
-				roi['grd'][v]=d[v]
+
 				try:
-					roi['grd'][v]=gis.ClipToRaster(roi['grd'][v],roi['grd'])
+					d[v]=gis.ClipToRaster(d[v],roi['grd'])
 				except:
 					print('Failed, Try using RGSF = 1')
+
+				if 'Extract Grid' in argv:
+					d[v]=d[v]['Data']
+
+				# Add to ROI structure and clip to ROI
+				roi['grd'][v]=d[v]
+
 			return roi
+
 		elif 'points' in roi.keys():
 			return d
 
 	else:
+		if 'Extract Grid' in argv:
+			for v in vList:
+				d[v]=d[v]['Data']
 		return d
 
 #%% Look up tables
@@ -4162,3 +4188,54 @@ def Calc_AIL_ByFSC_And_ASET(meta,YearLast):
 #	 zCP['Data']=zCP['Data'].astype('int32')
 #	 gis.SaveGeoTiff(zCP,meta['Paths']['bc1ha'] + '\\LandCoverUse\\REARs_CompPlusPropWithRandomAdditions.tif')
 #	 return
+
+#%% Nitrogen deposition from ECCC
+def ProcessRAQDPS023(meta):
+	import rasterio
+	from rasterio.transform import from_origin
+
+	# https://zenodo.org/records/16970403
+	#ds=nc.Dataset(r'C:\Data\Nitrogen Deposition\RAQDPS023\ANN_2013_Accumulated_Deposition.nc')
+	#yr=2013
+	yr=2021
+	a=gu.ReadNC(r'C:\Data\Nitrogen Deposition\RAQDPS023\ANN_' + str(yr) + '_Accumulated_Deposition.nc')
+	mol2kg=14.01
+	ndep=-1*mol2kg*a['NGTD']/1e3*1e4 # kg N ha-1 yr-1
+	#ndep=np.flip(ndep,0)
+	#a['lat']=np.flip(a['lat'],0)
+
+	meta=u1ha.Init()
+	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
+	srs=gis.ImportSRSs()
+	x0,y0=srs['Proj']['BC1ha'](a['lon']-360,a['lat'])
+	ndepG=griddata((x0.flatten(),y0.flatten()),ndep.flatten(),(zRef['X'],zRef['Y']),
+				method='linear')
+	#plt.matshow(ndepG)
+
+	ndepG=ndepG/meta['Climate']['SF']['ndep']
+	ndepG=ndepG.astype('int16')
+	ndepG[zRef['Data']==0]=0
+
+	fin=r'C:\Data\Nitrogen Deposition\RAQDPS023\ANN_' + str(yr) + '_Accumulated_Deposition.tif'
+	with rasterio.open(
+		fin,
+		mode="w",
+		driver="GTiff",
+		height=ndepG.shape[0],
+		width=ndepG.shape[1],
+		count=1,
+		dtype=ndepG.dtype,
+		crs=meta['Geos']['crs'],
+		transform=from_origin(zRef['X'][0,0],zRef['Y'][0,0],100,100), # Inputs (west,north,xsize,ysize)
+		) as new_dataset:
+		new_dataset.write(ndepG,1)
+
+	flg=0
+	if flg==1:
+		z=gis.OpenGeoTiff(fin)
+		plt.close('all');
+		plt.matshow(z['Data'][0::5,0::5].astype('float')*meta['Climate']['SF']['ndep'],clim=[0,5])
+		plt.colorbar()
+
+	return
+

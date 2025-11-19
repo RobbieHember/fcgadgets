@@ -49,36 +49,37 @@ def AgeResponseFitTIPSY(meta):
 	return
 
 #%% Import environmental data
-def ImportEnvironment(meta,tv):
-	d={'co2':{},'ndep':{}}
+# *** Replaced by bc5k compiler ***
+# def ImportEnvironment(meta,tv):
+# 	d={'co2':{},'ndep':{}}
 
-	# Import CO2 (ppm), source: https://www.pik-potsdam.de/~mmalte/rcps/ (ppm)
-	dC=gu.ReadExcel(meta['Paths']['DB']['CO2'])
-	d['co2']['ssp245']=np.zeros(tv.size)
-	d['co2']['ssp585']=np.zeros(tv.size)
-	for iT in range(tv.size):
-		ind=np.where(dC['Year']==tv[iT])[0]
-		d['co2']['ssp245'][iT]=dC['CO2 RCP45'][ind]
-		d['co2']['ssp585'][iT]=dC['CO2 RCP85'][ind]
+# 	# Import CO2 (ppm), source: https://www.pik-potsdam.de/~mmalte/rcps/ (ppm)
+# 	dC=gu.ReadExcel(meta['Paths']['DB']['CO2'],sheet_name='Sheet1',skiprows=0)
+# 	d['co2']['ssp245']=np.zeros(tv.size)
+# 	d['co2']['ssp585']=np.zeros(tv.size)
+# 	for iT in range(tv.size):
+# 		ind=np.where(dC['Year']==tv[iT])[0]
+# 		d['co2']['ssp245'][iT]=dC['CO2 RCP45'][ind]
+# 		d['co2']['ssp585'][iT]=dC['CO2 RCP85'][ind]
 
-	# Import N deposition
-	zRef5=gis.OpenGeoTiff(meta['Paths']['bc5k Ref Grid'])
-	iLand=np.where(zRef5['Data']==1)
-	rcpL=['26','60','85']
-	for rcp in rcpL:
-		d['ndep'][rcp]=np.zeros(tv.size)
-		dN=gu.ipickle(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_' + rcp + '.pkl')
-		dN['ndep']['Data']=dN['ndep']['Data'].astype('float')*meta['Climate']['SF']['ndep']
-		for iT in range(tv.size):
-			indT=np.where(dN['ndep']['tv']==tv[iT])[0]
-			if indT.size==0:
-				continue
-			d['ndep'][rcp][iT]=np.mean(dN['ndep']['Data'][indT[0],:,:][iLand])
-		indT=np.where(tv<dN['ndep']['tv'][0])[0]
-		d['ndep'][rcp][indT]=np.mean(dN['ndep']['Data'][0,:,:][iLand])
-		indT=np.where(tv>dN['ndep']['tv'][-1])[0]
-		d['ndep'][rcp][indT]=np.mean(dN['ndep']['Data'][-1,:,:][iLand])
-	return d
+# 	# Import N deposition
+# 	zRef5=gis.OpenGeoTiff(meta['Paths']['bc5k Ref Grid'])
+# 	iLand=np.where(zRef5['Data']==1)
+# 	rcpL=['26','60','85']
+# 	for rcp in rcpL:
+# 		d['ndep'][rcp]=np.zeros(tv.size)
+# 		dN=gu.ipickle(meta['Paths']['DB']['NDEP'] + '\\ISIMIP\\ndep_' + rcp + '.pkl')
+# 		dN['ndep']['Data']=dN['ndep']['Data'].astype('float')*meta['Climate']['SF']['ndep']
+# 		for iT in range(tv.size):
+# 			indT=np.where(dN['ndep']['tv']==tv[iT])[0]
+# 			if indT.size==0:
+# 				continue
+# 			d['ndep'][rcp][iT]=np.mean(dN['ndep']['Data'][indT[0],:,:][iLand])
+# 		indT=np.where(tv<dN['ndep']['tv'][0])[0]
+# 		d['ndep'][rcp][indT]=np.mean(dN['ndep']['Data'][0,:,:][iLand])
+# 		indT=np.where(tv>dN['ndep']['tv'][-1])[0]
+# 		d['ndep'][rcp][indT]=np.mean(dN['ndep']['Data'][-1,:,:][iLand])
+# 	return d
 
 #%% Potential evpapotranspiration
 '''============================================================================

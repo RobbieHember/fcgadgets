@@ -1143,9 +1143,17 @@ def Plot_HarvestAreaTimeSeries(meta,tlim):
 	ind=np.where( (rat>0) & (rat<2) )[0]
 	#print(np.mean(rat[ind])) 0.71
 
-	ms=2.5; cl=np.array([[0.1,0.3,0.6],[0.5,0.85,0],[1,0.5,0],[0.65,0.35,1],[0.6,1,0],[0,0,0]])
+	ms=2.5;
+	cl=np.array([[0.1,0.3,0.6],[0.5,0.85,0],[1,0.5,0],[0.65,0.35,1],[0.6,1,0],[0,0,0]])
+
 	plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(22,8));
-	ax.plot(d['Year'][iT],d['Province']['Area']['CC'][iT],'-ks',mfc=cl[1,:],mec=cl[1,:],color=cl[1,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='Consolidated cutblocks database')
+	ax.plot(d['Year'][iT],d['Province']['Area']['CC'][iT],'-ko',
+		 mfc=meta['Graphics']['Colours']['rgb']['Blue Dark'],
+		 mec=meta['Graphics']['Colours']['rgb']['Blue Dark'],
+		 color=meta['Graphics']['Colours']['rgb']['Blue Dark'],
+		 lw=meta['Graphics']['gp']['lw1'],
+		 ms=ms,
+		 label='Consolidated cutblocks database')
 	#ax.plot(d['Year'][iT],d['Province']['Area']['NFD'][iT],'-ko',mfc=cl[0,:],mec=cl[0,:],color=cl[0,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='National forestry database')
 	#ax.plot(d['Year'][iT],d['Province']['Area']['Cruise'][iT],'--kd',mfc=cl[2,:],mec=cl[2,:],color=cl[2,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='Cruise compilation')
 	#ax.plot(d['Year'][iT],d['Province']['Area']['NTEMS'][iT],'-.k^',mfc=cl[3,:],mec=cl[3,:],color=cl[3,:],lw=meta['Graphics']['gp']['lw1'],ms=ms,label='NTEMS 2020')

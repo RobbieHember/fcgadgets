@@ -544,6 +544,7 @@ def cm2inch(*tupl):
 #%% Count By Category
 # d=gu.CountByCategories(z,'Percent')
 def CountByCategories(z,*args):
+	z=z[z!=None]
 	z=z.flatten()
 	u=np.unique(z)
 	N=np.zeros(u.size)
@@ -639,7 +640,7 @@ def movingave(y0,period,meth):
 			ind=np.where( (iy>=np.round(i-period/2)) & (iy<=np.round(i+period/2)) )[0]
 		elif (meth=='Historical') | (meth=='historical'):
 			ind=np.where( (iy>=np.round(i-period)) & (iy<=i) )[0]
-		mu=np.nanmean(y[ind,:],axis=0)
+		mu=np.mean(y[ind,:],axis=0)
 		ma[i,:]=mu
 
 	if y0.ndim==1:
@@ -708,6 +709,20 @@ def tvec(res,year1,year2):
 					doy=doy+1
 					cnt=cnt+1
 		tv=tv[0:cnt,:]
+	elif res=='h':
+		tv=np.zeros((2000000,5),dtype='int16')
+		cnt=0
+		for iY in range(yr.size):
+			doy=1
+			for iM in range(12):
+				n=calendar.monthrange(yr[iY],iM+1)[1]
+				for iD in range(n):
+					for iH in range(24):
+						tv[cnt,:]=np.array([yr[iY],iM+1,iD+1,doy,iH])
+						cnt=cnt+1
+					doy=doy+1
+		tv=tv[0:cnt,:]
+
 	return tv
 
 #%% DIESCRETE RESPONSE (BINNED RESPONSE)
@@ -728,6 +743,33 @@ def discres(x,y,bw,bin):
 		sig[i]=np.nanstd(y[ind]);
 		se[i]=np.nanstd(y[ind])/np.sqrt(ind.size);
 	return N,mu,med,sig,se
+
+#%%
+# N,mu,med,sig,se,p1,p10,p90,p99=gu.discreswp(x,y,bw,bin)
+def discreswp(x,y,bw,bin):
+	N=np.nan*np.ones(bin.size)
+	mu=np.nan*np.ones(bin.size)
+	med=np.nan*np.ones(bin.size)
+	sig=np.nan*np.ones(bin.size)
+	se=np.nan*np.ones(bin.size)
+	p1=np.nan*np.ones(bin.size)
+	p10=np.nan*np.ones(bin.size)
+	p90=np.nan*np.ones(bin.size)
+	p99=np.nan*np.ones(bin.size)
+	for i in range(bin.size):
+		ind=np.where(np.abs(x-bin[i])<=bw/2)[0]
+		N[i]=ind.size
+		if ind.size==0:
+			continue
+		mu[i]=np.nanmean(y[ind]);
+		med[i]=np.nanmedian(y[ind]);
+		sig[i]=np.nanstd(y[ind]);
+		se[i]=np.nanstd(y[ind])/np.sqrt(ind.size);
+		p1[i]=np.nanpercentile(y[ind],1)
+		p10[i]=np.nanpercentile(y[ind],10)
+		p90[i]=np.nanpercentile(y[ind],90)
+		p99[i]=np.nanpercentile(y[ind],99)
+	return N,mu,med,sig,se,p1,p10,p90,p99
 
 #%% Binned count
 def BinnedCount(bins,bw,x):
@@ -1187,18 +1229,18 @@ def BlockMean(x,ivl):
 		c=np.arange(0,x.size,ivl,dtype=int)
 		y=np.zeros(c.size)
 		for i in range(c.size):
-			y[i]=np.mean(x[c[i]:c[i]+ivl])
+			y[i]=np.nanmean(x[c[i]:c[i]+ivl])
 	elif x.ndim==2:
 		y=np.zeros((int(x.shape[0]/ivl),x.shape[1]))
 		cnt=0
 		for i in range(0,x.shape[0],ivl):
-			y[cnt,:]=np.mean(x[i:i+ivl,:],axis=0)
+			y[cnt,:]=np.nanmean(x[i:i+ivl,:],axis=0)
 			cnt=cnt+1
 	else:
 		y=np.zeros((int(x.shape[0]/ivl),x.shape[1],x.shape[2]))
 		cnt=0
 		for i in range(0,x.shape[0],ivl):
-			y[cnt,:,:]=np.mean(x[i:i+ivl,:,:],axis=0)
+			y[cnt,:,:]=np.nanmean(x[i:i+ivl,:,:],axis=0)
 			cnt=cnt+1
 	return y
 

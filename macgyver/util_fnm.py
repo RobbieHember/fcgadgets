@@ -12,7 +12,6 @@ import warnings
 import matplotlib as mpl
 import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
-import fcgadgets.macgyver.util_inventory as uinv
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
 import fcgadgets.cbrunner.cbrun_util as cbu
 import fcgadgets.cbrunner.cbrun as cbr

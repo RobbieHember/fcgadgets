@@ -16,7 +16,7 @@ import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
 import fcgadgets.macgyver.util_query_gdb as qgdb
-import fcexplore.field_plots.Processing.fp_util as ufp
+import fcexplore.field_plots.fp_util as ufp
 import fcgadgets.cbrunner.cbrun_util as cbu
 
 #%%
@@ -1257,6 +1257,60 @@ def Plot_formask(meta,roi,vnam):
 	lab[0:N_vis]=bin.astype(str)
 
 	cm=plt.cm.get_cmap('viridis',N_vis)
+	cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
+	cm=matplotlib.colors.ListedColormap(cm)
+
+	plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(meta['Graphics']['Map']['Fig Width'],(1-meta['Graphics']['Map']['Side Space'])*meta['Graphics']['Map']['Fig Width']*roi['grd']['yxrat']))
+	im=ax[0].matshow(z1,extent=roi['grd']['Extent'],cmap=cm)
+	roi=PlotVectorBaseMaps(meta,roi,ax[0])
+	ax[0].set(position=meta['Graphics']['Map']['Map Position'],xlim=roi['grd']['xlim'],ylim=roi['grd']['ylim'])
+	ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].grid(meta['Graphics']['Map']['Map Grid Vis']); ax[0].axis(meta['Graphics']['Map']['Map Axis Vis'])
+
+	zmn=np.min(z1); zmx=np.max(z1); cb_ivl=(zmx-zmn)/N_tot; cb_bnd=np.arange(zmn,zmx+cb_ivl-N_hidden*cb_ivl,cb_ivl)
+	cb_ticks=np.arange(zmn+cb_ivl/2,N_tot-1,cb_ivl)
+	cb=plt.colorbar(im,cax=ax[1],cmap=cm,boundaries=cb_bnd,ticks=cb_ticks)
+	ax[1].set(position=[0.71,0.6,0.05,0.14])
+	cb.ax.set(yticklabels=lab)
+	cb.ax.tick_params(labelsize=meta['Graphics']['Map']['Legend Font Size'],length=0)
+	cb.outline.set_edgecolor('w')
+	for i in range(cb_bnd.size):
+		ax[1].plot([0,100],[cb_bnd[i],cb_bnd[i]],'w-',linewidth=2)
+
+	pos2=[meta['Graphics']['Map']['Legend X'],0.99-N_vis*meta['Graphics']['Map']['Legend Text Space'],meta['Graphics']['Map']['Legend Width'],N_vis*meta['Graphics']['Map']['Legend Text Space']]
+	ax[1].set(position=pos2)
+
+	gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\' + roi['Name'] + '_' + vnam,'png',900)
+
+	return fig,ax
+
+#%%
+def Plot_NDEP(meta,roi,vnam):
+
+	z0=roi['grd'][vnam]['Data']
+
+	bw=0.5; bin=np.arange(0,10+bw,bw)
+	N_vis=bin.size
+	N_hidden=2
+	N_tot=N_vis+N_hidden
+
+	z1=N_vis*np.ones(z0.shape)
+	for i in range(N_vis):
+		ind=np.where(np.abs(z0-bin[i])<=bw/2)
+		if ind[0].size>0:
+			z1[ind]=i+1
+	ind=np.where(z0>=bin[i]); z1[ind]=i+1
+	z1[1,1]=i+2
+	z1[(roi['grd']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==0) | (roi['grd']['lc_comp1_2019']['Data']==meta['LUT']['Derived']['lc_comp1']['Water'])]=i+3
+
+	for i in range(N_vis):
+		z1[0,i]=i+1
+
+	lab=['']*(N_tot-1)
+	lab[0:N_vis]=bin.astype(str)
+
+	#cmn='cividis'
+	cmn='viridis'
+	cm=plt.cm.get_cmap(cmn,N_vis)
 	cm=np.vstack( (cm.colors,(0.9,0.9,0.9,1),(1,1,1,1)) )
 	cm=matplotlib.colors.ListedColormap(cm)
 

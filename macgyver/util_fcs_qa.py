@@ -17,7 +17,7 @@ import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
 import fcgadgets.cbrunner.cbrun_util as cbu
-import fcexplore.field_plots.Processing.fp_util as ufp
+import fcexplore.field_plots.processing.fp_util as ufp
 
 #%% Age class distribution (by BGC Zone)
 def QA_FullComparisonAgeDistByBGC_CN(meta,gpt):

@@ -25,7 +25,7 @@ import fcgadgets.macgyver.util_general as gu
 import fcgadgets.macgyver.util_gis as gis
 import fcgadgets.macgyver.util_query_gdb as qgdb
 import fcgadgets.gaia.gaia_util as gaia
-import fcexplore.field_plots.Processing.fp_util as ufp
+import fcexplore.field_plots.processing.fp_util as ufp
 import fcgadgets.cbrunner.cbrun_util as cbu
 import fcgadgets.bc1ha.bc1ha_utils as u1ha
 
@@ -461,6 +461,15 @@ def RasterizeWildfirePerimitersHistorical(meta,zRef,YearLast):
 
 	tv=np.arange(1917,YearLast+1,1)
 
+	df1=df[(df['FIRE_YEAR']>1953)]
+	A=df1['FIRE_SIZE_HECTARES'].values
+	ord=np.argsort(A)
+	ord=np.flip(np.argsort(A))
+	df1=df1[df1['FIRE_SIZE_HECTARES']>A[ord[30]]]
+	df1=df1.set_index('FIRE_NUMBER')
+	#df1=df1.reset_index(drop=True)
+	df1.plot()
+
 	for iT in range(tv.size):
 
 		try:
@@ -737,7 +746,7 @@ def RasterizePlanting(meta,vNam,YearLast):
 	
 	tv=np.arange(1960,YearLast+1,1)
 	zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
-	
+
 	# Start with planting with spatial from RESULTS (takes 15 min)
 	flg=1
 	if flg==1:
@@ -1164,6 +1173,17 @@ def DerivePlantingYearLast(meta,zRef):
 		zYr=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iEY+1) + '_Year.tif')
 		zYearLast['Data']=np.maximum(zYearLast['Data'],zYr['Data'])
 	gis.SaveGeoTiff(zYearLast,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_YearLast.tif')
+
+	# Second to last year
+	zYL=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_YearLast.tif')['Data']
+	zYearSecLast=copy.deepcopy(zRef)
+	zYearSecLast['Data']=np.zeros(zRef['Data'].shape,dtype='int16')
+	for iEY in range(6):
+		zYr=gis.OpenGeoTiff(meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_All_' + str(iEY+1) + '_Year.tif')
+		ind=np.where(zYr['Data']<zYL)
+		zYearSecLast['Data'][ind]=np.maximum(zYearSecLast['Data'][ind],zYr['Data'][ind])
+	gis.SaveGeoTiff(zYearSecLast,meta['Paths']['bc1ha'] + '\\RSLT_ACTIVITY_TREATMENT_SVW\\PL_YearSecondLast.tif')
+
 	return
 
 #%% Rasterize direct seeding

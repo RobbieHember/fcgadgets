@@ -15,7 +15,7 @@ import fcgadgets.macgyver.util_query_gdb as qgdb
 
 #%% Import parameters
 meta=u1ha.Init()
-meta['Graphics']['Map']['RGSF']=1
+meta['Graphics']['Map']['RGSF']=2
 meta['Graphics']['Map']['Fig Width']=15.5
 meta['Graphics']['Map']['Side Space']=0.25
 meta['Graphics']['Map']['Map Position']=[0,0,1-meta['Graphics']['Map']['Side Space']-0.01,1]
@@ -62,7 +62,7 @@ if roi['Type']=='ByTSA':
 	# Central:
 	#roi['Type']='ByTSA'; roi['Name']='Central'; roi['List']=['100 Mile House TSA','Quesnel TSA','Williams Lake TSA','GBR North TSA','GBR South TSA','Mid Coast TSA'] # Central
 	# South:
-	roi['Name']='South'; roi['List']=['Kamloops TSA','Lillooet TSA','Merritt TSA','Okanagan TSA','Boundary TSA','Fraser TSA','Soo TSA','Arrow TSA','100 Mile House TSA'] # South
+	#roi['Name']='South'; roi['List']=['Kamloops TSA','Lillooet TSA','Merritt TSA','Okanagan TSA','Boundary TSA','Fraser TSA','Soo TSA','Arrow TSA','100 Mile House TSA'] # South
 
 	# Individual:
 	#roi['Name']='Arrowsmith TSA'; roi['List']=['Arrowsmith TSA']
@@ -81,7 +81,7 @@ if roi['Type']=='ByTSA':
 	#roi['Name']='Prince George TSA'; roi['List']=['Prince George TSA']
 	#roi['Name']='Quesnel TSA'; roi['List']=['Quesnel TSA']
 	#roi['Name']='Williams Lake TSA'; roi['List']=['Williams Lake TSA']
-	#roi['Name']='100 Mile House TSA'; roi['List']=['100 Mile House TSA']
+	roi['Name']='100 Mile House TSA'; roi['List']=['100 Mile House TSA']
 	#roi['List']=['Merritt TSA','Kamloops TSA','100 Mile House TSA','Okanagan TSA','Williams Lake TSA','Lillooet TSA','Boundary TSA'] # ,'Arrow TSA','Revelstoke TSA'
 	#roi['List']=list(gdf['tsa']['key']['Name'])
 	# Western spruce budworm study (do not change!)
@@ -213,6 +213,8 @@ vList=['ws_mjjas_n']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_S
 #vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_PFI(meta,roi,vList[0]); del roi['grd'][vList[0]]
 #vList=['']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.(meta,roi,vList[0]); del roi['grd'][vList[0]]
 #vList=['hlz']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_HoldridgeClimateZones(meta,roi,vList[0]); del roi['grd'][vList[0]]
+
+vList=['ndep21']; roi=u1ha.Import_Raster(meta,roi,vList); fig,ax=p1ha.Plot_NDEP(meta,roi,vList[0]); del roi['grd'][vList[0]]
 
 #%%  LIDAR
 fig,ax=p1ha.Plot_CHM(meta,roi,vList[0])

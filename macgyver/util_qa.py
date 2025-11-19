@@ -1662,7 +1662,7 @@ def Plot_QA_FateOfFelled(meta,d,iS,iH,TimeHorizon,dpi):
 	FelledM=d['C_FelledMerch'][iH,iS]
 	FelledR=d['C_FelledRoots'][iH,iS]
 	FelledNM=Felled-FelledM-FelledR
-	print(FelledNM)
+	#print(FelledNM)
 
 	dDW=(d['C_DeadWood'][iH,iS])-(d['C_DeadWood'][iH-1,iS])
 	ToDOM=d['C_ToDOM'][iH,iS]
@@ -1672,7 +1672,7 @@ def Plot_QA_FateOfFelled(meta,d,iS,iH,TimeHorizon,dpi):
 	ToPile=d['C_ToPile'][iH,iS]
 	ToPileM=d['C_ToPileMerch'][iH,iS]
 	ToPileNM=ToPile-ToPileM
-	print(ToPileNM)
+	#print(ToPileNM)
 
 	ToMillSS=d['C_ToMillMerchDead'][iH,iS]
 	ToMillM=d['C_ToMillMerchGreen'][iH,iS]
@@ -1730,12 +1730,12 @@ def Plot_QA_FateOfFelled(meta,d,iS,iH,TimeHorizon,dpi):
 	rhe2atm=str(np.round(dom2rhe+rpil2rhe,decimals=1)) + '%'
 	ToAtm=ToAtm+dom2rhe+rpil2rhe
 
-	a=np.sum(d['E_Domestic_ForestSector_HWP'][iH:iH+TimeHorizon,iS])/3.667
+	a=np.sum(d['E_HWP_ForestSector_Total'][iH:iH+TimeHorizon,iS])/3.667
 	b=a/Felled*100
 	ToAtm=ToAtm+b
 	rhp2atm=str(np.round(b,decimals=1)) + '%'
 
-	a=np.sum(d['E_Domestic_Bioenergy'][iH:iH+TimeHorizon,iS])/3.667
+	a=np.sum(d['E_BBP_ForestSector_Total'][iH:iH+TimeHorizon,iS])/3.667
 	b=a/Felled*100
 	ToAtm=ToAtm+b
 	combp2atm=str(np.round(b,decimals=1)) + '%'

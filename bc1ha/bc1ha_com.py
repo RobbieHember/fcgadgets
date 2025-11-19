@@ -17,23 +17,6 @@ meta=u1ha.Init()
 zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
 #%%
-
-vList=['feca_yr','fire_yl','spc1_vri23']
-z=u1ha.Import_Raster(meta,[],vList,'Extract Grid')
-
-z1=zRef['Data']
-ind=np.where( (z['feca_yr']>0) & (z['feca_yr']<2025-10) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SX']) |
-			 (z['feca_yr']>0) & (z['feca_yr']<2025-10) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SW']) )
-z1[ind]=2
-
-ind=np.where( (z['feca_yr']==2024) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SX']) |
-			 (z['feca_yr']==2024) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SW']) )
-z1[ind]=3
-
-plt.close('all'); plt.matshow(z1)
-
-
-#%%
 #d=gu.ReadExcel(r'G:\My Drive\Code_Python\fcgadgets\cbrunner\Parameters\Workbook_BCForestSector.xlsx')
 #plt.plot(d['Year'],d['Production Electricity Total BC (PJ/yr)'],'-bo')
 
@@ -623,3 +606,19 @@ u,N=gu.CountByCategories(z['lc_comp1_2019'][ind1],'Percent')
 
 2023-np.mean(z['refyear'][ind])
 plt.hist(z['refyear'][ind])
+
+#%%
+
+vList=['feca_yr','fire_yl','spc1_vri23']
+z=u1ha.Import_Raster(meta,[],vList,'Extract Grid')
+
+z1=zRef['Data']
+ind=np.where( (z['feca_yr']>0) & (z['feca_yr']<2025-10) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SX']) |
+			 (z['feca_yr']>0) & (z['feca_yr']<2025-10) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SW']) )
+z1[ind]=2
+
+ind=np.where( (z['feca_yr']==2024) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SX']) |
+			 (z['feca_yr']==2024) & (z['feca_yr']>z['fire_yl']) & (z['spc1_vri23']==meta['LUT']['VEG_COMP_LYR_R1_POLY']['SPECIES_CD_1']['SW']) )
+z1[ind]=3
+
+plt.close('all'); plt.matshow(z1)

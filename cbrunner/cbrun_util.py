@@ -3131,4 +3131,8 @@ def PrepInsectMortalityPercentTreeSpeciesAffected(meta,pNam,lsat,iBat):
 	return lsat
 
 #%%
-
+# Example: L=cbu.ListVariables(meta,pNam,mos)
+def ListVariables(meta,pNam,mos):
+	keys=mos[pNam]['Scenarios'][0]['Mean'].keys()
+	print(list(keys))
+	return list(keys)

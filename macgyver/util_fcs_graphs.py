@@ -32,7 +32,7 @@ import fcgadgets.bc1ha.bc1ha_utils as u1ha
 import fcgadgets.cbrunner.cbrun_util as cbu
 import fcgadgets.macgyver.util_fcs_qa as uqa
 import fcgadgets.hardhat.harvest_util as hut
-import fcexplore.field_plots.Processing.fp_util as ufp
+import fcexplore.field_plots.processing.fp_util as ufp
 
 #%% Update counters
 def UpdateTabCount(meta):

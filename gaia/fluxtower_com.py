@@ -17,8 +17,8 @@ meta=u1ha.Init()
 zRef=gis.OpenGeoTiff(meta['Paths']['bc1ha Ref Grid'])
 
 meta['Graphics']['Print Figures']='On'
-#meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Surface Climate'
-#meta['Paths']['Data']=r'C:\Data\Surface Climate'
+meta['Graphics']['Print Figure Path']=r'C:\Users\rhember\OneDrive - Government of BC\Figures\Flux Towers'
+meta['Paths']['Data']=r'C:\Data\Eddy Covariance'
 con=uga.HydroMetCon() # Constants
 meta=utf.CompileSiteSpecs(meta) # Compile site conditions
 
@@ -26,104 +26,28 @@ meta=utf.CompileSiteSpecs(meta) # Compile site conditions
 dEC=usc.GetEC(meta)
 dECCC=usc.Import10amTemperatureFromECCC()
 
-#%% Temperature correction
-plt.close('all');
-site='Peat'
-x=(dEC['N'][site]['Ta']+273.15)-(dEC['N'][site]['Ta10am']+273.15)
-y=(dEC['N'][site]['Ts']+273.15)-(dEC['N'][site]['Ts10am']+273.15)
-#plt.plot(y1,'-bo')
-#plt.plot(y2,'-rs')
-
-plt.close('all'); fig,ax=plt.subplots(1,figsize=gu.cm2inch(7.8,7))
-ax.plot([-10000,10000],[-10000,10000],'k-',lw=2,color=[0.8,0.8,0.8])
-ax.plot(x,y,'o',ms=5,mec='w',mfc=[0.27,0.44,0.79],mew=0.75)
-rs,txt=gu.GetRegStats(x,y)
-ax.plot(rs['xhat Line'],rs['yhat Line'],'k-')
-ax.text(7.8,0.5,rs['txt'],fontsize=7,ha='right')
-ax.text(7,7,'1:1',fontsize=7,ha='center')
-ax.set(xlabel='$\Delta$ air temperature (K)',ylabel='$\Delta$ suface temperature (K)',xticks=np.arange(-30,30,2),yticks=np.arange(-30,30,2),xlim=[0,8.25],ylim=[0,8.25])
-ax.yaxis.set_ticks_position('both'); ax.xaxis.set_ticks_position('both'); ax.tick_params(length=meta['Graphics']['gp']['tickl'])
-plt.tight_layout()
-#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Name','png',900)
-
-#%% Temperature correction
-plt.close('all')
-site='DF-H49'; y=(dEC['N'][site]['Ta']+273.15)-(dEC['N'][site]['Ta10am']+273.15)
-plt.plot(y,'-bo')
-site='DF-H00'; y=(dEC['N'][site]['Ta']+273.15)-(dEC['N'][site]['Ta10am']+273.15)
-plt.plot(y,'-ro')
-site='DF-H88'; y=(dEC['N'][site]['Ta']+273.15)-(dEC['N'][site]['Ta10am']+273.15)
-plt.plot(y,'-go')
-site='JP-Old'; y=(dEC['N'][site]['Ta']+273.15)-(dEC['N'][site]['Ta10am']+273.15)
-plt.plot(y,'-co')
-site='JP-H02'; y=(dEC['N'][site]['Ta']+273.15)-(dEC['N'][site]['Ta10am']+273.15)
-plt.plot(y,'-mo')
-
-#s='1060848'
-for s in dECCC.keys():
-	y=(dECCC[s]['Ta']+273.15)-(dECCC[s]['Ta10am']+273.15)
-	plt.plot(y,'-k.')
-
-#%% Temperature correction
-x=np.arange(1,13)
-plt.close('all'); fig,ax=plt.subplots(1,2,figsize=gu.cm2inch(15.5,7.5)); ms=3
-ax[0].plot([0,14],[0,0],'k-')
-y0=np.zeros(12)
-for i,s in enumerate(dECCC.keys()):
-	y=(dECCC[s]['Ta']+273.15)/(dECCC[s]['Ta10am']+273.15)*100-100
-	y0=np.column_stack((y0,y))
-	if i==0:
-		ax[0].plot(x,y,'-k',color=[0.8,0.8,0.8],label='Weather station')
-	else:
-		ax[0].plot(x,y,'-k',color=[0.8,0.8,0.8])
-
-site='DF-H49'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-y0=np.column_stack((y0,y))
-ax[0].plot(x,y,'-bo',ms=ms,label=site)
-site='DF-H00'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-y0=np.column_stack((y0,y))
-ax[0].plot(x,y,'-ro',ms=ms,label=site)
-site='DF-H88'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-y0=np.column_stack((y0,y))
-ax[0].plot(x,y,'-go',ms=ms,label=site)
-
-site='SB-Old'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-y0=np.column_stack((y0,y))
-ax[0].plot(x,y,'-ko',ms=ms,label=site)
-
-site='JP-Old'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-y0=np.column_stack((y0,y))
-ax[0].plot(x,y,'-co',ms=ms,label=site)
-site='JP-H02'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-y0=np.column_stack((y0,y))
-ax[0].plot(x,y,'-mo',ms=ms,label=site)
-ax[0].legend(loc='lower left',facecolor=[1,1,1],frameon=False,fontsize=5,ncol=3)
-ax[0].set(xlabel='Calendar month',ylabel=r'24-hour Ta / 10am local time Ta $\times$ 100 - 100 (%)',xticks=np.arange(1,13,1),xlim=[0.5,12.5],ylim=[-1.35,0.65])
-ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
-
-ax[1].plot([0,14],[0,0],'k-')
-ax[1].plot(x,np.percentile(y0,10,axis=1),'--bo',ms=ms,label='Continental Bare Ground')
-site='JP-Old'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-ax[1].plot(x,y,'-co',ms=ms,label='Continental Forest Canopy')
-site='DF-H00'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-ax[1].plot(x,y,'--ro',ms=ms,label='Maritime Bare Ground')
-site='DF-H49'; y=(dEC['N'][site]['Ta']+273.15)/(dEC['N'][site]['Ta10am']+273.15)*100-100
-ax[1].plot(x,y,'-go',ms=ms,label='Maritime Forest Canopy')
-ax[1].legend(loc='lower left',facecolor=[1,1,1],frameon=False,fontsize=5)
-ax[1].set(xlabel='Calendar month',ylabel=r'24-hour Ta / 10am local time Ta $\times$ 100 - 100 (%)',xticks=np.arange(1,13,1),xlim=[0.5,12.5],ylim=[-1.35,0.65])
-ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
-
-gu.axletters(ax,plt,0.025,0.93,FontColor=meta['Graphics']['gp']['cla'],LetterStyle='Default',FontWeight='Bold')
-plt.tight_layout()
-#gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Harvest Response\\StatsSBS_ByLC','png',900)
-
 #%%
-cl=['g','c','r','b','m','y','k','g','c']
-mk=['o','s','o','s','d','v','d','v','^']
-iM=6
-plt.close('all')
-for i,site in enumerate(dEC['N'].keys()):
-	plt.plot(dEC['N'][site]['Ta'][iM],dEC['N'][site]['Ta'][iM]-dEC['N'][site]['Ta10am'][iM],marker=mk[i],mfc=cl[i],mec=cl[i])
+import statsmodels.formula.api as smf
+
+y=np.zeros(12)
+for iM in range(12):
+	d1=dEC['TS']['JP-H02']
+	d2={}
+	d2['QL']=d1['Heat flux latent'][iM::12]
+	d2['D'],mu,sig=gu.zscore(d1['VPD'][iM::12])
+	d2['Rn'],mu,sig=gu.zscore(d1['Radiation net'][iM::12])
+	df=pd.DataFrame(data=d2);
+	df=df.reset_index(drop=True)
+	df.dropna()
+	md=smf.ols('QL~Rn',df);
+	mdf=md.fit(); mdf.summary()
+	y[iM]=mdf.params['Rn']
+plt.close('all'); plt.plot(y,'-bo')
+
+
+
+#%% Temperature correction
+utf.DiurnalTemperatureCorrection(meta)
 
 #%% Bowen ratio
 meta=utf.Calc_BowenRatio(meta,dEC)
@@ -138,7 +62,6 @@ utf.Plot_Ga_ModelSurface(meta)
 utf.Calc_Ga(meta,dEC)
 
 #%% Latent heat flux
-
 
 #site='00'
 #site='SB-Old'
@@ -215,13 +138,13 @@ ax[0].plot(dEC['N']['DF-H49'][v][3],Gs['DF-H49'][3],'ks',mfc='w')
 ax[0].plot(dEC['N']['DF-H88'][v],Gs['DF-H88'],'-gs',ms=ms,lw=lw,mfc='w',mec='g',label='DF-H88')
 ax[0].plot(dEC['N']['DF-H00'][v],Gs['DF-H00'],'-cv',ms=ms,lw=lw,mfc='w',mec='c',label='DF-H00')
 ax[0].plot(dEC['N']['DF-H00'][v][3],Gs['DF-H00'][3],'ks',mfc='w')
-ax[0].set(ylabel='Water conductance (m s$^{-1}$)',ylim=[0,0.016])
+ax[0].set(ylabel='Water conductance (m s$^{-1}$)',ylim=[0,0.011])
 ax[0].yaxis.set_ticks_position('both'); ax[0].xaxis.set_ticks_position('both'); ax[0].tick_params(length=meta['Graphics']['gp']['tickl'])
 ax[0].legend(loc='upper right',facecolor=[1,1,1],frameon=False,fontsize=6)
 ax[1].plot(dEC['N']['JP-Old'][v],Gs['JP-Old'],'-bo',ms=ms,lw=lw,mfc='w',label='JP-Old')
 ax[1].plot(dEC['N']['JP-Old'][v][3],Gs['JP-Old'][3],'ks',mfc='w')
 ax[1].plot(dEC['N']['JP-H75'][v],Gs['JP-H75'],'-ms',ms=ms,lw=lw,mfc='w',label='JP-H75')
-ax[1].set(ylabel='Water conductance (m s$^{-1}$)',ylim=[0,0.016])
+ax[1].set(ylabel='Water conductance (m s$^{-1}$)',ylim=[0,0.011])
 ax[1].yaxis.set_ticks_position('both'); ax[1].xaxis.set_ticks_position('both'); ax[1].tick_params(length=meta['Graphics']['gp']['tickl'])
 ax[1].legend(loc='upper right',facecolor=[1,1,1],frameon=False,fontsize=6)
 ax[2].plot(dEC['N']['SB-Old'][v],Gs['SB-Old'],'-bo',ms=ms,lw=lw,mfc='w',label='SB-Old')
@@ -233,7 +156,7 @@ ax[2].set(ylabel='Water conductance (m s$^{-1}$)',ylim=[0,0.016])
 ax[2].yaxis.set_ticks_position('both'); ax[2].xaxis.set_ticks_position('both'); ax[2].tick_params(length=meta['Graphics']['gp']['tickl'])
 ax[2].legend(loc='upper right',facecolor=[1,1,1],frameon=False,fontsize=6)
 plt.tight_layout()
-gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Flux Towers\\Conductance vs VPD','png',900)
+gu.PrintFig(meta['Graphics']['Print Figure Path'] + '\\Conductance vs VPD','png',900)
 
 
 #%% Relationship between GC and slope of Ts-NDVI relationship
@@ -259,10 +182,14 @@ plt.plot(y,'-bo')
 #%% Summary of radiation balance
 d={}
 for v in dEC['N']['DF-H49'].keys():
-	d[v]=np.zeros(9)
+	d[v]=np.zeros(10)
+	d['Site']=np.array([])
 	for i,s in enumerate(dEC['N'].keys()):
 		d[v][i]=np.round(np.mean(dEC['N'][s][v]),decimals=2)
-pd.DataFrame.from_dict(d).to_excel(r'C:\Data\Eddy Covariance\Summary.xlsx')
+		d['Site']=np.append(d['Site'],s)
+df=pd.DataFrame.from_dict(d)
+df=df.set_index('Site')
+df.T.to_excel(meta['Paths']['Data'] + '\\Summary.xlsx')
 
 #%%
 v='Radiation longwave down'
